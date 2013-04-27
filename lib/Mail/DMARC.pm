@@ -1,5 +1,7 @@
+package Mail::DMARC;
+# ABSTRACT: Perl implementation of DMARC
+
 use strict;
 use warnings;
-package Mail::DMARC;
 
 1;

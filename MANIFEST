@@ -1,0 +1,6 @@
+dist.ini
+lib/Mail/DMARC.pm
+lib/Mail/DMARC/Report/AFRF.pm
+Makefile.PL
+MANIFEST			This list of files
+README.md
