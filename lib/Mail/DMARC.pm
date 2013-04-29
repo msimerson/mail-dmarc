@@ -66,7 +66,9 @@ See http://www.taugh.com/rddmarc/
 
 About DMARC: http://www.dmarc.org/
 
-The draft spec: http://www.dmarc.org/draft-dmarc-base-00-02.txt
+Mar 31, 2013 Draft: https://datatracker.ietf.org/doc/draft-kucherawy-dmarc-base/
+
+Mar 30, 2012 Draft: http://www.dmarc.org/draft-dmarc-base-00-02.txt
 
 https://github.com/qpsmtpd-dev/qpsmtpd-dev/wiki/DMARC-FAQ
 
@@ -86,13 +88,24 @@ http://dmarcian.com
 sub result {
     my $self = shift;
     die "invalid use of result\n" if @_;
+# result definition
+# {
+#    dmarc_rr             : the actual DMARC record, as retrieved from DNS
+#    dkim_aligned         : strict, relaxed
+#    dkim_aligned_domains : hashref of dkim aligned domains and alignment type
+#    domain_exists        : boolean
+#    error                : description of last error
+#    from_domain          :
+#    message              :
+#    spf_aligned          : strict, relaxed
+# }
     return $self->{result};
 };
 
 sub result_desc {
     my $self = shift;
     die "invalid use of result\n" if @_;
-    return $self->{result_desc};
+    return $self->{result}{error};
 };
 
 1;
