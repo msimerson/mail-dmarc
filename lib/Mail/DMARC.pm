@@ -78,5 +78,16 @@ https://github.com/qpsmtpd-dev/qpsmtpd-dev/wiki/DMARC-FAQ
 
 =cut
 
+sub result {
+    my $self = shift;
+    die "invalid use of result\n" if @_;
+    return $self->{result};
+};
+
+sub result_desc {
+    my $self = shift;
+    die "invalid use of result\n" if @_;
+    return $self->{result_desc};
+};
 
 1;
