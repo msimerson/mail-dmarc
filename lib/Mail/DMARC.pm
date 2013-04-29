@@ -64,9 +64,13 @@ See http://www.taugh.com/rddmarc/
 
 =head1 MORE INFORMATION
 
-http://www.dmarc.org/draft-dmarc-base-00-02.txt
+About DMARC: http://www.dmarc.org/
+
+The draft spec: http://www.dmarc.org/draft-dmarc-base-00-02.txt
 
 https://github.com/qpsmtpd-dev/qpsmtpd-dev/wiki/DMARC-FAQ
+
+http://dmarcian.com
 
 =head1 TODO
 
@@ -74,7 +78,8 @@ https://github.com/qpsmtpd-dev/qpsmtpd-dev/wiki/DMARC-FAQ
 
 =head1 AUTHORS
 
- 2013 - Matt Simerson <msimerson@cpan.org>
+ Matt Simerson <msimerson@cpan.org>
+ Davide Migliavacca <shari@cpan.org>
 
 =cut
 
