@@ -5,7 +5,9 @@ use warnings;
 use IO::File;
 use Net::DNS::Resolver;
 
+use lib 'lib';
 use parent 'Mail::DMARC';
+use Mail::DMARC::Policy;
 
 sub new {
     my $self = shift;
@@ -13,19 +15,21 @@ sub new {
         dns_timeout   => 5,
         is_subdomain  => undef,
         resolver      => undef,
-        p_vals        => {map { $_ => 1 } qw/ none reject quarantine /},
         ps_file       => 'share/public_suffix_list',
     },
     $self;
 }
 
+sub init {
+    my $self = shift;
+    $self->{policy}       = undef;
+    $self->{result}       = {};
+    $self->{is_subdomain} = undef;
+};
+
 sub is_valid {
     my $self = shift;
-
-    if ( @_ % 2 != 0 ) {
-        $self->{result} = "invalid request";
-        return;
-    };
+    die "invalid request" if @_ % 2 != 0;
     my %args = @_;
 
     # 11.1.  Extract Author Domain
@@ -33,10 +37,7 @@ sub is_valid {
     my $org_dom  = $self->get_organizational_domain($from_dom);
 
     # 6. Receivers should reject email if the domain appears to not exist
-    $self->exists_in_dns($from_dom, $org_dom) or do {
-        $self->{result} = "not in DNS: $from_dom";
-        return;
-    };
+    $self->exists_in_dns($from_dom, $org_dom) or return;
 
     # 11.2.  Determine Handling Policy
     my $policy = $self->discover_policy($from_dom, $org_dom) or return;
@@ -49,9 +50,6 @@ sub is_valid {
     #       evaluation returned a "pass" result.
     #   5.  Conduct identifier alignment checks.
     return 1 if $self->is_aligned(
-            from_domain    => $from_dom,
-            org_domain     => $org_dom,
-            policy         => $policy,
             dkim_doms      => $args{dkim_pass_domains},
             spf_pass_domain=> $args{spf_pass_dom},
             );
@@ -59,13 +57,12 @@ sub is_valid {
     #   6.  Apply policy.  Emails that fail the DMARC mechanism check are
     #       disposed of in accordance with the discovered DMARC policy of the
     #       Domain Owner.  See Section 6.2 for details.
-    if ( $self->{is_subdomain} && defined $policy->{sp} ) {
-        return 1 if lc $policy->{sp} eq 'none';
+    if ( $self->{is_subdomain} && defined $policy->sp ) {
+        return 1 if lc $policy->sp eq 'none';
     };
-    return 1 if lc $policy->{p} eq 'none';
+    return 1 if lc $policy->p eq 'none';
 
-    my $pct = $policy->{pct} || 100;
-    if ( $pct != 100 && int(rand(100)) >= $pct ) {
+    if ( $policy->pct != 100 && int(rand(100)) >= $policy->pct ) {
         warn "fail, tolerated, policy, sampled out";
         return;
     };
@@ -75,11 +72,13 @@ sub is_valid {
 }
 
 sub discover_policy {
-    my ($self, $from_dom, $org_dom) = @_;
+    my $self = shift;
+    my $from_dom = shift || $self->{result}{from_domain};
+    my $org_dom = shift || $self->{result}{org_domain};
 
     # 1.  Mail Receivers MUST query the DNS for a DMARC TXT record...
     my $matches = $self->fetch_dmarc_record($from_dom, $org_dom) or do {
-        $self->{result} = "no DMARC records";
+        $self->{result}{error} = "no DMARC records";
         return;
     };
 
@@ -87,35 +86,36 @@ sub discover_policy {
     #     current version of DMARC are discarded.
     my @matches = grep /^v=DMARC1/i, @$matches;
     if (0 == scalar @matches) {
-        $self->{result} = "no valid DMARC record for $from_dom";
+        $self->{result}{error} = "no valid DMARC record";
         return;
     }
 
     # 5.  If the remaining set contains multiple records, processing
     #     terminates and the Mail Receiver takes no action.
     if (@matches > 1) {
-        $self->{result} = "too many DMARC records";
+        $self->{result}{error} = "too many DMARC records";
         return;
     }
 
+    $self->{result}{dmarc_rr} = $matches[0];
+
     # 6.  If a retrieved policy record does not contain a valid "p" tag, or
     #     contains an "sp" tag that is not valid, then:
-    my $policy = $self->parse_policy($matches[0]);
-    if (!$self->is_valid_policy($policy->{p})
-            || (defined $policy->{sp} && ! $self->is_valid_policy($policy->{sp}) ) ) {
+    my $policy = Mail::DMARC::Policy->new( $matches[0] ) or return;
+    if (!$policy->is_valid($policy->p)
+            || (defined $policy->sp && ! $policy->is_valid($policy->sp) ) ) {
 
         #   A.  if an "rua" tag is present and contains at least one
         #       syntactically valid reporting URI, the Mail Receiver SHOULD
         #       act as if a record containing a valid "v" tag and "p=none"
         #       was retrieved, and continue processing;
         #   B.  otherwise, the Mail Receiver SHOULD take no action.
-        my $rua = $policy->{rua};
-        if (!$rua || !$self->has_valid_reporting_uri($rua)) {
-            $self->{result} = "no valid reporting rua";
+        if (!$policy->rua || !$self->has_valid_reporting_uri($policy->rua)) {
+            $self->{result}{error} = "no valid reporting rua";
             return;
         }
-        $policy->{v} = 'DMARC1';
-        $policy->{p} = 'none';
+        $policy->v( 'DMARC1' );
+        $policy->p( 'none' );
     }
 
     return $policy;
@@ -126,9 +126,10 @@ sub is_aligned {
     die "invalid arguments to is_aligned\n" if @_ % 2 != 0;
     my %args = @_;
 
-    my $from_dom = $args{from_domain} or die "missing from domain param\n";
-    my $org_dom  = $args{org_domain} || $self->get_organizational_domain( $from_dom );
-    my $policy   = $args{policy} || $self->discover_policy( $from_dom, $org_dom );
+    $self->{result}{from_domain} = $args{from_domain} if $args{from_domain};
+    $self->{result}{org_domain}  = $args{org_domain}  if $args{org_domain};
+    $self->{policy} = $args{policy} if $args{policy};
+    $args{from_domain} || $self->{result}{from_domain} or die "missing from domain";
     my $spf_dom  = $args{spf_pass_domain} || '';
     my $dkim_doms= $args{dkim_pass_domains} || [];
 
@@ -141,30 +142,70 @@ sub is_aligned {
     #       failures, identifier mismatches) are considered to be DMARC
     #       mechanism check failures.
 
+    #   DMARC has no "short-circuit" provision, such as specifying that a
+    #   pass from one authentication test allows one to skip the other(s).
+    #   All are required for reporting.
+
+    $self->is_dkim_aligned( $dkim_doms );
+    $self->is_spf_aligned( $spf_dom );
+
+    return 1 if $self->{result}{spf_aligned} || $self->{result}{dkim_aligned};
+    return 0;
+};
+
+sub is_dkim_aligned {
+    my $self = shift;
+    my $dkim_doms = shift or return;
+
+    my $from_dom = $self->{result}{from_domain} or die "from_domain not set!";
+    my $policy   = $self->policy or die "no policy!?";
+    my $org_dom  = $self->{result}{org_domain} || $self->get_organizational_domain();
+
     foreach (@$dkim_doms) {
         if ($_ eq $from_dom) {   # strict alignment, requires exact match
-            $self->{result} = "DKIM aligned";
-            return 1;
+            $self->{result}{dkim_aligned} = 'strict';
+            $self->{result}{dkim_aligned_domains}{$_} = 'strict';
+            next;
         }
-        next if $policy->{adkim} && lc $policy->{adkim} eq 's'; # strict pol.
+
+        # don't try relaxed if policy specifies strict
+        next if $policy->adkim && lc $policy->adkim eq 's';
+
         # relaxed policy (default): Org. Dom must match a DKIM sig
         if ( $_ eq $org_dom ) {
-            $self->{result} = "DKIM aligned, relaxed";
-            return 1;
+            $self->{result}{dkim_aligned} = 'relaxed'
+                if ! defined $self->{result}{dkim_aligned};
+            $self->{result}{dkim_aligned_domains}{$_} = 'relaxed';
         };
-    }
+    };
+    return 1 if $self->{result}{dkim_aligned};
+};
 
-    return 0 if ! $spf_dom;
+sub is_spf_aligned {
+    my ($self, $spf_dom ) = @_;
+
+    if ( ! $spf_dom ) {
+        $self->{result}{spf_aligned} = 0;
+        return;
+    };
+
+    my $from_dom = $self->{result}{from_domain} or die "from_domain not set!";
+
     if ($spf_dom eq $from_dom) {
-        $self->{result} = "SPF aligned";
-        return 1;
-    }
-    return 0 if ($policy->{aspf} && lc $policy->{aspf} eq 's' ); # strict pol
-    if ($spf_dom eq $org_dom) {
-        $self->{result} = "SPF aligned, relaxed";
+        $self->{result}{spf_aligned} = 'strict';
         return 1;
     }
 
+    # don't try relaxed match if strict policy requested
+    return 0 if ($self->policy->aspf && lc $self->policy->aspf eq 's' );
+
+    my $org_dom  = $self->{result}{org_domain}
+        || $self->get_organizational_domain() or return 0;
+
+    if ($spf_dom eq $org_dom) {
+        $self->{result}{spf_aligned} = 'relaxed';
+        return 1;
+    }
     return 0;
 };
 
@@ -202,31 +243,13 @@ sub has_dns_rr {
 
     my $matches = 0;
     my $res = $self->get_resolver();
-    my $query = $res->query($domain, $type) or do {
-        if ($res->errorstring eq 'NXDOMAIN') {
-#warn "fail, non-existent domain: $domain\n";
-            return $matches;
-        }
-        return if $res->errorstring eq 'NOERROR';
-#warn "error, looking up $domain: " . $res->errorstring . "\n";
-        return $matches;
-    };
+    my $query = $res->query($domain, $type) or return $matches;
     for my $rr ($query->answer) {
         next if $rr->type ne $type;
         $matches++;
     }
-    if (0 == $matches) {
-        warn "no $type records for $domain";
-    }
     return $matches;
 };
-
-sub is_valid_policy {
-    my ($self, $policy) = @_;
-    return 1 if $self->{p_vals}{$policy};
-    return 0;
-}
-
 
 sub has_valid_reporting_uri {
     my ($self, $rua) = @_;
@@ -235,7 +258,9 @@ sub has_valid_reporting_uri {
 }
 
 sub get_organizational_domain {
-    my ($self, $from_dom) = @_;
+    my $self = shift;
+    my $from_dom = shift || $self->{result}{from_domain}
+        or die "missing from_domain!";
 
     # 1.  Acquire a "public suffix" list, i.e., a list of DNS domain
     #     names reserved for registrations. http://publicsuffix.org/list/
@@ -261,13 +286,15 @@ sub get_organizational_domain {
         }
     }
 
-    return $from_dom if $greatest == scalar @labels;    # same
+    if ( $greatest == scalar @labels ) {      # same
+        return $self->{result}{org_domain} = $from_dom;
+    };
 
     # 4.  Construct a new DNS domain name using the name that matched
     #     from the public suffix list and prefixing to it the "x+1"th
     #     label from the subject domain. This new name is the
     #     Organizational Domain.
-    return join '.', reverse((@labels)[0 .. $greatest]);
+    return $self->{result}{org_domain} = join '.', reverse((@labels)[0 .. $greatest]);
 }
 
 sub get_resolver {
@@ -289,22 +316,26 @@ sub exists_in_dns {
 # That's all the draft says. I went back to the DKIM ADSP (which led me to
 # the ietf-dkim email list where some 'experts' failed to agree on The Right
 # Way to test domain validity. Let alone deliverability. They point out:
-# MX records aren't mandatory, and A|AAAA as fallback aren't reliable.
+# MX records aren't mandatory, and A or AAAA as fallback aren't reliable.
 #
 # Some experimentation proved both cases in real world usage. Instead, I test
 # existence by searching for a MX, NS, A, or AAAA record. Since this search
 # is repeated for the Organizational Name, if the NS query fails, there's no
-# delegation from the TLD. That's proven very reliable.
+# delegation from the TLD. That has proven very reliable.
     $org_dom ||= $self->get_organizational_domain($domain);
     my @todo = $domain;
     push @todo, $org_dom if $domain ne $org_dom;
+    my $matched = 0;
     foreach ( @todo ) {
-        return 1 if $self->has_dns_rr('MX', $_);
-        return 1 if $self->has_dns_rr('NS', $_);
-        return 1 if $self->has_dns_rr('A',  $_);
-        return 1 if $self->has_dns_rr('AAAA', $_);
+        last if $matched;
+        $matched++ and next if $self->has_dns_rr('MX', $_);
+        $matched++ and next if $self->has_dns_rr('NS', $_);
+        $matched++ and next if $self->has_dns_rr('A',  $_);
+        $matched++ and next if $self->has_dns_rr('AAAA', $_);
     };
-    return 0;
+    $self->{result}{domain_exists} = 1 if $matched;
+    $self->{result}{error} = "not in DNS" if ! $matched;
+    return $matched;
 }
 
 sub fetch_dmarc_record {
@@ -345,20 +376,21 @@ sub fetch_dmarc_record {
 sub get_from_dom {
     my ($self, $args) = @_;
 
-    my $from_dom = $args->{from_domain};
+    my $from_dom = $self->{result}{from_domain} = $args->{from_domain};
     return $from_dom if $from_dom;
 
     if ( $args->{from_header} ) {
-        $from_dom = $self->get_dom_from_header( $args->{from_header} );
+        $from_dom = $self->{result}{from_domain}
+            = $self->get_dom_from_header( $args->{from_header} );
     };
     return $from_dom if $from_dom;
 
     if ( ! $args->{from_domain} && ! $args->{from_header} ) {
-        $self->{result} = "missing from arguments in request";
+        $self->{result}{error} = "request did not define from_domain or from_header";
         return;
     };
 
-    $self->{result} = "unable to determine from domain";
+    $self->{result}{error} = "unable to determine from domain";
     return;
 };
 
@@ -366,8 +398,12 @@ sub get_dom_from_header {
     my $self = shift;
     my $header = shift or die "no header!";
 
-# TODO: consider how to handle a From field with multiple addresses. This
-# currently returns only the last one.
+# Should I do something special with a From field with multiple addresses?
+# Do what if the domains differ? This returns only the last.
+# Callers can pass in pre-parsed from_dom if this doesn't suit them.
+#
+# I only care about extracting the domain. This is way faster than attempting
+# to parse a RFC822 address.
     if ( 'from:' eq lc substr($header,0,5) ) { # if From: prefix is present
         $header = substr $header, 6;           # remove it
     };
@@ -376,20 +412,18 @@ sub get_dom_from_header {
     ($from_dom) = split /\s+/, $from_dom;      # remove any trailing cruft
     chomp $from_dom;                           # remove \n
     chop $from_dom if '>' eq substr($from_dom, -1, 1); # remove closing >
-#warn "info, from_dom is $from_dom\n";
     return $from_dom;
-}
-
-sub parse_policy {
-    my ($self, $str) = @_;
-    $str =~ s/\s//g;                             # remove all whitespace
-    my %dmarc = map { split /=/, $_ } split /;/, $str;
-    return \%dmarc;
 }
 
 sub external_report {
     my $self = shift;
 
+};
+
+sub policy {
+    my $self = shift;
+    return $self->{policy} if defined $self->{policy};
+    return $self->{policy} = Mail::DMARC::Policy->new();
 };
 
 sub verify_external_reporting {
