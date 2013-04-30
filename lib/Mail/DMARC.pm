@@ -4,6 +4,8 @@ package Mail::DMARC;
 use strict;
 use warnings;
 
+use Carp;
+
 =head1 NAME
 
 Domain-based Message Authentication, Reporting and Conformance
@@ -85,7 +87,7 @@ http://dmarcian.com
 
 sub result {
     my $self = shift;
-    die "invalid use of result\n" if @_;
+    croak "invalid use of result\n" if @_;
 # result definition
 # {
 #    dmarc_rr             : the actual DMARC record, as retrieved from DNS
@@ -102,7 +104,7 @@ sub result {
 
 sub result_desc {
     my $self = shift;
-    die "invalid use of result\n" if @_;
+    croak "invalid use of result\n" if @_;
     return $self->{result}{error};
 };
 

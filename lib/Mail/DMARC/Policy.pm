@@ -1,8 +1,137 @@
 package Mail::DMARC::Policy;
 # ABSTRACT: a DMARC policy in object format
+
 use strict;
 use warnings;
 
+use Carp;
+
+my %defaults = (
+    adkim => 'r',
+    aspf  => 'r',
+    fo    => 0,
+    ri    => 86400,
+    rf    => 'afrf',
+    pct   => 100,
+        );
+
+sub new {
+    my ($class, @args) = @_;
+    my $package = ref $class ? ref $class : $class;
+    my $self = bless {}, $package;
+
+    return $self                  if 0 == @args; # no args, empty pol
+    return $self->parse($args[0]) if 1 == @args; # a string to parse
+
+    croak "invalid arguments" if @args % 2 != 0;
+    my $policy = { %defaults, @args };   # @args will override defaults
+    bless $policy, $package;
+    croak "invalid  policy" unless $self->is_valid( $policy );
+    return bless $policy, $package;
+};
+
+sub parse {
+    my ($self, $str, @fluff) = @_;
+    croak "invalid parse request" if 0 != scalar @fluff;
+    $str =~ s/\s//g;                         # remove all whitespace
+    $str =~ s/\\;/;/;                        # replace \; with ;
+    my %dmarc = map { split /=/, $_ } split /;/, $str;
+    my $policy = { %defaults, %dmarc };
+    croak "invalid policy" if ! $self->is_valid( $policy );
+    return bless $policy, ref $self;  # inherited defaults + overrides
+}
+
+sub v {
+    return $_[0]->{v} if 1 == scalar @_;
+    croak "invalid DMARC version" if 'DMARC1' ne $_[1];
+    return $_[0]->{v} = $_[1];
+};
+
+sub p {
+    return $_[0]->{p} if 1 == scalar @_;
+    croak "invalid p" unless $_[0]->is_valid_p($_[1]);
+    return $_[0]->{p} = $_[1];
+};
+
+# sp=reject;   (subdomain policy: default, same as p)
+sub sp {
+    return $_[0]->{sp} if 1 == scalar @_;
+    croak "invalid sp" unless $_[0]->is_valid_p($_[1]);
+    return $_[0]->{sp} = $_[1];
+};
+
+sub adkim {
+    return $_[0]->{adkim} if 1 == scalar @_;
+    croak "invalid adkim" unless grep {/^$_[1]$/} qw/ r s /;
+    return $_[0]->{adkim} = $_[1];
+};
+
+sub aspf {
+    return $_[0]->{aspf} if 1 == scalar @_;
+    croak "invalid aspf" unless grep {/^$_[1]$/} qw/ r s /;
+    return $_[0]->{aspf} = $_[1];
+};
+
+sub fo {
+    return $_[0]->{fo} if 1 == scalar @_;
+    croak "invalid fo" unless grep {/^$_[1]$/} qw/ 0 1 d s /;
+    return $_[0]->{fo} = $_[1];
+};
+
+sub rua {
+    return $_[0]->{rua} if 1 == scalar @_;
+    return $_[0]->{rua} = $_[1];
+
+#TODO: validate as comma spaced list of URIs
+};
+
+
+sub ruf {
+    return $_[0]->{ruf} if 1 == scalar @_;
+    return $_[0]->{ruf} = $_[1];
+#TODO: validate as comma spaced list of URIs
+};
+
+sub rf {
+    return $_[0]->{rf} if 1 == scalar @_;
+    foreach my $f ( split /,/, $_[1] ) {
+        croak "invalid format: $f" if ! $_[0]->is_valid_rf( lc $f );
+    }
+    return $_[0]->{rf} = $_[1];
+};
+
+sub ri {
+    return $_[0]->{ri} if 1 == scalar @_;
+    croak unless ($_[1] eq int($_[1]) && $_[1] >= 0 && $_[1] <= 4294967295);
+    return $_[0]->{ri} = $_[1];
+};
+
+sub pct {
+    return $_[0]->{pct} if 1 == scalar @_;
+    croak unless ($_[1] eq int($_[1]) && $_[1] >= 0 && $_[1] <= 100 );
+    return $_[0]->{pct} = $_[1];
+};
+
+sub is_valid_rf {
+    my ($self, $f) = @_;
+    return (grep {/^$f$/} qw/ iodef rfrf /) ? 1 : 0;
+};
+
+sub is_valid_p {
+    my ($self, $p) = @_;
+    return (grep {/^$p$/} qw/ none reject quarantine /) ? 1 : 0;
+};
+
+sub is_valid {
+    my ($self, $obj) = @_;
+    croak "missing version specifier" if ! $obj->{v};
+    croak "invalid version" if 'dmarc1' ne lc $obj->{v};
+    croak "missing policy action" if ! $obj->{p};
+    croak "invalid policy action" if ! $self->is_valid_p( $obj->{p} );
+    return 1;
+};
+
+1;
 
 =head1 EXAMPLES
 
@@ -32,20 +161,8 @@ Or in a more perlish fashion:
  print "do not send aggregate reports" if ! $pol->rua;
  print "do not send forensic reports"  if ! $pol->ruf;
 
-=head1 METHODS
-
 =cut
-
-my %defaults = (
-    adkim => 'r',
-    aspf  => 'r',
-    fo    => 0,
-    ri    => 86400,
-    rf    => 'afrf',
-    pct   => 100,
-        );
-
-sub new {
+=head1 METHODS
 
 =head2 new
 
@@ -69,24 +186,6 @@ Create a new policy from a DMARC DNS resource record:
 
 If a policy is passed in (the latter two examples), the resulting policy object will be populated with default values for any unspecified parameters. The p and v tags are required and have no default. The alignment specifiers adkim and aspf default to 'r' (relaxed) and will be populated if not present in the request.
 
-=cut
-
-    my $class = shift;
-    my $package = ref $class ? ref $class : $class;
-    my $self = bless {}, $package;
-
-    return $self                 if 0 == @_;  # no arguments
-    return $self->parse( shift ) if 1 == @_;  # a string to parse
-
-    die "invalid arguments" if @_ && @_ % 2 != 0;
-    my $policy = { %defaults, @_ };
-    bless $policy, $package;
-    die "invalid  policy" unless $self->is_valid( $policy );
-    return bless $policy, $package;  # @_ values will override defaults
-};
-
-sub parse {
-
 =head2 parse
 
 Accepts a string containing a DMARC Resource Record, as it would be retrieved
@@ -94,21 +193,6 @@ via DNS.
 
     my $pol = Mail::DMARC::Policy->new;
     $pol->parse( 'v=DMARC1; p=none; rua=mailto:dmarc@example.com' );
-
-=cut
-
-
-    my $self = shift;
-    die "invalid parse request" if 1 != scalar @_;
-    my $str = shift;
-
-    $str =~ s/\s//g;                         # remove all whitespace
-    $str =~ s/\\;/;/;                        # replace \; with ;
-    my %dmarc = map { split /=/, $_ } split /;/, $str;
-    my $policy = { %defaults, %dmarc };
-    die "invalid policy" if ! $self->is_valid( $policy );
-    return bless $policy, ref $self;  # inherited defaults + overrides
-}
 
 =head1 Record Tags
 
@@ -123,13 +207,6 @@ Each tag has a mutator that's a setter and getter. To set any of the tag values,
 
 When new values are passed in, they are validated. Invalid values throw exceptions.
 
-=cut
-
-sub v {
-    return $_[0]->{v} if 1 == scalar @_;
-    die "invalid DMARC version" if 'DMARC1' ne $_[1];
-    return $_[0]->{v} = $_[1];
-
 =head2 v
 
 Version (plain-text; REQUIRED).  Identifies the record retrieved
@@ -137,15 +214,6 @@ as a DMARC record.  It MUST have the value of "DMARC1".  The value
 of this tag MUST match precisely; if it does not or it is absent,
 the entire retrieved record MUST be ignored.  It MUST be the first
 tag in the list.
-
-=cut
-
-};
-
-sub p {
-    return $_[0]->{p} if 1 == scalar @_;
-    die "invalid p" unless $_[0]->is_valid_p($_[1]);
-    return $_[0]->{p} = $_[1];
 
 =head2 p
 
@@ -157,16 +225,6 @@ described using the "sp" tag.  This tag is mandatory for policy
 records only, but not for third-party reporting records (see
 Section 8.2).
 
-=cut
-
-};
-
-# sp=reject;   (subdomain policy: default, same as p)
-sub sp {
-    return $_[0]->{sp} if 1 == scalar @_;
-    die "invalid sp" unless $_[0]->is_valid_p($_[1]);
-    return $_[0]->{sp} = $_[1];
-
 =head2 sp
 
 {R6} Requested Mail Receiver policy for subdomains (plain-text;
@@ -176,15 +234,6 @@ the domain queried and not to the domain itself.  Its syntax is
 identical to that of the "p" tag defined above.  If absent, the
 policy specified by the "p" tag MUST be applied for subdomains.
 
-=cut
-
-};
-
-sub adkim {
-    return $_[0]->{adkim} if 1 == scalar @_;
-    die "invalid adkim" unless grep {/^$_[1]$/} qw/ r s /;
-    return $_[0]->{adkim} = $_[1];
-
 =head2 adkim
 
 (plain-text; OPTIONAL, default is "r".)  Indicates whether or
@@ -192,30 +241,12 @@ not strict DKIM identifier alignment is required by the Domain
 Owner.  If and only if the value of the string is "s", strict mode
 is in use.  See Section 4.3.1 for details.
 
-=cut
-
-};
-
-sub aspf {
-    return $_[0]->{aspf} if 1 == scalar @_;
-    die "invalid aspf" unless grep {/^$_[1]$/} qw/ r s /;
-    return $_[0]->{aspf} = $_[1];
-
 =head2 aspf
 
 (plain-text; OPTIONAL, default is "r".)  Indicates whether or
 not strict SPF identifier alignment is required by the Domain
 Owner.  If and only if the value of the string is "s", strict mode
 is in use.  See Section 4.3.2 for details.
-
-=cut
-
-};
-
-sub fo {
-    return $_[0]->{fo} if 1 == scalar @_;
-    die "invalid fo" unless grep {/^$_[1]$/} qw/ 0 1 d s /;
-    return $_[0]->{fo} = $_[1];
 
 =head2 fo
 
@@ -242,16 +273,6 @@ of characters that indicate failure reporting options as follows:
      evaluation, regardless of its alignment. SPF-specific
      reporting is described in [AFRF-SPF].
 
-=cut
-
-};
-
-sub rua {
-    return $_[0]->{rua} if 1 == scalar @_;
-    return $_[0]->{rua} = $_[1];
-
-#TODO: validate as comma spaced list of URIs
-
 =head2 rua
 
 Addresses to which aggregate feedback is to be sent (comma-
@@ -267,17 +288,6 @@ ability to send a DMARC report via electronic mail.  If not
 provided, Mail Receivers MUST NOT generate aggregate feedback
 reports.  URIs not supported by Mail Receivers MUST be ignored.
 The aggregate feedback report format is described in Section 8.3.
-
-=cut
-
-};
-
-
-sub ruf {
-    return $_[0]->{ruf} if 1 == scalar @_;
-    return $_[0]->{ruf} = $_[1];
-
-#TODO: validate as comma spaced list of URIs
 
 =head2 ruf
 
@@ -295,17 +305,6 @@ send a DMARC report via electronic mail.  If not provided, Mail
 Receivers MUST NOT generate failure reports.  See Section 15.6 for
 additional considerations.
 
-=cut
-
-};
-
-sub rf {
-    return $_[0]->{rf} if 1 == scalar @_;
-    foreach my $f ( split /,/, $_[1] ) {
-        die "invalid format: $f" if ! $_[0]->is_valid_rf( lc $f );
-    }
-    return $_[0]->{rf} = $_[1];
-
 =head2 rf
 
 Format to be used for message-specific failure reports (comma-
@@ -319,15 +318,6 @@ different value SHOULD ignore it, or MAY ignore the entire DMARC
 record.  Initial default values are "afrf" (defined in [AFRF]) and
 "iodef" (defined in [IODEF]).  See Section 8.4 for details.
 
-=cut
-
-};
-
-sub ri {
-    return $_[0]->{ri} if 1 == scalar @_;
-    die unless ($_[1] eq int($_[1]) && $_[1] >= 0 && $_[1] <= 4294967295);
-    $_[0]->{ri} = $_[1];
-
 =head2 ri
 
 Interval requested between aggregate reports (plain-text, 32-bit
@@ -338,15 +328,6 @@ MUST be able to provide daily reports and SHOULD be able to
 provide hourly reports when requested.  However, anything other
 than a daily report is understood to be accommodated on a best-
 effort basis.
-
-=cut
-
-};
-
-sub pct {
-    return $_[0]->{pct} if 1 == scalar @_;
-    die unless ($_[1] eq int($_[1]) && $_[1] >= 0 && $_[1] <= 100 );
-    return $_[0]->{pct} = $_[1];
 
 =head2 pct
 
@@ -362,26 +343,3 @@ experimenting with strong authentication-based mechanisms.  See
 Section 7.1 for details.
 
 =cut
-
-};
-
-sub is_valid_rf {
-    my ($self, $f) = @_;
-    return (grep {/^$f$/} qw/ iodef rfrf /) ? 1 : 0;
-};
-
-sub is_valid_p {
-    my ($self, $p) = @_;
-    return (grep {/^$p$/} qw/ none reject quarantine /) ? 1 : 0;
-};
-
-sub is_valid {
-    my ($self, $obj) = @_;
-    die "missing version specifier" if ! $obj->{v};
-    die "invalid version" if 'dmarc1' ne lc $obj->{v};
-    die "missing policy action" if ! $obj->{p};
-    die "invalid policy action" if ! $self->is_valid_p( $obj->{p} );
-    return 1;
-};
-
-1;

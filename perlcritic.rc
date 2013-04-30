@@ -1,0 +1,11 @@
+severity = stern 
+; gentle stern harsh cruel brutal
+
+verbose  = [%p] %m at line %l, column %c.  %e.  (Severity: %s)\n
+
+; these interfere with Dist::Zilla::PkgVersion
+[-TestingAndDebugging::RequireUseStrict]
+[-TestingAndDebugging::RequireUseWarnings]
+
+[Subroutines::RequireArgUnpacking]
+short_subroutine_statements = 5

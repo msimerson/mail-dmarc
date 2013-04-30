@@ -1,5 +1,6 @@
 package Mail::DMARC::PurePerl;
 # ABSTRACT: a perl implementation of DMARC
+
 use strict;
 use warnings;
 
@@ -12,7 +13,7 @@ use Mail::DMARC::Policy;
 
 sub new {
     my $self = shift;
-    bless {
+    return bless {
         dns_timeout   => 5,
         is_subdomain  => undef,
         resolver      => undef,
@@ -26,12 +27,13 @@ sub init {
     $self->{policy}       = undef;
     $self->{result}       = {};
     $self->{is_subdomain} = undef;
+    return;
 };
 
 sub is_valid {
-    my $self = shift;
-    die "invalid request" if @_ % 2 != 0;
-    my %args = @_;
+    my ($self, @a) = @_;
+    die "invalid request" if @a % 2 != 0;
+    my %args = @a;
 
     # 11.1.  Extract Author Domain
     my $from_dom = $self->get_from_dom( \%args ) or return;
@@ -87,9 +89,9 @@ sub is_valid {
 }
 
 sub discover_policy {
-    my $self = shift;
-    my $from_dom = shift || $self->{result}{from_domain};
-    my $org_dom = shift || $self->{result}{org_domain};
+    my ($self, $from_dom, $org_dom) = @_;
+    $from_dom ||= $self->{result}{from_domain};
+    $org_dom  ||= $self->{result}{org_domain};
 
     # 1.  Mail Receivers MUST query the DNS for a DMARC TXT record...
     my $matches = $self->fetch_dmarc_record($from_dom, $org_dom) or do {
@@ -99,7 +101,7 @@ sub discover_policy {
 
     # 4.  Records that do not include a "v=" tag that identifies the
     #     current version of DMARC are discarded.
-    my @matches = grep /^v=DMARC1/i, @$matches;
+    my @matches = grep {/^v=DMARC1/i} @$matches;
     if (0 == scalar @matches) {
         $self->{result}{error} = "no valid DMARC record";
         return;
@@ -137,16 +139,16 @@ sub discover_policy {
 }
 
 sub is_aligned {
-    my $self = shift;
-    die "invalid arguments to is_aligned\n" if @_ % 2 != 0;
-    my %args = @_;
+    my ($self, @a) = @_;
+    die "invalid arguments to is_aligned\n" if @a % 2 != 0;
+    my %args = @a;
 
     $self->{result}{from_domain} = $args{from_domain} if $args{from_domain};
     $self->{result}{org_domain}  = $args{org_domain}  if $args{org_domain};
     $self->{policy} = $args{policy} if $args{policy};
-    $args{from_domain} || $self->{result}{from_domain} or die "missing from domain";
-    my $spf_dom  = $args{spf_pass_domain} || '';
-    my $dkim_doms= $args{dkim_pass_domains} || [];
+    $args{from_domain} = $self->{result}{from_domain} || die "missing from domain";
+    my $spf_dom   = $args{spf_pass_domain}   || '';
+    my $dkim_doms = $args{dkim_pass_domains} || [];
 
     #   5.  Conduct identifier alignment checks.  With authentication checks
     #       and policy discovery performed, the Mail Receiver checks if
@@ -196,6 +198,7 @@ sub is_dkim_aligned {
         };
     };
     return 1 if $self->{result}{dkim_aligned};
+    return;
 };
 
 sub is_spf_aligned {
@@ -240,17 +243,17 @@ sub is_public_suffix {
         die "unable to locate readable public suffix file\n";
     };
 
-    my $fh = new IO::File $match, 'r'
+    my $fh = IO::File->new( $match, 'r' )
         or die "unable to open $match for read: $!\n";
 
     $zone =~ s/\*/\\*/g;   # escape * char
-    return 1 if grep /^$zone/, <$fh>;
+    return 1 if grep {/^$zone/} <$fh>;
 
     my @labels = split /\./, $zone;
     $zone = join '.', '\*', (@labels)[1 .. length(@labels)];
 
-    $fh = new IO::File $match, 'r';  # reopen
-    return 1 if grep /^$zone/, <$fh>;
+    $fh = IO::File->new( $match, 'r' );  # reopen
+    return 1 if grep {/^$zone/} <$fh>;
 
     return 0;
 };
@@ -434,7 +437,8 @@ sub get_dom_from_header {
 
 sub external_report {
     my $self = shift;
-
+# TODO:
+    return;
 };
 
 sub policy {
@@ -445,8 +449,8 @@ sub policy {
 
 sub verify_external_reporting {
     my $self = shift;
-
-
+# TODO
+    return;
 }
 
 1;
