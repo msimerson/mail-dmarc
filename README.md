@@ -1,7 +1,7 @@
-mail-dmarc
+# mail-dmarc
 ==========
 
-Mail::DMARC - A perl implementation of the DMARC draft
+[Mail::DMARC](lib/Mail/DMARC.pm) - A perl implementation of the DMARC draft
 
 Mail::DMARC::Policy - a DMARC record in object format
 

@@ -1,8 +1,4 @@
 
-2013-04-30
 
-0.15 - Mail::DMARC::Policy is well defined and tested
-
-2013-04-30
-
-0.10 - setting up package
+ - Mail::DMARC::Policy is well defined and tested
+ - setting up package
