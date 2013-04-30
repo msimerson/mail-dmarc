@@ -64,9 +64,8 @@ If a policy is passed in (in either format), the resulting policy object will be
 =cut
 
     my $class = shift;
-    my $self = bless {}, $class;
     my $package = ref $class ? ref $class : $class;
-    bless $self, $package;
+    my $self = bless {}, $package;
 
     return $self                 if 0 == @_;  # no arguments
     return $self->parse( shift ) if 1 == @_;  # a string to parse

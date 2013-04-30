@@ -62,6 +62,20 @@ sub is_valid {
     };
     return 1 if lc $policy->p eq 'none';
 
+# If the "pct" tag is present in a policy record, application of policy
+# is done on a selective basis.  The stated percentage of messages that
+# fail the DMARC test MUST be subjected to whatever policy is selected
+# by the "p" or "sp" tag (if present).  Those that are not thus
+# selected MUST instead be subjected to the next policy lower in terms
+# of severity.  In decreasing order of severity, the policies are
+# "reject", "quarantine", and "none".
+#
+# For example, in the presence of "pct=50" in the DMARC policy record
+# for "example.com", half of the mesages with "example.com" in the
+# RFC5322.From field which fail the DMARC test would be subjected to
+# "reject" action, and the remainder subjected to "quarantine" action.
+
+# TODO: move this into a sub, add results to $self->{report}
     if ( $policy->pct != 100 && int(rand(100)) >= $policy->pct ) {
         warn "fail, tolerated, policy, sampled out";
         return;
@@ -102,8 +116,8 @@ sub discover_policy {
     # 6.  If a retrieved policy record does not contain a valid "p" tag, or
     #     contains an "sp" tag that is not valid, then:
     my $policy = Mail::DMARC::Policy->new( $matches[0] ) or return;
-    if (!$policy->is_valid($policy->p)
-            || (defined $policy->sp && ! $policy->is_valid($policy->sp) ) ) {
+    if (!$policy->is_valid_p($policy->p)
+            || (defined $policy->sp && ! $policy->is_valid_p($policy->sp) ) ) {
 
         #   A.  if an "rua" tag is present and contains at least one
         #       syntactically valid reporting URI, the Mail Receiver SHOULD
@@ -155,13 +169,15 @@ sub is_aligned {
 
 sub is_dkim_aligned {
     my $self = shift;
-    my $dkim_doms = shift or return;
+    my $dkim_pass_doms = shift or return;
 
+# TODO: Required in report: DKIM-Domain, DKIM-Identity, DKIM-Selector
     my $from_dom = $self->{result}{from_domain} or die "from_domain not set!";
     my $policy   = $self->policy or die "no policy!?";
     my $org_dom  = $self->{result}{org_domain} || $self->get_organizational_domain();
 
-    foreach (@$dkim_doms) {
+    foreach (@$dkim_pass_doms) {
+# TODO: make sure $_ is not a public suffix
         if ($_ eq $from_dom) {   # strict alignment, requires exact match
             $self->{result}{dkim_aligned} = 'strict';
             $self->{result}{dkim_aligned_domains}{$_} = 'strict';

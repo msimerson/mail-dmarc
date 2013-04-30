@@ -51,8 +51,13 @@ exit;
 
 sub test_discover_policy {
     my $policy = $dmarc->discover_policy('mail-dmarc.tnpi.net');
-# aspf and adkim are defaults added by Mail::DMARC::Policy->new()
-    is_deeply( $policy, { %test_policy, aspf=>'r',adkim=>'r' }, 'discover_policy' );
+    is_deeply( $policy, { %test_policy,
+            aspf => 'r',          # $pol->new adds the defaults that are
+            adkim=> 'r',          #  implied in all DMARC records
+            ri   => 86400,
+            rf   => 'afrf',
+            fo   => 0,
+            }, 'discover_policy' );
 #print Dumper($policy);
 };
 
@@ -74,13 +79,14 @@ sub test_is_spf_aligned {
 };
 
 sub test_is_dkim_aligned {
+
 };
 
 sub test_is_aligned {
 
     my %test_request = (
                 from_domain       => 'tnpi.net',
-                policy            => $dmarc->policy->new( p=>'none' ),
+                policy            => $dmarc->policy->new( %test_policy, p=>'none' ),
                 spf_pass_domain   => '',
                 dkim_pass_domains => [],
                 );
@@ -89,7 +95,7 @@ sub test_is_aligned {
     ok( ! $dmarc->is_aligned( %test_request ), "is_aligned, no SPF or DKIM");
     $dmarc->init;
 
-    $test_request{policy} = $dmarc->policy->new( p => 'none' );
+    $test_request{policy} = $dmarc->policy->new( %test_policy,p=>'none' );
     $test_request{spf_pass_domain} = 'tnpi.net';
     ok( $dmarc->is_aligned( %test_request ), "is_aligned, SPF only");
     $dmarc->init;
@@ -106,23 +112,23 @@ sub test_is_aligned {
 
     $test_request{spf_pass_domain}   = '';
     $test_request{dkim_pass_domains} = ['tnpi.net'];
-    $test_request{policy}            = $dmarc->policy->new( adkim=>'s' );
+    $test_request{policy}            = $dmarc->policy->new( %test_policy, adkim=>'s' );
     $test_request{from_domain}       = 'www.tnpi.net';
     ok( ! $dmarc->is_aligned( %test_request ), "is_aligned, relaxed DKIM match, strict policy");
     $dmarc->init;
 
-    $test_request{policy}            = $dmarc->policy->new( adkim=>'r' );
+    $test_request{policy}            = $dmarc->policy->new( %test_policy,adkim=>'r' );
     ok( $dmarc->is_aligned( %test_request ), "is_aligned, relaxed DKIM match, relaxed policy");
     $dmarc->init;
 
     $test_request{spf_pass_domain}   = 'tnpi.net';
     $test_request{dkim_pass_domains} = [];
-    $test_request{policy}            = $dmarc->policy->new( aspf=>'s' );
+    $test_request{policy}            = $dmarc->policy->new( %test_policy,aspf=>'s' );
     $test_request{from_domain}       = 'www.tnpi.net';
     ok( ! $dmarc->is_aligned( %test_request ), "is_aligned, relaxed SPF match, strict policy");
     $dmarc->init;
 
-    $test_request{policy}            = $dmarc->policy->new( aspf=>'r' );
+    $test_request{policy}            = $dmarc->policy->new( %test_policy, aspf=>'r' );
     ok( $dmarc->is_aligned( %test_request ), "is_aligned, relaxed SPF match, relaxed policy");
     $dmarc->init;
 };
