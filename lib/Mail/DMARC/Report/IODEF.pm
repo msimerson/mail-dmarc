@@ -1,4 +1,5 @@
 package Mail::DMARC::Report::IODEF;
+# ABSTRACT: an IODEF report
 use strict;
 use warnings;
 

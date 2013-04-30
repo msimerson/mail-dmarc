@@ -1,14 +1,8 @@
 package Mail::DMARC::Policy;
+# ABSTRACT: a DMARC policy in object format
 use strict;
 use warnings;
 
-=head1 NAME
-
-Mail::DMARC::Policy
-
-=head1 SYNOPSIS
-
-A DMARC policy in object format
 
 =head1 EXAMPLES
 

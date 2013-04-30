@@ -1,12 +1,11 @@
 package Mail::DMARC::Report;
-# ABSTRACT: DMARC Reporting
-
+# ABSTRACT: A DMARC report object
 use strict;
 use warnings;
 
-=head1 REPORT URIs
+=head1 SYNOPSIS
 
-
+REPORT URIs
 
 =head1 REPORTING
 

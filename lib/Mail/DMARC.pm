@@ -4,8 +4,6 @@ package Mail::DMARC;
 use strict;
 use warnings;
 
-our $VERSION = 0.10;
-
 =head1 NAME
 
 Domain-based Message Authentication, Reporting and Conformance
