@@ -6,6 +6,8 @@ perl:
   - "5.10"
   - "5.8"
 
+# Travis: http://blogs.perl.org/users/alex_balhatchet/2013/04/travis-ci-perl.html
+
 before_install:
    # Prevent "Please tell me who you are" errors for certain DZIL configs
 
