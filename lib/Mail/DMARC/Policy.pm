@@ -8,21 +8,35 @@ Mail::DMARC::Policy
 
 =head1 SYNOPSIS
 
-A DMARC policy as an object
+A DMARC policy in object format
+
+=head1 EXAMPLES
+
+A DMARC record looks like this:
+
+    v=DMARC1; p=reject; adkim=s; aspf=s; rua=mailto:dmarc@example.com; pct=100;
+
+DMARC records are stored in TXT resource records in the DNS, at _dmarc.example.com. To retrieve a DMARC record for a domain, use a dig query like this:
+
+    dig +short _dmarc.example.com TXT
+
+Or in a more perlish fashion:
+
+    my $res = Net::DNS::Resolver->new(dnsrch => 0);
+    $res->send('_dmarc.example.com', 'TXT');
+
 
 =head1 USAGE
 
-    my $pol = Mail::DMARC::Policy->new(
-            'v=DMARC1; p=none; rua=mailto:dmarc@example.com'
-            );
+ my $pol = Mail::DMARC::Policy->new(
+    'v=DMARC1; p=none; rua=mailto:dmarc@example.com'
+    );
 
-    if ( $pol->v ne 'DMARC1' ) {
-        print "not a valid DMARC version!"
-    };
-
-    if ( $pol->p eq 'none' ) {
-        print "do nothing";
-    };
+ print "not a valid DMARC version!"    if $pol->v ne 'DMARC1';
+ print "take no action"                if $pol->p eq 'none';
+ print "reject that unaligned message" if $pol->p eq 'reject';
+ print "do not send aggregate reports" if ! $pol->rua;
+ print "do not send forensic reports"  if ! $pol->ruf;
 
 =head1 METHODS
 
@@ -41,11 +55,11 @@ sub new {
 
 =head2 new
 
-An empty policy:
+Create a new empty policy:
 
    my $pol = Mail::DMARC::Policy->new;
 
-A policy from named arguments:
+Create a new policy from named arguments:
 
    my $pol = Mail::DMARC::Policy->new(
             v   => 'DMARC1',
@@ -53,13 +67,13 @@ A policy from named arguments:
             pct => 50,
            );
 
-A new policy from a DNS format DMARC record:
+Create a new policy from a DMARC DNS resource record:
 
    my $pol = Mail::DMARC::Policy->new(
-            'v=DMARC1; p=reject; rua=mailto:dmarc@example.com; ruf=mailto:dmarc@example.com;'
+            'v=DMARC1; p=reject; rua=mailto:dmarc@example.com; pct=50;'
            );
 
-If a policy is passed in (in either format), the resulting policy object will be populated with default values for any unspecified parameters. For example, p and v are required and thus have no 'default' values. The alignment specifiers adkim and aspf default to 'r' (relaxed) and will be populated if not present in the request.
+If a policy is passed in (the latter two examples), the resulting policy object will be populated with default values for any unspecified parameters. The p and v tags are required and have no default. The alignment specifiers adkim and aspf default to 'r' (relaxed) and will be populated if not present in the request.
 
 =cut
 
@@ -102,11 +116,18 @@ via DNS.
     return bless $policy, ref $self;  # inherited defaults + overrides
 }
 
-=head1 Record Format
+=head1 Record Tags
 
-The following descriptions of each DMARC record tag and its corresponding values is copy/pasted from the March 31, 2013 draft:
+The descriptions of each DMARC record tag and its corresponding values is from the March 31, 2013 draft of the DMARC spec:
 
   https://datatracker.ietf.org/doc/draft-kucherawy-dmarc-base/?include_text=1
+
+Each tag has a mutator that's a setter and getter. To set any of the tag values, pass in the new value. Examples:
+
+  $pol->p('none');                         set policy action to none
+  print "do nothing" if $pol->p eq 'none'; get policy action
+
+When new values are passed in, they are validated. Invalid values throw exceptions.
 
 =cut
 
