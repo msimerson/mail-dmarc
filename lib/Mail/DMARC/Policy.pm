@@ -26,7 +26,7 @@ sub new {
     croak "invalid arguments" if @args % 2 != 0;
     my $policy = { %defaults, @args };   # @args will override defaults
     bless $policy, $package;
-    croak "invalid  policy" unless $self->is_valid( $policy );
+    croak "invalid  policy" if ! $self->is_valid( $policy );
     return bless $policy, $package;
 };
 
@@ -49,32 +49,32 @@ sub v {
 
 sub p {
     return $_[0]->{p} if 1 == scalar @_;
-    croak "invalid p" unless $_[0]->is_valid_p($_[1]);
+    croak "invalid p" if ! $_[0]->is_valid_p($_[1]);
     return $_[0]->{p} = $_[1];
 };
 
 # sp=reject;   (subdomain policy: default, same as p)
 sub sp {
     return $_[0]->{sp} if 1 == scalar @_;
-    croak "invalid sp" unless $_[0]->is_valid_p($_[1]);
+    croak "invalid sp" if ! $_[0]->is_valid_p($_[1]);
     return $_[0]->{sp} = $_[1];
 };
 
 sub adkim {
     return $_[0]->{adkim} if 1 == scalar @_;
-    croak "invalid adkim" unless grep {/^$_[1]$/} qw/ r s /;
+    croak "invalid adkim" if 0 == grep {/^$_[1]$/} qw/ r s /;
     return $_[0]->{adkim} = $_[1];
 };
 
 sub aspf {
     return $_[0]->{aspf} if 1 == scalar @_;
-    croak "invalid aspf" unless grep {/^$_[1]$/} qw/ r s /;
+    croak "invalid aspf" if 0 == grep {/^$_[1]$/} qw/ r s /;
     return $_[0]->{aspf} = $_[1];
 };
 
 sub fo {
     return $_[0]->{fo} if 1 == scalar @_;
-    croak "invalid fo" unless grep {/^$_[1]$/} qw/ 0 1 d s /;
+    croak "invalid fo" if 0 == grep {/^$_[1]$/} qw/ 0 1 d s /;
     return $_[0]->{fo} = $_[1];
 };
 
@@ -102,13 +102,15 @@ sub rf {
 
 sub ri {
     return $_[0]->{ri} if 1 == scalar @_;
-    croak unless ($_[1] eq int($_[1]) && $_[1] >= 0 && $_[1] <= 4294967295);
+    croak "not an integer!" if $_[1] ne int $_[1];
+    croak "out of range" if ($_[1] < 0 || $_[1] > 4294967295);
     return $_[0]->{ri} = $_[1];
 };
 
 sub pct {
     return $_[0]->{pct} if 1 == scalar @_;
-    croak unless ($_[1] eq int($_[1]) && $_[1] >= 0 && $_[1] <= 100 );
+    croak "not an integer!" if $_[1] ne int $_[1];
+    croak "out of range" if $_[1] < 0 || $_[1] > 100;
     return $_[0]->{pct} = $_[1];
 };
 

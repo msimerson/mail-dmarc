@@ -4,6 +4,7 @@ package Mail::DMARC::PurePerl;
 use strict;
 use warnings;
 
+use Carp;
 use IO::File;
 use Net::DNS::Resolver;
 
@@ -32,7 +33,7 @@ sub init {
 
 sub is_valid {
     my ($self, @a) = @_;
-    die "invalid request" if @a % 2 != 0;
+    croak "invalid request" if @a % 2 != 0;
     my %args = @a;
 
     # 11.1.  Extract Author Domain
@@ -80,11 +81,11 @@ sub is_valid {
 
 # TODO: move this into a sub, add results to $self->{report}
     if ( $policy->pct != 100 && int(rand(100)) >= $policy->pct ) {
-        warn "fail, tolerated, policy, sampled out";
+        carp "fail, tolerated, policy, sampled out";
         return;
     };
 
-    warn "failed DMARC policy\n";
+    carp "failed DMARC policy\n";
     return;
 }
 
@@ -101,7 +102,7 @@ sub discover_policy {
 
     # 4.  Records that do not include a "v=" tag that identifies the
     #     current version of DMARC are discarded.
-    my @matches = grep {/^v=DMARC1/i} @$matches;
+    my @matches = grep {/^v=DMARC1/i} @$matches; ## no critic (ExtendedFormatting)
     if (0 == scalar @matches) {
         $self->{result}{error} = "no valid DMARC record";
         return;
@@ -140,13 +141,13 @@ sub discover_policy {
 
 sub is_aligned {
     my ($self, @a) = @_;
-    die "invalid arguments to is_aligned\n" if @a % 2 != 0;
+    croak "invalid arguments to is_aligned\n" if @a % 2 != 0;
     my %args = @a;
 
     $self->{result}{from_domain} = $args{from_domain} if $args{from_domain};
     $self->{result}{org_domain}  = $args{org_domain}  if $args{org_domain};
     $self->{policy} = $args{policy} if $args{policy};
-    $args{from_domain} = $self->{result}{from_domain} || die "missing from domain";
+    $args{from_domain} = $self->{result}{from_domain} || croak "missing from domain";
     my $spf_dom   = $args{spf_pass_domain}   || '';
     my $dkim_doms = $args{dkim_pass_domains} || [];
 
@@ -175,8 +176,8 @@ sub is_dkim_aligned {
     my $dkim_pass_doms = shift or return;
 
 # TODO: Required in report: DKIM-Domain, DKIM-Identity, DKIM-Selector
-    my $from_dom = $self->{result}{from_domain} or die "from_domain not set!";
-    my $policy   = $self->policy or die "no policy!?";
+    my $from_dom = $self->{result}{from_domain} or croak "from_domain not set!";
+    my $policy   = $self->policy or croak "no policy!?";
     my $org_dom  = $self->{result}{org_domain} || $self->get_organizational_domain();
 
     foreach (@$dkim_pass_doms) {
@@ -209,7 +210,7 @@ sub is_spf_aligned {
         return;
     };
 
-    my $from_dom = $self->{result}{from_domain} or die "from_domain not set!";
+    my $from_dom = $self->{result}{from_domain} or croak "from_domain not set!";
 
     if ($spf_dom eq $from_dom) {
         $self->{result}{spf_aligned} = 'strict';
@@ -240,11 +241,11 @@ sub is_public_suffix {
         last if ( -f $match && -r $match );
     };
     if ( ! -r $match ) {
-        die "unable to locate readable public suffix file\n";
+        croak "unable to locate readable public suffix file\n";
     };
 
     my $fh = IO::File->new( $match, 'r' )
-        or die "unable to open $match for read: $!\n";
+        or croak "unable to open $match for read: $!\n";
 
     $zone =~ s/\*/\\*/g;   # escape * char
     return 1 if grep {/^$zone/} <$fh>;
@@ -280,7 +281,7 @@ sub has_valid_reporting_uri {
 sub get_organizational_domain {
     my $self = shift;
     my $from_dom = shift || $self->{result}{from_domain}
-        or die "missing from_domain!";
+        or croak "missing from_domain!";
 
     # 1.  Acquire a "public suffix" list, i.e., a list of DNS domain
     #     names reserved for registrations. http://publicsuffix.org/list/
@@ -300,7 +301,7 @@ sub get_organizational_domain {
         next if !$labels[$i];
         my $tld = join '.', reverse((@labels)[0 .. $i]);
 
-        #warn "i: $i -  tld: $tld\n";
+        #carp "i: $i -  tld: $tld\n";
         if ( $self->is_public_suffix($tld) ) {
             $greatest = $i + 1;
         }
@@ -389,7 +390,7 @@ sub fetch_dmarc_record {
         return $self->fetch_dmarc_record($org_dom);   #   <- recursion
     };
 
-#warn "no policy for $zone\n";
+#carp "no policy for $zone\n";
     return \@matches;
 }
 
@@ -416,7 +417,7 @@ sub get_from_dom {
 
 sub get_dom_from_header {
     my $self = shift;
-    my $header = shift or die "no header!";
+    my $header = shift or croak "no header!";
 
 # Should I do something special with a From field with multiple addresses?
 # Do what if the domains differ? This returns only the last.

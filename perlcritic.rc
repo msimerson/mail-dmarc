@@ -1,4 +1,4 @@
-severity = stern 
+severity = harsh
 ; gentle stern harsh cruel brutal
 
 verbose  = [%p] %m at line %l, column %c.  %e.  (Severity: %s)\n
@@ -9,3 +9,6 @@ verbose  = [%p] %m at line %l, column %c.  %e.  (Severity: %s)\n
 
 [Subroutines::RequireArgUnpacking]
 short_subroutine_statements = 5
+
+[RegularExpressions::RequireExtendedFormatting]
+minimum_regex_length_to_complain_about = 8
