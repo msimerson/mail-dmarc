@@ -233,6 +233,8 @@ sub is_spf_aligned {
 sub is_public_suffix {
     my ($self, $zone) = @_;
 
+    croak "missing zone name!" if ! $zone;
+
     my $file = $self->{ps_file} || 'share/public_suffix_list';
     my @dirs = qw[ ./ /usr/local/ /usr/ ];
     my $match;
@@ -251,7 +253,7 @@ sub is_public_suffix {
     return 1 if grep {/^$zone/} <$fh>;
 
     my @labels = split /\./, $zone;
-    $zone = join '.', '\*', (@labels)[1 .. length(@labels)];
+    $zone = join '.', '\*', (@labels)[1 .. scalar(@labels) - 1];
 
     $fh = IO::File->new( $match, 'r' );  # reopen
     return 1 if grep {/^$zone/} <$fh>;
