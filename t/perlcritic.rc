@@ -3,6 +3,8 @@ severity = harsh
 
 verbose  = [%p] %m at line %l, column %c.  %e.  (Severity: %s)\n
 
+[-Documentation::RequirePodSections]
+
 ; these interfere with Dist::Zilla::PkgVersion
 [-TestingAndDebugging::RequireUseStrict]
 [-TestingAndDebugging::RequireUseWarnings]
