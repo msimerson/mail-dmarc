@@ -43,7 +43,7 @@ sub parse {
 
 sub v {
     return $_[0]->{v} if 1 == scalar @_;
-    croak "invalid DMARC version" if 'DMARC1' ne $_[1];
+    croak "unsupported DMARC version" if 'DMARC1' ne uc $_[1];
     return $_[0]->{v} = $_[1];
 };
 
@@ -62,19 +62,19 @@ sub sp {
 
 sub adkim {
     return $_[0]->{adkim} if 1 == scalar @_;
-    croak "invalid adkim" if 0 == grep {/^$_[1]$/} qw/ r s /;
+    croak "invalid adkim" if 0 == grep {/^$_[1]$/i} qw/ r s /;
     return $_[0]->{adkim} = $_[1];
 };
 
 sub aspf {
     return $_[0]->{aspf} if 1 == scalar @_;
-    croak "invalid aspf" if 0 == grep {/^$_[1]$/} qw/ r s /;
+    croak "invalid aspf" if 0 == grep {/^$_[1]$/i} qw/ r s /;
     return $_[0]->{aspf} = $_[1];
 };
 
 sub fo {
     return $_[0]->{fo} if 1 == scalar @_;
-    croak "invalid fo" if 0 == grep {/^$_[1]$/} qw/ 0 1 d s /;
+    croak "invalid fo: $_[1]" if 0 == grep {/^$_[1]$/i} qw/ 0 1 d s /;
     return $_[0]->{fo} = $_[1];
 };
 
@@ -116,18 +116,18 @@ sub pct {
 
 sub is_valid_rf {
     my ($self, $f) = @_;
-    return (grep {/^$f$/} qw/ iodef rfrf /) ? 1 : 0;
+    return (grep {/^$f$/i} qw/ iodef rfrf /) ? 1 : 0;
 };
 
 sub is_valid_p {
     my ($self, $p) = @_;
-    return (grep {/^$p$/} qw/ none reject quarantine /) ? 1 : 0;
+    return (grep {/^$p$/i} qw/ none reject quarantine /) ? 1 : 0;
 };
 
 sub is_valid {
     my ($self, $obj) = @_;
     croak "missing version specifier" if ! $obj->{v};
-    croak "invalid version" if 'dmarc1' ne lc $obj->{v};
+    croak "invalid version" if 'DMARC1' ne uc $obj->{v};
     croak "missing policy action" if ! $obj->{p};
     croak "invalid policy action" if ! $self->is_valid_p( $obj->{p} );
     return 1;

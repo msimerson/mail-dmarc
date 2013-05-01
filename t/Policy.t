@@ -25,15 +25,15 @@ exit;
 
 sub test_setters_valid {
     my %good_vals = (
-            p      => [ qw/ none reject quarantine / ],
-            v      => [ 'DMARC1' ],
-            sp     => [ qw/ none reject quarantine / ],
-            adkim  => [ qw/ r s / ],
-            aspf   => [ qw/ r s / ],
-            fo     => [ qw/ 0 1 d s / ],
+            p      => [ qw/ none reject quarantine NONE REJEcT Quarantine / ],
+            v      => [ qw/ DMARC1 dmarc1 / ],
+            sp     => [ qw/ none reject quarantine NoNe REjEcT QuarAntine / ],
+            adkim  => [ qw/ r s R S / ],
+            aspf   => [ qw/ r s R S / ],
+            fo     => [ qw/ 0 1 d s D S / ],
 #TODO       rua    =>
 #TODO       ruf    =>
-            rf     => [ qw/ iodef rfrf / ],
+            rf     => [ qw/ iodef rfrf IODEF RFRF / ],
             ri     => [ 0, 1, 1000, 4294967295 ],
             pct    => [ 0, 10, 50, 99, 100 ],
             );
@@ -65,6 +65,7 @@ sub test_setters_valid {
         };
     };
 };
+
 
 sub test_new {
 # empty policy
