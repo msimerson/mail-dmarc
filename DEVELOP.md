@@ -46,8 +46,8 @@ When the branch is no longer useful, delete it:
 
 Visit your fork on the GitHub web site. On the main page of your fork is a ***Pull Request*** button. That is how you submit your changes to the main repo.
 
-# See if the latest Mail::DKIM builds without errors:
+# Check Mail::DKIM build status:
 
 [![Build Status](https://travis-ci.org/msimerson/mail-dmarc.png?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
 
-
+Travis automatically runs build tests when commits are pushed to GitHub, and sends notifications to the author(s) in case of failure. For everyone else, checking the build status after a push request is merged is a good idea.
