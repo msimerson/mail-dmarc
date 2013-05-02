@@ -12,7 +12,7 @@ my %defaults = (
     fo    => 0,
     ri    => 86400,
     rf    => 'afrf',
-    pct   => 100,
+#   pct   => 100,   # default is 100%, but 100% -vs- not defined is different
         );
 
 sub new {
@@ -163,7 +163,6 @@ Or in a more perlish fashion:
  print "do not send aggregate reports" if ! $pol->rua;
  print "do not send forensic reports"  if ! $pol->ruf;
 
-=cut
 =head1 METHODS
 
 =head2 new
@@ -198,9 +197,25 @@ via DNS.
 
 =head1 Record Tags
 
+=head2 Tag Overview
+
+ v=DMARC1;    (version)
+ p=none;      (disposition policy : reject, quarantine, none (monitor))
+ sp=reject;   (subdomain policy: same as p)
+ adkim=s;     (dkim alignment: s=strict, r=relaxed)
+ aspf=r;      (spf  alignment: s=strict, r=relaxed)
+ rua=mailto:dmarc-feedback@example.com; (aggregate reports)
+ ruf=mailto:dmarc-feedback@example.com; (forensic reports)
+ rf=afrf;     (report format: afrf, iodef)
+ ri=8400;     (report interval)
+ pct=50;      (percent of messages to filter)
+
+
+=head2 Tags in Detail
+
 The descriptions of each DMARC record tag and its corresponding values is from the March 31, 2013 draft of the DMARC spec:
 
-  https://datatracker.ietf.org/doc/draft-kucherawy-dmarc-base/?include_text=1
+https://datatracker.ietf.org/doc/draft-kucherawy-dmarc-base/?include_text=1
 
 Each tag has a mutator that's a setter and getter. To set any of the tag values, pass in the new value. Examples:
 

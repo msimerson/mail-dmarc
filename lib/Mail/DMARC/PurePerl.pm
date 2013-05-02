@@ -31,7 +31,7 @@ sub init {
     return;
 };
 
-sub is_valid {
+sub do_it {
     my ($self, @a) = @_;
     croak "invalid request" if @a % 2 != 0;
     my %args = @a;
@@ -53,23 +53,42 @@ sub is_valid {
     #       MUST include the domain name from the RFC5321.MailFrom if SPF
     #       evaluation returned a "pass" result.
     #   5.  Conduct identifier alignment checks.
-    return 1 if $self->is_aligned(
-            dkim_doms      => $args{dkim_pass_domains},
-            spf_pass_domain=> $args{spf_pass_dom},
-            );
+    if ( $self->is_aligned(
+        dkim_doms      => $args{dkim_pass_domains},
+        spf_pass_domain=> $args{spf_pass_dom},
+        ) ) {
+        $self->{result}{disposition} = 'pass';
+        return 1;
+    };
+
+    my $effective_p = $self->{is_subdomain} && defined $policy->sp
+            ? $policy->sp
+            : $policy->p;
 
     #   6.  Apply policy.  Emails that fail the DMARC mechanism check are
     #       disposed of in accordance with the discovered DMARC policy of the
     #       Domain Owner.  See Section 6.2 for details.
-    if ( $self->{is_subdomain} && defined $policy->sp ) {
-        return 1 if lc $policy->sp eq 'none';
+    if ( lc $effective_p eq 'none' ) {
+        $self->{result}{disposition} = 'pass';
+        return;
     };
-    return 1 if lc $policy->p eq 'none';
 
+# 7.1.  Policy Fallback Mechanism
 # If the "pct" tag is present in a policy record, application of policy
-# is done on a selective basis.  The stated percentage of messages that
-# fail the DMARC test MUST be subjected to whatever policy is selected
-# by the "p" or "sp" tag (if present).  Those that are not thus
+# is done on a selective basis.
+    if ( ! defined $policy->pct ) {
+        $self->{result}{disposition} = $effective_p;
+        return;
+    };
+
+# The stated percentage of messages that fail the DMARC test MUST be
+# subjected to whatever policy is selected by the "p" or "sp" tag
+    if ( int(rand(100)) >= $policy->pct ) {
+        $self->{result}{disposition} = 'sampled_out';
+        return;
+    };
+
+# Those that are not thus
 # selected MUST instead be subjected to the next policy lower in terms
 # of severity.  In decreasing order of severity, the policies are
 # "reject", "quarantine", and "none".
@@ -79,13 +98,8 @@ sub is_valid {
 # RFC5322.From field which fail the DMARC test would be subjected to
 # "reject" action, and the remainder subjected to "quarantine" action.
 
-# TODO: move this into a sub, add results to $self->{report}
-    if ( $policy->pct != 100 && int(rand(100)) >= $policy->pct ) {
-        carp "fail, tolerated, policy, sampled out";
-        return;
-    };
-
-    carp "failed DMARC policy\n";
+    $self->{result}{disposition} =
+        ( $effective_p eq 'reject' ) ? 'quarantine' : 'none';
     return;
 }
 
@@ -120,6 +134,7 @@ sub discover_policy {
     # 6.  If a retrieved policy record does not contain a valid "p" tag, or
     #     contains an "sp" tag that is not valid, then:
     my $policy = Mail::DMARC::Policy->new( $matches[0] ) or return;
+    $self->{policy} = $policy;
     if (!$policy->is_valid_p($policy->p)
             || (defined $policy->sp && ! $policy->is_valid_p($policy->sp) ) ) {
 

@@ -5,4 +5,9 @@ use warnings;
 
 use parent 'Mail::DMARC::Report';
 
+=head1
+
+=cut
+
+
 1;
