@@ -51,6 +51,7 @@ exit;
 
 sub test_discover_policy {
     my $policy = $dmarc->discover_policy('mail-dmarc.tnpi.net');
+    $policy->apply_defaults;
     is_deeply( $policy, { %test_policy,
             aspf => 'r',          # $pol->new adds the defaults that are
             adkim=> 'r',          #  implied in all DMARC records

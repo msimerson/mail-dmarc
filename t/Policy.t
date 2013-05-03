@@ -18,12 +18,12 @@ cmp_ok( $pol->v, 'eq', 'DMARC1', "policy, version, pos" );
 test_new();
 test_is_valid_p();
 test_parse();
-test_setters_valid();
+test_setter_values();
 
 done_testing();
 exit;
 
-sub test_setters_valid {
+sub test_setter_values {
     my %good_vals = (
             p      => [ qw/ none reject quarantine NONE REJEcT Quarantine / ],
             v      => [ qw/ DMARC1 dmarc1 / ],
@@ -33,7 +33,7 @@ sub test_setters_valid {
             fo     => [ qw/ 0 1 d s D S / ],
 #TODO       rua    =>
 #TODO       ruf    =>
-            rf     => [ qw/ iodef rfrf IODEF RFRF / ],
+            rf     => [ qw/ iodef afrf IODEF AFRF / ],
             ri     => [ 0, 1, 1000, 4294967295 ],
             pct    => [ 0, 10, 50, 99, 100 ],
             );
@@ -53,7 +53,7 @@ sub test_setters_valid {
             fo     => [ qw/ 00 11 dd ss / ],
 #TODO       rua    =>
 #TODO       ruf    =>
-            rf     => [ qw/ iodef2 rfrf2 / ],
+            rf     => [ qw/ iodef2 rfrf2 rfrf / ],
             ri     => [ -1, 'a', 4294967296 ],
             pct    => [ -1, 'f', 101 ],
             );

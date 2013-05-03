@@ -38,7 +38,7 @@ sub apply_defaults {
     $self->aspf('r')  if ! defined $self->aspf;
     $self->fo(0)      if ! defined $self->fo;
     $self->ri(86400)  if ! defined $self->ri;
-    $self->rf('afrf') if ! defined $self->afrf;
+    $self->rf('afrf') if ! defined $self->rf;
 #   pct   # default is 100%, but 100% -vs- not defined is different
 };
 
@@ -94,7 +94,7 @@ sub ruf {
 sub rf {
     return $_[0]->{rf} if 1 == scalar @_;
     foreach my $f ( split /,/, $_[1] ) {
-        croak "invalid format: $f" if ! $_[0]->is_valid_rf( lc $f );
+        croak "invalid format: $f" if ! $_[0]->is_valid_rf( $f );
     }
     return $_[0]->{rf} = $_[1];
 };
@@ -114,7 +114,7 @@ sub pct {
 
 sub is_valid_rf {
     my ($self, $f) = @_;
-    return (grep {/^$f$/i} qw/ iodef rfrf /) ? 1 : 0;
+    return (grep {/^$f$/i} qw/ iodef afrf /) ? 1 : 0;
 };
 
 sub is_valid_p {
