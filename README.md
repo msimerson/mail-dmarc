@@ -9,9 +9,9 @@
 
 [Mail::DMARC::PurePerl](lib/Mail/DMARC/PurePerl.pm) - a DMARC implementation
 
-[Mail::DMARC::Report](lib/Mail/DMARC/Report.pm)
-[Mail::DMARC::Report::AFRF](lib/Mail/DMARC/Report/AFRF.pm)
-[Mail::DMARC::Report::IODEF](lib/Mail/DMARC/Report/IODEF.pm)
+* [Mail::DMARC::Report](lib/Mail/DMARC/Report.pm)
+* [Mail::DMARC::Report::AFRF](lib/Mail/DMARC/Report/AFRF.pm)
+* [Mail::DMARC::Report::IODEF](lib/Mail/DMARC/Report/IODEF.pm)
 
 [Mail::DMARC::URI](lib/Mail/DMARC/URI.pm) - a DMARC reporting URI
 
