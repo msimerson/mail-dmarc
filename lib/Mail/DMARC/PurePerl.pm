@@ -193,13 +193,13 @@ sub is_dkim_aligned {
 # TODO: Required in report: DKIM-Domain, DKIM-Identity, DKIM-Selector
     my $from_dom = $self->{result}{from_domain} or croak "from_domain not set!";
     my $policy   = $self->policy or croak "no policy!?";
-    my $org_dom  = $self->{result}{org_domain} || $self->get_organizational_domain();
+    my $from_org  = $self->{result}{org_domain} || $self->get_organizational_domain();
 
-    foreach (@$dkim_pass_doms) {
-# TODO: make sure $_ is not a public suffix
-        if ($_ eq $from_dom) {   # strict alignment, requires exact match
+    foreach my $dkim_dom (@$dkim_pass_doms) {
+# TODO: make sure $dkim_dom is not a public suffix (4.3.1)
+        if ($dkim_dom eq $from_dom) { # strict alignment requires exact match
             $self->{result}{dkim_aligned} = 'strict';
-            $self->{result}{dkim_aligned_domains}{$_} = 'strict';
+            $self->{result}{dkim_aligned_domains}{$dkim_dom} = 'strict';
             next;
         }
 
@@ -207,10 +207,11 @@ sub is_dkim_aligned {
         next if $policy->adkim && lc $policy->adkim eq 's';
 
         # relaxed policy (default): Org. Dom must match a DKIM sig
-        if ( $_ eq $org_dom ) {
+        my $dkim_org = $self->get_organizational_domain($dkim_dom);
+        if ( $dkim_org eq $from_org ) {
             $self->{result}{dkim_aligned} = 'relaxed'
                 if ! defined $self->{result}{dkim_aligned};
-            $self->{result}{dkim_aligned_domains}{$_} = 'relaxed';
+            $self->{result}{dkim_aligned_domains}{$dkim_dom} = 'relaxed';
         };
     };
     return 1 if $self->{result}{dkim_aligned};
