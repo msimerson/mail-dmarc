@@ -6,15 +6,6 @@ use warnings;
 
 use Carp;
 
-my %defaults = (
-    adkim => 'r',
-    aspf  => 'r',
-    fo    => 0,
-    ri    => 86400,
-    rf    => 'afrf',
-#   pct   => 100,   # default is 100%, but 100% -vs- not defined is different
-        );
-
 sub new {
     my ($class, @args) = @_;
     my $package = ref $class ? ref $class : $class;
@@ -24,7 +15,7 @@ sub new {
     return $self->parse($args[0]) if 1 == @args; # a string to parse
 
     croak "invalid arguments" if @args % 2 != 0;
-    my $policy = { %defaults, @args };   # @args will override defaults
+    my $policy = { @args };
     bless $policy, $package;
     croak "invalid  policy" if ! $self->is_valid( $policy );
     return bless $policy, $package;
@@ -35,11 +26,21 @@ sub parse {
     croak "invalid parse request" if 0 != scalar @fluff;
     $str =~ s/\s//g;                         # remove all whitespace
     $str =~ s/\\;/;/;                        # replace \; with ;
-    my %dmarc = map { split /=/, $_ } split /;/, $str;
-    my $policy = { %defaults, %dmarc };
+    my $policy = { map { split /=/, $_ } split /;/, $str };
     croak "invalid policy" if ! $self->is_valid( $policy );
     return bless $policy, ref $self;  # inherited defaults + overrides
 }
+
+sub apply_defaults {
+    my $self = shift;
+
+    $self->adkim('r') if ! defined $self->adkim;
+    $self->aspf('r')  if ! defined $self->aspf;
+    $self->fo(0)      if ! defined $self->fo;
+    $self->ri(86400)  if ! defined $self->ri;
+    $self->rf('afrf') if ! defined $self->afrf;
+#   pct   # default is 100%, but 100% -vs- not defined is different
+};
 
 sub v {
     return $_[0]->{v} if 1 == scalar @_;
@@ -53,7 +54,6 @@ sub p {
     return $_[0]->{p} = $_[1];
 };
 
-# sp=reject;   (subdomain policy: default, same as p)
 sub sp {
     return $_[0]->{sp} if 1 == scalar @_;
     croak "invalid sp" if ! $_[0]->is_valid_p($_[1]);
@@ -81,7 +81,6 @@ sub fo {
 sub rua {
     return $_[0]->{rua} if 1 == scalar @_;
     return $_[0]->{rua} = $_[1];
-
 #TODO: validate as comma spaced list of URIs
 };
 
@@ -99,7 +98,6 @@ sub rf {
     }
     return $_[0]->{rf} = $_[1];
 };
-
 sub ri {
     return $_[0]->{ri} if 1 == scalar @_;
     croak "not an integer!" if $_[1] ne int $_[1];
@@ -130,6 +128,7 @@ sub is_valid {
     croak "invalid version" if 'DMARC1' ne uc $obj->{v};
     croak "missing policy action" if ! $obj->{p};
     croak "invalid policy action" if ! $self->is_valid_p( $obj->{p} );
+# everything else is optional
     return 1;
 };
 
@@ -185,9 +184,13 @@ Create a new policy from a DMARC DNS resource record:
             'v=DMARC1; p=reject; rua=mailto:dmarc@example.com; pct=50;'
            );
 
-If a policy is passed in (the latter two examples), the resulting policy object will be populated with default values for any unspecified parameters. The p and v tags are required and have no default. The alignment specifiers adkim and aspf default to 'r' (relaxed) and will be populated if not present in the request.
+If a policy is passed in (the latter two examples), the resulting policy object will be an exact representation of the record as returned from DNS.
 
-=head2 parse
+=head1 apply_defaults
+
+Several of the DMARC tags (adkim,aspf,fo,ri,rf) have default values when not specified in the published DNS record. Calling this method will apply those defaults to the DMARC tags that were not specified in the DNS record. The resulting DMARC::Policy object will be a perfect representation of the DMARC policy that is/was applied.
+
+=head1 parse
 
 Accepts a string containing a DMARC Resource Record, as it would be retrieved
 via DNS.

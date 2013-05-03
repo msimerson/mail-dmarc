@@ -76,19 +76,19 @@ sub test_new {
 # default policy
     $pol = Mail::DMARC::Policy->new( v=>'DMARC1', p=>'reject',pct => 90, rua=>'mailto:u@d.co' );
     isa_ok( $pol, 'Mail::DMARC::Policy' );
-    is_deeply( $pol, { v=>'DMARC1', p => 'reject', pct=>90, adkim=>'r', aspf=>'r', ri=>86400, fo=>0, rf=>'afrf', rua=>'mailto:u@d.co' }, "new, with args" );
+    is_deeply( $pol, { v=>'DMARC1', p => 'reject', pct=>90, rua=>'mailto:u@d.co' }, "new, with args" );
 
 # text record
     $pol = Mail::DMARC::Policy->new( 'v=DMARC1; p=reject; rua=mailto:u@d.co; pct=90' );
     isa_ok( $pol, 'Mail::DMARC::Policy' );
-    is_deeply( $pol, { v=>'DMARC1', p => 'reject', pct=>90, adkim=>'r', aspf=>'r', ri=>86400, fo=>0, rf=>'afrf', rua=>'mailto:u@d.co' }, "new, with args" );
+    is_deeply( $pol, { v=>'DMARC1', p => 'reject', pct=>90, rua=>'mailto:u@d.co' }, "new, with args" );
 };
 
 sub test_parse {
 
     $pol = $pol->parse( 'v=DMARC1; p=reject; rua=mailto:dmarc@example.co; pct=90');
     isa_ok( $pol, 'Mail::DMARC::Policy' );
-    is_deeply( $pol, { v=>'DMARC1', p => 'reject', pct=>90, adkim=>'r', aspf=>'r', fo=>0, ri=>86400, rf=>'afrf', rua=>'mailto:dmarc@example.co', }, 'parse' );
+    is_deeply( $pol, { v=>'DMARC1', p => 'reject', pct=>90, rua=>'mailto:dmarc@example.co', }, 'parse' );
 
 };
 
