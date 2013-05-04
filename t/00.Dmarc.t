@@ -6,9 +6,12 @@ use Test::More;
 use lib 'lib';
 
 use_ok( 'Mail::DMARC' );
+use_ok( 'Mail::DMARC::PurePerl' );
 
 my $dmarc = Mail::DMARC->new();
+my $pp = Mail::DMARC::PurePerl->new($dmarc);
 isa_ok( $dmarc, 'Mail::DMARC' );
+isa_ok( $pp, 'Mail::DMARC::PurePerl' );
 
 my %sample_dmarc = (
         source_ip     => '192.0.1.1',
@@ -29,8 +32,6 @@ my %sample_dmarc = (
     );
 
 test_new();
-test_is_valid_ip();
-test_is_valid_domain();
 test_setter_values();
 
 done_testing();
@@ -54,7 +55,7 @@ sub test_setter_values {
 
     my %bad_vals = (
             source_ip     => [ qw/ 0.257.0.25 255.255.255.256 / ],
-            envelope_to   => [ qw/ 1.a / ],
+            envelope_to   => [ qw/ 3.a / ],
             envelope_from => [ qw/ / ],
             header_from   => [ qw/ / ],
             dkim          => [ qw/ / ],
@@ -88,14 +89,5 @@ sub test_new {
         $dmarc->$key( $sample_dmarc{$key} );
     };
     is_deeply( $dmarc, \%sample_dmarc, "new, individual accessors" );
-};
-
-sub test_is_valid_ip {
-    ok( $dmarc->is_valid_ip('1.1.1.1'), "is_valid_ip");
-};
-
-sub test_is_valid_domain {
-
-    ok( $dmarc->is_valid_domain('example.com'), 'is_valid_domain');
 };
 

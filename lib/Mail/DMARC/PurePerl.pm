@@ -5,25 +5,27 @@ use strict;
 use warnings;
 
 use Carp;
-use IO::File;
-use Net::DNS::Resolver;
 
 use lib 'lib';
-use parent 'Mail::DMARC';
 use Mail::DMARC::Policy;
+use Mail::DMARC::DNS;
 
 sub new {
-    my $self = shift;
-    my $parent_obj = shift;
-    return bless {
-        ref $parent_obj ? %$parent_obj : {},
-        dns_timeout   => 5,
+    my $class = shift;
+    my $self = bless {
         is_subdomain  => undef,
-        resolver      => undef,
         ps_file       => 'share/public_suffix_list',
     },
-    $self;
+    $class;
+    $self->dns();
+    return $self;
 }
+
+sub dns {
+    my $self = shift;
+    $self->{dns} ||= Mail::DMARC::DNS->new();
+    return $self->{dns};
+};
 
 sub init {
     my $self = shift;
@@ -248,50 +250,6 @@ sub is_spf_aligned {
     return 0;
 };
 
-sub is_public_suffix {
-    my ($self, $zone) = @_;
-
-    croak "missing zone name!" if ! $zone;
-
-    my $file = $self->{ps_file} || 'share/public_suffix_list';
-    my @dirs = qw[ ./ /usr/local/ /usr/ /opt/local ];
-    my $match;
-    foreach my $dir ( @dirs ) {
-        $match = $dir . $file;
-        last if ( -f $match && -r $match );
-    };
-    if ( ! -r $match ) {
-        croak "unable to locate readable public suffix file\n";
-    };
-
-    my $fh = IO::File->new( $match, 'r' )
-        or croak "unable to open $match for read: $!\n";
-
-    $zone =~ s/\*/\\*/g;   # escape * char
-    return 1 if grep {/^$zone$/} <$fh>;
-
-    my @labels = split /\./, $zone;
-    $zone = join '.', '\*', (@labels)[1 .. scalar(@labels) - 1];
-
-    $fh = IO::File->new( $match, 'r' );  # reopen
-    return 1 if grep {/^$zone$/} <$fh>;
-
-    return 0;
-};
-
-sub has_dns_rr {
-    my ($self, $type, $domain) = @_;
-
-    my $matches = 0;
-    my $res = $self->get_resolver();
-    my $query = $res->query($domain, $type) or return $matches;
-    for my $rr ($query->answer) {
-        next if $rr->type ne $type;
-        $matches++;
-    }
-    return $matches;
-};
-
 sub has_valid_reporting_uri {
     my ($self, $rua) = @_;
     return 1 if 'mailto:' eq lc substr($rua, 0, 7);
@@ -322,7 +280,7 @@ sub get_organizational_domain {
         my $tld = join '.', reverse((@labels)[0 .. $i]);
 
         #carp "i: $i -  tld: $tld\n";
-        if ( $self->is_public_suffix($tld) ) {
+        if ( $self->dns->is_public_suffix($tld) ) {
             $greatest = $i + 1;
         }
     }
@@ -336,16 +294,6 @@ sub get_organizational_domain {
     #     label from the subject domain. This new name is the
     #     Organizational Domain.
     return $self->{result}{org_domain} = join '.', reverse((@labels)[0 .. $greatest]);
-}
-
-sub get_resolver {
-    my $self = shift;
-    my $timeout = shift || $self->{dns_timeout};
-    return $self->{resolver} if $self->{resolver};
-    $self->{resolver} = Net::DNS::Resolver->new(dnsrch => 0);
-    $self->{resolver}->tcp_timeout($timeout);
-    $self->{resolver}->udp_timeout($timeout);
-    return $self->{resolver};
 }
 
 sub exists_in_dns {
@@ -369,10 +317,10 @@ sub exists_in_dns {
     my $matched = 0;
     foreach ( @todo ) {
         last if $matched;
-        $matched++ and next if $self->has_dns_rr('MX', $_);
-        $matched++ and next if $self->has_dns_rr('NS', $_);
-        $matched++ and next if $self->has_dns_rr('A',  $_);
-        $matched++ and next if $self->has_dns_rr('AAAA', $_);
+        $matched++ and next if $self->dns->has_dns_rr('MX', $_);
+        $matched++ and next if $self->dns->has_dns_rr('NS', $_);
+        $matched++ and next if $self->dns->has_dns_rr('A',  $_);
+        $matched++ and next if $self->dns->has_dns_rr('AAAA', $_);
     };
     $self->{result}{domain_exists} = 1 if $matched;
     $self->{result}{error} = "not in DNS" if ! $matched;
@@ -387,7 +335,7 @@ sub fetch_dmarc_record {
     #     the message. A possibly empty set of records is returned.
     $self->{is_subdomain} = defined $org_dom ? 0 : 1;
     my @matches = ();
-    my $res = $self->get_resolver();
+    my $res = $self->dns->get_resolver();
     my $query = $res->send('_dmarc.' . $zone, 'TXT') or return \@matches;
     for my $rr ($query->answer) {
         next if $rr->type ne 'TXT';

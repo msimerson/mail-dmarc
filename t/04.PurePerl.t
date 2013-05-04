@@ -25,15 +25,10 @@ my $test_rec = join('; ',
 my $dmarc = Mail::DMARC::PurePerl->new;
 isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 
-my $resolv = $dmarc->get_resolver();
-isa_ok( $resolv, 'Net::DNS::Resolver' );
-
 test_get_from_dom();
 test_get_dom_from_header();
 test_fetch_dmarc_record();
-test_is_public_suffix();
 test_get_organizational_domain();
-test_has_dns_rr();
 test_exists_in_dns();
 test_is_spf_aligned();
 test_is_dkim_aligned();
@@ -148,22 +143,6 @@ sub test_exists_in_dns {
     }
 };
 
-sub test_has_dns_rr {
-
-    my %tests = (
-        'NS:tnpi.net'                 => 1,
-        'NS:fake.mail-dmarc.tnpi.net' => 0,
-        'A:www.tnpi.net'              => 1,
-        'MX:tnpi.net'                 => 1,
-        'MX:gmail.com'                => 1,
-    );
-
-    foreach my $dom ( keys %tests ) {
-        my $r = $dmarc->has_dns_rr( split /:/, $dom  );
-        ok( $r >= $tests{$dom}, "has_dns_rr, $dom" );
-    }
-};
-
 sub test_get_organizational_domain {
     my %domains = (
             'tnpi.net'        => 'tnpi.net',
@@ -175,25 +154,6 @@ sub test_get_organizational_domain {
 
     foreach ( keys %domains ) {
         cmp_ok( $domains{$_}, 'eq', $dmarc->get_organizational_domain($_), "get_organizational_domain, $_");
-    };
-};
-
-sub test_is_public_suffix {
-    my %tests = (
-            'www.tnpi.net' => 0,
-            'tnpi.net'     => 0,
-            'net'          => 1,
-            'com'          => 1,
-            'co.uk'        => 1,
-            '*.uk'         => 1,
-            'google.com'   => 0,
-            'a'            => 0,
-            'z'            => 0,
-            );
-
-    foreach my $dom ( keys %tests ) {
-        my $t = $tests{$dom} == 0 ? 'neg' : 'pos';
-        cmp_ok( $tests{$dom}, '==', $dmarc->is_public_suffix( $dom ), "is_public_suffix, $t, $dom" );
     };
 };
 

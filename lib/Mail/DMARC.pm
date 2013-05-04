@@ -7,6 +7,9 @@ use Carp;
 use Data::Dumper;
 use Regexp::Common qw /net/;
 
+use Mail::DMARC::DNS;
+use Mail::DMARC::PurePerl;
+
 =head1 SYNOPSIS
 
 DMARC: a reliable means to authenticate who mail is from.
@@ -108,24 +111,15 @@ sub result {
 
 sub is_valid_ip {
     my ($self, $ip) = @_;
-    if ( $ip =~ /:/ ) {
-        return 1 if $ip =~ /^$RE{net}{IPv6}$/;
-        return 0;
-    };
-
-    return 1 if $ip =~ /^$RE{net}{IPv4}$/;
-    return 0;
+    $self->{dns} ||= Mail::DNS::DNS->new();
+    return $self->{dns}->is_valid_ip($ip);
 };
 
 sub is_valid_domain {
     my ($self, $domain) = @_;
-    return 1 if $domain =~ /^$RE{net}{domain}$/;
-    return 0;
+    $self->{dns} ||= Mail::DNS::DNS->new();
+    return $self->{dns}->is_valid_domain($domain);
 };
-
-1;
-
-__END__
 
 sub {};  # for vim automatic code folding
 
