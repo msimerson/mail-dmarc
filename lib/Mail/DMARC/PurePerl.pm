@@ -14,7 +14,9 @@ use Mail::DMARC::Policy;
 
 sub new {
     my $self = shift;
+    my $parent_obj = shift;
     return bless {
+        ref $parent_obj ? %$parent_obj : {},
         dns_timeout   => 5,
         is_subdomain  => undef,
         resolver      => undef,
@@ -252,7 +254,7 @@ sub is_public_suffix {
     croak "missing zone name!" if ! $zone;
 
     my $file = $self->{ps_file} || 'share/public_suffix_list';
-    my @dirs = qw[ ./ /usr/local/ /usr/ ];
+    my @dirs = qw[ ./ /usr/local/ /usr/ /opt/local ];
     my $match;
     foreach my $dir ( @dirs ) {
         $match = $dir . $file;
@@ -266,13 +268,13 @@ sub is_public_suffix {
         or croak "unable to open $match for read: $!\n";
 
     $zone =~ s/\*/\\*/g;   # escape * char
-    return 1 if grep {/^$zone/} <$fh>;
+    return 1 if grep {/^$zone$/} <$fh>;
 
     my @labels = split /\./, $zone;
     $zone = join '.', '\*', (@labels)[1 .. scalar(@labels) - 1];
 
     $fh = IO::File->new( $match, 'r' );  # reopen
-    return 1 if grep {/^$zone/} <$fh>;
+    return 1 if grep {/^$zone$/} <$fh>;
 
     return 0;
 };

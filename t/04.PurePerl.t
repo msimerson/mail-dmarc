@@ -187,6 +187,8 @@ sub test_is_public_suffix {
             'co.uk'        => 1,
             '*.uk'         => 1,
             'google.com'   => 0,
+            'a'            => 0,
+            'z'            => 0,
             );
 
     foreach my $dom ( keys %tests ) {
