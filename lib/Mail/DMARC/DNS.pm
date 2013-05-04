@@ -78,17 +78,17 @@ sub get_resolver {
 sub is_valid_ip {
     my ($self, $ip) = @_;
     if ( $ip =~ /:/ ) {
-        return 1 if $ip =~ /^$RE{net}{IPv6}$/;
+        return 1 if $ip =~ /^$RE{net}{IPv6}$/x;
         return 0;
     };
 
-    return 1 if $ip =~ /^$RE{net}{IPv4}$/;
+    return 1 if $ip =~ /^$RE{net}{IPv4}$/x;
     return 0;
 };
 
 sub is_valid_domain {
     my ($self, $domain) = @_;
-    if ( $domain =~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/ ) {
+    if ( $domain =~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x ) {
         my $tld = (split /\./,$domain)[-1];
 #warn "tld: $tld\n";
         return 1 if Mail::DMARC::DNS::is_public_suffix(undef,$tld);

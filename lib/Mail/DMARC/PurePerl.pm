@@ -17,7 +17,6 @@ sub new {
         ps_file       => 'share/public_suffix_list',
     },
     $class;
-    $self->dns();
     return $self;
 }
 

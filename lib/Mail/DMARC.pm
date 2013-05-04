@@ -88,7 +88,7 @@ sub inputs {
 };
 
 sub result {
-    {
+    return {
         PolicyPublished => {
             domain => '',    # The domain where the DMARC record was found.
             adkim  => '',    # The DKIM alignment mode
@@ -117,9 +117,13 @@ sub is_valid_ip {
 
 sub is_valid_domain {
     my ($self, $domain) = @_;
-    $self->{dns} ||= Mail::DNS::DNS->new();
+    $self->{dns} ||= Mail::DMARC::DNS->new();
     return $self->{dns}->is_valid_domain($domain);
 };
+
+1;
+
+__END__
 
 sub {};  # for vim automatic code folding
 

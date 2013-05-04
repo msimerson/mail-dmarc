@@ -40,6 +40,7 @@ sub apply_defaults {
     $self->ri(86400)  if ! defined $self->ri;
     $self->rf('afrf') if ! defined $self->rf;
 #   pct   # default is 100%, but 100% -vs- not defined is different
+    return;
 };
 
 sub v {
@@ -62,19 +63,19 @@ sub sp {
 
 sub adkim {
     return $_[0]->{adkim} if 1 == scalar @_;
-    croak "invalid adkim" if 0 == grep {/^$_[1]$/i} qw/ r s /;
+    croak "invalid adkim" if 0 == grep {/^$_[1]$/ix} qw/ r s /;
     return $_[0]->{adkim} = $_[1];
 };
 
 sub aspf {
     return $_[0]->{aspf} if 1 == scalar @_;
-    croak "invalid aspf" if 0 == grep {/^$_[1]$/i} qw/ r s /;
+    croak "invalid aspf" if 0 == grep {/^$_[1]$/ix} qw/ r s /;
     return $_[0]->{aspf} = $_[1];
 };
 
 sub fo {
     return $_[0]->{fo} if 1 == scalar @_;
-    croak "invalid fo: $_[1]" if 0 == grep {/^$_[1]$/i} qw/ 0 1 d s /;
+    croak "invalid fo: $_[1]" if 0 == grep {/^$_[1]$/ix} qw/ 0 1 d s /;
     return $_[0]->{fo} = $_[1];
 };
 

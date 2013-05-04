@@ -88,6 +88,7 @@ sub test_new {
     foreach my $key ( keys %sample_dmarc ) {
         $dmarc->$key( $sample_dmarc{$key} );
     };
+    delete $dmarc->{dns};
     is_deeply( $dmarc, \%sample_dmarc, "new, individual accessors" );
 };
 
