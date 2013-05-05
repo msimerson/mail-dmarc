@@ -55,7 +55,7 @@ sub test_setter_values {
 #TODO       ruf    =>
             rf     => [ qw/ iodef2 rfrf2 rfrf / ],
             ri     => [ -1, 'a', 4294967296 ],
-            pct    => [ -1, 'f', 101 ],
+            pct    => [ -1, 'f', 101, 1.1, '1.0', '5.f1' ],
             );
 
     foreach my $k ( keys %bad_vals ) {

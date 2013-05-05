@@ -101,14 +101,16 @@ sub rf {
 };
 sub ri {
     return $_[0]->{ri} if 1 == scalar @_;
-    croak "not an integer!" if $_[1] ne int $_[1];
+    croak "not numeric!" if $_[1] =~ /\D/;
+    croak "not an integer!" if $_[1] != int $_[1];
     croak "out of range" if ($_[1] < 0 || $_[1] > 4294967295);
     return $_[0]->{ri} = $_[1];
 };
 
 sub pct {
     return $_[0]->{pct} if 1 == scalar @_;
-    croak "not an integer!" if $_[1] ne int $_[1];
+    croak "not numeric!" if $_[1] =~ /\D/;
+    croak "not an integer!" if $_[1] != int $_[1];
     croak "out of range" if $_[1] < 0 || $_[1] > 100;
     return $_[0]->{pct} = $_[1];
 };
