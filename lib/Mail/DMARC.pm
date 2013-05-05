@@ -123,8 +123,7 @@ sub is_valid_domain {
 1;
 
 __END__
-
-sub {};  # for vim automatic code folding
+sub {}  # for vim automatic code folding
 
 =head1 DESCRIPTION
 

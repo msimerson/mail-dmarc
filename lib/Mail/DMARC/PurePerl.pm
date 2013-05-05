@@ -42,7 +42,7 @@ sub validate {
     #       evaluation returned a "pass" result.
     #   5.  Conduct identifier alignment checks.
     $self->is_aligned() and do {
-        $self->result->evaluated('disposition', 'pass');
+        $self->result->evaluated->disposition('pass');
         return 1;
     };
 
@@ -54,7 +54,7 @@ sub validate {
     #       disposed of in accordance with the discovered DMARC policy of the
     #       Domain Owner.  See Section 6.2 for details.
     if ( lc $effective_p eq 'none' ) {
-        $self->result->evaluated('disposition', 'pass');
+        $self->result->evaluated->disposition('pass');
         return;
     };
 
@@ -62,14 +62,15 @@ sub validate {
 # If the "pct" tag is present in a policy record, application of policy
 # is done on a selective basis.
     if ( ! defined $policy->pct ) {
-        $self->result->evaluated('disposition', $effective_p);
+        $self->result->evaluated->disposition($effective_p);
         return;
     };
 
 # The stated percentage of messages that fail the DMARC test MUST be
 # subjected to whatever policy is selected by the "p" or "sp" tag
     if ( int(rand(100)) >= $policy->pct ) {
-        $self->result->evaluated('disposition', 'sampled_out');
+        $self->result->evaluated->disposition('none');
+        $self->result->evaluated->reason( {type=>'sampled_out'} );
         return;
     };
 
@@ -83,7 +84,7 @@ sub validate {
 # RFC5322.From field which fail the DMARC test would be subjected to
 # "reject" action, and the remainder subjected to "quarantine" action.
 
-    $self->result->evaluated('disposition',
+    $self->result->evaluated->disposition(
         ( $effective_p eq 'reject' ) ? 'quarantine' : 'none' );
     return;
 }
@@ -93,10 +94,12 @@ sub discover_policy {
     my $from_dom = shift || $self->from_domain or croak;
     my $org_dom  = $self->get_organizational_domain($from_dom);
 
+    my $e = $self->result->evaluated;
+
     # 1.  Mail Receivers MUST query the DNS for a DMARC TXT record...
     my $matches = $self->fetch_dmarc_record($from_dom, $org_dom) or do {
-        $self->result->evaluated('disposition', 'none');
-        $self->result->evaluated('reason', { comment => 'no DMARC records' } );
+        $e->disposition('none');
+        $e->reason( { type=>'other', comment => 'no DMARC records' } );
         return;
     };
 
@@ -104,18 +107,20 @@ sub discover_policy {
     #     current version of DMARC are discarded.
     my @matches = grep {/^v=DMARC1/ix} @$matches;
     if (0 == scalar @matches) {
-        $self->result->evaluated('reason', { comment=> "no valid DMARC record" });
+        $e->disposition('none');
+        $e->reason( { type=>'other', comment=> "no valid DMARC record" });
         return;
     }
 
     # 5.  If the remaining set contains multiple records, processing
     #     terminates and the Mail Receiver takes no action.
     if (@matches > 1) {
-        $self->result->evaluated('reason', { comment=> "too many DMARC records" });
+        $e->disposition('none');
+        $e->reason( {type=>'other', comment=> "too many DMARC records" });
         return;
     }
 
-    $self->result->evaluated('dmarc_rr', $matches[0]);
+#   $e->dmarc_rr($matches[0]);  # why save this?
 
     # 6.  If a retrieved policy record does not contain a valid "p" tag, or
     #     contains an "sp" tag that is not valid, then:
@@ -131,7 +136,8 @@ sub discover_policy {
         #       was retrieved, and continue processing;
         #   B.  otherwise, the Mail Receiver SHOULD take no action.
         if (!$policy->rua || !$self->has_valid_reporting_uri($policy->rua)) {
-            $self->result->evaluated('reason', { comment=> "no valid reporting rua" });
+            $e->disposition('none');
+            $e->reason( { type=>'other', comment=> "no valid reporting rua" });
             return;
         }
         $policy->v( 'DMARC1' );
@@ -160,8 +166,8 @@ sub is_aligned {
     $self->is_dkim_aligned;
     $self->is_spf_aligned;
 
-    return 1 if 'pass' eq $self->result->evaluated('spf')
-             || 'pass' eq $self->result->evaluated('dkim');
+    return 1 if 'pass' eq $self->result->evaluated->spf
+             || 'pass' eq $self->result->evaluated->dkim;
     return 0;
 };
 
@@ -179,29 +185,44 @@ sub is_dkim_aligned {
             && $_->{domain} eq $from_dom
     } @$dkim_sigs;
 
-# TODO: Required in report: DKIM-Domain, DKIM-Identity, DKIM-Selector
     my $policy   = $self->policy or croak "no policy!?";
     my $from_org = $self->get_organizational_domain();
 
+# Required in report: DKIM-Domain, DKIM-Identity, DKIM-Selector
     foreach my $dkim_ref (@dkim_pass_doms) {
         my $dkim_dom = $dkim_ref->{domain};
-# TODO: make sure $dkim_dom is not a public suffix (4.3.1)
+
+        # 4.3.1 make sure $dkim_dom is not a public suffix
+        next if $self->dns->is_public_suffix($dkim_dom);
+
         if ($dkim_dom eq $from_dom) { # strict alignment requires exact match
-            $self->result->evaluated('dkim', 'pass');
+            $self->result->evaluated->dkim('pass');
+            $self->result->evaluated->dkim_meta( {
+                    domain   => $dkim_dom,
+                    identity => '',  # TODO
+                    selector => $dkim_ref->{selector},
+                    } );
             last;
         }
 
         # don't try relaxed if policy specifies strict
         next if $policy->adkim && lc $policy->adkim eq 's';
 
+        # don't try relaxed if we already got a strict match
+        next if 'pass' eq $self->result->evaluated->dkim;
+
         # relaxed policy (default): Org. Dom must match a DKIM sig
         my $dkim_org = $self->get_organizational_domain($dkim_dom);
         if ( $dkim_org eq $from_org ) {
-            $self->result->evaluated('dkim', 'pass');
-            $self->result->evaluated('dkim_aligned_domains',$dkim_dom);
+            $self->result->evaluated->dkim('pass');
+            $self->result->evaluated->dkim_meta( {
+                    domain   => $dkim_org,
+                    identity => '',   # TODO
+                    selector => $dkim_ref->{selector},
+                    } );
         };
     };
-    return 1 if 'pass' eq $self->result->evaluated('dkim');
+    return 1 if 'pass' eq $self->result->evaluated->dkim;
     return;
 };
 
@@ -210,15 +231,15 @@ sub is_spf_aligned {
     my $spf_dom = shift || $self->spf->{domain};
 
     if ( ! $spf_dom ) {
-        $self->result->evaluated('spf', 'fail');
+        $self->result->evaluated->spf('fail');
         return 0;
     };
 
     my $from_dom = $self->header_from or croak "header_from not set!";
 
     if ($spf_dom eq $from_dom) {
-        $self->result->evaluated('spf','pass');
-        $self->result->evaluated('spf_align','strict');
+        $self->result->evaluated->spf('pass');
+        $self->result->evaluated->spf_align('strict');
         return 1;
     }
 
@@ -227,8 +248,8 @@ sub is_spf_aligned {
 
     if (     $self->get_organizational_domain( $spf_dom )
           eq $self->get_organizational_domain( $from_dom ) ) {
-        $self->result->evaluated('spf','pass');
-        $self->result->evaluated('spf_align','relaxed');
+        $self->result->evaluated->spf('pass');
+        $self->result->evaluated->spf_align('relaxed');
         return 1;
     }
     return 0;
@@ -246,7 +267,6 @@ sub get_organizational_domain {
 
     # 1.  Acquire a "public suffix" list, i.e., a list of DNS domain
     #     names reserved for registrations. http://publicsuffix.org/list/
-    #         $self->qp->config('public_suffix_list')
 
     # 2.  Break the subject DNS domain name into a set of "n" ordered
     #     labels.  Number these labels from right-to-left; e.g. for
@@ -309,8 +329,9 @@ sub exists_in_dns {
         $matched++ and next if $self->dns->has_dns_rr('A',  $_);
         $matched++ and next if $self->dns->has_dns_rr('AAAA', $_);
     };
-    $self->result->evaluated('domain_exists', 1) if $matched;
-    $self->result->evaluated('reason', {comment => "not in DNS"}) if ! $matched;
+    $self->result->evaluated->disposition('none') if $matched;
+    $self->result->evaluated->reason(
+            {type=>'other', comment => "$from_dom not in DNS"}) if ! $matched;
     return $matched;
 }
 
