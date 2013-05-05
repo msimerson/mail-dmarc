@@ -23,6 +23,7 @@ my $test_rec = join('; ',
 #die "$test_rec\n";
 
 my $dmarc = Mail::DMARC::PurePerl->new;
+#$dmarc->header_from('example.com');
 isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 
 test_get_from_dom();
@@ -34,8 +35,7 @@ test_is_spf_aligned();
 test_is_dkim_aligned();
 test_is_aligned();
 test_discover_policy();
-
-# test_validate();
+#test_validate();
 
 # has_valid_reporting_uri
 # external_report
@@ -53,6 +53,7 @@ sub test_discover_policy {
             ri   => 86400,
             rf   => 'afrf',
             fo   => 0,
+            domain => 'mail-dmarc.tnpi.net',
             }, 'discover_policy' );
 #print Dumper($policy);
 };
@@ -72,61 +73,69 @@ sub get_test_headers {
 
 sub test_is_spf_aligned {
 
+    ok( $dmarc->header_from('example.com'), "spf, set header_from");
+    ok( $dmarc->spf( domain => 'example.com', result => 'pass' ), 'spf, set spf');
+    ok( $dmarc->is_spf_aligned(), "is_spf_aligned");
+    ok( 'strict' eq $dmarc->result->evaluated('spf_align'), "is_spf_aligned, strict")
+        or diag Dumper($dmarc->result);
+
+    $dmarc->header_from('mail.example.com');
+    ok( $dmarc->spf( domain => 'example.com', result => 'pass' ), 'spf, set spf');
+    ok( $dmarc->policy->aspf('r'), "spf alignment->r");
+    ok( $dmarc->is_spf_aligned(), "is_spf_aligned, relaxed");
+    ok( 'relaxed' eq $dmarc->result->evaluated('spf_align'), "is_spf_aligned, relaxed");
+
+    $dmarc->header_from('mail.exUmple.com');
+    ok( $dmarc->spf( domain => 'example.com', result => 'pass' ), 'spf, set spf');
+    ok( ! $dmarc->is_spf_aligned(), "is_spf_aligned, neg");
 };
 
 sub test_is_dkim_aligned {
 
+    ok( $dmarc->header_from('example.com'), "dkim, set header_from");
+    ok( $dmarc->dkim( [
+                {
+                domain      => 'mailing-list.com',
+                selector    => 'apr2013',
+                result      => 'fail',
+                human_result=> 'fail (body has been altered)',
+                },
+                {
+                domain      => 'example.com',
+                selector    => 'apr2013',
+                result      => 'pass',
+                human_result=> 'pass',
+                },
+            ] ), "dkim, setup");
+
+    ok( $dmarc->is_dkim_aligned(), "is_dkim_aligned, strict");
+
+    ok( $dmarc->header_from('mail.example.com'), "dkim, set header_from");
+    ok( $dmarc->is_dkim_aligned(), "is_dkim_aligned, relaxed");
+
+# negative test
+    ok( $dmarc->header_from('mail.exaNple.com'), "dkim, set header_from");
+    ok( $dmarc->is_dkim_aligned(), "is_dkim_aligned, miss");
 };
 
 sub test_is_aligned {
+    $dmarc->result->evaluated('spf','pass');
+    $dmarc->result->evaluated('dkim','pass');
+    ok( $dmarc->is_aligned(), "is_aligned, both");
 
-    my %test_request = (
-                from_domain       => 'tnpi.net',
-                policy            => $dmarc->policy->new( %test_policy, p=>'none' ),
-                spf_pass_domain   => '',
-                dkim_pass_domains => [],
-                );
+    $dmarc->result->evaluated('dkim','fail');
+    ok( $dmarc->is_aligned(), "is_aligned, spf");
 
-    $dmarc->init;   # reset results
-    ok( ! $dmarc->is_aligned( %test_request ), "is_aligned, no SPF or DKIM");
-    $dmarc->init;
+    $dmarc->result->evaluated('dkim','pass');
+    $dmarc->result->evaluated('spf','fail');
+    ok( $dmarc->is_aligned(), "is_aligned, dkim");
 
-    $test_request{policy} = $dmarc->policy->new( %test_policy,p=>'none' );
-    $test_request{spf_pass_domain} = 'tnpi.net';
-    ok( $dmarc->is_aligned( %test_request ), "is_aligned, SPF only");
-    $dmarc->init;
+    $dmarc->result->evaluated('dkim','fail');
+    ok( ! $dmarc->is_aligned(), "is_aligned, none");
+};
 
-    $test_request{spf_pass_domain}   = '';
-    $test_request{dkim_pass_domains} = ['tnpi.net'];
-    ok( $dmarc->is_aligned( %test_request ), "is_aligned, DKIM only");
-    $dmarc->init;
-
-    $test_request{spf_pass_domain}   = 'tnpi.net';
-    $test_request{dkim_pass_domains} = ['tnpi.net'];
-    ok( $dmarc->is_aligned( %test_request ), "is_aligned, both");
-    $dmarc->init;
-
-    $test_request{spf_pass_domain}   = '';
-    $test_request{dkim_pass_domains} = ['tnpi.net'];
-    $test_request{policy}            = $dmarc->policy->new( %test_policy, adkim=>'s' );
-    $test_request{from_domain}       = 'www.tnpi.net';
-    ok( ! $dmarc->is_aligned( %test_request ), "is_aligned, relaxed DKIM match, strict policy");
-    $dmarc->init;
-
-    $test_request{policy}            = $dmarc->policy->new( %test_policy,adkim=>'r' );
-    ok( $dmarc->is_aligned( %test_request ), "is_aligned, relaxed DKIM match, relaxed policy");
-    $dmarc->init;
-
-    $test_request{spf_pass_domain}   = 'tnpi.net';
-    $test_request{dkim_pass_domains} = [];
-    $test_request{policy}            = $dmarc->policy->new( %test_policy,aspf=>'s' );
-    $test_request{from_domain}       = 'www.tnpi.net';
-    ok( ! $dmarc->is_aligned( %test_request ), "is_aligned, relaxed SPF match, strict policy");
-    $dmarc->init;
-
-    $test_request{policy}            = $dmarc->policy->new( %test_policy, aspf=>'r' );
-    ok( $dmarc->is_aligned( %test_request ), "is_aligned, relaxed SPF match, relaxed policy");
-    $dmarc->init;
+sub test_validate {
+# TODO: test various failure modes and results
 };
 
 sub test_exists_in_dns {
@@ -168,17 +177,20 @@ sub test_fetch_dmarc_record {
 };
 
 sub test_get_from_dom {
+    $dmarc->header_from();
     my %froms = get_test_headers();
     foreach my $h ( keys %froms ) {
-        my $s = $dmarc->get_from_dom( { from_header => $h } );
-        ok( $s eq $froms{$h}, "get_from_dom, $h");
+        $dmarc->header_from_raw($h);
+        my $s = $dmarc->get_dom_from_header();
+        ok( $s eq $froms{$h}, "get_from_dom, $s eq $froms{$h}");
     };
 };
 
 sub test_get_dom_from_header {
     my %froms = get_test_headers();
     foreach my $h ( keys %froms ) {
-        my $s = $dmarc->get_dom_from_header( $h );
+        $dmarc->header_from_raw($h);
+        my $s = $dmarc->get_dom_from_header();
         ok( $s eq $froms{$h}, "get_dom_from_header, $h");
     };
 };

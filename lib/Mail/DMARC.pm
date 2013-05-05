@@ -4,11 +4,10 @@ use strict;
 use warnings;
 
 use Carp;
-use Data::Dumper;
-use Regexp::Common qw /net/;
 
 use Mail::DMARC::DNS;
-use Mail::DMARC::PurePerl;
+use Mail::DMARC::Policy;
+use Mail::DMARC::Result;
 
 =head1 SYNOPSIS
 
@@ -46,8 +45,15 @@ sub header_from {
     return $_[0]->{header_from} = $_[1];
 };
 
+sub header_from_raw {
+    return $_[0]->{header_from_raw} if 1 == scalar @_;
+#croak "invalid header_from_raw: $_[1]" if 'from:' ne lc substr($_[1], 0, 5);
+    return $_[0]->{header_from_raw} = $_[1];
+};
+
 sub dkim {
     my ($self, $dkim) = @_;
+    return $self->{dkim} if ! $dkim;
 
     if ( ref $dkim && ref $dkim eq 'Mail::DKIM::Verifier' ) {
 # A DKIM verifier will have result and signature methods.
@@ -70,6 +76,7 @@ sub dkim {
 
 sub spf {
     my ($self, @args) = @_;
+    return $self->{spf} if 0 == scalar @args;
 
     if ( scalar @args == 1 && ref $args[0] && ref $args[0] eq 'HASH' ) {
         return $self->{spf} = $args[0];
@@ -80,33 +87,25 @@ sub spf {
 };
 
 sub inputs {
-    my ($self, $dkim, $spf) = @_;
+    my $self = shift;
     return {
+        backend       => 'perl', # perl or libopendmarc
         report_domain => 'great.co',
         report_org    => 'My Great Company',
     }
 };
 
+sub policy {
+    my $self = shift;
+    $self->{policy} ||= Mail::DMARC::Policy->new();
+    return $self->{policy};
+};
+
 sub result {
-    return {
-        PolicyPublished => {
-            domain => '',    # The domain where the DMARC record was found.
-            adkim  => '',    # The DKIM alignment mode
-            aspf   => '',    # SPF alignment mode
-            p      => '',    # The policy to apply to messages from the domain
-            sp     => '',    # The policy to apply to messages from subdomains
-            pct    => '',    # The percent of messages to which policy applies
-        },
-        PolicyEvaluated => { #  the results of applying DMARC
-            disposition => '', # reject, quarantine, none
-            dkim        => '', # pass, fail
-            spf         => '', # pass, fail
-            reason      => {   # forwarded, sampled_out, trusted_forwarder,
-                type =>  '',   #   mailing_list, local_policy, other
-                comment => '',
-            },
-        },
-    };
+    my $self = shift;
+    return $self->{result} if ref $self->{result};
+    $self->{result} = Mail::DMARC::Result->new();
+    return $self->{result};
 };
 
 sub is_valid_ip {

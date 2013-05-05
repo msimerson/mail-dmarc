@@ -9,7 +9,7 @@ use_ok( 'Mail::DMARC' );
 use_ok( 'Mail::DMARC::PurePerl' );
 
 my $dmarc = Mail::DMARC->new();
-my $pp = Mail::DMARC::PurePerl->new($dmarc);
+my $pp = Mail::DMARC::PurePerl->new();
 isa_ok( $dmarc, 'Mail::DMARC' );
 isa_ok( $pp, 'Mail::DMARC::PurePerl' );
 
@@ -32,10 +32,34 @@ my %sample_dmarc = (
     );
 
 test_new();
+test_header_from();
 test_setter_values();
+test_spf();
 
 done_testing();
 exit;
+
+sub test_spf {
+    ok( $dmarc->spf( domain => 'a.c', result => 'fail' ), "spf");
+
+    eval { $dmarc->spf( dom => 'foo', 'blah' ) };
+    ok( $@, "spf, neg, $@");
+};
+
+sub test_header_from {
+
+    my @good_vals = ( qw/ spam-example.com bar.com / );
+    foreach my $k ( @good_vals ) {
+        ok( $dmarc->header_from( $k ), "header_from, $k");
+    };
+
+    my @bad_vals = ( qw/ a.b a@b.c f*ct.org / );
+    foreach my $k ( @bad_vals ) {
+        eval { $dmarc->header_from( $k ); };
+        chomp $@;
+        ok( $@, "header_from, $k, $@" );
+    };
+};
 
 sub test_setter_values {
     my %good_vals = (
