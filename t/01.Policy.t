@@ -17,11 +17,27 @@ cmp_ok( $pol->v, 'eq', 'DMARC1', "policy, version, pos" );
 
 test_new();
 test_is_valid_p();
+test_is_valid_rf();
 test_parse();
 test_setter_values();
+test_apply_defaults();
+test_is_valid();
 
 done_testing();
 exit;
+
+sub test_apply_defaults {
+
+# empty policy
+    my $pol = Mail::DMARC::Policy->new();
+    isa_ok( $pol, 'Mail::DMARC::Policy' );
+    is_deeply( $pol, {}, "new, empty policy" );
+
+# default policy
+    $pol = Mail::DMARC::Policy->new( v=>'DMARC1', p=>'reject' );
+    $pol->apply_defaults();
+    is_deeply( $pol, { v=>'DMARC1', p => 'reject', rf => 'afrf', fo=>0, adkim=>'r', aspf=>'r', ri=>86400 }, "new, with defaults" );
+};
 
 sub test_setter_values {
     my %good_vals = (
@@ -102,3 +118,28 @@ sub test_is_valid_p {
     };
 };
 
+sub test_is_valid_rf {
+    foreach my $f ( qw/ afrf iodef / ) {
+        ok( $pol->is_valid_rf( $f ), "policy->is_valid_rf, pos, $f" );
+    };
+
+    foreach my $f ( qw/ ffrf i0def report / ) {
+        ok( ! $pol->is_valid_rf( $f ), "policy->is_valid_rf, neg, $f" );
+    };
+};
+
+sub test_is_valid {
+# empty policy
+    my $pol = Mail::DMARC::Policy->new();
+    eval { $pol->is_valid(); };
+    chomp $@;
+    ok( $@, "is_valid, $@" );
+
+# policy, minimum
+    $pol = Mail::DMARC::Policy->new( v=>'DMARC1', p=>'reject' );
+    ok( $pol->is_valid, "is_valid, pos" );
+
+# policy, min + defaults
+    $pol->apply_defaults();
+    ok( $pol->is_valid, "is_valid, pos, w/defaults" );
+};

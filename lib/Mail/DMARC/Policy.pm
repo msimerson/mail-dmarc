@@ -127,6 +127,7 @@ sub is_valid_p {
 
 sub is_valid {
     my ($self, $obj) = @_;
+    $obj = $self if ! $obj;
     croak "missing version specifier" if ! $obj->{v};
     croak "invalid version" if 'DMARC1' ne uc $obj->{v};
     croak "missing policy action" if ! $obj->{p};
@@ -136,6 +137,9 @@ sub is_valid {
 };
 
 1;
+
+__END__
+sub {}
 
 =head1 EXAMPLES
 
