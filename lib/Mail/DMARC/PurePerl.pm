@@ -6,7 +6,6 @@ use warnings;
 
 use Carp;
 
-use lib 'lib';
 use parent 'Mail::DMARC';
 
 sub dns {
@@ -18,6 +17,7 @@ sub dns {
 sub init {
     my $self = shift;
     $self->{is_subdomain} = undef;
+    $self->{policy} = undef;
     $self->{result} = undef;
     return;
 };
@@ -41,12 +41,9 @@ sub validate {
     #       MUST include the domain name from the RFC5321.MailFrom if SPF
     #       evaluation returned a "pass" result.
     #   5.  Conduct identifier alignment checks.
-    $self->is_aligned() and do {
-        $self->result->evaluated->disposition('pass');
-        return 1;
-    };
+    $self->is_aligned() and return 1;
 
-    my $effective_p = $self->{is_subdomain} && defined $policy->sp
+    my $effective_p = $self->is_subdomain && defined $policy->sp
             ? $policy->sp
             : $policy->p;
 
@@ -54,7 +51,7 @@ sub validate {
     #       disposed of in accordance with the discovered DMARC policy of the
     #       Domain Owner.  See Section 6.2 for details.
     if ( lc $effective_p eq 'none' ) {
-        $self->result->evaluated->disposition('pass');
+        $self->result->evaluated->result('pass');
         return;
     };
 
@@ -91,7 +88,7 @@ sub validate {
 
 sub discover_policy {
     my $self = shift;
-    my $from_dom = shift || $self->from_domain or croak;
+    my $from_dom = shift || $self->header_from or croak;
     my $org_dom  = $self->get_organizational_domain($from_dom);
 
     my $e = $self->result->evaluated;
@@ -124,10 +121,10 @@ sub discover_policy {
 
     # 6.  If a retrieved policy record does not contain a valid "p" tag, or
     #     contains an "sp" tag that is not valid, then:
-    my $policy = Mail::DMARC::Policy->new( $matches[0] ) or return;
+    my $policy = $self->policy( $matches[0] ) or return;
     $policy->{domain} = $from_dom;
     $self->result->published( $policy );
-    if (!$policy->is_valid_p($policy->p)
+    if (!$policy->p || !$policy->is_valid_p($policy->p)
             || (defined $policy->sp && ! $policy->is_valid_p($policy->sp) ) ) {
 
         #   A.  if an "rua" tag is present and contains at least one
@@ -166,8 +163,11 @@ sub is_aligned {
     $self->is_dkim_aligned;
     $self->is_spf_aligned;
 
-    return 1 if 'pass' eq $self->result->evaluated->spf
-             || 'pass' eq $self->result->evaluated->dkim;
+    if (    'pass' eq $self->result->evaluated->spf
+         || 'pass' eq $self->result->evaluated->dkim ) {
+        $self->result->evaluated->result('pass');
+        return 1;
+    };
     return 0;
 };
 
@@ -228,7 +228,10 @@ sub is_dkim_aligned {
 
 sub is_spf_aligned {
     my $self = shift;
-    my $spf_dom = shift || $self->spf->{domain};
+    my $spf_dom = shift;
+    if ( ! $spf_dom && ! $self->spf ) { croak "missing SPF!"; };
+    $spf_dom = $self->spf->{domain} if ! $spf_dom;
+    $spf_dom or croak "missing SPF domain";
 
     if ( ! $spf_dom ) {
         $self->result->evaluated->spf('fail');
@@ -253,6 +256,12 @@ sub is_spf_aligned {
         return 1;
     }
     return 0;
+};
+
+sub is_subdomain {
+    return $_[0]->{is_subdomain} if 1 == scalar @_;
+    croak "invalid boolean" if 0 == grep {/^$_[1]$/ix} qw/ 0 1/;
+    return $_[0]->{is_subdomain} = $_[1];
 };
 
 sub has_valid_reporting_uri {
@@ -319,7 +328,7 @@ sub exists_in_dns {
     my @todo = $from_dom;
     if ( $from_dom ne $org_dom ) {
         push @todo, $org_dom;
-        $self->{is_subdomain}++;
+        $self->is_subdomain(1);
     };
     my $matched = 0;
     foreach ( @todo ) {
@@ -341,7 +350,7 @@ sub fetch_dmarc_record {
     # 1.  Mail Receivers MUST query the DNS for a DMARC TXT record at the
     #     DNS domain matching the one found in the RFC5322.From domain in
     #     the message. A possibly empty set of records is returned.
-    $self->{is_subdomain} = defined $org_dom ? 0 : 1;
+    $self->is_subdomain( defined $org_dom ? 0 : 1 );
     my @matches = ();
     my $res = $self->dns->get_resolver();
     my $query = $res->send('_dmarc.' . $zone, 'TXT') or return \@matches;

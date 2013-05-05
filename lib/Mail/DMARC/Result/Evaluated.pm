@@ -59,6 +59,13 @@ sub reason {
     return $_[0]->{reason} = $_[1];
 };
 
+sub result {
+    return $_[0]->{result} if 1 == scalar @_;
+    croak "invalid result" if 0 == grep {/^$_[1]$/ix} qw/ pass fail /;
+    return $_[0]->{result} = $_[1];
+};
+
+
 1;
 
 __END__

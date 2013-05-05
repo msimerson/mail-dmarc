@@ -10,8 +10,12 @@ use Mail::DMARC::Result::Evaluated;
 
 sub published {
     my ($self, $policy) = @_;
-    if ( ! $policy && ! defined $self->{published} ) {
-        croak "no policy discovered. Did you validate(), or at least fetch_dmarc_record() first? Or inspected evaluated results to detect a 'No Results Found' type error?";
+
+    if ( ! $policy ) {
+        if ( ! defined $self->{published} ) {
+            croak "no policy discovered. Did you validate(), or at least fetch_dmarc_record() first? Or inspected evaluated results to detect a 'No Results Found' type error?";
+        };
+        return $self->{published};
     };
 
     $policy->{domain} or croak "tag the policy object with a domain indicating where the DMARC record was found!";

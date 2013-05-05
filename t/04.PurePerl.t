@@ -35,7 +35,7 @@ test_is_spf_aligned();
 test_is_dkim_aligned();
 test_is_aligned();
 test_discover_policy();
-#test_validate();
+test_validate();
 
 # has_valid_reporting_uri
 # external_report
@@ -45,7 +45,13 @@ done_testing();
 exit;
 
 sub test_discover_policy {
-    my $policy = $dmarc->discover_policy('mail-dmarc.tnpi.net');
+    $dmarc->init();
+    $dmarc->header_from('mail-dmarc.tnpi.net');
+    my $policy = $dmarc->discover_policy;
+    ok( $policy, "discover_policy") or do {
+        diag Data::Dumper::Dumper($dmarc->result->evaluated);
+        return;
+    };
     $policy->apply_defaults;
     is_deeply( $policy, { %test_policy,
             aspf => 'r',          # $pol->new adds the defaults that are
@@ -137,6 +143,7 @@ sub test_is_aligned {
 
 sub test_validate {
 # TODO: test various failure modes and results
+
 };
 
 sub test_exists_in_dns {

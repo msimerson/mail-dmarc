@@ -122,6 +122,7 @@ sub is_valid_rf {
 
 sub is_valid_p {
     my ($self, $p) = @_;
+    croak "unspecified p" if ! defined $p;
     return (grep {/^$p$/i} qw/ none reject quarantine /) ? 1 : 0;
 };
 

@@ -6,8 +6,6 @@ use warnings;
 use Carp;
 
 use Mail::DMARC::DNS;
-use Mail::DMARC::Policy;
-use Mail::DMARC::Result;
 
 =head1 SYNOPSIS
 
@@ -83,7 +81,11 @@ sub spf {
     };
 
     croak "invalid arguments" if @args % 2 != 0;
-    return $self->{spf} = { @args };
+    $self->{spf} = { @args };
+    if ( $self->{spf}{result} eq 'pass' && ! $self->{spf}{result} ) {
+        croak "SPF pass MUST include the RFC5321.MailFrom domain!";
+    };
+    return $self->{spf};
 };
 
 sub inputs {
@@ -96,14 +98,16 @@ sub inputs {
 };
 
 sub policy {
-    my $self = shift;
-    $self->{policy} ||= Mail::DMARC::Policy->new();
-    return $self->{policy};
+    my ($self, @args) = @_;
+    return $self->{policy} if scalar @args == 0 && ref $self->{policy};
+    require Mail::DMARC::Policy;
+    return $self->{policy} = Mail::DMARC::Policy->new(@args);
 };
 
 sub result {
     my $self = shift;
     return $self->{result} if ref $self->{result};
+    require Mail::DMARC::Result;
     $self->{result} = Mail::DMARC::Result->new();
     return $self->{result};
 };
@@ -118,6 +122,13 @@ sub is_valid_domain {
     my ($self, $domain) = @_;
     $self->{dns} ||= Mail::DMARC::DNS->new();
     return $self->{dns}->is_valid_domain($domain);
+};
+
+sub validate {
+    my $self = shift;
+    return $self->{pp} if ref $self->{pp};
+    require Mail::DMARC::PurePerl;
+    return $self->{pp} = Mail::DMARC::PurePerl->new();
 };
 
 1;
