@@ -223,6 +223,7 @@ sub is_dkim_aligned {
         };
     };
     return 1 if 'pass' eq $self->result->evaluated->dkim;
+    $self->result->evaluated->dkim('fail');  # any result that is not pass
     return;
 };
 
@@ -247,7 +248,10 @@ sub is_spf_aligned {
     }
 
     # don't try relaxed match if strict policy requested
-    return 0 if ($self->policy->aspf && lc $self->policy->aspf eq 's' );
+    if ($self->policy->aspf && lc $self->policy->aspf eq 's' ) {
+        $self->result->evaluated->spf('fail');
+        return 0;
+    };
 
     if (     $self->get_organizational_domain( $spf_dom )
           eq $self->get_organizational_domain( $from_dom ) ) {
@@ -255,6 +259,7 @@ sub is_spf_aligned {
         $self->result->evaluated->spf_align('relaxed');
         return 1;
     }
+    $self->result->evaluated->spf('fail');
     return 0;
 };
 

@@ -73,17 +73,44 @@ sub {}
 
 =head1 OVERVIEW
 
-An evaluated DMARC result returns a data structure like this:
+An evaluated DMARC result looks like the following data structure:
 
-    disposition => '',   # reject, quarantine, none
-    dkim        => '',   # pass, fail
-    spf         => '',   # pass, fail
-    reason      => {
-        type =>  '',     # forwarded, sampled_out, trusted_forwarder,
-        comment => '',   #   mailing_list, local_policy, other
+    disposition  => 'none',   # reject, quarantine, none
+    dkim         => 'pass',   # pass, fail
+    spf          => 'pass',   # pass, fail
+    result       => 'pass',   # pass, fail
+    reason       => {
+        type     => '',       # forwarded, sampled_out, trusted_forwarder,
+        comment  => '',       #   mailing_list, local_policy, other
     },
+    dkim_align   => 'strict', # strict, relaxed
+    spf_align    => 'strict', # strict, relaxed
 
 The reason and comment fields are optional and may not be present.
+
+The _align fields will only be present if the corresponding field is pass.
+
+=head1 METHODS
+
+=head2 disposition
+
+When the DMARC result is not I<pass>, disposition is the results of applying DMARC policy to a message. Generally this is the same as the header_from domains published DMARC policy. When it is not, the reason SHOULD be specified.
+
+=head2 dkim
+
+Whether the message passed or failed DKIM alignment. In order to pass the DMARC DKIM alignment test, a DKIM signature that matches the RFC5322.From domain must be present. An unsigned messsage, a message with an invalid signature, or signatures that don't match the RFC5322.From field are all considered failures.
+
+=head2 dkim_align
+
+If the message passed the DKIM alignment test, this indicates whether the alignment was strict or relaxed.
+
+=head2 spf
+
+Whether the message passed or failed SPF alignment.
+
+=head2 spf_align
+
+If the message passed the SPF alignment test, this indicates whether the alignment was strict or relaxed.
 
 =head2 reason
 
@@ -102,5 +129,9 @@ The following reason types are defined:
     mailing_list
     local_policy
     other
+
+=head2 result
+
+Whether the message passed the DMARC test. In order to pass, at least one of the defined authentication alignments must pass. At present (in 2013) the defined alignments are DKIM and SPF. Possible values are: pass, fail.
 
 =cut

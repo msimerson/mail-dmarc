@@ -29,3 +29,17 @@ sub evaluated {
 };
 
 1;
+
+__END__
+
+=head1 METHDS
+
+=head2 published
+
+Published is a L<Mail::DMARC::Policy> object with one extra attribute: domain. The domain attribute is the DNS domain name where the DMARC record was found.
+
+=head2 evaluated
+
+The B<evaluated> method is L<Mail::DMARC::Result::Evaluated> object. See the man page for that method for details.
+
+=cut
