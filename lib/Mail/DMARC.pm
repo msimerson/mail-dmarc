@@ -148,14 +148,25 @@ L<Mail::DMARC::Policy|lib/Mail/DMARC/Policy.pm> - a DMARC record in object forma
 
 L<Mail::DMARC::PurePerl|lib/Mail/DMARC/PurePerl.pm> - a DMARC implementation
 
-* L<Mail::DMARC::Report|lib/Mail/DMARC/Report.pm>
-* L<Mail::DMARC::Report::AFRF|lib/Mail/DMARC/Report/AFRF.pm>
-* L<Mail::DMARC::Report::IODEF|lib/Mail/DMARC/Report/IODEF.pm>
+=over 4
+
+=item L<Mail::DMARC::Report|lib/Mail/DMARC/Report.pm>
+
+=item L<Mail::DMARC::Report::AFRF|lib/Mail/DMARC/Report/AFRF.pm>
+
+=item L<Mail::DMARC::Report::IODEF|lib/Mail/DMARC/Report/IODEF.pm>
+
+=back
 
 L<Mail::DMARC::URI|lib/Mail/DMARC/URI.pm> - a DMARC reporting URI
 
-* L<Mail::DMARC::Result|lib/Mail/DMARC/Result.pm>
-* L<Mail::DMARC::Result::Evaluated|lib/Mail/DMARC/Result/Evaluated.pm>
+=over 4
+
+=item L<Mail::DMARC::Result|lib/Mail/DMARC/Result.pm>
+
+=item L<Mail::DMARC::Result::Evaluated|lib/Mail/DMARC/Result/Evaluated.pm>
+
+=back
 
 L<Mail::DMARC::libopendmarc|http://search.cpan.org/~shari/Mail-DMARC-opendmarc> - an XS implementation using libopendmarc
 
@@ -165,7 +176,7 @@ Determine if:
 
     a. the header_from domain exists
     b. the header_from domain publishes a DMARC policy
-    c. if a policy is found, does the message conform?
+    c. does the message conform to the published policy?
 
 =head1 METHODS
 

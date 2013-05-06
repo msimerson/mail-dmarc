@@ -14,14 +14,14 @@ A reliable means to authenticate who mail is from, at internet scale.
 
 [Mail::DMARC::PurePerl](http://search.cpan.org/perldoc?lib#Mail/DMARC/PurePerl.pm) - a DMARC implementation
 
-\* [Mail::DMARC::Report](http://search.cpan.org/perldoc?lib#Mail/DMARC/Report.pm)
-\* [Mail::DMARC::Report::AFRF](http://search.cpan.org/perldoc?lib#Mail/DMARC/Report/AFRF.pm)
-\* [Mail::DMARC::Report::IODEF](http://search.cpan.org/perldoc?lib#Mail/DMARC/Report/IODEF.pm)
+- [Mail::DMARC::Report](http://search.cpan.org/perldoc?lib#Mail/DMARC/Report.pm)
+- [Mail::DMARC::Report::AFRF](http://search.cpan.org/perldoc?lib#Mail/DMARC/Report/AFRF.pm)
+- [Mail::DMARC::Report::IODEF](http://search.cpan.org/perldoc?lib#Mail/DMARC/Report/IODEF.pm)
 
 [Mail::DMARC::URI](http://search.cpan.org/perldoc?lib#Mail/DMARC/URI.pm) - a DMARC reporting URI
 
-\* [Mail::DMARC::Result](http://search.cpan.org/perldoc?lib#Mail/DMARC/Result.pm)
-\* [Mail::DMARC::Result::Evaluated](http://search.cpan.org/perldoc?lib#Mail/DMARC/Result/Evaluated.pm)
+- [Mail::DMARC::Result](http://search.cpan.org/perldoc?lib#Mail/DMARC/Result.pm)
+- [Mail::DMARC::Result::Evaluated](http://search.cpan.org/perldoc?lib#Mail/DMARC/Result/Evaluated.pm)
 
 [Mail::DMARC::libopendmarc](http://search.cpan.org/~shari/Mail-DMARC-opendmarc) - an XS implementation using libopendmarc
 
@@ -31,7 +31,7 @@ Determine if:
 
     a. the header_from domain exists
     b. the header_from domain publishes a DMARC policy
-    c. if a policy is found, does the message conform?
+    c. does the message conform to the published policy?
 
 # METHODS
 
