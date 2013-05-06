@@ -74,6 +74,8 @@ sub get_resolver {
 
 sub is_valid_ip {
     my ($self, $ip) = @_;
+
+# If Regexp::Common proves problematic, Net::IP is a GREAT way to validate IPs
     if ( $ip =~ /:/ ) {
         return 1 if $ip =~ /^$RE{net}{IPv6}$/x;
         return 0;
@@ -96,6 +98,8 @@ sub is_valid_domain {
 
 1;
 # ABSTRACT: DNS functions for DMARC
+__END__
+sub {}
 
 =head1 METHODS
 
