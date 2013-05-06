@@ -37,9 +37,13 @@ sub validate {
     #   3.  Perform DKIM signature verification checks.  A single email may
     #       contain multiple DKIM signatures.  The results MUST include the
     #       value of the "d=" tag from all DKIM signatures that validated.
+    $self->is_dkim_aligned;
+
     #   4.  Perform SPF validation checks.  The results of this step
     #       MUST include the domain name from the RFC5321.MailFrom if SPF
     #       evaluation returned a "pass" result.
+    $self->is_spf_aligned;
+
     #   5.  Conduct identifier alignment checks.
     $self->is_aligned() and return 1;
 
@@ -159,9 +163,6 @@ sub is_aligned {
     #   DMARC has no "short-circuit" provision, such as specifying that a
     #   pass from one authentication test allows one to skip the other(s).
     #   All are required for reporting.
-
-    $self->is_dkim_aligned;
-    $self->is_spf_aligned;
 
     if (    'pass' eq $self->result->evaluated->spf
          || 'pass' eq $self->result->evaluated->dkim ) {
