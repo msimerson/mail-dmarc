@@ -14,23 +14,141 @@ my $result = Mail::DMARC::Result->new;
 
 isa_ok( $result, 'Mail::DMARC::Result' );
 
+my $test_dom = 'tnpi.net';
 test_published();
 test_evaluated();
 
 done_testing();
 exit;
 
+sub _test_pass_strict {
+    $pp->init();
+    $pp->header_from( $test_dom );
+    $pp->dkim([{ domain => $test_dom, result=>'pass', selector=> 'apr2013' }]);
+    $pp->spf({ domain => $test_dom, result=>'pass' });
+    $pp->validate();
+    is_deeply( $pp->result->evaluated, {
+        'dkim_meta' => {
+            'domain' => 'tnpi.net',
+            'identity' => '',
+            'selector' => 'apr2013',
+        },
+        'dkim_align' => 'strict',
+        'spf_align' => 'strict',
+        'dkim' => 'pass',
+        'spf' => 'pass',
+        'result' => 'pass'
+        },
+        "evaluated, pass, strict, $test_dom")
+        or diag Data::Dumper::Dumper($pp->result);
+};
+
+sub _test_pass_relaxed {
+    $pp->init();
+    $pp->header_from( "www.$test_dom" );
+    $pp->dkim([{ domain => $test_dom, result=>'pass', selector=> 'apr2013' }]);
+    $pp->spf({ domain => $test_dom, result=>'pass' });
+    $pp->validate();
+    is_deeply( $pp->result->evaluated, {
+        'dkim_meta' => {
+            'domain' => 'tnpi.net',
+            'identity' => '',
+            'selector' => 'apr2013',
+        },
+        'dkim_align' => 'relaxed',
+        'spf_align' => 'relaxed',
+        'dkim' => 'pass',
+        'spf' => 'pass',
+        'result' => 'pass'
+        },
+        "evaluated, pass, relaxed, $test_dom")
+        or diag Data::Dumper::Dumper($pp->result);
+};
+
+sub _test_fail_strict {
+    my $pol = shift || 'reject';
+    $pp->init();
+    my $from_dom = "www.$test_dom";
+    $pp->header_from( $from_dom );
+    $pp->dkim([{ domain => $test_dom, result=>'pass', selector=> 'apr2013' }]);
+    $pp->spf({ domain => $test_dom, result=>'pass' });
+
+    my $policy = $pp->policy->parse( "v=DMARC1; p=$pol; aspf=s; adkim=s" );
+    $policy->{domain} = $from_dom;
+    $pp->result->published($policy);
+    $pp->{policy} = $policy;
+    $pp->validate($policy);
+
+    ok( ! $pp->is_dkim_aligned, "is_dkim_aligned, neg");
+    ok( ! $pp->is_spf_aligned, "is_spf_aligned, neg");
+    ok( ! $pp->is_aligned(), "is_aligned, neg");
+    is_deeply( $pp->result->evaluated, {
+        'disposition' => $pol,
+        'dkim'   => 'fail',
+        'spf'    => 'fail',
+        'result' => 'fail',
+        },
+        "evaluated, fail, strict, $test_dom")
+        or diag Data::Dumper::Dumper($pp->result);
+};
+
+sub _test_fail_sampled_out {
+    my $pol = 'reject';
+    $pp->init();
+    my $from_dom = "www.$test_dom";
+    $pp->header_from( $from_dom );
+    $pp->dkim([{ domain => $test_dom, result=>'pass', selector=> 'apr2013' }]);
+    $pp->spf({ domain => $test_dom, result=>'pass' });
+
+    my $policy = $pp->policy->parse( "v=DMARC1; p=$pol; aspf=s; adkim=s; pct=0" );
+    $policy->{domain} = $from_dom;
+    $pp->result->published($policy);
+    $pp->{policy} = $policy;
+    $pp->validate($policy);
+
+    ok( ! $pp->is_dkim_aligned, "is_dkim_aligned, neg");
+    ok( ! $pp->is_spf_aligned, "is_spf_aligned, neg");
+    ok( ! $pp->is_aligned(), "is_aligned, neg");
+    is_deeply( $pp->result->evaluated, {
+        'disposition' => 'none',
+        'dkim'   => 'fail',
+        'spf'    => 'fail',
+        'reason' => { 'type' => 'sampled_out' },
+        'result' => 'fail',
+        },
+        "evaluated, fail, strict, sampled out, $test_dom")
+        or diag Data::Dumper::Dumper($pp->result);
+};
+
+sub _test_fail_nonexist {
+    $pp->init();
+    $pp->{header_from} = 'host.nonexistent-tld';  # the ->header_from method would validate
+    $pp->validate();
+    is_deeply( $pp->result->evaluated, {
+            'result' => 'fail',
+            'disposition' => 'reject',
+            'dkim' => '',
+            'spf'  => '',
+            'reason' => {
+                'comment' => 'host.nonexistent-tld not in DNS',
+                'type' => 'other',
+            },
+        },
+        "evaluated, fail, nonexist")
+        or diag Data::Dumper::Dumper($pp->result);
+};
+
 sub test_published {
-
-    $pp->header_from('tnpi.net');
-    $pp->dkim([{ domain => 'tnpi.net', result=>'pass' }]);
-    $pp->spf({ domain => 'tnpi.net', result=>'pass' });
-
-    ok( $pp->validate(), "validate");
-    ok( $pp->result->published(), "published");
+    _test_pass_strict();
+    _test_pass_relaxed();
+    _test_fail_strict('reject');
+    _test_fail_strict('none');
+    _test_fail_strict('quarantine');
+    _test_fail_sampled_out();
+    _test_fail_nonexist();
 };
 
 sub test_evaluated {
-
     ok( $result->evaluated(), "evaluated");
 };
+

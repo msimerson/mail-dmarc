@@ -48,6 +48,7 @@ sub validate {
     #        disposed of in accordance with the discovered DMARC policy of the
     #        Domain Owner.  See Section 6.2 for details.
     if ( lc $effective_p eq 'none' ) {
+        $self->result->evaluated->disposition('none');
         return;
     };
 
