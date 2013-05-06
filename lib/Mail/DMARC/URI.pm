@@ -1,10 +1,65 @@
 package Mail::DMARC::URI;
-# ABSTRACT: a DMARC reporting URI
 use strict;
 use warnings;
 
+use Carp;
+use URI;
+
+use parent 'Mail::DMARC';
+
+sub is_valid {
+    my ($self, $str) = @_;
+
+    foreach my $raw ( split /,/, $str ) {
+        my ($u, $size_f) = split /!/, $raw;
+        my $bytes = $self->get_size_limit($size_f);
+        if ( 'mailto:' eq lc substr($u, 0, 7) ) {
+            print "mailto!\n";
+            next;
+        };
+        if ( $u =~ /^http(s)?:/ ) {
+            print "http!\n";
+            next;
+        };
+        croak "invalid URI: $u";
+    };
+    return 1;
+};
+
+sub get_size_limit {
+    my ($self, $size) = @_;
+    return 0 if ! defined $size;       # no limit
+    return $size if $size =~ /^\d+$/;  # no units, raw byte count
+
+# 6.3 Formal Definition
+# units are considered to be powers of two; a kilobyte is 2^10, a megabyte is 2^20,
+    my $unit = lc substr $size, -1, 1;
+    return substr($size, 0, -1) * (2 ** 10) if 'k' eq $unit;
+    return substr($size, 0, -1) * (2 ** 20) if 'm' eq $unit;
+    return substr($size, 0, -1) * (2 ** 30) if 'g' eq $unit;
+    return substr($size, 0, -1) * (2 ** 40) if 't' eq $unit;
+    croak "unrecognized unit ($unit) in size ($size)";
+};
 
 1;
+# ABSTRACT: a DMARC reporting URI
+__END__
+sub {}
+
+=head1 ABNF
+
+  dmarc-uri = URI [ "!" 1*DIGIT [ "k" / "m" / "g" / "t" ] ]
+            ; "URI" is imported from [URI]; commas (ASCII 0x2c)
+            ; and exclamation points (ASCII 0x21) MUST be encoded
+
+URI is imported from RFC 3986: https://www.ietf.org/rfc/rfc3986.txt
+
+Only mailto, http, and https URIs are currently supported, examples:
+
+    https://www.ietf.org/rfc/rfc3986.txt
+    mailto:John.Doe@example.com
+
+With an optional size limit (see SIZE LIMIT).
 
 =head1 SIZE LIMIT
 
