@@ -1,6 +1,4 @@
 package Mail::DMARC::PurePerl;
-# ABSTRACT: a perl implementation of DMARC
-
 use strict;
 use warnings;
 
@@ -429,3 +427,41 @@ sub verify_external_reporting {
 }
 
 1;
+# ABSTRACT: a perl implementation of DMARC
+__END__
+
+=head1 METHODS
+
+=head2 init
+
+Resets the Mail::DMARC object, preparing it for a fresh request.
+
+=head2 validate
+
+=head2 discover_policy
+
+=head2 is_aligned
+
+=head2 is_dkim_aligned
+
+=head2 is_spf_aligned
+
+=head2 is_subdomain
+
+=head2 has_valid_reporting_uri
+
+=head2 get_organizational_domain
+
+=head2 exists_in_dns
+
+=head2 fetch_dmarc_record
+
+=head2 get_from_dom
+
+=head2 get_dom_from_header
+
+=head2 external_report
+
+=head2 verify_external_reporting
+
+=cut

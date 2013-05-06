@@ -1,5 +1,4 @@
 package Mail::DMARC::Result::Evaluated;
-# ABSTRACT: the results of applying a DMARC policy
 use strict;
 use warnings;
 
@@ -65,9 +64,8 @@ sub result {
     return $_[0]->{result} = $_[1];
 };
 
-
 1;
-
+# ABSTRACT: the results of applying a DMARC policy
 __END__
 sub {}
 

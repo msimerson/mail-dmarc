@@ -1,7 +1,11 @@
 package Mail::DMARC::Report;
-# ABSTRACT: A DMARC report object
 use strict;
 use warnings;
+
+
+1;
+# ABSTRACT: A DMARC report object
+__END__
 
 =head1 SYNOPSIS
 

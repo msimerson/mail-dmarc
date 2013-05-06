@@ -1,6 +1,4 @@
 package Mail::DMARC::Policy;
-# ABSTRACT: a DMARC policy in object format
-
 use strict;
 use warnings;
 
@@ -138,7 +136,7 @@ sub is_valid {
 };
 
 1;
-
+# ABSTRACT: a DMARC policy in object format
 __END__
 sub {}
 

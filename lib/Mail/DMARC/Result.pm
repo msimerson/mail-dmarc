@@ -1,5 +1,4 @@
 package Mail::DMARC::Result;
-# ABSTRACT: DMARC processing results
 use strict;
 use warnings;
 
@@ -29,7 +28,7 @@ sub evaluated {
 };
 
 1;
-
+# ABSTRACT: DMARC processing results
 __END__
 
 =head1 METHDS

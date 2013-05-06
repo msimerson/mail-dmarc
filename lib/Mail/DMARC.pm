@@ -1,19 +1,10 @@
 package Mail::DMARC;
-# ABSTRACT: Perl implementation of DMARC
 use strict;
 use warnings;
 
 use Carp;
 
 use Mail::DMARC::DNS;
-
-=head1 SYNOPSIS
-
-DMARC: Domain-based Message Authentication, Reporting and Conformance
-
-A reliable means to authenticate who mail is from, at internet scale.
-
-=cut
 
 sub new {
     my ($class, @args) = @_;
@@ -134,9 +125,15 @@ sub validate {
 };
 
 1;
-
+# ABSTRACT: Perl implementation of DMARC
 __END__
 sub {}  # for vim automatic code folding
+
+=head1 SYNOPSIS
+
+DMARC: Domain-based Message Authentication, Reporting and Conformance
+
+A reliable means to authenticate who mail is from, at internet scale.
 
 =head1 CLASSES
 
