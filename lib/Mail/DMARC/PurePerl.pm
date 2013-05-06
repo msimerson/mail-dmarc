@@ -22,13 +22,14 @@ sub init {
 
 sub validate {
     my $self = shift;
+    my $policy = shift;
 
     my $from_dom = $self->get_from_dom()   # 11.2.1 Extract RFC5322.From domain
         or return;
     $self->exists_in_dns()         # 9.6. Receivers should reject email if
         or return;                 #      the domain appears to not exist
-    my $policy = $self->discover_policy() # 11.2.2 Query DNS for DMARC policy
-        or return;
+    $policy ||= $self->discover_policy();# 11.2.2 Query DNS for DMARC policy
+    $policy or return;
 
 #   3.5 Out of Scope  DMARC has no "short-circuit" provision, such as
 #         specifying that a pass from one authentication test allows one
@@ -161,7 +162,7 @@ sub is_dkim_aligned {
     my $from_org  = $self->get_organizational_domain();
 
 # Required in report: DKIM-Domain, DKIM-Identity, DKIM-Selector
-    foreach my $dkim_ref ( $self->get_dkim_aligned_sigs() ) {
+    foreach my $dkim_ref ( $self->get_dkim_pass_sigs() ) {
         my $dkim_dom = $dkim_ref->{domain};
         my $dkmeta = {
             domain   => $dkim_ref->{domain},
@@ -174,6 +175,7 @@ sub is_dkim_aligned {
 
         if ($dkim_dom eq $from_dom) { # strict alignment requires exact match
             $self->result->evaluated->dkim('pass');
+            $self->result->evaluated->dkim_align('strict');
             $self->result->evaluated->dkim_meta( $dkmeta );
             last;
         }
@@ -188,6 +190,7 @@ sub is_dkim_aligned {
         my $dkim_org = $self->get_organizational_domain($dkim_dom);
         if ( $dkim_org eq $from_org ) {
             $self->result->evaluated->dkim('pass');
+            $self->result->evaluated->dkim_align('relaxed');
             $self->result->evaluated->dkim_meta( $dkmeta );
         };
     };
@@ -248,7 +251,7 @@ sub has_valid_reporting_uri {
     return 0;
 }
 
-sub get_dkim_aligned_sigs {
+sub get_dkim_pass_sigs {
     my $self = shift;
 
     my $dkim_sigs = $self->dkim or croak "missing dkim!";
@@ -256,12 +259,7 @@ sub get_dkim_aligned_sigs {
         croak "dkim needs to be an array reference!";
     };
 
-    my @dkim_pass_doms = grep {
-               $_->{result} eq 'pass'
-            && $_->{domain} eq $self->header_from,
-    } @$dkim_sigs;
-
-    return @dkim_pass_doms;
+    return grep { $_->{result} eq 'pass' } @$dkim_sigs;
 };
 
 sub get_organizational_domain {
