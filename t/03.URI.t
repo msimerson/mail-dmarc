@@ -11,7 +11,7 @@ my $uri = Mail::DMARC::URI->new;
 isa_ok( $uri, 'Mail::DMARC::URI' );
 
 test_get_size_limit();
-test_is_valid();
+test_parse();
 
 done_testing();
 exit;
@@ -28,7 +28,7 @@ sub test_get_size_limit {
     };
 };
 
-sub test_is_valid {
+sub test_parse {
     my @good = (
         'http://www.example.com/dmarc-feedback',
         'https://www.example.com/dmarc-feedback',
@@ -37,6 +37,8 @@ sub test_is_valid {
         );
 
     foreach ( @good ) {
-        ok( $uri->is_valid($_), "is_valid, $_" );
+        my $uris = $uri->parse($_);
+        ok( $uris, "parse, $_" );
+        ok( scalar @$uris, "parse, count " . scalar @$uris);
     };
 };

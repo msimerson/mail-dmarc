@@ -47,8 +47,8 @@ sub test_setter_values {
             adkim  => [ qw/ r s R S / ],
             aspf   => [ qw/ r s R S / ],
             fo     => [ qw/ 0 1 d s D S / ],
-#TODO       rua    =>
-#TODO       ruf    =>
+            rua    => [ qw{ http://example.com/pub/dmarc!30m mailto:dmarc-feed@example.com!10m } ],
+            ruf    => [ qw{ https://example.com/dmarc?report!1m } ],
             rf     => [ qw/ iodef afrf IODEF AFRF / ],
             ri     => [ 0, 1, 1000, 4294967295 ],
             pct    => [ 0, 10, 50, 99, 100 ],
@@ -67,8 +67,8 @@ sub test_setter_values {
             adkim  => [ qw/ relaxed strict / ],
             aspf   => [ qw/ relaxed strict / ],
             fo     => [ qw/ 00 11 dd ss / ],
-#TODO       rua    =>
-#TODO       ruf    =>
+            rua    => [ qw{ ftp://example.com/pub torrent://piratebay.net/dmarc } ],
+            ruf    => [ qw{ mail:msimerson@cnap.org } ],
             rf     => [ qw/ iodef2 rfrf2 rfrf / ],
             ri     => [ -1, 'a', 4294967296 ],
             pct    => [ -1, 'f', 101, 1.1, '1.0', '5.f1' ],

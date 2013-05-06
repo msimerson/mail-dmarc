@@ -4,6 +4,8 @@ use warnings;
 
 use Carp;
 
+use Mail::DMARC::URI;
+
 sub new {
     my ($class, @args) = @_;
     my $package = ref $class ? ref $class : $class;
@@ -79,15 +81,14 @@ sub fo {
 
 sub rua {
     return $_[0]->{rua} if 1 == scalar @_;
+    croak "invalid rua" if ! $_[0]->is_valid_uri_list( $_[1] );
     return $_[0]->{rua} = $_[1];
-#TODO: validate as comma spaced list of URIs
 };
-
 
 sub ruf {
     return $_[0]->{ruf} if 1 == scalar @_;
+    croak "invalid rua" if ! $_[0]->is_valid_uri_list( $_[1] );
     return $_[0]->{ruf} = $_[1];
-#TODO: validate as comma spaced list of URIs
 };
 
 sub rf {
@@ -122,6 +123,13 @@ sub is_valid_p {
     my ($self, $p) = @_;
     croak "unspecified p" if ! defined $p;
     return (grep {/^$p$/i} qw/ none reject quarantine /) ? 1 : 0;
+};
+
+sub is_valid_uri_list {
+    my ($self, $str) = @_;
+    $self->{uri} ||= Mail::DMARC::URI->new;
+    my $uris = $self->{uri}->parse( $str );
+    return scalar @$uris;
 };
 
 sub is_valid {

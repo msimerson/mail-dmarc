@@ -1,4 +1,8 @@
 
+{{$NEXT}}
 
+ - added Result and Result/Evaluated.pm
+ - consolidated DNS functions into DNS.pm
+   - uses Regexp::Common, requiring perl 5.10.
  - Mail::DMARC::Policy is well defined and tested
  - setting up package
