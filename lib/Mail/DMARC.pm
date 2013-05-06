@@ -140,31 +140,31 @@ sub {}  # for vim automatic code folding
 
 =head1 CLASSES
 
-L<Mail::DMARC|lib/Mail/DMARC.pm> - A perl implementation of the DMARC draft
+L<Mail::DMARC> - A perl implementation of the DMARC draft
 
-L<Mail::DMARC::DNS|lib/Mail/DMARC/DNS.pm> - DNS functions used in DMARC
+L<Mail::DMARC::DNS> - DNS functions used in DMARC
 
-L<Mail::DMARC::Policy|lib/Mail/DMARC/Policy.pm> - a DMARC record in object format
+L<Mail::DMARC::Policy> - a DMARC record in object format
 
-L<Mail::DMARC::PurePerl|lib/Mail/DMARC/PurePerl.pm> - a DMARC implementation
+L<Mail::DMARC::PurePerl> - a DMARC implementation
 
 =over 4
 
-=item L<Mail::DMARC::Report|lib/Mail/DMARC/Report.pm>
+=item L<Mail::DMARC::Report>
 
-=item L<Mail::DMARC::Report::AFRF|lib/Mail/DMARC/Report/AFRF.pm>
+=item L<Mail::DMARC::Report::AFRF>
 
-=item L<Mail::DMARC::Report::IODEF|lib/Mail/DMARC/Report/IODEF.pm>
+=item L<Mail::DMARC::Report::IODEF>
 
 =back
 
-L<Mail::DMARC::URI|lib/Mail/DMARC/URI.pm> - a DMARC reporting URI
+L<Mail::DMARC::URI> - a DMARC reporting URI
 
 =over 4
 
-=item L<Mail::DMARC::Result|lib/Mail/DMARC/Result.pm>
+=item L<Mail::DMARC::Result>
 
-=item L<Mail::DMARC::Result::Evaluated|lib/Mail/DMARC/Result/Evaluated.pm>
+=item L<Mail::DMARC::Result::Evaluated>
 
 =back
 
