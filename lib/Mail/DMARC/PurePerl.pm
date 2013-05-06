@@ -23,11 +23,11 @@ sub init {
 sub validate {
     my $self = shift;
 
-    my $from_dom = $self->get_from_dom()   # 11.1.  Extract Author Domain
+    my $from_dom = $self->get_from_dom()   # 11.2.1 Extract RFC5322.From domain
         or return;
     $self->exists_in_dns()         # 9.6. Receivers should reject email if
         or return;                 #      the domain appears to not exist
-    my $policy = $self->discover_policy() # 11.2.  Determine Handling Policy
+    my $policy = $self->discover_policy() # 11.2.2 Query DNS for DMARC policy
         or return;
 
 #   3.5 Out of Scope  DMARC has no "short-circuit" provision, such as
@@ -455,14 +455,32 @@ Determine if a domain exists, reliably. The DMARC draft says:
   9.6 If the RFC5322.From domain does not exist in the DNS, Mail Receivers
       SHOULD direct the receiving SMTP server to reject the message {R9}.
 
-I went back to the DKIM ADSP (which led me to the ietf-dkim email list where
+And in Appendix A.4:
+
+   A common practice among MTA operators, and indeed one documented in
+   [ADSP], is a test to determine domain existence prior to any more
+   expensive processing.  This is typically done by querying the DNS for
+   MX, A or AAAA resource records for the name being evaluated, and
+   assuming the domain is non-existent if it could be determined that no
+   such records were published for that domain name.
+
+   The original pre-standardization version of this protocol included a
+   mandatory check of this nature.  It was ultimately removed, as the
+   method's error rate was too high without substantial manual tuning
+   and heuristic work.  There are indeed use cases this work needs to
+   address where such a method would return a negative result about a
+   domain for which reporting is desired, such as a registered domain
+   name that never sends legitimate mail and thus has none of these
+   records present in the DNS.
+
+I went back to the ADSP (which led me to the ietf-dkim email list where
 some 'experts' failed to agree on The Right Way to test domain validity. They
 pointed out: MX records aren't mandatory, and A or AAAA aren't reliable.
 
-Some experimentation proved both arguments in real world usage. I test for
-existence by searching for a MX, NS, A, or AAAA record. Since this search
-may be repeated for the Organizational Name, if the NS query fails, there's
-no delegation from the TLD. That has proven very reliable.
+Some experimentation proved both arguments in real world usage. This module
+tests for existence by searching for a MX, NS, A, or AAAA record. Since this
+search may be repeated for the Organizational Name, if the NS query fails,
+there is no delegation from the TLD. That has proven very reliable.
 
 =head2 fetch_dmarc_record
 

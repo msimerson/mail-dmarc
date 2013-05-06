@@ -23,7 +23,8 @@ sub parse {
             push @valids, { max_bytes => $bytes, uri => $uri };
             next;
         };
-        croak "invalid URI: $u";
+# 12.1 Discovery - URI schemes found in "rua" tag that are not implemented by
+#                  a Mail Receiver MUST be ignored.
     };
     return \@valids;
 };
