@@ -29,12 +29,12 @@ sub test_get_size_limit {
 };
 
 sub test_is_valid {
-    my @good = qw[ 
-        http://www.example.com/dmarc-feedback
-        https://www.example.com/dmarc-feedback
-        mailto:dmarc@example.com
-        mailto:dmarc-feedback@example.com,mailto:tld-test@thirdparty.example.net!10m
-        ];
+    my @good = (
+        'http://www.example.com/dmarc-feedback',
+        'https://www.example.com/dmarc-feedback',
+        'mailto:dmarc@example.com',
+        'mailto:dmarc-feedback@example.com,mailto:tld-test@thirdparty.example.net!10m',
+        );
 
     foreach ( @good ) {
         ok( $uri->is_valid($_), "is_valid, $_" );

@@ -17,7 +17,7 @@ sub is_valid {
             print "mailto!\n";
             next;
         };
-        if ( $u =~ /^http(s)?:/ ) {
+        if ( $u =~ /^http(s)?:/x ) {
             print "http!\n";
             next;
         };
@@ -33,11 +33,11 @@ sub get_size_limit {
 
 # 6.3 Formal Definition
 # units are considered to be powers of two; a kilobyte is 2^10, a megabyte is 2^20,
-    my $unit = lc substr $size, -1, 1;
-    return substr($size, 0, -1) * (2 ** 10) if 'k' eq $unit;
-    return substr($size, 0, -1) * (2 ** 20) if 'm' eq $unit;
-    return substr($size, 0, -1) * (2 ** 30) if 'g' eq $unit;
-    return substr($size, 0, -1) * (2 ** 40) if 't' eq $unit;
+    my $unit = lc chop $size;
+    return $size * (2 ** 10) if 'k' eq $unit;
+    return $size * (2 ** 20) if 'm' eq $unit;
+    return $size * (2 ** 30) if 'g' eq $unit;
+    return $size * (2 ** 40) if 't' eq $unit;
     croak "unrecognized unit ($unit) in size ($size)";
 };
 
