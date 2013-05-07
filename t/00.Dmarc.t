@@ -40,7 +40,7 @@ done_testing();
 exit;
 
 sub test_spf {
-    ok( $dmarc->spf( domain => 'a.c', result => 'fail' ), "spf");
+    ok( $dmarc->spf( domain => 'a.c', scope=>'mfrom', result => 'fail' ), "spf");
 
     eval { $dmarc->spf( dom => 'foo', 'blah' ) };
     ok( $@, "spf, neg, $@");
