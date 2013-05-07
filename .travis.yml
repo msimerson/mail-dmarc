@@ -4,7 +4,7 @@ perl:
   - "5.14"
   - "5.12"
   - "5.10"
-  - "5.8"
+# 5.10 is the oldest perl on Travis-CI
 
 # Travis: http://blogs.perl.org/users/alex_balhatchet/2013/04/travis-ci-perl.html
 
