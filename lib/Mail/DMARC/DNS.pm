@@ -6,6 +6,7 @@ use warnings;
 use Carp;
 use IO::File;
 use Net::DNS::Resolver;
+use Net::IP;
 use Regexp::Common qw /net/;
 
 sub new {
@@ -77,12 +78,12 @@ sub is_valid_ip {
 
 # If Regexp::Common proves problematic, Net::IP is a GREAT way to validate IPs
     if ( $ip =~ /:/ ) {
-        return 1 if $ip =~ /^$RE{net}{IPv6}$/x;
-        return 0;
+        Net::IP->new( $ip, 6 ) or return 0;
+        return 1;
     };
 
-    return 1 if $ip =~ /^$RE{net}{IPv4}$/x;
-    return 0;
+    Net::IP->new( $ip, 4 ) or return 0;
+    return 1;
 };
 
 sub is_valid_domain {
