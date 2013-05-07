@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+0.20130507 2013-05-07 America/Los_Angeles
+
  - added sql and MySQL schema
  - added bin/dmarc_lookup
  - replaced Regexp::Common IP validation with Net::IP (perl 5.8 compat)
