@@ -1,0 +1,20 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Quotekeys = 0;
+
+use lib 'lib';
+use Mail::DMARC::PurePerl;
+
+my $domain = $ARGV[0] or die "
+    $0 domain.name\n\n";
+
+my $dmarc = Mail::DMARC::PurePerl->new;
+$dmarc->header_from($domain);
+my $policy = $dmarc->discover_policy();
+print Dumper( $policy ) and exit if $policy;
+
+print "no DMARC policy published for $domain\n";

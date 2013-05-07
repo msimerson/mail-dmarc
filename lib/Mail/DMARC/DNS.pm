@@ -76,7 +76,10 @@ sub get_resolver {
 sub is_valid_ip {
     my ($self, $ip) = @_;
 
-# If Regexp::Common proves problematic, Net::IP is a GREAT way to validate IPs
+# Using Regexp::Common removes perl 5.8 compat
+# Perl 5.008009 does not support the pattern $RE{net}{IPv6}.
+# You need Perl 5.01 or later at lib/Mail/DMARC/DNS.pm line 83.
+
     if ( $ip =~ /:/ ) {
         Net::IP->new( $ip, 6 ) or return 0;
         return 1;

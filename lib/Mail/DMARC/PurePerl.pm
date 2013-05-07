@@ -91,7 +91,8 @@ sub discover_policy {
     my $e = $self->result->evaluated;
 
     # 9.1  Mail Receivers MUST query the DNS for a DMARC TXT record
-    my $matches = $self->fetch_dmarc_record($from_dom, $org_dom) or return;
+    my $matches = $self->fetch_dmarc_record($from_dom, $org_dom);
+    return if 0 == scalar @$matches;
 
     # 9.5. If the remaining set contains multiple records, processing
     #      terminates and the Mail Receiver takes no action.
