@@ -73,26 +73,32 @@ sub {}
 
 An evaluated DMARC result looks like the following data structure:
 
-    disposition  => 'none',   # reject, quarantine, none
-    dkim         => 'pass',   # pass, fail
-    spf          => 'pass',   # pass, fail
     result       => 'pass',   # pass, fail
+    disposition  => 'none',   # reject, quarantine, none
     reason       => {
         type     => '',       # forwarded, sampled_out, trusted_forwarder,
         comment  => '',       #   mailing_list, local_policy, other
     },
+    dkim         => 'pass',   # pass, fail
     dkim_align   => 'strict', # strict, relaxed
+    spf          => 'pass',   # pass, fail
     spf_align    => 'strict', # strict, relaxed
 
-The reason and comment fields are optional and may not be present.
+The reason is optional and may not be present.
 
-The _align fields will only be present if the corresponding field is pass.
+The dkim_align and spf_align fields will only be present if the corresponding test value equals pass.
 
 =head1 METHODS
 
+=head2 result
+
+Whether the message passed the DMARC test. Possible values are: pass, fail.
+
+In order to pass, at least one of the defined authentication alignments must pass. At present (2013 Draft) the defined alignments are DKIM and SPF. The alignment list is expected to grow. 
+
 =head2 disposition
 
-When the DMARC result is not I<pass>, disposition is the results of applying DMARC policy to a message. Generally this is the same as the header_from domains published DMARC policy. When it is not, the reason SHOULD be specified.
+When the DMARC result is not I<pass>, disposition is the results of applying DMARC policy to a message. Generally this is the same as the header_from domains published DMARC L<policy|Mail::DMARC::Policy>. When it is not, the reason SHOULD be specified.
 
 =head2 dkim
 
@@ -104,7 +110,7 @@ If the message passed the DKIM alignment test, this indicates whether the alignm
 
 =head2 spf
 
-Whether the message passed or failed SPF alignment.
+Whether the message passed or failed SPF alignment. To pass SPF alignment, the RFC5321.MailFrom domain must match the RFC5322.From field.
 
 =head2 spf_align
 
@@ -127,9 +133,5 @@ The following reason types are defined:
     mailing_list
     local_policy
     other
-
-=head2 result
-
-Whether the message passed the DMARC test. In order to pass, at least one of the defined authentication alignments must pass. At present (in 2013) the defined alignments are DKIM and SPF. Possible values are: pass, fail.
 
 =cut

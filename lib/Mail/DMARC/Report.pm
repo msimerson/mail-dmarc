@@ -2,6 +2,83 @@ package Mail::DMARC::Report;
 use strict;
 use warnings;
 
+# Two Report Roles: receiver, and sender.
+# Can they use the same DB tables? Should they?
+#
+# Report receiver
+#  1. accept report via HTTP
+#     accept report via SMTP
+#  2. parse the XML message
+#  3. insert report into database
+#  4. a means to present reported data
+#
+# Report sender needs to:
+#  1. store reports
+#       open DB connection
+#       if a report for author_domain does not exist
+#          insert new report
+#       insert report record
+#
+#  2. bundle aggregated reports
+#  3. wrap the up in XML
+#  4. gzip the XML
+#  5. deliver report
+
+#   feedback => {
+#      version          => 1,  # decimal
+#      report_metadata  => {                # info about DMARC reporter
+#          report_id          => string
+#          org_name           => string     # Art Farm
+#          email              => string     # dmarc-report@theartfarm.com
+#          extra_contact_info => string     # min 0
+#          date_range         => {
+#              begin          => epoch time,
+#              end            => epoch time,
+#          },
+#          error              => string,   # min 0, max unbounded
+#      },
+#      policy_published => {
+#          domain =>   string
+#          adkim  =>   r, s
+#          aspf   =>   r, s
+#          p      =>   none, quarantine, reject
+#          sp     =>   none, quarantine, reject
+#          pct    =>   integer
+#      },
+#      record   => {
+#         row => {
+#            source_ip     =>   # IPAddress
+#            count         =>   # integer
+#            policy_evaluated => {       # min=0
+#               disposition =>           # none, quarantine, reject
+#               dkim        =>           # pass, fail
+#               spf         =>           # pass, fail
+#               reason      => {         # min 0, max unbounded
+#                   type    =>    # forwarded sampled_out ...
+#                   comment =>    # string, min 0
+#               },
+#           }
+#        },
+#        identifiers => {
+#            envelope_to    min=0
+#            envelope_from  min=1
+#            header_from    min=1
+#        },
+#        auth_results => {
+#            spf  =>  {        # min 1, max unbounded
+#                domain  =>    # min 1
+#                scope   =>    # helo, mfrom  -  min 1
+#                result  =>    # none neutral ...
+#            }                   # ( unknown -> temperror, error -> permerror )
+#            dkim   =>  {            # min 0, max unbounded
+#               domain       =>  ,   # the d= parameter in the signature
+#               selector     =>  ,   # min 0
+#               result       =>  ,   # none pass fail policy ...
+#               human_result =>      # min 0
+#            },
+#        },
+#     },
+#  };
 
 1;
 # ABSTRACT: A DMARC report object

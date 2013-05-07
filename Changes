@@ -1,6 +1,7 @@
 
 {{$NEXT}}
 
+ - added sql and MySQL schema
  - added bin/dmarc_lookup
  - replaced Regexp::Common IP validation with Net::IP (perl 5.8 compat)
  - added Results.pm tests

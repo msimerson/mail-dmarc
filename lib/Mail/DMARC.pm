@@ -92,6 +92,7 @@ sub inputs {
         backend       => 'perl', # perl or libopendmarc
         report_domain => 'great.co',
         report_org    => 'My Great Company',
+        local_policy  => ''     # with reason + comment?
     }
 };
 
