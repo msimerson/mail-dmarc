@@ -50,12 +50,11 @@ sub spf_align {
 };
 
 sub reason {
-    return $_[0]->{reason} if 1 == scalar @_;
-    croak "invalid reason" if 0 == grep {$_[1]->{type} eq $_} 
-        qw/ forwarded sampled_out trusted_forwarder
-            mailing_list local_policy other /;
-    # comment is optional and requires no validation
-    return $_[0]->{reason} = $_[1];
+    my $self = shift;
+    my @args = @_;
+    return $self->{reason} if ref $self->{reason} && ! scalar @args;
+    require Mail::DMARC::Result::Evaluated::Reason;
+    return $self->{reason} = Mail::DMARC::Result::Evaluated::Reason->new(@args);
 };
 
 sub result {

@@ -58,12 +58,13 @@ sub test_spf_align {
 sub test_reason{
 # positive tests
     foreach (qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /) {
-        ok( $e->reason( { type => $_, comment=>'test' } ), "reason, $_");
+        ok( $e->reason->type( $_ ), "reason type: $_");
+        ok( $e->reason->comment('test'), "reason comment");
     };
 
 # negative tests
     foreach (qw/ any reason not in above list /) {
-        eval { $e->reason( { type => $_, comment=>'test' } ) };
+        eval { $e->reason->type( $_ ) };
         chomp $@;
         ok( $@, "reason, $_, $@");
     };

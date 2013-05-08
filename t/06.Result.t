@@ -124,6 +124,14 @@ sub _test_fail_nonexist {
     $pp->init();
     $pp->{header_from} = 'host.nonexistent-tld';  # the ->header_from method would validate
     $pp->validate();
+
+# some test machines return 'interesting' results for queries of non-existent
+# domains. That's not worth raising a test error.
+
+SKIP: {
+    skip "DNS returned 'interesting' results for invalid domain", 1
+        if $pp->result->evaluated->reason->comment ne 'host.nonexistent-tld not in DNS';
+
     is_deeply( $pp->result->evaluated, {
             'result' => 'fail',
             'disposition' => 'reject',
@@ -136,6 +144,7 @@ sub _test_fail_nonexist {
         },
         "evaluated, fail, nonexist")
         or diag Data::Dumper::Dumper($pp->result);
+    };
 };
 
 sub test_published {

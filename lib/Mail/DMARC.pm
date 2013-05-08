@@ -103,12 +103,18 @@ sub policy {
     return $self->{policy} = Mail::DMARC::Policy->new(@args);
 };
 
+sub report {
+    my $self = shift;
+    return $self->{report} if ref $self->{report};
+    require Mail::DMARC::Report;
+    return $self->{report} = Mail::DMARC::Report->new();
+};
+
 sub result {
     my $self = shift;
     return $self->{result} if ref $self->{result};
     require Mail::DMARC::Result;
-    $self->{result} = Mail::DMARC::Result->new();
-    return $self->{result};
+    return $self->{result} = Mail::DMARC::Result->new();
 };
 
 sub is_valid_ip {
