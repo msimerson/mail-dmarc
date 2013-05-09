@@ -4,7 +4,11 @@ use warnings;
 
 use Carp;
 
-use Mail::DMARC::DNS;
+require Mail::DMARC::DNS;
+require Mail::DMARC::Policy;
+require Mail::DMARC::PurePerl;
+require Mail::DMARC::Report;
+require Mail::DMARC::Result;
 
 sub new {
     my ($class, @args) = @_;
@@ -14,25 +18,25 @@ sub new {
 
 sub source_ip {
     return $_[0]->{source_ip} if 1 == scalar @_;
-    croak "invalid source_ip" if ! $_[0]->is_valid_ip($_[1]);
+    croak "invalid source_ip" if ! $_[0]->dns->is_valid_ip($_[1]);
     return $_[0]->{source_ip} = $_[1];
 };
 
 sub envelope_to {
     return $_[0]->{envelope_to} if 1 == scalar @_;
-    croak "invalid envelope_to" if ! $_[0]->is_valid_domain($_[1]);
+    croak "invalid envelope_to" if ! $_[0]->dns->is_valid_domain($_[1]);
     return $_[0]->{envelope_to} = $_[1];
 };
 
 sub envelope_from {
     return $_[0]->{envelope_from} if 1 == scalar @_;
-    croak "invalid envelope_from" if ! $_[0]->is_valid_domain($_[1]);
+    croak "invalid envelope_from" if ! $_[0]->dns->is_valid_domain($_[1]);
     return $_[0]->{envelope_from} = $_[1];
 };
 
 sub header_from {
     return $_[0]->{header_from} if 1 == scalar @_;
-    croak "invalid header_from" if ! $_[0]->is_valid_domain($_[1]);
+    croak "invalid header_from" if ! $_[0]->dns->is_valid_domain($_[1]);
     return $_[0]->{header_from} = $_[1];
 };
 
@@ -96,37 +100,34 @@ sub inputs {
     }
 };
 
+sub dns {
+    my $self = shift;
+    return $self->{dns} if ref $self->{dns};
+    return $self->{dns} = Mail::DMARC::DNS->new();
+};
+
 sub policy {
     my ($self, @args) = @_;
-    return $self->{policy} if scalar @args == 0 && ref $self->{policy};
-    require Mail::DMARC::Policy;
+    return $self->{policy} if ref $self->{policy} && 0 == scalar @args;
     return $self->{policy} = Mail::DMARC::Policy->new(@args);
 };
 
 sub report {
     my $self = shift;
     return $self->{report} if ref $self->{report};
-    require Mail::DMARC::Report;
-    return $self->{report} = Mail::DMARC::Report->new();
+    return $self->{report} = Mail::DMARC::Report->new( $self );
 };
 
 sub result {
     my $self = shift;
     return $self->{result} if ref $self->{result};
-    require Mail::DMARC::Result;
     return $self->{result} = Mail::DMARC::Result->new();
 };
 
-sub is_valid_ip {
-    my ($self, $ip) = @_;
-    $self->{dns} ||= Mail::DNS::DNS->new();
-    return $self->{dns}->is_valid_ip($ip);
-};
-
-sub is_valid_domain {
-    my ($self, $domain) = @_;
-    $self->{dns} ||= Mail::DMARC::DNS->new();
-    return $self->{dns}->is_valid_domain($domain);
+sub is_subdomain {
+    return $_[0]->{is_subdomain} if 1 == scalar @_;
+    croak "invalid boolean" if 0 == grep {/^$_[1]$/ix} qw/ 0 1/;
+    return $_[0]->{is_subdomain} = $_[1];
 };
 
 sub is_valid_spf {
@@ -143,13 +144,6 @@ sub is_valid_spf {
         croak "SPF pass MUST include the RFC5321.MailFrom domain!";
     };
     return 1;
-};
-
-sub validate {
-    my $self = shift;
-    return $self->{pp} if ref $self->{pp};
-    require Mail::DMARC::PurePerl;
-    return $self->{pp} = Mail::DMARC::PurePerl->new();
 };
 
 1;

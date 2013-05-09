@@ -6,17 +6,12 @@ use Carp;
 
 use parent 'Mail::DMARC';
 
-sub dns {
-    my $self = shift;
-    $self->{dns} ||= Mail::DMARC::DNS->new();
-    return $self->{dns};
-};
-
 sub init {
     my $self = shift;
-    $self->{is_subdomain} = undef;
+    $self->is_subdomain(0);
     $self->{policy} = undef;
     $self->{result} = undef;
+    $self->{report} = undef;
     return;
 };
 
@@ -146,6 +141,7 @@ sub is_aligned {
     if (    'pass' eq $self->result->evaluated->spf
          || 'pass' eq $self->result->evaluated->dkim ) {
         $self->result->evaluated->result('pass');
+        $self->result->evaluated->disposition('none');
         return 1;
     };
     $self->result->evaluated->result('fail');
@@ -240,12 +236,6 @@ sub is_spf_aligned {
     }
     $self->result->evaluated->spf('fail');
     return 0;
-};
-
-sub is_subdomain {
-    return $_[0]->{is_subdomain} if 1 == scalar @_;
-    croak "invalid boolean" if 0 == grep {/^$_[1]$/ix} qw/ 0 1/;
-    return $_[0]->{is_subdomain} = $_[1];
 };
 
 sub has_valid_reporting_uri {
@@ -442,8 +432,6 @@ Resets the Mail::DMARC object, preparing it for a fresh request.
 =head2 is_dkim_aligned
 
 =head2 is_spf_aligned
-
-=head2 is_subdomain
 
 =head2 has_valid_reporting_uri
 
