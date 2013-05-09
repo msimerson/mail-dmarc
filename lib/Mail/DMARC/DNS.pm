@@ -81,12 +81,10 @@ sub is_valid_ip {
 # You need Perl 5.01 or later at lib/Mail/DMARC/DNS.pm line 83.
 
     if ( $ip =~ /:/ ) {
-        Net::IP->new( $ip, 6 ) or return 0;
-        return 1;
+        return Net::IP->new( $ip, 6 );
     };
 
-    Net::IP->new( $ip, 4 ) or return 0;
-    return 1;
+    return Net::IP->new( $ip, 4 );
 };
 
 sub is_valid_domain {
