@@ -5,10 +5,10 @@ use Data::Dumper;
 use Test::More;
 
 use lib 'lib';
-use_ok( 'Mail::DMARC::URI' );
+use_ok( 'Mail::DMARC::Report::URI' );
 
-my $uri = Mail::DMARC::URI->new;
-isa_ok( $uri, 'Mail::DMARC::URI' );
+my $uri = Mail::DMARC::Report::URI->new;
+isa_ok( $uri, 'Mail::DMARC::Report::URI' );
 
 test_get_size_limit();
 test_parse();
