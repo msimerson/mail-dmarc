@@ -5,10 +5,11 @@ use Data::Dumper;
 use Test::More;
 
 use lib 'lib';
-use_ok( 'Mail::DMARC::Report::URI' );
 
-my $uri = Mail::DMARC::Report::URI->new;
-isa_ok( $uri, 'Mail::DMARC::Report::URI' );
+my $mod = 'Mail::DMARC::Report::URI';
+use_ok( $mod );
+my $uri = $mod->new;
+isa_ok( $uri, $mod );
 
 test_get_size_limit();
 test_parse();
@@ -25,7 +26,7 @@ sub test_get_size_limit {
 
     foreach my $t ( keys %tests ) {
         cmp_ok( $uri->get_size_limit($t), '==', $tests{$t}, "get_size_limit, $tests{$t}");
-    };
+    }
 };
 
 sub test_parse {
@@ -40,5 +41,5 @@ sub test_parse {
         my $uris = $uri->parse($_);
         ok( $uris, "parse, $_" );
         ok( scalar @$uris, "parse, count " . scalar @$uris);
-    };
+    }
 };
