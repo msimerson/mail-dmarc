@@ -46,6 +46,12 @@ sub header_from_raw {
     return $_[0]->{header_from_raw} = $_[1];
 };
 
+sub local_policy {
+    return $_[0]->{local_policy} if 1 == scalar @_;
+# TODO: document this, when and why it would be used
+    return $_[0]->{local_policy} = $_[1];
+};
+
 sub dkim {
     my ($self, $dkim) = @_;
     return $self->{dkim} if ! $dkim;
@@ -88,16 +94,6 @@ sub spf {
     $self->{spf} = { @args };
     $self->is_valid_spf();
     return $self->{spf};
-};
-
-sub inputs {
-    my $self = shift;
-    return {
-        backend       => 'perl', # perl or libopendmarc
-        report_domain => 'great.co',
-        report_org    => 'My Great Company',
-        local_policy  => ''     # with reason + comment?
-    }
 };
 
 sub dns {
