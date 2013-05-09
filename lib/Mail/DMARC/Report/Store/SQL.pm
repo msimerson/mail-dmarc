@@ -208,7 +208,7 @@ sub query_delete {
         return;
     };
     my $affected = 0;
-    eval { $affected = $dbix->query("SELECT ROW_COUNT()")->list };
+    eval { $affected = $dbix->query("SELECT ROW_COUNT()")->list }; ## no critic (Eval)
     return 1 if $@;  # succeed for SQLite
     return $affected;
 };
