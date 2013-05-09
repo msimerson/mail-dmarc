@@ -28,16 +28,17 @@ sub _test_pass_strict {
     $pp->spf({ domain => $test_dom, result=>'pass' });
     $pp->validate();
     is_deeply( $pp->result->evaluated, {
+        'result' => 'pass',
+        'disposition' => 'none',
+        'dkim' => 'pass',
+        'spf'  => 'pass',
+        'spf_align' => 'strict',
         'dkim_meta' => {
             'domain' => 'tnpi.net',
             'identity' => '',
             'selector' => 'apr2013',
         },
         'dkim_align' => 'strict',
-        'spf_align' => 'strict',
-        'dkim' => 'pass',
-        'spf' => 'pass',
-        'result' => 'pass'
         },
         "evaluated, pass, strict, $test_dom")
         or diag Data::Dumper::Dumper($pp->result);
@@ -50,16 +51,17 @@ sub _test_pass_relaxed {
     $pp->spf({ domain => $test_dom, result=>'pass' });
     $pp->validate();
     is_deeply( $pp->result->evaluated, {
+        'result' => 'pass',
+        'dkim' => 'pass',
+        'spf' => 'pass',
+        'disposition' => 'none',
+        'dkim_align' => 'relaxed',
         'dkim_meta' => {
             'domain' => 'tnpi.net',
             'identity' => '',
             'selector' => 'apr2013',
         },
-        'dkim_align' => 'relaxed',
         'spf_align' => 'relaxed',
-        'dkim' => 'pass',
-        'spf' => 'pass',
-        'result' => 'pass'
         },
         "evaluated, pass, relaxed, $test_dom")
         or diag Data::Dumper::Dumper($pp->result);

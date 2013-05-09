@@ -89,7 +89,7 @@ sub test_setter_values {
     foreach my $k ( keys %bad_vals ) {
         foreach my $t ( @{$bad_vals{$k}} ) {
             eval { $dmarc->$k( $t ); };
-            ok( $@, "neg, $k, $t");
+            ok( $@, "neg, $k, $t") or diag $dmarc->$k( $t );
         };
     };
 };

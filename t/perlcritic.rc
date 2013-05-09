@@ -9,6 +9,9 @@ verbose  = [%p] %m at line %l, column %c.  %e.  (Severity: %s)\n
 [-TestingAndDebugging::RequireUseStrict]
 [-TestingAndDebugging::RequireUseWarnings]
 
+; in general, I agree, but I disagree in mail::critic::result::evaluated
+[-Modules::ProhibitMultiplePackages]
+
 [Subroutines::RequireArgUnpacking]
 short_subroutine_statements = 5
 

@@ -64,7 +64,7 @@ sub reason {
 
 1;
 
-package Mail::DMARC::Result::Evaluated::Reason;
+package Mail::DMARC::Result::Evaluated::Reason;  ## no critic (MultiplePackages)
 use strict;
 use warnings;
 
