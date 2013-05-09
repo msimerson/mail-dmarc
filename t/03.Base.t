@@ -13,11 +13,17 @@ isa_ok( $base, $mod );
 
 isa_ok( $base->config, 'Config::Tiny' );
 
-# negative config file test
+# invalid config file
 $base = $mod->new( config_file => 'no such config' );
 eval { $base->config };
 chomp $@;
 ok( $@, "invalid config file");
+
+# alternate config file
+$base = $mod->new();
+eval { $base->config('t/mail-dmarc.ini'); };
+chomp $@;
+ok( ! $@, "alternate config file");
 
 #warn Dumper($base);
 

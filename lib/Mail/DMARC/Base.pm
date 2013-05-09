@@ -15,14 +15,15 @@ sub new {
 };
 
 sub config {
-    my $self = shift;
-    return $self->{config} if ref $self->{config};
-    return $self->{config} = $self->get_config();
+    my ($self, $file, @too_many) = @_;
+    croak "invalid args" if scalar @too_many;
+    return $self->{config} if ref $self->{config} && ! $file;
+    return $self->{config} = $self->get_config($file);
 };  
     
 sub get_config {
     my $self = shift;
-    my $file = $self->{config_file} or croak;
+    my $file = shift || $self->{config_file} or croak;
     my @dirs = qw[ /usr/local/etc /opt/local/etc /etc ./ ];
     foreach my $d ( @dirs ) {
         next if ! -d $d;
