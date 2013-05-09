@@ -1,11 +1,14 @@
-package Mail::DMARC::URI;
+package Mail::DMARC::Report::URI;
 use strict;
 use warnings;
 
 use Carp;
 use URI;
 
-use parent 'Mail::DMARC';
+sub new {
+    my $class = shift;
+    return bless {}, $class;
+};
 
 sub parse {
     my ($self, $str) = @_;
@@ -102,4 +105,3 @@ report payload does not exceed 50 megabytes.
 A formal definition is provided in Section 6.3.
 
 =cut
-
