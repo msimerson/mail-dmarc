@@ -167,17 +167,7 @@ L<Mail::DMARC::Policy> - a DMARC record in object format
 
 L<Mail::DMARC::PurePerl> - a DMARC implementation
 
-=over 4
-
-=item L<Mail::DMARC::Report>
-
-=item L<Mail::DMARC::Report::AFRF>
-
-=item L<Mail::DMARC::Report::IODEF>
-
-=back
-
-L<Mail::DMARC::URI> - a DMARC reporting URI
+L<Mail::DMARC::Report>
 
 =over 4
 
@@ -196,6 +186,32 @@ Determine if:
     a. the header_from domain exists
     b. the header_from domain publishes a DMARC policy
     c. does the message conform to the published policy?
+
+Results of DMARC processing are stored in a L<Mail::DMARC::Result> object.
+
+=head1 HOW TO USE
+
+    my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
+    my $result = $dmarc->verify();
+
+    if ( $result->evaluated->result eq 'pass' ) {
+        ...continue normal processing...
+        return;
+    };
+
+    # any result that did not pass is a fail. Now for disposition
+
+    if ( $result->evalated->disposition eq 'reject' ) {
+        ...treat the sender to a 550 ...
+    };
+    if ( $result->evalated->disposition eq 'quarantine' ) {
+        ...assign a bunch of spam points...
+    };
+    if ( $result->evalated->disposition eq 'none' ) {
+        ...continue normal processing...
+    };
+
+There's a lot more information available in the $result object. See the L<Mail::DMARC::Result> page for complete details.
 
 =head1 METHODS
 
@@ -223,10 +239,11 @@ Alternatively, you can pass in all the required parameters in one shot:
             envelope_to   => 'example.com',
             envelope_from => 'cars4you.info',
             header_from   => 'yahoo.com',
-            dkim          => $dkim_results,
-            spf           => $spf_results,
+            dkim          => $dkim_results,  # same format
+            spf           => $spf_results,   # as previous example
             );
     my $result = $dmarc->verify();
+
 
 =head2 source_ip
 
