@@ -6,9 +6,9 @@ use Carp;
 
 use parent 'Mail::DMARC::Base';
 
-sub store {
+sub save {
     my $self = shift;
-    return $self->backend->store(@_);
+    return $self->backend->save(@_);
 };
 
 sub retrieve {

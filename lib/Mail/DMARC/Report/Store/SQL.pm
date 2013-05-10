@@ -9,13 +9,38 @@ use Net::IP;
 
 use parent 'Mail::DMARC::Base';
 
+sub save {
+    my $self = shift;
+    $self->{dmarc} = shift or croak "missing object with DMARC results\n";
+    my $too_many = shift and croak "invalid arguments";
+
+    $self->insert_report or croak "failed to create report!";
+    $self->insert_report_row or croak "failed to insert row";
+    $self->insert_rr_reason;  # optional
+    $self->insert_rr_spf;     # optional
+    $self->insert_rr_dkim;    # optional, multiple possible
+
+#warn Dumper($self->{dmarc});
+    return $self->{report_row_id};
+};
+
+sub dmarc { return $_[0]->{dmarc}; };
+
+sub retrieve {
+    my $self = shift;
+    my $reports = $self->query( 'SELECT * FROM report' );
+#    my $last = $reports->[-1];
+#my $details = $self->query( 'SELECT * FROM report r' );
+    return $reports;
+};
+
 sub insert_rr_reason {
     my $self = shift;
     my $type = $self->dmarc->result->evaluated->reason->type or do {
         return 1;
     };
     my $comment = $self->dmarc->result->evaluated->reason->comment || '';
-    return $self->query( 'INSERT INTO report_record_reason (report_record_id, type, comment) VALUES (?,?,?)',
+    return $self->query( 'INSERT INTO report_record_disp_reason (report_record_id, type, comment) VALUES (?,?,?)',
             [ $self->{report_row_id}, $type, $comment ]
         );
 };
@@ -38,10 +63,11 @@ sub insert_rr_dkim {
 sub insert_rr_spf {
     my $self = shift;
     my $spf = $self->dmarc->spf or do {
-        carp "no SPF results!\n";
+        warn "no SPF results!\n";
         return;
     };
-    return $self->query(
+#warn Dumper($spf);
+    my $r = $self->query(
 'INSERT INTO report_record_spf (report_record_id, domain, scope, result) VALUES(?,?,?,?)',
             [
             $self->{report_row_id},
@@ -49,20 +75,22 @@ sub insert_rr_spf {
             $spf->{scope},
             $spf->{result},
             ]
-        );
+        ) or croak "failed to insert SPF";
+
+    return $r;
 };
 
 sub insert_report_row {
     my $self = shift;
-    my $report_id = $self->{report_id};
-    my $eva = $self->dmarc->result->evaluated;
+    my $report_id = $self->{report_id} or croak "no report_id?!";
+    my $eva = $self->dmarc->result->evaluated or croak "no evaluated report?!";
 # using SQL SET rather than INSERT won't break when the table schema changes
-    return $self->{report_row_id} = $self->query( <<'EO_ROW_INSERT'
+    my $query = <<'EO_ROW_INSERT'
 INSERT INTO report_record (report_id, source_ip, disposition,
     dkim, spf, header_from, envelope_to, envelope_from ) VALUES (?,?,?,?,?,?,?,?)
 EO_ROW_INSERT
-,
-        [
+;
+    my $args = [
         $self->{report_id},
         Net::IP->new($self->dmarc->source_ip)->intip,
         $eva->disposition,
@@ -71,21 +99,26 @@ EO_ROW_INSERT
         $self->dmarc->header_from,
         $self->dmarc->envelope_to || '',
         $self->dmarc->envelope_from || '',
-        ]
-        );
+        ];
+
+    my $row_id = $self->query( $query, $args )
+        or croak "query failed: $query\n";
+#warn "row_id: $row_id\n";
+    return $self->{report_row_id} = $row_id;
 };
 
 sub insert_report {
     my $self = shift;
 
-    my $header_from = $self->dmarc->header_from or carp "missing header_from!" and return;
+    my $header_from = $self->dmarc->header_from or croak "missing header_from!";
     my $ids = $self->query(
         'SELECT id FROM report WHERE domain=? AND end > ?',
         [ $header_from, time ]
         );
 
     if ( scalar @$ids ) {
-        return $self->{report_id} = $ids->[0]->{id};
+#       warn "found " . scalar @$ids . " matching reports!";
+        return $self->{report_id} = $ids->[0]{id};
     }
 
 # if a report for author_domain does not exist, insert new report
@@ -97,9 +130,24 @@ sub insert_report {
         ]
     );
 
-# TODO:
-#$self->insert_report_published_policy();
+    $self->insert_report_published_policy();
     return $self->{report_id};
+};
+
+sub insert_report_published_policy {
+    my $self = shift;
+    my $pub = $self->dmarc->result->published;
+    $pub->apply_defaults;
+    my $query = 'INSERT INTO report_policy_published (report_id, adkim, aspf, p, sp, pct) VALUES (?,?,?,?,?,?)';
+    return $self->query( $query, [
+            $self->{report_id},
+            $pub->adkim,
+            $pub->aspf,
+            $pub->p,
+            $pub->sp,
+            $pub->pct,
+            ]
+            ) or croak "failed to insert published policy";
 };
 
 sub db_connect {
@@ -213,10 +261,6 @@ sub query_delete {
     return $affected;
 };
 
-sub retrieve {
-    my $self = shift;
-    return $self->query( 'SELECT * FROM report' );
-};
 
 1;
 # ABSTRACT: Store DMARC reports

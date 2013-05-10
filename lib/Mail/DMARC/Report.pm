@@ -31,20 +31,26 @@ sub sendit {
     my $self = shift;
     croak "missing dmarc object!" if ! $self->{dmarc};
     return $self->{sendit} if ref $self->{sendit};
-    return $self->{sendit} = Mail::DMARC::Report::Send->new;
+    return $self->{sendit} = Mail::DMARC::Report::Send->new($self->{dmarc});
 };
 
 sub store {
     my $self = shift;
     croak "missing dmarc object!" if ! $self->{dmarc};
     return $self->{store} if ref $self->{store};
-    return $self->{store} = Mail::DMARC::Report::Store->new;
+    return $self->{store} = Mail::DMARC::Report::Store->new();
 };
 
 sub view {
     my $self = shift;
     return $self->{view} if ref $self->{view};
     return $self->{view} = Mail::DMARC::Report::View->new;
+};
+
+sub save {
+    my $self = shift;
+    croak "missing dmarc object!" if ! $self->{dmarc};
+    return $self->store->backend->save($self->{dmarc});
 };
 
 1;
