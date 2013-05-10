@@ -4,6 +4,7 @@ use warnings;
 
 use Carp;
 
+use parent 'Mail::DMARC::Base';
 
 1;
 # ABSTRACT: send a DMARC report object

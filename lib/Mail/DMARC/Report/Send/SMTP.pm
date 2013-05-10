@@ -7,7 +7,7 @@ use English '-no_match_vars';
 
 use parent 'Mail::DMARC::Base';
 
-sub send {
+sub email {
     my ($self, @args) = @_;
     my %args = @args;
 
@@ -20,21 +20,21 @@ sub send {
         croak "missing required header: $req" if ! $args{$req};
     };
 
-    eval { require MIME::Lite; };
+    eval { require MIME::Lite; }; ## no critic (Eval)
     if ( !$EVAL_ERROR ) {
         return 1 if $self->_email_via_mime_lite( \%args );
     }
 
     carp "failed to load MIME::Lite. Trying Email::Send.";
 
-    eval { require Email::Send; };
+    eval { require Email::Send; }; ## no critic (Eval)
     if ( !$EVAL_ERROR ) {
         return 1 if $self->_email_via_email_send( \%args );
     }
 
     carp "failed to load Email::Send. Trying Mail::Send.";
 
-    eval { require Mail::Send; };
+    eval { require Mail::Send; }; ## no critic (Eval)
     if ( !$EVAL_ERROR ) {
         return 1 if $self->_email_via_mail_send( \%args );
     }
@@ -55,32 +55,32 @@ sub _email_via_mime_lite {
         Type    => $args->{type} || 'multipart/alternative',
     );
 
-    $message->attach( Type => 'TEXT', Data => $args->{body} ) or return;
+    $message->attach( Type => 'TEXT', Data => $args->{body} ) or croak;
 
     #warn "attached message\n";
 
     if ( $args->{body_html} ) {
         $message->attach( Type => 'text/html', Data => $args->{body_html} )
-            or return;
+            or croak;
     }
 
     my $smart_host = $args->{smart_host};
     if ($smart_host) {
         #warn "using smart_host $smart_host\n";
-        eval { $message->send( 'smtp', $smart_host, Timeout => 20 ) };
+        eval { $message->send( 'smtp', $smart_host, Timeout => 20 ) }; ## no critic (Eval)
         if ( !$EVAL_ERROR ) {
             #warn "sent using MIME::Lite and smart host $smart_host\n";
             return 1;
         }
-        warn "failed to send using MIME::Lite to $smart_host\n";
+        carp "failed to send using MIME::Lite to $smart_host\n";
     }
 
-    eval { $message->send('smtp'); };
+    eval { $message->send('smtp'); }; ## no critic (Eval)
     if ( !$EVAL_ERROR ) {
         return 1;
     }
 
-    eval { $message->send(); };
+    eval { $message->send(); }; ## no critic (Eval)
     if ( !$EVAL_ERROR ) {
         return 1;
     }

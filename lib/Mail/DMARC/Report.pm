@@ -5,28 +5,46 @@ use warnings;
 use Carp;
 use Data::Dumper;
 
+use Mail::DMARC::Report::Send;
 use Mail::DMARC::Report::Store;
+use Mail::DMARC::Report::Receive;
+use Mail::DMARC::Report::View;
 
 sub new {
     my ($class, $dmarc, @args) = @_;
-    croak "missing $dmarc object!" if ! ref $dmarc;
     croak "invalid arguments" if scalar @args;
-#my @c = caller;
-#carp sprintf( "new $class called by %s, %s\n", $c[0], $c[2] );
-#carp Dumper( $self );
     return bless { dmarc => $dmarc }, $class;
 };
 
 sub dmarc {
     my $self = shift;
-#carp Dumper( $self->{dmarc} );
     return $self->{dmarc};
+};
+
+sub receive {
+    my $self = shift;
+    return $self->{receive} if ref $self->{receive};
+    return $self->{receive} = Mail::DMARC::Report::Receive->new;
+};
+
+sub sendit {
+    my $self = shift;
+    croak "missing dmarc object!" if ! $self->{dmarc};
+    return $self->{sendit} if ref $self->{sendit};
+    return $self->{sendit} = Mail::DMARC::Report::Send->new;
 };
 
 sub store {
     my $self = shift;
-    return $self->{store} if ref $self->store;
+    croak "missing dmarc object!" if ! $self->{dmarc};
+    return $self->{store} if ref $self->{store};
     return $self->{store} = Mail::DMARC::Report::Store->new;
+};
+
+sub view {
+    my $self = shift;
+    return $self->{view} if ref $self->{view};
+    return $self->{view} = Mail::DMARC::Report::View->new;
 };
 
 1;

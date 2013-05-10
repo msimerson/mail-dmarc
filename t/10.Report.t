@@ -12,33 +12,25 @@ if ( $@ ) {
     exit;
 };
 
-use_ok( 'Mail::DMARC::PurePerl' );
+my $mod = 'Mail::DMARC::PurePerl';
+use_ok( $mod );
+my $dmarc = $mod->new;
+isa_ok( $dmarc, $mod );
 
-my $dmarc = Mail::DMARC::PurePerl->new();
-isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
+# this is equivalent to:
+# Mail::DMARC::Report( dmarc => $dmarc );
+my $report = $dmarc->report;
+isa_ok( $report, 'Mail::DMARC::Report' );
 
-isa_ok( $dmarc->report, 'Mail::DMARC::Report' );
+isa_ok( $report->sendit,  'Mail::DMARC::Report::Send' );
+isa_ok( $report->store,   'Mail::DMARC::Report::Store' );
+isa_ok( $report->receive, 'Mail::DMARC::Report::Receive' );
+isa_ok( $report->view,    'Mail::DMARC::Report::View' );
 
 my $test_dom = 'tnpi.net';
-
-setup_dmarc_result() or die "failed setup\n";
-
-#warn Dumper($dmarc->result->published);
-#warn Dumper($dmarc->report->dmarc->header_from);
-#warn Dumper($dmarc);
-#done_testing(); exit;
-
-#my $report_id = $dmarc->report->insert_report();
-#ok( $report_id, "insert_report, $report_id") or diag Dumper($dmarc->report);
-
-#my $row_id = $dmarc->report->insert_report_row();
-#ok( $row_id, "insert_report_row, $row_id");
-
-#foreach my $t ( qw/ insert_rr_reason insert_rr_spf insert_rr_dkim / ) {
-#    ok( $dmarc->report->$t(), "$t");
-#};
-
+#setup_dmarc_result() or die "failed setup\n";
 #$dmarc->report->store() or diag Dumper( $dmarc->report );
+
 
 #unlink $test_db_file;
 done_testing();

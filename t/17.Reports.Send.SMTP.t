@@ -11,9 +11,13 @@ use_ok( $mod );
 my $smtp = $mod->new;
 isa_ok( $smtp, $mod );
 
+eval { $smtp->email };
+chomp $@;
+ok( $@, "email, missing args" );
+
 done_testing(); exit;   # comment this out to spam yourself with 'make test'
 
-$smtp->send(
+$smtp->email(
         to      => 'admin@example.com',
         from    => 'do-not-reply@example.com',
         subject => 'Mail::DMARC::Report::Send::SMTP test',
