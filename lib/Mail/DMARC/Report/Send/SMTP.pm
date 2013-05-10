@@ -3,9 +3,134 @@ use strict;
 use warnings;
 
 use Carp;
+use English '-no_match_vars';
 
 use parent 'Mail::DMARC::Base';
 
+sub send {
+    my ($self, @args) = @_;
+    my %args = @args;
+
+    my @required = qw/ to from subject body /;
+    my @optional = qw/ cc type smarthost /;
+    my %all = map { $_ => 1 } ( @required, @optional );
+    foreach ( keys %args ) { croak "unknown arg $_" if ! $all{$_} };
+
+    foreach my $req ( @required ) {
+        croak "missing required header: $req" if ! $args{$req};
+    };
+
+    eval { require MIME::Lite; };
+    if ( !$EVAL_ERROR ) {
+        return 1 if $self->_email_via_mime_lite( \%args );
+    }
+
+    carp "failed to load MIME::Lite. Trying Email::Send.";
+
+    eval { require Email::Send; };
+    if ( !$EVAL_ERROR ) {
+        return 1 if $self->_email_via_email_send( \%args );
+    }
+
+    carp "failed to load Email::Send. Trying Mail::Send.";
+
+    eval { require Mail::Send; };
+    if ( !$EVAL_ERROR ) {
+        return 1 if $self->_email_via_mail_send( \%args );
+    }
+
+    croak "unable to send message";
+};
+
+sub _email_via_mime_lite {
+    my $self = shift;
+    my $args = shift;
+
+    #warn "sending email with MIME::Lite\n";
+    my $message = MIME::Lite->new(
+        From    => $args->{from},
+        To      => $args->{to},
+        Cc      => $args->{cc},
+        Subject => $args->{subject},
+        Type    => $args->{type} || 'multipart/alternative',
+    );
+
+    $message->attach( Type => 'TEXT', Data => $args->{body} ) or return;
+
+    #warn "attached message\n";
+
+    if ( $args->{body_html} ) {
+        $message->attach( Type => 'text/html', Data => $args->{body_html} )
+            or return;
+    }
+
+    my $smart_host = $args->{smart_host};
+    if ($smart_host) {
+        #warn "using smart_host $smart_host\n";
+        eval { $message->send( 'smtp', $smart_host, Timeout => 20 ) };
+        if ( !$EVAL_ERROR ) {
+            #warn "sent using MIME::Lite and smart host $smart_host\n";
+            return 1;
+        }
+        warn "failed to send using MIME::Lite to $smart_host\n";
+    }
+
+    eval { $message->send('smtp'); };
+    if ( !$EVAL_ERROR ) {
+        return 1;
+    }
+
+    eval { $message->send(); };
+    if ( !$EVAL_ERROR ) {
+        return 1;
+    }
+
+    return;
+}
+
+sub _email_via_email_send {
+    my $self = shift;
+    my $args = shift;
+
+    my %m_args = ( mailer => 'SMTP', );
+    if ( $args->{smart_host} ) {
+        $m_args{mailer_args} = [ Host => $args->{smart_host} ];
+    }
+
+    my $sender = Email::Send->new( \%m_args );
+
+    my $message = <<"__MESSAGE__";
+To: $args->{to}
+From: $args->{from}
+Subject: $args->{subject}
+
+$args->{body}
+
+__MESSAGE__
+
+    $message .= "\n\n $args->{body_html} \n\n" if $args->{body_html};
+
+    return 1 if $sender->send($message);
+    return;
+}
+
+sub _email_via_mail_send {
+
+    my $self = shift;
+    my $args = shift;
+
+    my $msg = Mail::Send->new;
+
+    $msg->subject( $args->{subject} );
+    $msg->to( $args->{to} );
+
+    my $content = $msg->open;
+
+    print $content "\n\n $args->{body} \n\n";
+    print $content "$args->{body_html} \n\n" if $args->{body_html};
+
+    return $content->close;
+}
 
 1;
 # ABSTRACT: send DMARC reports via SMTP
