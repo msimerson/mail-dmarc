@@ -13,10 +13,11 @@ sub new {
 
 sub list {
     my $self = shift;
-    foreach my $report ( @{$self->store->retrieve} ) {
+    my $reports = $self->store->retrieve;
+    foreach my $report ( @$reports ) {
         printf "%3s  %30s  %15s %15s\n", @$report{ qw/ id domain begin end / };
     };
-    return 1;
+    return $reports;
 };
 
 sub store {

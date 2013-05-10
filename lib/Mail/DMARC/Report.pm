@@ -31,7 +31,7 @@ sub sendit {
     my $self = shift;
     croak "missing dmarc object!" if ! $self->{dmarc};
     return $self->{sendit} if ref $self->{sendit};
-    return $self->{sendit} = Mail::DMARC::Report::Send->new($self->{dmarc});
+    return $self->{sendit} = Mail::DMARC::Report::Send->new();
 };
 
 sub store {
@@ -45,6 +45,16 @@ sub view {
     my $self = shift;
     return $self->{view} if ref $self->{view};
     return $self->{view} = Mail::DMARC::Report::View->new;
+};
+
+sub send_each {
+    my $self = shift;
+    croak "missing dmarc object!" if ! $self->{dmarc};
+#   foreach my $rua ( @$ruas ) {
+        return $self->store->sendit->via->email($self->{dmarc});
+#         or
+#       return $self->store->sendit->via->http($self->{dmarc});
+#   };
 };
 
 sub save {
