@@ -5,6 +5,7 @@ use warnings;
 use Carp;
 
 use parent 'Mail::DMARC';
+require Mail::DMARC::Report::URI;
 
 sub init {
     my $self = shift;
@@ -240,8 +241,9 @@ sub is_spf_aligned {
 
 sub has_valid_reporting_uri {
     my ($self, $rua) = @_;
-    return 1 if 'mailto:' eq lc substr($rua, 0, 7);
-    return 0;
+    $self->{uri} ||= Mail::DMARC::Report::URI->new;
+    my $recips_ref = $self->{uri}->parse($rua);
+    return scalar @$recips_ref;
 }
 
 sub get_dkim_pass_sigs {
@@ -403,7 +405,7 @@ sub get_dom_from_header {
 
 sub external_report {
     my $self = shift;
-# TODO:
+# TODO
     return;
 };
 

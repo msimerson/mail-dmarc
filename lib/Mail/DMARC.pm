@@ -6,7 +6,6 @@ use Carp;
 
 require Mail::DMARC::DNS;
 require Mail::DMARC::Policy;
-require Mail::DMARC::PurePerl;
 require Mail::DMARC::Report;
 require Mail::DMARC::Result;
 
@@ -57,16 +56,7 @@ sub dkim {
     return $self->{dkim} if ! $dkim;
 
     if ( ref $dkim && ref $dkim eq 'Mail::DKIM::Verifier' ) {
-# A DKIM verifier will have result and signature methods.
-        foreach my $s ( $dkim->signatures ) {
-            push @{ $self->{dkim} }, {
-                domain       => $s->domain,
-                selector     => $s->selector,
-                result       => $s->result,
-                human_result => $s->result_detail,
-            };
-        };
-        return $self->{dkim};
+        return $self->dkim_from_mail_dkim($dkim);
     };
 
     if ( 'ARRAY' ne ref $dkim ) {
@@ -74,12 +64,24 @@ sub dkim {
     };
     foreach my $s ( @$dkim ) {
         foreach my $f ( qw/ domain result / ) {
-            if ( ! $s->{$f} ) {
-                croak "DKIM '$f' is required!";
-            };
+            croak "DKIM '$f' is required!" if ! $s->{$f};
         };
     };
     return $self->{dkim} = $dkim;
+};
+
+sub dkim_from_mail_dkim {
+    my ($self, $dkim) = @_;
+# A DKIM verifier will have result and signature methods.
+    foreach my $s ( $dkim->signatures ) {
+        push @{ $self->{dkim} }, {
+            domain       => $s->domain,
+            selector     => $s->selector,
+            result       => $s->result,
+            human_result => $s->result_detail,
+        };
+    };
+    return $self->{dkim};
 };
 
 sub spf {
@@ -163,13 +165,25 @@ L<Mail::DMARC::Policy> - a DMARC record in object format
 
 L<Mail::DMARC::PurePerl> - a DMARC implementation
 
-L<Mail::DMARC::Report>
-
 =over 4
 
 =item L<Mail::DMARC::Result>
 
 =item L<Mail::DMARC::Result::Evaluated>
+
+=back
+
+L<Mail::DMARC::Report> - the R in DMARC
+
+=over 4
+
+L<Mail::DMARC::Report::Send> - deliver formatted reports via SMTP & HTTP
+
+L<Mail::DMARC::Report::Receive> - parse incoming email and HTTP reports to store
+
+L<Mail::DMARC::Report::Store> - a persistent data store for DMARC reports
+
+L<Mail::DMARC::Report::View> - CLI and (eventually) CGI methods for report viewing
 
 =back
 
@@ -207,13 +221,13 @@ Results of DMARC processing are stored in a L<Mail::DMARC::Result> object.
         ...continue normal processing...
     };
 
-There's a lot more information available in the $result object. See the L<Mail::DMARC::Result> page for complete details.
+There's a lot more information available in the $result object. See L<Mail::DMARC::Result> page for complete details.
 
 =head1 METHODS
 
 =head2 new
 
-Create a new empty DMARC object. Then populate it and run the request:
+Create an empty DMARC object. Then populate it and run the request:
 
     my $dmarc = Mail::DMARC->new;
     $dmarc->source_ip('192.0.1.1');
