@@ -2,6 +2,7 @@ package Mail::DMARC::Report::View::CLI;
 use strict;
 use warnings;
 
+use Carp;
 use Data::Dumper;
 
 require Mail::DMARC::Report::Store;
@@ -16,9 +17,19 @@ sub list {
     my $reports = $self->store->retrieve;
     foreach my $report ( @$reports ) {
         printf "%3s  %30s  %15s %15s\n", @$report{ qw/ id domain begin end / };
+        foreach my $row ( @{$report->{rows}} ) {
+            printf "\t%15s  %6s  %6s \n", @$row{ qw/ disposition dkim spf / };
+        };
     };
     return $reports;
 };
+
+sub detail {
+    my $self = shift;
+    my $id = shift or croak "need an ID!";
+    return $id;
+};
+
 
 sub store {
     my $self = shift;

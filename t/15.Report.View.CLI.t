@@ -19,7 +19,9 @@ isa_ok( $cli, $mod );
 
 $cli->store->backend->config('t/mail-dmarc.ini');
 
-ok( $cli->list(), "list");
+my $list = $cli->list();
+ok( $list, "list");
+#warn Dumper($list);
 
 done_testing();
 exit;

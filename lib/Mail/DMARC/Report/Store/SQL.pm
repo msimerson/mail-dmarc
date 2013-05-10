@@ -29,8 +29,9 @@ sub dmarc { return $_[0]->{dmarc}; };
 sub retrieve {
     my $self = shift;
     my $reports = $self->query( 'SELECT * FROM report' );
-#    my $last = $reports->[-1];
-#my $details = $self->query( 'SELECT * FROM report r' );
+    foreach my $r ( @$reports ) {
+        $r->{rows} = $self->query( 'SELECT * from report_record WHERE report_id=?', [ $r->{id} ] );
+    };
     return $reports;
 };
 
