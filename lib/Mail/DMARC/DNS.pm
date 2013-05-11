@@ -73,6 +73,18 @@ sub get_resolver {
     return $self->{resolver};
 }
 
+sub get_domain_mx {
+    my ($self, $domain) = @_;
+    my $res = $self->get_resolver();
+    my $query = $res->query($domain, 'MX') or return [];
+    my @mx;
+    for my $rr ($query->answer) {
+        next if $rr->type ne 'MX';
+        push @mx, { pref=> $rr->preference, addr=> $rr->exchange };
+    }
+    return \@mx;
+};
+
 sub is_valid_ip {
     my ($self, $ip) = @_;
 

@@ -4,8 +4,12 @@ use warnings;
 
 use Carp;
 use English '-no_match_vars';
+use Net::SMTPS;
+use Sys::Hostname;
+use POSIX;
 
 use parent 'Mail::DMARC::Base';
+use Mail::DMARC::DNS;
 
 sub email {
     my ($self, @args) = @_;
@@ -19,6 +23,8 @@ sub email {
     foreach my $req ( @required ) {
         croak "missing required header: $req" if ! $args{$req};
     };
+
+    return 1 if $self->net_smtp(\@args);
 
     eval { require MIME::Lite; }; ## no critic (Eval)
     if ( !$EVAL_ERROR ) {
@@ -40,6 +46,120 @@ sub email {
     }
 
     croak "unable to send message";
+};
+
+sub net_smtp {
+    my ($self, $args) = @_;
+
+    my $to_domain = $args->{domain} = $self->get_to_dom($args);
+    my $hosts = $self->get_smtp_hosts($to_domain);
+    my @try_mx = map { $_->{addr} }
+        sort { $a->{pref} <=> $b->{pref} } @$hosts;
+
+#print "mx: $_->{pref} $_->{addr}\n";
+#warn Data::Dumper::Dumper($hosts);
+#warn Data::Dumper::Dumper(\@try_mx);
+#return;
+    my $conf = $self->config->{smtp};
+    my $hostname = $conf->{hostname};
+    if ( ! $hostname || $hostname eq 'mail.example.com' ) {
+        $hostname = Sys::Hostname::hostname;
+    };
+    $args->{me} = $hostname;
+
+    my $smtp = Net::SMTPS->new(
+            [ @try_mx ],
+            Timeout => 10,
+            Port    => $to_domain eq 'tnpi.net' ? 587 : 25,
+            Hello   => $hostname,
+            doSSL   => 'starttls',
+            )
+        or do {
+            carp "no MX available for $to_domain\n";
+            return;
+        };
+
+    if ( $conf->{smarthost} && $conf->{smartuser} && $conf->{smartpass} ) {
+        $smtp->auth($conf->{smartuser}, $conf->{smartpass} ) or do {
+            carp "auth attempt for $conf->{smartuser} failed";
+        };
+    };
+    $smtp->mail($args->{from}) or do {
+        carp "MAIL FROM $args->{from} rejected\n";
+        $smtp->quit;
+        return;
+    };
+    $smtp->recipient($args->{to}) or do {
+        carp "RCPT TO $args->{to} rejected\n";
+        $smtp->quit;
+        return;
+    };
+    $smtp->data($self->_assemble_message($args)) or do {
+        return;
+        carp "DATA for $args->{domain} rejected\n";
+    };
+    $smtp->quit;
+    return 1;
+};
+
+sub get_to_dom {
+    my ($self, $args) = @_;
+    my ($to_dom) = (split /@/, $args->{to} )[-1];
+    return $to_dom;
+};
+
+sub get_smtp_hosts {
+    my $self = shift;
+    my $domain = shift or croak "missing domain!";
+
+    if ( $self->config->{smtp}{smarthost} ) {
+        return [ {addr => $self->config->{smtp}{smarthost} } ];
+    };
+
+    $self->{dns} ||= Mail::DMARC::DNS->new();
+    return $self->{dns}->get_domain_mx($domain);
+};
+
+sub _assemble_message {
+    my ($self, $args) = @_;
+
+    my $ds = strftime('%a, %d %b %Y %H:%M:%S %z', localtime);
+    my $message = <<"EO_MSG"
+From: $args->{from}
+Date: $ds
+X-Date: Fri, Feb 15 2002 16:54:30 -0800
+To: $args->{to}
+Subject: Report Domain: $args->{domain}
+    Submitter: $args->{me}
+    Report-ID: <2013.05.11.1>
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+    boundary="----=_NextPart_000_024E_01CC9B0A.AFE54C00"
+Content-Language: en-us
+
+This is a multipart message in MIME format.
+
+------=_NextPart_000_024E_01CC9B0A.AFE54C00
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+
+This is an aggregate report from $args->{me}.
+
+------=_NextPart_000_024E_01CC9B0A.AFE54C00
+Content-Type: application/gzip
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+    filename="mail.receiver.example!example.com!
+            1013662812!1013749130.gz"
+
+<gzipped content of report>
+
+------=_NextPart_000_024E_01CC9B0A.AFE54C00--
+EO_MSG
+;
+};
+
+sub _email_via_mail_sender {
 };
 
 sub _email_via_mime_lite {
