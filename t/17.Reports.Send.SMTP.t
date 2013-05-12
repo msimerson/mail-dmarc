@@ -15,25 +15,51 @@ eval { $smtp->email };
 chomp $@;
 ok( $@, "email, missing args" );
 
-test_get_to_dom();
-test_get_smtp_hosts();
-test_net_smtp();
-done_testing(); exit;   # comment this out to spam yourself with 'make test'
-
-$smtp->email(
-        to      => 'admin@example.com',
-        from    => 'do-not-reply@example.com',
-        subject => 'Mail::DMARC::Report::Send::SMTP test',
-        body    => 'This is a test. It is only a test',
+open my $REP, '<', 'share/dmarc-report-2013-draft.xml' or die "unable to open";
+my $report = join('', <$REP>);
+close $REP;
+my $zipped;
+IO::Compress::Gzip::gzip( \$report, \$zipped ) or die "unable to compress";
+#print Dumper($report);
+my $subject = $smtp->get_subject({to=>'they.com'});
+ok( $subject, "get_subject, $subject");
+my %email_args = (
+        to            => 'matt@example.com',
+        from          => 'do-not-reply@example.com',
+        subject       => $subject,
+        body          => 'This is is the body of a test. It is only a test',
+        report        => $zipped,
+        policy_domain => 'foo.com',
+        begin         => time,
+        end           => time + 3600,
         );
 
+test_get_to_dom();
+test_get_smtp_hosts();
+#test_via_net_smtp();
+test_assemble_message();
+
+# to spam yourself with 'make test', set 'to' in %email_args
+done_testing(); exit;      # and comment this out
+
+$smtp->email( %email_args );
 
 done_testing();
 exit;
 
+sub test_assemble_message {
+    my $mess = $smtp->_assemble_message( \%email_args );
+    ok( $mess, "_assemble_message");
+#warn print $mess;
+};
+
 sub test_net_smtp {
-    ok( $smtp->net_smtp( { from=>'matt@example.com',to=>'matt@example.com' } ),"net_smtp, example.com");
-#ok( $smtp->net_smtp( { to=>'test.user@gmail.com' } ),"net_smtp, gmail");
+    my $test_message = {
+        from => 'matt@example.com',
+        to   => 'matt@example.com',
+    };
+    ok( $smtp->via_net_smtp( $test_message ),"via_net_smtp, example.com");
+#ok( $smtp->via_net_smtp( { to=>'test.user@gmail.com' } ),"via_net_smtp, gmail");
 };
 
 sub test_get_smtp_hosts {

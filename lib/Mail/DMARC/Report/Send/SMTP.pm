@@ -4,6 +4,8 @@ use warnings;
 
 use Carp;
 use English '-no_match_vars';
+use Email::MIME;
+use IO::Compress::Gzip;
 use Net::SMTPS;
 use Sys::Hostname;
 use POSIX;
@@ -13,10 +15,11 @@ use Mail::DMARC::DNS;
 
 sub email {
     my ($self, @args) = @_;
+    croak "invalid args to email" if @args % 2;
     my %args = @args;
 
-    my @required = qw/ to from subject body /;
-    my @optional = qw/ cc type smarthost /;
+    my @required = qw/ to from subject body report policy_domain begin end /;
+    my @optional = qw/ cc type smarthost report_id /;
     my %all = map { $_ => 1 } ( @required, @optional );
     foreach ( keys %args ) { croak "unknown arg $_" if ! $all{$_} };
 
@@ -24,31 +27,18 @@ sub email {
         croak "missing required header: $req" if ! $args{$req};
     };
 
-    return 1 if $self->net_smtp(\@args);
+    return 1 if $self->via_net_smtp(\%args);
 
     eval { require MIME::Lite; }; ## no critic (Eval)
     if ( !$EVAL_ERROR ) {
-        return 1 if $self->_email_via_mime_lite( \%args );
+        return 1 if $self->via_mime_lite( \%args );
     }
 
-    carp "failed to load MIME::Lite. Trying Email::Send.";
-
-    eval { require Email::Send; }; ## no critic (Eval)
-    if ( !$EVAL_ERROR ) {
-        return 1 if $self->_email_via_email_send( \%args );
-    }
-
-    carp "failed to load Email::Send. Trying Mail::Send.";
-
-    eval { require Mail::Send; }; ## no critic (Eval)
-    if ( !$EVAL_ERROR ) {
-        return 1 if $self->_email_via_mail_send( \%args );
-    }
-
+    carp "failed to send with MIME::Lite.";
     croak "unable to send message";
 };
 
-sub net_smtp {
+sub via_net_smtp {
     my ($self, $args) = @_;
 
     my $to_domain = $args->{domain} = $self->get_to_dom($args);
@@ -56,16 +46,12 @@ sub net_smtp {
     my @try_mx = map { $_->{addr} }
         sort { $a->{pref} <=> $b->{pref} } @$hosts;
 
-#print "mx: $_->{pref} $_->{addr}\n";
-#warn Data::Dumper::Dumper($hosts);
-#warn Data::Dumper::Dumper(\@try_mx);
-#return;
     my $conf = $self->config->{smtp};
     my $hostname = $conf->{hostname};
     if ( ! $hostname || $hostname eq 'mail.example.com' ) {
         $hostname = Sys::Hostname::hostname;
     };
-    $args->{me} = $hostname;
+    my $body = $self->_assemble_message($args);
 
     my $smtp = Net::SMTPS->new(
             [ @try_mx ],
@@ -94,7 +80,7 @@ sub net_smtp {
         $smtp->quit;
         return;
     };
-    $smtp->data($self->_assemble_message($args)) or do {
+    $smtp->data( $body ) or do {
         return;
         carp "DATA for $args->{domain} rejected\n";
     };
@@ -104,6 +90,7 @@ sub net_smtp {
 
 sub get_to_dom {
     my ($self, $args) = @_;
+    croak "invalid args" if 'HASH' ne ref $args;
     my ($to_dom) = (split /@/, $args->{to} )[-1];
     return $to_dom;
 };
@@ -120,49 +107,95 @@ sub get_smtp_hosts {
     return $self->{dns}->get_domain_mx($domain);
 };
 
+sub get_subject {
+    my ($self, $args) = @_;
+
+=head2 SUBJECT FIELD
+
+The RFC5322.Subject field for individual report submissions SHOULD conform to the following ABNF:
+
+   dmarc-subject = %x52.65.70.6f.72.74 1*FWS    ; "Report"
+                   %x44.6f.6d.61.69.6e.3a 1*FWS ; "Domain:"
+                   domain-name 1*FWS            ; from RFC6376
+                   %x53.75.62.6d.69.74.74.65.72.3a ; "Submitter:"
+                   1*FWS domain-name 1*FWS
+                   %x52.65.70.6f.72.74.2d.49.44.3a ; "Report-ID:"
+                   msg-id                       ; from RFC5322
+
+The first domain-name indicates the DNS domain name about which the
+report was generated.  The second domain-name indicates the DNS
+domain name representing the Mail Receiver generating the report.
+The purpose of the Report-ID: portion of the field is to enable the
+Domain Owner to identify and ignore duplicate reports that might be
+sent by a Mail Receiver.
+
+=cut
+
+    my $id = POSIX::strftime("%Y.%m.%d.", localtime) . time;
+    my $us = $self->config->{organization}{domain};
+    my $them = $args->{policy_domain};
+    return "Report Domain: $them Submitter: $us Report-ID: <$id>";
+};
+
+sub get_filename {
+    my ($self, $args) = @_;
+
+#  2013 DMARC Draft, 12.2.1 Email
+#
+#   filename = receiver "!" policy-domain "!" begin-timestamp "!"
+#              end-timestamp [ "!" unique-id ] "." extension
+#   filename="mail.receiver.example!example.com!1013662812!1013749130.gz"
+    return join( '!',
+            $self->config->{organization}{domain},
+            $args->{policy_domain},
+            $args->{begin},
+            $args->{end},
+            $args->{report_id} || time,
+            ) . '.xml.gz';
+};
+
 sub _assemble_message {
     my ($self, $args) = @_;
 
-    my $ds = strftime('%a, %d %b %Y %H:%M:%S %z', localtime);
-    my $message = <<"EO_MSG"
-From: $args->{from}
-Date: $ds
-X-Date: Fri, Feb 15 2002 16:54:30 -0800
-To: $args->{to}
-Subject: Report Domain: $args->{domain}
-    Submitter: $args->{me}
-    Report-ID: <2013.05.11.1>
-MIME-Version: 1.0
-Content-Type: multipart/alternative;
-    boundary="----=_NextPart_000_024E_01CC9B0A.AFE54C00"
-Content-Language: en-us
+    my $filename = $self->get_filename($args);
+    my @parts = Email::MIME->create(
+                attributes => {
+                    content_type => "text/plain",
+                    disposition  => "inline",
+                    charset      => "US-ASCII",
+                },
+                body => $args->{body},
+            ) or croak "unable to add body!";
 
-This is a multipart message in MIME format.
+    push @parts, Email::MIME->create(
+                attributes => {
+                    filename     => $filename,
+                    content_type => "application/gzip",
+                    encoding     => "base64",
+                    name         => "dmarc-report.xml",
+                },
+                body => $args->{report},
+            ) or croak "unable to add report!";
 
-------=_NextPart_000_024E_01CC9B0A.AFE54C00
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+    my $email = Email::MIME->create(
+            header_str => [
+                From => $args->{from},
+                To   => $args->{to},
+                Date => strftime('%a, %d %b %Y %H:%M:%S %z', localtime),
+                Subject => $args->{subject},
+            ],
+            parts => [ @parts ],
+        ) or croak "unable to assemble message\n";
 
-This is an aggregate report from $args->{me}.
+    return $email->as_string;
 
-------=_NextPart_000_024E_01CC9B0A.AFE54C00
-Content-Type: application/gzip
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
-    filename="mail.receiver.example!example.com!
-            1013662812!1013749130.gz"
+# Date: Fri, Feb 15 2002 16:54:30 -0800
+}
 
-<gzipped content of report>
-
-------=_NextPart_000_024E_01CC9B0A.AFE54C00--
-EO_MSG
-;
+sub via_mail_sender {
 };
 
-sub _email_via_mail_sender {
-};
-
-sub _email_via_mime_lite {
+sub via_mime_lite {
     my $self = shift;
     my $args = shift;
 
@@ -176,13 +209,7 @@ sub _email_via_mime_lite {
     );
 
     $message->attach( Type => 'TEXT', Data => $args->{body} ) or croak;
-
-    #warn "attached message\n";
-
-    if ( $args->{body_html} ) {
-        $message->attach( Type => 'text/html', Data => $args->{body_html} )
-            or croak;
-    }
+    $message->attach( Type => 'application/gzip', Data => $args->{report} ) or croak;
 
     my $smart_host = $args->{smart_host};
     if ($smart_host) {
@@ -206,50 +233,6 @@ sub _email_via_mime_lite {
     }
 
     return;
-}
-
-sub _email_via_email_send {
-    my $self = shift;
-    my $args = shift;
-
-    my %m_args = ( mailer => 'SMTP', );
-    if ( $args->{smart_host} ) {
-        $m_args{mailer_args} = [ Host => $args->{smart_host} ];
-    }
-
-    my $sender = Email::Send->new( \%m_args );
-
-    my $message = <<"__MESSAGE__";
-To: $args->{to}
-From: $args->{from}
-Subject: $args->{subject}
-
-$args->{body}
-
-__MESSAGE__
-
-    $message .= "\n\n $args->{body_html} \n\n" if $args->{body_html};
-
-    return 1 if $sender->send($message);
-    return;
-}
-
-sub _email_via_mail_send {
-
-    my $self = shift;
-    my $args = shift;
-
-    my $msg = Mail::Send->new;
-
-    $msg->subject( $args->{subject} );
-    $msg->to( $args->{to} );
-
-    my $content = $msg->open;
-
-    print $content "\n\n $args->{body} \n\n";
-    print $content "$args->{body_html} \n\n" if $args->{body_html};
-
-    return $content->close;
 }
 
 1;
@@ -297,30 +280,5 @@ ABNF:
 
    For the GZIP file itself, the extension MUST be "gz"; for the XML
    report, the extension MUST be "xml".
-
-=head2 SUBJECT FIELD
-
-The RFC5322.Subject field for individual report submissions SHOULD
-conform to the following ABNF:
-
-   dmarc-subject = %x52.65.70.6f.72.74 1*FWS    ; "Report"
-                   %x44.6f.6d.61.69.6e.3a 1*FWS ; "Domain:"
-                   domain-name 1*FWS            ; from RFC6376
-                   %x53.75.62.6d.69.74.74.65.72.3a ; "Submitter:"
-                   1*FWS domain-name 1*FWS
-                   %x52.65.70.6f.72.74.2d.49.44.3a ; "Report-ID:"
-                   msg-id                       ; from RFC5322
-
-The first domain-name indicates the DNS domain name about which the
-report was generated.  The second domain-name indicates the DNS
-domain name representing the Mail Receiver generating the report.
-The purpose of the Report-ID: portion of the field is to enable the
-Domain Owner to identify and ignore duplicate reports that might be
-sent by a Mail Receiver.
-
-This transport mechanism potentially encounters a problem when
-feedback data size exceeds maximum allowable attachment sizes for
-either the generator or the consumer.  See Section 12.2.4 for further
-discussion.
 
 =cut
