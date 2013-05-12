@@ -81,8 +81,8 @@ sub via_net_smtp {
         return;
     };
     $smtp->data( $body ) or do {
-        return;
         carp "DATA for $args->{domain} rejected\n";
+        return;
     };
     $smtp->quit;
     return 1;
@@ -133,8 +133,7 @@ sent by a Mail Receiver.
 
     my $id = POSIX::strftime("%Y.%m.%d.", localtime) . time;
     my $us = $self->config->{organization}{domain};
-    my $them = $args->{policy_domain};
-    return "Report Domain: $them Submitter: $us Report-ID: <$id>";
+    return "Report Domain: $args->{policy_domain} Submitter: $us Report-ID: <$id>";
 };
 
 sub get_filename {

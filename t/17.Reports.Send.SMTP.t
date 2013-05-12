@@ -21,7 +21,7 @@ close $REP;
 my $zipped;
 IO::Compress::Gzip::gzip( \$report, \$zipped ) or die "unable to compress";
 #print Dumper($report);
-my $subject = $smtp->get_subject({to=>'they.com'});
+my $subject = $smtp->get_subject({to=>'they.com',policy_domain=>'them.com'});
 ok( $subject, "get_subject, $subject");
 my %email_args = (
         to            => 'matt@example.com',
@@ -36,12 +36,12 @@ my %email_args = (
 
 test_get_to_dom();
 test_get_smtp_hosts();
-#test_via_net_smtp();
 test_assemble_message();
 
 # to spam yourself with 'make test', set 'to' in %email_args
 done_testing(); exit;      # and comment this out
 
+#test_via_net_smtp();
 $smtp->email( %email_args );
 
 done_testing();
@@ -54,11 +54,7 @@ sub test_assemble_message {
 };
 
 sub test_net_smtp {
-    my $test_message = {
-        from => 'matt@example.com',
-        to   => 'matt@example.com',
-    };
-    ok( $smtp->via_net_smtp( $test_message ),"via_net_smtp, example.com");
+    ok( $smtp->via_net_smtp( \%email_args ),"via_net_smtp, example.com");
 #ok( $smtp->via_net_smtp( { to=>'test.user@gmail.com' } ),"via_net_smtp, gmail");
 };
 
