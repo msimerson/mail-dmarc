@@ -16,7 +16,6 @@ use_ok( 'Mail::DMARC::PurePerl' );
 my $dmarc = Mail::DMARC::PurePerl->new();
 isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 
-
 isa_ok( $dmarc->report, 'Mail::DMARC::Report' );
 isa_ok( $dmarc->report->store, 'Mail::DMARC::Report::Store');
 ok( $dmarc->report->store->backend, "selected backend loaded" );
@@ -26,25 +25,27 @@ my $test_dom = 'tnpi.net';
 # gotta have something to store. Populate a DMARC object
 setup_dmarc_result() or die "failed setup\n";
 
-#warn Dumper($dmarc->result->published);
-#warn Dumper($dmarc->report->dmarc->header_from);
-#warn Dumper($dmarc);
-#done_testing(); exit;
-
 # tell storage backend to use test settings
 $dmarc->report->store->backend->config('t/mail-dmarc.ini');
 
-# provide a fake reason
-$dmarc->result->evaluated->reason->type('other');
-$dmarc->result->evaluated->reason->comment('testing');
+test_reason();
+test_save();
 
-my $r = $dmarc->report->save;
-ok( $r, "save results" );
-print Dumper($r);
 
 #unlink 't/reports-test.sqlite';  # test DB
 done_testing();
 exit;
+
+sub test_save {
+    my $r = $dmarc->report->save;
+    ok( $r, "save results" );
+    print Dumper($r);
+};
+
+sub test_reason {
+    $dmarc->result->evaluated->reason->type('other');
+    $dmarc->result->evaluated->reason->comment('testing');
+}
 
 sub setup_dmarc_result {
 

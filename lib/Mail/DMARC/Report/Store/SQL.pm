@@ -28,9 +28,26 @@ sub dmarc { return $_[0]->{dmarc}; };
 
 sub retrieve {
     my $self = shift;
-    my $reports = $self->query( 'SELECT * FROM report' );
+    my %args = @_;
+    my $query = 'SELECT * FROM report WHERE 1=1';
+    my @qparm;
+    if ( $args{end} ) {
+        $query .= " AND end < ?";
+        push @qparm, $args{end};
+    };
+    print "query: $query ($args{end})\n";
+    my $reports = $self->query( $query, [ @qparm ] );
     foreach my $r ( @$reports ) {
-        $r->{rows} = $self->query( 'SELECT * from report_record WHERE report_id=?', [ $r->{id} ] );
+        my $rows = $r->{rows}
+            = $self->query( 'SELECT * from report_record WHERE report_id=?', [ $r->{id} ] );
+        foreach my $row ( @$rows ) {
+            $row->{reason} = $self->query( 'SELECT * from report_record_disp_reason WHERE report_record_id=?',
+                    [ $row->{id} ] );
+            $row->{spf} = $self->query( 'SELECT * from report_record_spf WHERE report_record_id=?',
+                    [ $row->{id} ] );
+            $row->{dkim} = $self->query( 'SELECT * from report_record_dkim WHERE report_record_id=?',
+                    [ $row->{id} ] );
+        };
     };
     return $reports;
 };
@@ -218,7 +235,7 @@ sub query_insert {
     my ($self, $query, $err, @params) = @_;
     my $dbix = $self->{dbh};
     my (undef,undef,$table) = split /\s+/, $query;
-    ($table) = split( /\(/, $table) if $table =~ /\(/; 
+    ($table) = split( /\(/, $table) if $table =~ /\(/;
     eval { $dbix->query( $query, @params ); } or do {
         carp $dbix->error if $dbix->error ne 'DBI error: ';
     };
