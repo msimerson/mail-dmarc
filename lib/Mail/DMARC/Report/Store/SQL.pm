@@ -40,6 +40,7 @@ sub retrieve {
         $r->{policy_published} = $self->query( 'SELECT * from report_policy_published WHERE report_id=?', [ $r->{id} ] )->[0];
         my $rows = $r->{rows} = $self->query( 'SELECT * from report_record WHERE report_id=?', [ $r->{id} ] );
         foreach my $row ( @$rows ) {
+            $row->{source_ip} = $self->inet_ntop( $row->{source_ip} );
             $row->{reason} = $self->query( 'SELECT type,comment from report_record_disp_reason WHERE report_record_id=?', [ $row->{id} ]);
             $row->{auth_results}{spf} = $self->query( 'SELECT domain,result,scope from report_record_spf WHERE report_record_id=?', [ $row->{id} ] );
             $row->{auth_results}{dkim} = $self->query( 'SELECT domain,selector,result,human_result from report_record_dkim WHERE report_record_id=?', [ $row->{id} ] );
@@ -106,7 +107,7 @@ EO_ROW_INSERT
 ;
     my $args = [
         $self->{report_id},
-        Net::IP->new($self->dmarc->source_ip)->intip,
+        $self->inet_pton($self->dmarc->source_ip),
         $eva->disposition,
         $eva->dkim,
         $eva->spf,

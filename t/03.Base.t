@@ -25,6 +25,19 @@ eval { $base->config('t/mail-dmarc.ini'); };
 chomp $@;
 ok( ! $@, "alternate config file");
 
+my @test_ips = (
+        '1.1.1.1',
+        '10.0.1.1',
+        '2002:4c79:6240::1610:9fff:fee5:fb5',
+        '2607:f060:b008:feed::6',
+        );
+foreach my $ip ( @test_ips ) {
+    my $bin = $base->inet_pton( $ip );
+    ok( $bin, "inet_pton, $ip");
+    my $pres = $base->inet_ntop( $bin );
+    ok( $pres, "inet_ntop, $ip");
+    cmp_ok( $pres, 'eq', $ip, "inet_ntop, $ip");
+};
 #warn Dumper($base);
 
 done_testing();

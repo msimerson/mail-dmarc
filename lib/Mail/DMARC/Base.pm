@@ -4,6 +4,7 @@ use warnings;
 
 use Carp;
 use Config::Tiny;
+use Socket 2;
 
 sub new {
     my ($class, @args) = @_;
@@ -35,8 +36,29 @@ sub get_config {
     croak "unable to find config file $file\n";
 }
 
+sub inet_ntop {
+    my ($self, $ip_bin) = @_;
+    $ip_bin or die "missing IP in request";
+
+    if ( length $ip_bin == 16 ) {
+        return Socket::inet_ntop( AF_INET6, $ip_bin );
+    };
+
+    return Socket::inet_ntop( AF_INET, $ip_bin );
+};
+
+sub inet_pton {
+    my ($self, $ip_txt) = @_;
+    $ip_txt or die "missing IP in request";
+
+    if ( $ip_txt =~ /:/ ) {
+        return Socket::inet_pton( AF_INET6, $ip_txt );
+    };
+
+    return Socket::inet_pton( AF_INET, $ip_txt );
+};
+
 1;
 # ABSTRACT: utility functions
 __END__
-
 
