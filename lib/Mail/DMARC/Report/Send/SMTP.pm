@@ -5,7 +5,6 @@ use warnings;
 use Carp;
 use English '-no_match_vars';
 use Email::MIME;
-use IO::Compress::Gzip;
 use Net::SMTPS;
 use Sys::Hostname;
 use POSIX;
@@ -18,8 +17,8 @@ sub email {
     croak "invalid args to email" if @args % 2;
     my %args = @args;
 
-    my @required = qw/ to from subject body report policy_domain begin end /;
-    my @optional = qw/ cc type smarthost report_id /;
+    my @required = qw/ to subject body report policy_domain begin end /;
+    my @optional = qw/ report_id /;
     my %all = map { $_ => 1 } ( @required, @optional );
     foreach ( keys %args ) { croak "unknown arg $_" if ! $all{$_} };
 
@@ -27,14 +26,14 @@ sub email {
         croak "missing required header: $req" if ! $args{$req};
     };
 
-    return 1 if $self->via_net_smtp(\%args);
+    return $self->via_net_smtp(\%args);
 
-    eval { require MIME::Lite; }; ## no critic (Eval)
-    if ( !$EVAL_ERROR ) {
-        return 1 if $self->via_mime_lite( \%args );
-    }
+#    eval { require MIME::Lite; }; ## no critic (Eval)
+#    if ( !$EVAL_ERROR ) {
+#        return 1 if $self->via_mime_lite( \%args );
+#    }
 
-    carp "failed to send with MIME::Lite.";
+#    carp "failed to send with MIME::Lite.";
     croak "unable to send message";
 };
 
@@ -53,15 +52,16 @@ sub via_net_smtp {
     };
     my $body = $self->_assemble_message($args);
 
+    my $err = "found " . scalar @try_mx . " MX";
     my $smtp = Net::SMTPS->new(
             [ @try_mx ],
             Timeout => 10,
-            Port    => $to_domain eq 'tnpi.net' ? 587 : 25,
+            Port    => $to_domain eq 'theartfarm.com' ? 587 : 25,
             Hello   => $hostname,
             doSSL   => 'starttls',
             )
         or do {
-            carp "no MX available for $to_domain\n";
+            carp "$err but 0 available for $to_domain\n";
             return;
         };
 
@@ -70,8 +70,9 @@ sub via_net_smtp {
             carp "auth attempt for $conf->{smartuser} failed";
         };
     };
-    $smtp->mail($args->{from}) or do {
-        carp "MAIL FROM $args->{from} rejected\n";
+    my $from = $self->config->{organization}{email};
+    $smtp->mail($from) or do {
+        carp "MAIL FROM $from rejected\n";
         $smtp->quit;
         return;
     };
@@ -131,7 +132,7 @@ sent by a Mail Receiver.
 
 =cut
 
-    my $id = POSIX::strftime("%Y.%m.%d.", localtime) . time;
+    my $id = POSIX::strftime("%Y.%m.%d.", localtime) . ($args->{report_id} || time);
     my $us = $self->config->{organization}{domain};
     return "Report Domain: $args->{policy_domain} Submitter: $us Report-ID: <$id>";
 };
@@ -178,7 +179,7 @@ sub _assemble_message {
 
     my $email = Email::MIME->create(
             header_str => [
-                From => $args->{from},
+                From => $self->config->{organization}{email},
                 To   => $args->{to},
                 Date => strftime('%a, %d %b %Y %H:%M:%S %z', localtime),
                 Subject => $args->{subject},
@@ -200,9 +201,9 @@ sub via_mime_lite {
 
     #warn "sending email with MIME::Lite\n";
     my $message = MIME::Lite->new(
-        From    => $args->{from},
+        From    => $self->config->{organization}{email},
         To      => $args->{to},
-        Cc      => $args->{cc},
+        Cc      => $self->{config}{smtp}{cc},
         Subject => $args->{subject},
         Type    => $args->{type} || 'multipart/alternative',
     );

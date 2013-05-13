@@ -25,7 +25,6 @@ my $subject = $smtp->get_subject({to=>'they.com',policy_domain=>'them.com'});
 ok( $subject, "get_subject, $subject");
 my %email_args = (
         to            => 'matt@example.com',
-        from          => 'do-not-reply@example.com',
         subject       => $subject,
         body          => 'This is is the body of a test. It is only a test',
         report        => $zipped,
