@@ -26,12 +26,12 @@ sub send_rua {
 # TODO: check $u_ref->{max_bytes};
         if ( 'mailto:' eq substr($method,0,7) ) {
             my ($to) = (split /:/, $method)[-1];
-            warn "sending mailto $to\n";
+            carp "sending mailto $to\n";
             $self->send_via_smtp($to, $report, $gz) and $sent++;
 # TODO: check results, append error if failed, delete report if success
         };
         if ( 'http:' eq substr($method,0,5) ) {
-            warn "not implemented yet!";
+            carp "not implemented yet!";
         };
     };
     return $sent;

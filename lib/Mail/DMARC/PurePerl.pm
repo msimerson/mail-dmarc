@@ -349,9 +349,10 @@ sub fetch_dmarc_record {
     #       Domain in place of the RFC5322.From domain in the message (if
     #       different).  This record can contain policy to be asserted for
     #       subdomains of the Organizational Domain.
-    if ( defined $org_dom ) {                         #   <- recursion break
-        return \@matches if $org_dom eq $zone;
-        return $self->fetch_dmarc_record($org_dom);   #   <- recursion
+    if ( defined $org_dom ) {                           #  <- recursion break
+        if ( $org_dom ne $zone ) {
+            return $self->fetch_dmarc_record($org_dom); #  <- recursion
+        };
     };
  
     $self->result->evaluated->result('fail');

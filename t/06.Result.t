@@ -17,6 +17,7 @@ isa_ok( $result, 'Mail::DMARC::Result' );
 my $test_dom = 'tnpi.net';
 test_published();
 test_evaluated();
+test_no_policy();
 
 done_testing();
 exit;
@@ -163,3 +164,22 @@ sub test_evaluated {
     ok( $result->evaluated(), "evaluated");
 };
 
+sub test_no_policy {
+
+    $pp->init();
+    $pp->{header_from} = 'responsebeacon.com';
+    $pp->validate();
+
+    is_deeply( $pp->result->evaluated, {
+            'result' => 'fail',
+            'disposition' => 'none',
+            'dkim' => '',
+            'spf'  => '',
+            'reason' => {
+                'comment' => 'no DMARC record found',
+                'type' => 'other',
+            },
+        },
+        "evaluated, fail, nonexist")
+        or diag Data::Dumper::Dumper($pp->result);
+};

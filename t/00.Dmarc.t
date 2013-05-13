@@ -6,12 +6,9 @@ use Test::More;
 use lib 'lib';
 
 use_ok( 'Mail::DMARC' );
-use_ok( 'Mail::DMARC::PurePerl' );
 
 my $dmarc = Mail::DMARC->new();
-my $pp = Mail::DMARC::PurePerl->new();
 isa_ok( $dmarc, 'Mail::DMARC' );
-isa_ok( $pp, 'Mail::DMARC::PurePerl' );
 
 my %sample_dmarc = (
         source_ip     => '192.0.1.1',
