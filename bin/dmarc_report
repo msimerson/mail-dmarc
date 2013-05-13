@@ -1,0 +1,21 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use Data::Dumper;
+
+use lib 'lib';
+use Mail::DMARC::Report;
+my $report = Mail::DMARC::Report->new();
+
+# 1. get list of reports where end < now
+my $reports_ref = $report->store->retrieve( 'end' => time );
+foreach my $report_ref ( @$reports_ref ) {
+    print "$report_ref->{domain}\n";
+    print "rua: $report_ref->{policy_published}{rua}\n";
+    my $xml = $report->assemble_xml( \$report_ref );
+    $report->send->send_rua(\$report_ref, \$xml);
+#   print $xml;
+};
+
+exit;

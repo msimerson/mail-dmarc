@@ -34,7 +34,7 @@ sub email {
 #    }
 
 #    carp "failed to send with MIME::Lite.";
-    croak "unable to send message";
+#   croak "unable to send message";
 };
 
 sub via_net_smtp {
@@ -45,8 +45,8 @@ sub via_net_smtp {
     my @try_mx = map { $_->{addr} }
         sort { $a->{pref} <=> $b->{pref} } @$hosts;
 
-    my $conf = $self->config->{smtp};
-    my $hostname = $conf->{hostname};
+    my $config = $self->config->{smtp};
+    my $hostname = $config->{hostname};
     if ( ! $hostname || $hostname eq 'mail.example.com' ) {
         $hostname = Sys::Hostname::hostname;
     };
@@ -65,9 +65,9 @@ sub via_net_smtp {
             return;
         };
 
-    if ( $conf->{smarthost} && $conf->{smartuser} && $conf->{smartpass} ) {
-        $smtp->auth($conf->{smartuser}, $conf->{smartpass} ) or do {
-            carp "auth attempt for $conf->{smartuser} failed";
+    if ( $config->{smarthost} && $config->{smartuser} && $config->{smartpass} ) {
+        $smtp->auth($config->{smartuser}, $config->{smartpass} ) or do {
+            carp "auth attempt for $config->{smartuser} failed";
         };
     };
     my $from = $self->config->{organization}{email};
@@ -173,6 +173,7 @@ sub _assemble_message {
                     content_type => "application/gzip",
                     encoding     => "base64",
                     name         => "dmarc-report.xml",
+                    #name        => $filename,          # TODO: which is better?
                 },
                 body => $args->{report},
             ) or croak "unable to add report!";
@@ -203,7 +204,7 @@ sub via_mime_lite {
     my $message = MIME::Lite->new(
         From    => $self->config->{organization}{email},
         To      => $args->{to},
-        Cc      => $self->{config}{smtp}{cc},
+        Cc      => $self->config->{smtp}{cc},
         Subject => $args->{subject},
         Type    => $args->{type} || 'multipart/alternative',
     );

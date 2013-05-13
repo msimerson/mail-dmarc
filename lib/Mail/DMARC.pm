@@ -113,7 +113,7 @@ sub policy {
 sub report {
     my $self = shift;
     return $self->{report} if ref $self->{report};
-    return $self->{report} = Mail::DMARC::Report->new( $self );
+    return $self->{report} = Mail::DMARC::Report->new();
 };
 
 sub result {

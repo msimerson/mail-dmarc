@@ -37,7 +37,7 @@ done_testing();
 exit;
 
 sub test_save {
-    my $r = $dmarc->report->save;
+    my $r = $dmarc->report->save($dmarc);
     ok( $r, "save results" );
     print Dumper($r);
 };

@@ -4,6 +4,8 @@ use warnings;
 use Data::Dumper;
 use Test::More;
 
+use IO::Compress::Gzip;
+
 use lib 'lib';
 
 my $mod = 'Mail::DMARC::Report::Send::SMTP';

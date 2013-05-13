@@ -166,7 +166,7 @@ sub insert_report_published_policy {
 };
 
 sub db_connect {
-    my ($self, $config) = @_;
+    my $self = shift;
 
     return $self->{dbh} if $self->{dbh};   # caching
 

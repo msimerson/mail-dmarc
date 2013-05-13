@@ -27,10 +27,12 @@ sub send_rua {
             my ($to) = (split /:/, $method)[-1];
             warn "sending mailto $to\n";
             $self->send_via_smtp($to, $report, $gz);
+# TODO: check results, append error if failed, delete report if success
         };
         if ( 'http:' eq substr($method,0,5) ) {
         };
     };
+    return 1;
 };
 
 sub human_summary {
@@ -42,7 +44,7 @@ sub send_via_smtp {
     my ($self,$to,$report,$gz) = @_;
     my $rid = $$report->{id};
     my $dom = $$report->{domain};
-    $self->smtp->email(
+    return $self->smtp->email(
         to            => $to,
         subject       => $self->smtp->get_subject({report_id=>$rid,policy_domain=>$dom}),
         body          => $self->human_summary($report),

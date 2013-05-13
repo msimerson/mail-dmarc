@@ -5,16 +5,12 @@ use warnings;
 use Carp;
 use Data::Dumper;
 
-use Mail::DMARC::Report::Send;
-use Mail::DMARC::Report::Store;
-use Mail::DMARC::Report::Receive;
-use Mail::DMARC::Report::View;
+use parent 'Mail::DMARC::Base';
 
-sub new {
-    my ($class, $dmarc, @args) = @_;
-    croak "invalid arguments" if scalar @args;
-    return bless { dmarc => $dmarc }, $class;
-};
+require Mail::DMARC::Report::Send;
+require Mail::DMARC::Report::Store;
+require Mail::DMARC::Report::Receive;
+require Mail::DMARC::Report::View;
 
 sub dmarc {
     my $self = shift;
@@ -29,14 +25,12 @@ sub receive {
 
 sub sendit {
     my $self = shift;
-    croak "missing dmarc object!" if ! $self->{dmarc};
     return $self->{sendit} if ref $self->{sendit};
     return $self->{sendit} = Mail::DMARC::Report::Send->new();
 };
 
 sub store {
     my $self = shift;
-    croak "missing dmarc object!" if ! $self->{dmarc};
     return $self->{store} if ref $self->{store};
     return $self->{store} = Mail::DMARC::Report::Store->new();
 };
@@ -59,8 +53,141 @@ sub send_each {
 
 sub save {
     my $self = shift;
-    croak "missing dmarc object!" if ! $self->{dmarc};
-    return $self->store->backend->save($self->{dmarc});
+    return $self->store->backend->save(@_);
+};
+
+sub assemble_xml {
+    my $self = shift;
+    $self->{report_ref} = shift or croak "mising report!";
+    my $meta = $self->get_report_metadata_as_xml;
+    my $pubp = $self->get_policy_published_as_xml;
+    my $reco = $self->get_record_as_xml;
+
+    return <<"EO_XML"
+<?xml version="1.0"?>
+<feedback>
+$meta
+$pubp
+$reco
+</feedback>
+EO_XML
+;
+};
+
+sub get_record_as_xml {
+    my $self = shift;
+    my $rr = ${$self->{report_ref}};
+
+    return '' if 0 == @{$rr->{rows}};  # no rows
+    my %ips;
+    my %reasons;
+    foreach my $row ( @{$rr->{rows}} ) {
+        $ips{ $row->{source_ip} }++;
+        if ( $row->{reason} ) {
+            foreach my $reason ( @{ $row->{reason} } ) {
+                my $type = $reason->{type} or next;
+                $reasons{$row->{source_ip}}{$type} = ($reason->{comment} || '');
+            };
+        };
+    };
+
+    my $rec_xml = " <record>\n";
+    foreach my $row ( @{$rr->{rows}} ) {
+        my $ip = $row->{source_ip} or croak "no source IP!?";
+        next if ! defined $ips{$ip};  # already reported
+        my $count = delete $ips{$ip};
+        $rec_xml .= "  <row>\n"
+            . "   <source_ip>$ip</source_ip>\n"
+            . "   <count>$count</count>\n"
+            .  $self->get_policy_evaluated_as_xml( $row, $reasons{$ip} )
+            . "  </row>\n"
+            .  $self->get_identifiers_as_xml( $row )
+            .  $self->get_auth_results_as_xml( $row )
+    };
+    $rec_xml   .= " </record>";
+    return $rec_xml;
+};
+
+sub get_identifiers_as_xml {
+    my ($self, $row) = @_;
+    my $id = "  <identifiers>\n";
+    foreach my $f ( qw/ envelope_to envelope_from header_from / ) {
+        next if ! $row->{$f};
+        $id .= "   <$f>$row->{$f}</$f>\n";
+    };
+    $id .= "  </identifiers>\n";
+    return $id;
+};
+
+sub get_auth_results_as_xml {
+    my ($self, $row) = @_;
+    my $ar = "  <auth_results>\n";
+
+    foreach my $dkim_sig ( @{ $row->{auth_results}{dkim} } ) {
+        $ar .= "   <dkim>\n";
+        foreach my $g ( qw/ domain selector result human_result / ) {
+            next if ! defined $dkim_sig->{$g};
+            $ar .= "    <$g>$dkim_sig->{$g}</$g>\n";
+        };
+        $ar .= "   </dkim>\n";
+    };
+
+    foreach my $spf ( @{ $row->{auth_results}{spf} } ) {
+        $ar .= "   <spf>\n";
+        foreach my $g ( qw/ domain scope result / ) {
+            next if ! defined $spf->{$g};
+            $ar .= "    <$g>$spf->{$g}</$g>\n";
+        };
+        $ar .= "   </spf>\n";
+    };
+
+    $ar .= "  </auth_results>\n";
+    return $ar;
+};
+
+sub get_policy_published_as_xml {
+    my $self = shift;
+    my $rr = ${$self->{report_ref}};
+    return '' if ! $rr->{policy_published};
+    my $pp = " <policy_published>\n  <domain>$rr->{domain}</domain>\n";
+    foreach my $f ( qw/ adkim aspf p sp pct / ) {
+        next if ! defined $rr->{policy_published}{$f};
+        $pp .= "  <$f>$rr->{policy_published}{$f}</$f>\n";
+    };
+    $pp .= " </policy_published>";
+    return $pp;
+};
+
+sub get_policy_evaluated_as_xml {
+    my ($self, $row, $reasons) = @_;
+    my $pe = "   <policy_evaluated>\n";
+
+    foreach my $f ( qw/ disposition dkim spf / ) {
+        $pe   .= "    <$f>$row->{$f}</$f>\n";
+    };
+
+    foreach my $reason ( keys %$reasons ) {
+        $pe .= "    <reason>\n     <type>$reason</type>\n";
+        $pe .= "     <comment>$reasons->{$reason}</comment>\n" if $reasons->{$reason};
+        $pe .= "    </reason>\n";
+    };
+    $pe .= "   </policy_evaluated>\n";
+    return $pe;
+};
+
+sub get_report_metadata_as_xml {
+    my $self = shift;
+    my $rr = ${$self->{report_ref}};
+    my $meta = " <report_metadata>\n  <report_id>$rr->{id}</report_id>\n";
+    foreach my $f ( qw/ org_name email extra_contact_info / ) {
+        next if ! $self->config->{organization}{$f};
+        $meta .= "  <$f>".$self->config->{organization}{$f}."</$f>\n";
+    };
+    $meta .= "  <date_range>\n   <begin>$rr->{begin}</begin>\n"
+          .  "   <end>$rr->{end}</end>\n  </date_range>\n";
+    $meta .= "  <error>$rr->{error}</error>\n" if $rr->{error};
+    $meta .= " </report_metadata>";
+    return $meta;
 };
 
 1;

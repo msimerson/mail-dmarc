@@ -8,7 +8,8 @@ use parent 'Mail::DMARC::Base';
 
 sub save {
     my $self = shift;
-    return $self->backend->save(@_);
+    my $dmarc = shift or croak "need a DMARC object!";
+    return $self->backend->save($dmarc);
 };
 
 sub retrieve {
