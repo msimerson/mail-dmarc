@@ -12,6 +12,11 @@ sub save {
     return $self->backend->save($dmarc);
 };
 
+sub delete_report {
+    my $self = shift;
+    return $self->backend->delete_report(@_);
+};
+
 sub retrieve {
     my $self = shift;
     return $self->backend->retrieve(@_);

@@ -14,7 +14,8 @@ foreach my $report_ref ( @$reports_ref ) {
     print "$report_ref->{domain}\n";
     print "rua: $report_ref->{policy_published}{rua}\n";
     my $xml = $report->assemble_xml( \$report_ref );
-    $report->send->send_rua(\$report_ref, \$xml);
+    $report->sendit->send_rua(\$report_ref, \$xml) # deliver via SMTP/HTTP
+        and $report->store->delete_report($report_ref->{id});
 #   print $xml;
 };
 

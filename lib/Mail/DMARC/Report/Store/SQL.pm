@@ -23,8 +23,6 @@ sub save {
     return $self->{report_row_id};
 };
 
-sub dmarc { return $_[0]->{dmarc}; };
-
 sub retrieve {
     my ($self, %args) = @_;
     my $query = 'SELECT * FROM report WHERE 1=1';
@@ -32,7 +30,7 @@ sub retrieve {
     if ( $args{end} ) {
         $query .= " AND end < ?";
         push @qparm, $args{end};
-        print "query: $query ($args{end})\n";
+#       print "query: $query ($args{end})\n";
     };
     my $reports = $self->query( $query, [ @qparm ] );
     foreach my $r ( @$reports ) {
@@ -47,6 +45,28 @@ sub retrieve {
     };
     return $reports;
 };
+
+sub delete_report {
+    my $self = shift;
+    my $report_id = shift or carp "missing report ID";
+    print "deleting report $report_id\n";
+
+    # deletes with FK don't cascade in SQLite? Clean each table manually
+    my $rows = $self->query( 'SELECT id FROM report_record WHERE report_id=?', [ $report_id ] );
+    my $row_ids = join(',', map { $_->{id} } @$rows) or return 1;
+    foreach my $table ( qw/ report_record_spf report_record_dkim report_record_disp_reason / ) {
+        print "deleting $table rows $row_ids\n";
+        $self->query("DELETE FROM $table WHERE report_record_id IN ($row_ids)");
+    };
+    foreach my $table ( qw/ report_policy_published report_record / ) {
+        $self->query("DELETE FROM $table WHERE report_id=?", [ $report_id ] );
+    };
+# In MySQL, where FK constraints DO cascade, this is the only query needed
+    $self->query("DELETE FROM report WHERE id=?", [ $report_id ] );
+    return 1;
+};
+
+sub dmarc { return $_[0]->{dmarc}; };
 
 sub insert_rr_reason {
     my $self = shift;

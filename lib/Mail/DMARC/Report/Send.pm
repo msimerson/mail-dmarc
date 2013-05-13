@@ -20,19 +20,21 @@ sub send_rua {
     IO::Compress::Gzip::gzip( $xml, \$gz ) or croak "unable to compress";
 
     my $uri_ref = $self->uri->parse($$report->{policy_published}{rua});
+    my $sent = 0;
     foreach my $u_ref ( @$uri_ref ) {
         my $method = $u_ref->{uri};
 # TODO: check $u_ref->{max_bytes};
         if ( 'mailto:' eq substr($method,0,7) ) {
             my ($to) = (split /:/, $method)[-1];
             warn "sending mailto $to\n";
-            $self->send_via_smtp($to, $report, $gz);
+            $self->send_via_smtp($to, $report, $gz) and $sent++;
 # TODO: check results, append error if failed, delete report if success
         };
         if ( 'http:' eq substr($method,0,5) ) {
+            warn "not implemented yet!";
         };
     };
-    return 1;
+    return $sent;
 };
 
 sub human_summary {

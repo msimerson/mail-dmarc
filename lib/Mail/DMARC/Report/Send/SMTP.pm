@@ -67,7 +67,7 @@ sub via_net_smtp {
 
     if ( $config->{smarthost} && $config->{smartuser} && $config->{smartpass} ) {
         $smtp->auth($config->{smartuser}, $config->{smartpass} ) or do {
-            carp "auth attempt for $config->{smartuser} failed";
+            carp "$err but auth attempt for $config->{smartuser} failed";
         };
     };
     my $from = $self->config->{organization}{email};
@@ -172,8 +172,7 @@ sub _assemble_message {
                     filename     => $filename,
                     content_type => "application/gzip",
                     encoding     => "base64",
-                    name         => "dmarc-report.xml",
-                    #name        => $filename,          # TODO: which is better?
+                    name         => $filename,
                 },
                 body => $args->{report},
             ) or croak "unable to add report!";
@@ -182,7 +181,7 @@ sub _assemble_message {
             header_str => [
                 From => $self->config->{organization}{email},
                 To   => $args->{to},
-                Date => strftime('%a, %d %b %Y %H:%M:%S %z', localtime),
+                Date => strftime('%a, %d %b %Y %H:%M:%S %z', localtime), # RFC 2822 format
                 Subject => $args->{subject},
             ],
             parts => [ @parts ],
