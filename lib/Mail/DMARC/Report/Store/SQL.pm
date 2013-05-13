@@ -152,7 +152,7 @@ sub insert_report_published_policy {
     my $self = shift;
     my $pub = $self->dmarc->result->published or croak "unable to get published policy";
     $pub->apply_defaults or croak "failed to apply defaults?!";
-    my $query = 'INSERT INTO report_policy_published (report_id, adkim, aspf, p, sp, pct) VALUES (?,?,?,?,?,?)';
+    my $query = 'INSERT INTO report_policy_published (report_id, adkim, aspf, p, sp, pct, rua) VALUES (?,?,?,?,?,?,?)';
     return $self->query( $query, [
             $self->{report_id},
             $pub->adkim,
@@ -160,6 +160,7 @@ sub insert_report_published_policy {
             $pub->p,
             $pub->sp,
             $pub->pct,
+            $pub->rua,
             ]
             ) or croak "failed to insert published policy";
 };

@@ -119,6 +119,7 @@ CREATE TABLE `report_policy_published` (
   `p` varchar(10) DEFAULT NULL,
   `sp` varchar(10) DEFAULT NULL,
   `pct` tinyint(1) DEFAULT NULL,
+  `rua` varchar(255) NOT NULL,
   CONSTRAINT `report_policy_published_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `report` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
