@@ -40,7 +40,7 @@ sub apply_defaults {
     $self->ri(86400)  if ! defined $self->ri;
     $self->rf('afrf') if ! defined $self->rf;
 #   pct   # default is 100%, but 100% -vs- not defined is different
-    return;
+    return 1;
 };
 
 sub v {

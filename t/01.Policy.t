@@ -35,7 +35,7 @@ sub test_apply_defaults {
 
 # default policy
     $pol = Mail::DMARC::Policy->new( v=>'DMARC1', p=>'reject' );
-    $pol->apply_defaults();
+    ok( $pol->apply_defaults(), "apply_defaults");
     is_deeply( $pol, { v=>'DMARC1', p => 'reject', rf => 'afrf', fo=>0, adkim=>'r', aspf=>'r', ri=>86400 }, "new, with defaults" );
 };
 

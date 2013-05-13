@@ -15,7 +15,7 @@ eval { $smtp->email };
 chomp $@;
 ok( $@, "email, missing args" );
 
-open my $REP, '<', 'share/dmarc-report-2013-draft.xml' or die "unable to open";
+open my $REP, '<', 'share/dmarc-report-2013-draft.xsd' or die "unable to open";
 my $report = join('', <$REP>);
 close $REP;
 my $zipped;

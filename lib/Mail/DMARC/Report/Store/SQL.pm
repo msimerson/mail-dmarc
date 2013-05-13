@@ -27,15 +27,14 @@ sub save {
 sub dmarc { return $_[0]->{dmarc}; };
 
 sub retrieve {
-    my $self = shift;
-    my %args = @_;
+    my ($self, %args) = @_;
     my $query = 'SELECT * FROM report WHERE 1=1';
     my @qparm;
     if ( $args{end} ) {
         $query .= " AND end < ?";
         push @qparm, $args{end};
+        print "query: $query ($args{end})\n";
     };
-    print "query: $query ($args{end})\n";
     my $reports = $self->query( $query, [ @qparm ] );
     foreach my $r ( @$reports ) {
         $r->{policy_published} = $self->query( 'SELECT * from report_policy_published WHERE report_id=?', [ $r->{id} ] )->[0];
@@ -151,8 +150,8 @@ sub insert_report {
 
 sub insert_report_published_policy {
     my $self = shift;
-    my $pub = $self->dmarc->result->published;
-    $pub->apply_defaults;
+    my $pub = $self->dmarc->result->published or croak "unable to get published policy";
+    $pub->apply_defaults or croak "failed to apply defaults?!";
     my $query = 'INSERT INTO report_policy_published (report_id, adkim, aspf, p, sp, pct) VALUES (?,?,?,?,?,?)';
     return $self->query( $query, [
             $self->{report_id},
