@@ -28,9 +28,37 @@ test_query_update();
 test_query_delete();
 test_query();
 test_query_any();
+test_ip_store_and_fetch();
 
 done_testing();
 exit;
+
+sub test_ip_store_and_fetch {
+    my @test_ips = (
+            '1.1.1.1',
+            '10.0.1.1',
+            '2002:4c79:6240::1610:9fff:fee5:fb5',
+            '2607:f060:b008:feed::6',
+            );
+
+    foreach my $ip ( @test_ips ) {
+
+        my $ipbin = $sql->inet_pton( $ip );
+        ok( $ipbin, "inet_pton, $ip");
+
+        my $pres = $sql->inet_ntop( $ipbin );
+        ok( $pres, "inet_ntop, $ip");
+        cmp_ok( $pres, 'eq', $ip, "inet_ntop, cmp");
+
+        my $report_id = $sql->query(
+            "INSERT INTO report_record ( report_id, source_ip, disposition, dkim,spf,header_from) VALUES (?,?,?,?,?,?)",
+            [ 1, $ipbin, 'none','pass','pass','tnpi.net' ] )
+                or die "failed to insert?";
+
+        my $r_ref = $sql->query("SELECT id,source_ip FROM report_record WHERE id=?", [$report_id])->[0];
+        cmp_ok( $sql->inet_ntop($r_ref->{source_ip}), 'eq', $ip, "inet_ntop, sql, $ip");
+    };
+};
 
 sub test_query {
     ok( $sql->query("SELECT id FROM report LIMIT 1"), "query");

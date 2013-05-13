@@ -5,7 +5,6 @@ use warnings;
 use Carp;
 use Data::Dumper;
 use DBIx::Simple;
-use Net::IP;
 
 use parent 'Mail::DMARC::Base';
 

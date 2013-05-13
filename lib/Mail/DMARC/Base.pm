@@ -38,7 +38,7 @@ sub get_config {
 
 sub inet_ntop {
     my ($self, $ip_bin) = @_;
-    $ip_bin or die "missing IP in request";
+    $ip_bin or croak "missing IP in request";
 
     if ( length $ip_bin == 16 ) {
         return Socket::inet_ntop( AF_INET6, $ip_bin );
@@ -49,13 +49,13 @@ sub inet_ntop {
 
 sub inet_pton {
     my ($self, $ip_txt) = @_;
-    $ip_txt or die "missing IP in request";
+    $ip_txt or croak "missing IP in request";
 
     if ( $ip_txt =~ /:/ ) {
-        return Socket::inet_pton( AF_INET6, $ip_txt );
+        return Socket::inet_pton( AF_INET6, $ip_txt ) or croak "invalid IPv6: $ip_txt";
     };
 
-    return Socket::inet_pton( AF_INET, $ip_txt );
+    return Socket::inet_pton( AF_INET, $ip_txt ) or croak "invalid IPv4: $ip_txt";
 };
 
 1;
