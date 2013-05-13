@@ -176,7 +176,7 @@ sub test_no_policy {
             'dkim' => '',
             'spf'  => '',
             'reason' => {
-                'comment' => 'no DMARC record found',
+                'comment' => 'no policy',
                 'type' => 'other',
             },
         },

@@ -9,22 +9,14 @@ use Net::DNS::Resolver;
 use Net::IP;
 use Regexp::Common qw /net/;
 
-sub new {
-    my $class = shift;
-    return bless {
-        dns_timeout   => 5,
-        resolver      => undef,
-        ps_file       => 'share/public_suffix_list',
-    },
-    $class;
-}
+use parent 'Mail::DMARC::Base';
 
 sub is_public_suffix {
     my ($self, $zone) = @_;
 
     croak "missing zone name!" if ! $zone;
 
-    my $file = $self->{ps_file} || 'share/public_suffix_list';
+    my $file = $self->config->{dns}{public_suffix_list} || 'share/public_suffix_list';
     my @dirs = qw[ ./ /usr/local/ /usr/ /opt/local ];
     my $match;
     foreach my $dir ( @dirs ) {
@@ -65,7 +57,7 @@ sub has_dns_rr {
 
 sub get_resolver {
     my $self = shift;
-    my $timeout = shift || $self->{dns_timeout} || 5;
+    my $timeout = shift || $self->config->{dns}{timeout} || 5;
     return $self->{resolver} if defined $self->{resolver};
     $self->{resolver} = Net::DNS::Resolver->new(dnsrch => 0);
     $self->{resolver}->tcp_timeout($timeout);

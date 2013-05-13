@@ -95,7 +95,7 @@ sub discover_policy {
     if (scalar @$matches > 1) {
         $e->result('fail');
         $e->disposition('none');
-        $e->reason(type=>'other', comment=> "too many DMARC records" );
+        $e->reason(type=>'other', comment=> "too many policies" );
         return;
     }
 
@@ -117,7 +117,7 @@ sub discover_policy {
         if (!$policy->rua || !$self->has_valid_reporting_uri($policy->rua)) {
             $e->result('fail');
             $e->disposition('none');
-            $e->reason( type=>'other', comment=> "no valid reporting rua" );
+            $e->reason( type=>'other', comment=> "no valid rua" );
             return;
         }
         $policy->v( 'DMARC1' );
@@ -357,7 +357,7 @@ sub fetch_dmarc_record {
  
     $self->result->evaluated->result('fail');
     $self->result->evaluated->disposition('none');
-    $self->result->evaluated->reason( type=>'other',comment=>'no DMARC record found');
+    $self->result->evaluated->reason( type=>'other',comment=>'no policy');
     return \@matches;
 }
 
