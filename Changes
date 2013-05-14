@@ -1,6 +1,17 @@
 
 {{$NEXT}}
 
+0.20130514 2013-05-14 America/Los_Angeles
+
+ - moved DNS settings into config file
+ - fixed a case where disposition was not set
+ - added bin/dmarc_report
+   - sends email reports with Email::MIME & Net::SMTPS
+ - deletes reports after successful delivery
+ - required Socket 2 (correct IPv6 handling)
+ - several SQL schema changes
+ - has_valid_reporting_uri does validation now
+
 0.20130510 2013-05-09 America/Los_Angeles
 
 0.20130507 2013-05-07 America/Los_Angeles
