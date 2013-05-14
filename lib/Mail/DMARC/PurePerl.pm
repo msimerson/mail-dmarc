@@ -383,22 +383,16 @@ sub get_dom_from_header {
 
 # Should I do something special with a From field with multiple addresses?
 # Do what if the domains differ? This returns only the last.
-# Callers can pass in pre-parsed from_dom if this doesn't suit them.
+# Caller can pass in pre-parsed from_dom if this doesn't suit them.
 #
-# I only care about extracting the domain. This is way faster than attempting
-# to parse a RFC822 address.
-    if ( 'from:' eq lc substr($header,0,5) ) { # if From: prefix is present
-        $header = substr $header, 6;           # remove it
-    };
+# I care only about the domain. This is way faster than RFC822 parsing
 
     my ($from_dom) = (split /@/, $header)[-1]; # grab everything after the @
-    ($from_dom) = split /\s+/, $from_dom;      # remove any trailing cruft
-    chomp $from_dom;                           # remove \n
-    chop $from_dom if '>' eq substr($from_dom, -1, 1); # remove closing >
+    ($from_dom) = split /(\s+|>)/, $from_dom;  # remove trailing cruft
     if ( ! $from_dom ) {
         $e->result('fail');
         $e->disposition('none');
-        $e->reason( type=>'other', comment => "invalid header_from domain");
+        $e->reason( type=>'other', comment => "invalid header_from: ($header)");
         return;
     };
     return $self->header_from($from_dom);

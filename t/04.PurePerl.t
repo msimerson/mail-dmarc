@@ -96,6 +96,7 @@ sub get_test_headers {
         'Sample User <user@example.com>'                => 'example.com',
         'user@example.com'                              => 'example.com',
         '<user@example.com>'                            => 'example.com',
+        ' <user@example.com > '                         => 'example.com',
         'Sample User <user@example.com>,Sample2<user@example2.com>' => 'example2.com',
         );
 };
