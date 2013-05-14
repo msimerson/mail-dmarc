@@ -75,7 +75,10 @@ sub insert_rr_reason {
     };
     my $comment = $self->dmarc->result->evaluated->reason->comment || '';
     return $self->query( 'INSERT INTO report_record_disp_reason (report_record_id, type, comment) VALUES (?,?,?)',
-            [ $self->{report_row_id}, $type, $comment ]
+            [ $self->{report_row_id},
+              $type,
+              $comment || ''
+            ]
         );
 };
 
@@ -120,8 +123,10 @@ sub insert_report_row {
     my $eva = $self->dmarc->result->evaluated or croak "no evaluated report?!";
 # using SQL SET rather than INSERT won't break when the table schema changes
     my $query = <<'EO_ROW_INSERT'
-INSERT INTO report_record (report_id, source_ip, disposition,
-    dkim, spf, header_from, envelope_to, envelope_from ) VALUES (?,?,?,?,?,?,?,?)
+INSERT INTO report_record
+   (report_id, source_ip, disposition, dkim, spf,
+    header_from, envelope_to, envelope_from )
+   VALUES (?,?,?,?,?,?,?,?)
 EO_ROW_INSERT
 ;
     my $args = [
@@ -162,7 +167,7 @@ sub insert_report {
         $header_from, time,
         time + ($self->dmarc->result->published->ri || 86400),
         ]
-    );
+    ) or return;
 
     $self->insert_report_published_policy();
     return $self->{report_id};

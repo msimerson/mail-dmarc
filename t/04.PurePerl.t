@@ -145,7 +145,11 @@ sub test_is_dkim_aligned {
 
 # negative test
     ok( $dmarc->header_from('mail.exaNple.com'), "dkim, set header_from");
-    ok( $dmarc->is_dkim_aligned(), "is_dkim_aligned, miss");
+    ok( ! $dmarc->is_dkim_aligned(), "is_dkim_aligned, miss");
+
+# no DKIM signatures
+    ok( $dmarc->dkim( [ ] ), "dkim, no signatures");
+    ok( ! $dmarc->is_dkim_aligned(), "is_dkim_aligned, empty");
 };
 
 sub test_is_aligned {

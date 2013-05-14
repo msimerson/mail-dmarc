@@ -152,6 +152,9 @@ sub is_aligned {
 sub is_dkim_aligned {
     my $self = shift;
 
+    $self->result->evaluated->dkim('fail'); # our 'default' result
+    my $pass_sigs = $self->get_dkim_pass_sigs() or return;
+
 # 11.2.3 Perform DKIM signature verification checks.  A single email may
 #        contain multiple DKIM signatures.  The results MUST include the
 #        value of the "d=" tag from all DKIM signatures that validated.
@@ -195,7 +198,6 @@ sub is_dkim_aligned {
         };
     };
     return 1 if 'pass' eq $self->result->evaluated->dkim;
-    $self->result->evaluated->dkim('fail');  # any result that is not pass
     return;
 };
 
@@ -249,7 +251,7 @@ sub has_valid_reporting_uri {
 sub get_dkim_pass_sigs {
     my $self = shift;
 
-    my $dkim_sigs = $self->dkim or croak "missing dkim!";
+    my $dkim_sigs = $self->dkim or return (); # message not signed
     if ( 'ARRAY' ne ref $dkim_sigs ) {
         croak "dkim needs to be an array reference!";
     };
