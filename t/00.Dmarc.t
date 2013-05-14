@@ -11,6 +11,7 @@ my $dmarc = Mail::DMARC->new();
 isa_ok( $dmarc, 'Mail::DMARC' );
 
 my %sample_dmarc = (
+        config_file   => 'mail-dmarc.ini',
         source_ip     => '192.0.1.1',
         envelope_to   => 'example.com',
         envelope_from => 'cars4you.info',
@@ -96,7 +97,7 @@ sub test_new {
 # empty policy
     my $dmarc = Mail::DMARC->new();
     isa_ok( $dmarc, 'Mail::DMARC' );
-    is_deeply( $dmarc, {}, "new, empty" );
+    is_deeply( $dmarc, { config_file => 'mail-dmarc.ini' }, "new, empty" );
 
 # new, one shot request
     $dmarc = Mail::DMARC->new( %sample_dmarc );
@@ -107,9 +108,11 @@ sub test_new {
     $dmarc = Mail::DMARC->new();
     isa_ok( $dmarc, 'Mail::DMARC' );
     foreach my $key ( keys %sample_dmarc ) {
-        $dmarc->$key( $sample_dmarc{$key} );
+        next if grep {/$key/} qw/ config config_file /;
+        eval { $dmarc->$key( $sample_dmarc{$key} ); }
+            or diag "error running $key with $sample_dmarc{$key} arg: $@";
     };
-    delete $dmarc->{dns};
+    delete $dmarc->{config};
     is_deeply( $dmarc, \%sample_dmarc, "new, individual accessors" );
 };
 

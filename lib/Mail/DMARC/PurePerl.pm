@@ -165,7 +165,7 @@ sub is_dkim_aligned {
         my $dkim_dom = $dkim_ref->{domain};
 
         # 4.3.1 make sure $dkim_dom is not a public suffix
-        next if $self->dns->is_public_suffix($dkim_dom);
+        next if $self->is_public_suffix($dkim_dom);
 
         my $dkmeta = {
             domain   => $dkim_ref->{domain},
@@ -278,7 +278,7 @@ sub get_organizational_domain {
         next if !$labels[$i];
         my $tld = join '.', reverse((@labels)[0 .. $i]);
 
-        if ( $self->dns->is_public_suffix($tld) ) {
+        if ( $self->is_public_suffix($tld) ) {
             $greatest = $i + 1;
         }
     }
@@ -310,10 +310,10 @@ sub exists_in_dns {
     my $matched = 0;
     foreach ( @todo ) {
         last if $matched;
-        $matched++ and next if $self->dns->has_dns_rr('MX', $_);
-        $matched++ and next if $self->dns->has_dns_rr('NS', $_);
-        $matched++ and next if $self->dns->has_dns_rr('A',  $_);
-        $matched++ and next if $self->dns->has_dns_rr('AAAA', $_);
+        $matched++ and next if $self->has_dns_rr('MX', $_);
+        $matched++ and next if $self->has_dns_rr('NS', $_);
+        $matched++ and next if $self->has_dns_rr('A',  $_);
+        $matched++ and next if $self->has_dns_rr('AAAA', $_);
     };
     if ( ! $matched ) {
         $self->result->evaluated->result('fail');
@@ -332,7 +332,7 @@ sub fetch_dmarc_record {
     #     the message. A possibly empty set of records is returned.
     $self->is_subdomain( defined $org_dom ? 0 : 1 );
     my @matches = ();
-    my $res = $self->dns->get_resolver();
+    my $res = $self->get_resolver();
     my $query = $res->send("_dmarc.$zone", 'TXT') or return \@matches;
     for my $rr ($query->answer) {
         next if $rr->type ne 'TXT';

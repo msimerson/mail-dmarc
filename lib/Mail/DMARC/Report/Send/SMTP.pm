@@ -10,7 +10,6 @@ use Sys::Hostname;
 use POSIX;
 
 use parent 'Mail::DMARC::Base';
-use Mail::DMARC::DNS;
 
 sub email {
     my ($self, @args) = @_;
@@ -89,6 +88,18 @@ sub via_net_smtp {
     return 1;
 };
 
+sub get_domain_mx {
+    my ($self, $domain) = @_;
+    my $res = $self->get_resolver();
+    my $query = $res->query($domain, 'MX') or return [];
+    my @mx;
+    for my $rr ($query->answer) {
+        next if $rr->type ne 'MX';
+        push @mx, { pref=> $rr->preference, addr=> $rr->exchange };
+    }
+    return \@mx;
+};
+
 sub get_to_dom {
     my ($self, $args) = @_;
     croak "invalid args" if 'HASH' ne ref $args;
@@ -104,8 +115,7 @@ sub get_smtp_hosts {
         return [ {addr => $self->config->{smtp}{smarthost} } ];
     };
 
-    $self->{dns} ||= Mail::DMARC::DNS->new();
-    return $self->{dns}->get_domain_mx($domain);
+    return $self->get_domain_mx($domain);
 };
 
 sub get_subject {

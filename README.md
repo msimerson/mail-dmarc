@@ -8,20 +8,22 @@ A reliable means to authenticate who mail is from, at internet scale.
 
 [Mail::DMARC](http://search.cpan.org/perldoc?Mail::DMARC) - A perl implementation of the DMARC draft
 
-[Mail::DMARC::DNS](http://search.cpan.org/perldoc?Mail::DMARC::DNS) - DNS functions used in DMARC
-
 [Mail::DMARC::Policy](http://search.cpan.org/perldoc?Mail::DMARC::Policy) - a DMARC record in object format
 
 [Mail::DMARC::PurePerl](http://search.cpan.org/perldoc?Mail::DMARC::PurePerl) - a DMARC implementation
 
-- [Mail::DMARC::Report](http://search.cpan.org/perldoc?Mail::DMARC::Report)
-- [Mail::DMARC::Report::AFRF](http://search.cpan.org/perldoc?Mail::DMARC::Report::AFRF)
-- [Mail::DMARC::Report::IODEF](http://search.cpan.org/perldoc?Mail::DMARC::Report::IODEF)
-
-[Mail::DMARC::URI](http://search.cpan.org/perldoc?Mail::DMARC::URI) - a DMARC reporting URI
-
 - [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result)
 - [Mail::DMARC::Result::Evaluated](http://search.cpan.org/perldoc?Mail::DMARC::Result::Evaluated)
+
+[Mail::DMARC::Report](http://search.cpan.org/perldoc?Mail::DMARC::Report) - the R in DMARC
+
+    [Mail::DMARC::Report::Send](http://search.cpan.org/perldoc?Mail::DMARC::Report::Send) - deliver formatted reports via SMTP & HTTP
+
+    [Mail::DMARC::Report::Receive](http://search.cpan.org/perldoc?Mail::DMARC::Report::Receive) - parse incoming email and HTTP reports to store
+
+    [Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail::DMARC::Report::Store) - a persistent data store for DMARC reports
+
+    [Mail::DMARC::Report::View](http://search.cpan.org/perldoc?Mail::DMARC::Report::View) - CLI and (eventually) CGI methods for report viewing
 
 [Mail::DMARC::libopendmarc](http://search.cpan.org/~shari/Mail-DMARC-opendmarc) - an XS implementation using libopendmarc
 
@@ -33,11 +35,37 @@ Determine if:
     b. the header_from domain publishes a DMARC policy
     c. does the message conform to the published policy?
 
+Results of DMARC processing are stored in a [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) object.
+
+# HOW TO USE
+
+    my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
+    my $result = $dmarc->verify();
+
+    if ( $result->evaluated->result eq 'pass' ) {
+        ...continue normal processing...
+        return;
+    };
+
+    # any result that did not pass is a fail. Now for disposition
+
+    if ( $result->evalated->disposition eq 'reject' ) {
+        ...treat the sender to a 550 ...
+    };
+    if ( $result->evalated->disposition eq 'quarantine' ) {
+        ...assign a bunch of spam points...
+    };
+    if ( $result->evalated->disposition eq 'none' ) {
+        ...continue normal processing...
+    };
+
+There's a lot more information available in the $result object. See [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) page for complete details.
+
 # METHODS
 
 ## new
 
-Create a new empty DMARC object. Then populate it and run the request:
+Create an empty DMARC object. Then populate it and run the request:
 
     my $dmarc = Mail::DMARC->new;
     $dmarc->source_ip('192.0.1.1');
@@ -59,10 +87,12 @@ Alternatively, you can pass in all the required parameters in one shot:
             envelope_to   => 'example.com',
             envelope_from => 'cars4you.info',
             header_from   => 'yahoo.com',
-            dkim          => $dkim_results,
-            spf           => $spf_results,
+            dkim          => $dkim_results,  # same format
+            spf           => $spf_results,   # as previous example
             );
     my $result = $dmarc->verify();
+
+
 
 ## source\_ip
 
