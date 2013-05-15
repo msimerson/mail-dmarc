@@ -193,13 +193,12 @@ sub _assemble_message {
                 To   => $args->{to},
                 Date => strftime('%a, %d %b %Y %H:%M:%S %z', localtime), # RFC 2822 format
                 Subject => $args->{subject},
+                $args->{cc} ? ( Args => $args->{cc} ) : (),
             ],
             parts => [ @parts ],
         ) or croak "unable to assemble message\n";
 
     return $email->as_string;
-
-# Date: Fri, Feb 15 2002 16:54:30 -0800
 }
 
 sub via_mail_sender {
