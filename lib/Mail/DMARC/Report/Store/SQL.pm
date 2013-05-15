@@ -202,10 +202,10 @@ sub db_connect {
     my $needs_tables;
     if ( $dsn =~ /sqlite/i ) {
         my ($file) = (split /=/, $dsn)[-1];
-        if ( ! $file || ! -e $file ) {
+        if ( ! $file || $file eq ':memory:' || ! -e $file ) {
             croak "no DB file $file! Create the SQLite DB manually (import mail_dmarc.sqlite).\n"
-                if ! -f 'sql/mail_dmarc.sqlite';
-            $needs_tables = 'sql/mail_dmarc.sqlite';
+                if ! -f 'share/mail_dmarc.sqlite';
+            $needs_tables = 'share/mail_dmarc.sqlite';
         };
     };
 
@@ -213,9 +213,8 @@ sub db_connect {
         or return $self->error( DBIx::Simple->error );
 
     if ( $needs_tables ) {
-        local $/ = undef;
         open my $FH, '<', $needs_tables or croak "unable to read $needs_tables";
-        my $setup = <$FH>;
+        my $setup = do { local $/; <$FH> }; ## no critic (Local)
         close $FH;
         foreach ( split /;/, $setup ) { $self->{dbh}->query($_); };
     };

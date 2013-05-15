@@ -20,3 +20,5 @@ foreach my $report_ref ( @$reports_ref ) {
 };
 
 exit;
+# PODNAME: dmarc_report
+# ABSTRACT: send aggregate reports to requestors
