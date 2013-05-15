@@ -155,12 +155,7 @@ sub install_app_freebsd {
     print " from ports...";
     my $name = $info->{port} || $app;
 
-    if ( `/usr/sbin/pkg_info | /usr/bin/grep $name` ) {  ## no critic (Backtick)
-        return print "$app is installed.\n";
-    }
-    if ( `/usr/sbin/pkg info | /usr/bin/grep $name` ) {  ## no critic (Backtick)
-        return print "$app is installed.\n";
-    }
+    return if is_freebsd_port_installed( $name, $app );
 
     print "installing $app";
 
@@ -256,13 +251,7 @@ sub install_module_freebsd {
     $portname =~ s/::/-/g;
 
     print " from ports...$portname...";
-
-    if ( `/usr/sbin/pkg_info | /usr/bin/grep $portname` ) {  ## no critic (Back)
-        return print "$module is installed.\n";
-    }
-    elsif( `/usr/sbin/pkg info | /usr/bin/grep $portname` ) { ## no critic (Back)
-        return print "$module is installed.\n";
-    }
+    return if is_freebsd_port_installed( $portname, $module );
 
     print "installing $module ...";
 
@@ -322,6 +311,19 @@ sub install_module_linux_apt {
         $package =~ s/::/-/g;
     };
     return system "/usr/bin/apt-get -y install $package";
+};
+
+sub is_freebsd_port_installed {
+    my ($portname, $display_name) = @_;
+    $display_name ||= $portname;
+
+    if ( grep {/$portname/x} `/usr/sbin/pkg_info` ) { ## no critic (Backtick)
+        return print "$display_name is installed.\n";
+    }
+    if ( `/usr/sbin/pkg info -x $portname` ) {        ## no critic (Backtick)
+        return print "$display_name is installed.\n";
+    }
+    return 0;
 };
 
 sub get_cpan_config {
