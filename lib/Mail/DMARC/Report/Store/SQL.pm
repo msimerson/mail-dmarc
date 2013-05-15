@@ -5,6 +5,7 @@ use warnings;
 use Carp;
 use Data::Dumper;
 use DBIx::Simple;
+use File::ShareDir;
 
 use parent 'Mail::DMARC::Base';
 
@@ -201,11 +202,11 @@ sub db_connect {
 
     my $needs_tables;
     if ( $dsn =~ /sqlite/i ) {
-        my ($file) = (split /=/, $dsn)[-1];
-        if ( ! $file || $file eq ':memory:' || ! -e $file ) {
-            croak "no DB file $file! Create the SQLite DB manually (import mail_dmarc.sqlite).\n"
-                if ! -f 'share/mail_dmarc.sqlite';
-            $needs_tables = 'share/mail_dmarc.sqlite';
+        my ($db) = (split /=/, $dsn)[-1];
+        if ( ! $db || $db eq ':memory:' || ! -e $db ) {
+            my $schema = 'mail_dmarc_schema.sqlite';
+            $needs_tables = $self->get_db_schema($schema) or
+                croak "can't locate DB $db AND can't find $schema! Create $db manually.\n";
         };
     };
 
@@ -213,12 +214,24 @@ sub db_connect {
         or return $self->error( DBIx::Simple->error );
 
     if ( $needs_tables ) {
-        open my $FH, '<', $needs_tables or croak "unable to read $needs_tables";
-        my $setup = do { local $/; <$FH> }; ## no critic (Local)
-        close $FH;
-        foreach ( split /;/, $setup ) { $self->{dbh}->query($_); };
+        $self->apply_db_schema($needs_tables);
     };
     return $self->{dbh};
+};
+
+sub apply_db_schema {
+    my ($self, $file) = @_;
+    open my $FH, '<', $file or croak "unable to read $file";
+    my $setup = do { local $/; <$FH> }; ## no critic (Local)
+    close $FH;
+    foreach ( split /;/, $setup ) { $self->{dbh}->query($_); };
+    return;
+};
+
+sub get_db_schema {
+    my ($self, $file) = @_;
+    return "share/$file" if -f "share/$file";              # when testing
+    return File::ShareDir::dist_file('Mail-DMARC', $file); # when installed
 };
 
 sub query {

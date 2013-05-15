@@ -4,6 +4,7 @@ use warnings;
 
 use Carp;
 use Config::Tiny;
+use File::ShareDir;
 use IO::File;
 use Net::DNS::Resolver;
 use Net::IP;
@@ -68,14 +69,15 @@ sub is_public_suffix {
     croak "missing zone name!" if ! $zone;
 
     my $file = $self->config->{dns}{public_suffix_list} || 'share/public_suffix_list';
-    my @dirs = qw[ ./ /usr/local/ /usr/ /opt/local ];
+    my @dirs = qw[ ./ /usr/local/ /opt/local /usr/ ];
     my $match;
     foreach my $dir ( @dirs ) {
         $match = $dir . $file;
         last if ( -f $match && -r $match );
     };
     if ( ! -r $match ) {
-        croak "unable to locate readable public suffix file\n";
+        # Fallback to included suffic list, dies if not found/readable
+        $match = File::ShareDir::dist_file('Mail-DMARC', 'public_suffix_list');
     };
 
     my $fh = IO::File->new( $match, 'r' )
