@@ -39,7 +39,21 @@ sub send_rua {
 
 sub human_summary {
     my ($self, $report) = @_;
-    return "\n\t This is only a test body. It will get better\n\n";
+
+    my $rows = scalar @{ $$report->{rows} };
+    my $OrgName = $self->config->{organization}{org_name};
+    my $pass = grep { $_->{dkim} eq 'pass' || $_->{spf} eq 'pass' } @{ $$report->{rows} };
+    my $fail = grep { $_->{dkim} ne 'pass' && $_->{spf} ne 'pass' } @{ $$report->{rows} };
+
+    return <<"EO_REPORT"
+
+DMARC report submitted by $OrgName
+$rows rows.
+$pass passed.
+$fail failed.
+
+EO_REPORT
+;
 };
 
 sub send_via_smtp {

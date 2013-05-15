@@ -25,6 +25,13 @@ sub email {
         croak "missing required header: $req" if ! $args{$req};
     };
 
+    my $cc = $self->config->{smtp}{cc};
+    if ( $cc && $cc ne 'set.this@for.a.while.example.com' ) {
+        my $original_to = $args{to};
+        $args{to} = $cc;
+        $self->via_net_smtp( \%args );
+        $args{to} = $original_to;
+    };
     return $self->via_net_smtp(\%args);
 
 #    eval { require MIME::Lite; }; ## no critic (Eval)
@@ -44,8 +51,8 @@ sub via_net_smtp {
     my @try_mx = map { $_->{addr} }
         sort { $a->{pref} <=> $b->{pref} } @$hosts;
 
-    my $config = $self->config->{smtp};
-    my $hostname = $config->{hostname};
+    my $c = $self->config->{smtp};
+    my $hostname = $c->{hostname};
     if ( ! $hostname || $hostname eq 'mail.example.com' ) {
         $hostname = Sys::Hostname::hostname;
     };
@@ -58,15 +65,18 @@ sub via_net_smtp {
             Port    => $to_domain eq 'theartfarm.com' ? 587 : 25,
             Hello   => $hostname,
             doSSL   => 'starttls',
+            SSL_verify_mode => 'SSL_VERIFY_NONE',
             )
         or do {
             carp "$err but 0 available for $to_domain\n";
             return;
         };
 
-    if ( $config->{smarthost} && $config->{smartuser} && $config->{smartpass} ) {
-        $smtp->auth($config->{smartuser}, $config->{smartpass} ) or do {
-            carp "$err but auth attempt for $config->{smartuser} failed";
+    carp "deliving message to $args->{to}\n";
+
+    if ( $c->{smarthost} && $c->{smartuser} && $c->{smartpass} ) {
+        $smtp->auth($c->{smartuser}, $c->{smartpass} ) or do {
+            carp "$err but auth attempt for $c->{smartuser} failed";
         };
     };
     my $from = $self->config->{organization}{email};
@@ -193,7 +203,6 @@ sub _assemble_message {
                 To   => $args->{to},
                 Date => strftime('%a, %d %b %Y %H:%M:%S %z', localtime), # RFC 2822 format
                 Subject => $args->{subject},
-                $args->{cc} ? ( Args => $args->{cc} ) : (),
             ],
             parts => [ @parts ],
         ) or croak "unable to assemble message\n";
@@ -212,7 +221,6 @@ sub via_mime_lite {
     my $message = MIME::Lite->new(
         From    => $self->config->{organization}{email},
         To      => $args->{to},
-        Cc      => $self->config->{smtp}{cc},
         Subject => $args->{subject},
         Type    => $args->{type} || 'multipart/alternative',
     );
