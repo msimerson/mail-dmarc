@@ -49,16 +49,7 @@ sub test_ip_store_and_fetch {
         my $pres = $sql->inet_ntop( $ipbin );
         ok( $pres, "inet_ntop, $ip");
 
-        if ( $pres eq $ip ) {
-            cmp_ok( $pres, 'eq', $ip, "inet_ntop, $ip");
-        }
-        else {
-# on some systems, a :: pattern gets a zero inserted. Mimic that
-            my $zero_filled = $ip;
-            $zero_filled =~ s/::/:0:/g;
-            cmp_ok( $pres, 'eq', $zero_filled, "inet_ntop, $ip")
-                or diag "presentation: $zero_filled\nresult: $pres";
-        };
+        compare_inet_round_trip($ip, $pres);
 
         my $report_id = $sql->query(
             "INSERT INTO report_record ( report_id, source_ip, disposition, dkim,spf,header_from) VALUES (?,?,?,?,?,?)",
@@ -66,7 +57,10 @@ sub test_ip_store_and_fetch {
                 or die "failed to insert?";
 
         my $r_ref = $sql->query("SELECT id,source_ip FROM report_record WHERE id=?", [$report_id])->[0];
-        cmp_ok( $sql->inet_ntop($r_ref->{source_ip}), 'eq', $ip, "inet_ntop, sql, $ip");
+        compare_inet_round_trip(
+                $ip,
+                $sql->inet_ntop($r_ref->{source_ip}),
+                );
     };
 };
 
@@ -140,3 +134,17 @@ sub test_db_connect {
     isa_ok( $dbh, "DBIx::Simple");
 }
 
+sub compare_inet_round_trip {
+    my ($ip, $pres) = @_;
+
+    if ( $pres eq $ip ) {
+        cmp_ok( $pres, 'eq', $ip, "inet_ntop, round_trip, $ip");
+    }
+    else {
+# on some systems, a :: pattern gets a zero inserted. Mimic that
+        my $zero_filled = $ip;
+        $zero_filled =~ s/::/:0:/g;
+        cmp_ok( $pres, 'eq', $zero_filled, "inet_ntop, round_trip, zero-pad, $ip")
+            or diag "presentation: $zero_filled\nresult: $pres";
+    };
+};
