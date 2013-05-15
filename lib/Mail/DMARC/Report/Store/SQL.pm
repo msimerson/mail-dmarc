@@ -199,21 +199,26 @@ sub db_connect {
     my $user = $self->config->{report_store}{user};
     my $pass = $self->config->{report_store}{pass};
 
+    my $needs_tables;
     if ( $dsn =~ /sqlite/i ) {
         my ($file) = (split /=/, $dsn)[-1];
         if ( ! $file || ! -e $file ) {
-            if ( -f 'sql/mail_dmarc.sqlite' ) {
-                system "sqlite3 $file < sql/mail_dmarc.sqlite";
-            }
-            else {
-                croak "no such DB file $file!\n";
-            };
+            croak "no DB file $file! Create the SQLite DB manually (import mail_dmarc.sqlite).\n"
+                if ! -f 'sql/mail_dmarc.sqlite';
+            $needs_tables = 'sql/mail_dmarc.sqlite';
         };
     };
 
     $self->{dbh} = DBIx::Simple->connect( $dsn, $user, $pass )
         or return $self->error( DBIx::Simple->error );
 
+    if ( $needs_tables ) {
+        local $/ = undef;
+        open my $FH, '<', $needs_tables or croak "unable to read $needs_tables";
+        my $setup = <$FH>;
+        close $FH;
+        foreach ( split /;/, $setup ) { $self->{dbh}->query($_); };
+    };
     return $self->{dbh};
 };
 

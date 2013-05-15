@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 
+use Data::Dumper;
 use Test::More;
 
 use lib 'lib';
@@ -142,4 +143,16 @@ sub test_is_valid {
 # policy, min + defaults
     $pol->apply_defaults();
     ok( $pol->is_valid, "is_valid, pos, w/defaults" );
+
+# 9.6 policy discovery
+    $pol = undef;
+    eval { $pol = Mail::DMARC::Policy->new( v=>'DMARC1' ); }; # or diag $@;
+    ok( ! $pol, "is_valid, neg, missing p, no rua" );
+
+    eval { $pol = Mail::DMARC::Policy->new( v=>'DMARC1', rua=>'ftp://www.example.com' ); }; # or diag $@;
+    ok( ! $pol, "is_valid, neg, missing p, invalid rua" );
+
+    $pol = undef;
+    eval { $pol = Mail::DMARC::Policy->new( v=>'DMARC1', rua=>'mailto:test@example.com' ); };
+    ok( $pol && $pol->is_valid, "is_valid, pos, implicit p=none w/rua" );
 };

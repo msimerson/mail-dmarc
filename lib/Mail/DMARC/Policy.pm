@@ -137,7 +137,14 @@ sub is_valid {
     $obj = $self if ! $obj;
     croak "missing version specifier" if ! $obj->{v};
     croak "invalid version" if 'DMARC1' ne uc $obj->{v};
-    croak "missing policy action" if ! $obj->{p};
+    if ( ! $obj->{p} ) {
+        if ( $obj->{rua} && $self->is_valid_uri_list($obj->{rua}) ) {
+            $obj->{p} = 'none';
+        }
+        else {
+            croak "missing policy action (p=)";
+        };
+    };
     croak "invalid policy action" if ! $self->is_valid_p( $obj->{p} );
 # everything else is optional
     return 1;

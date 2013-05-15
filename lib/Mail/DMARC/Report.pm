@@ -10,6 +10,7 @@ use parent 'Mail::DMARC::Base';
 require Mail::DMARC::Report::Send;
 require Mail::DMARC::Report::Store;
 require Mail::DMARC::Report::Receive;
+require Mail::DMARC::Report::URI;
 require Mail::DMARC::Report::View;
 
 sub dmarc {
@@ -33,6 +34,12 @@ sub store {
     my $self = shift;
     return $self->{store} if ref $self->{store};
     return $self->{store} = Mail::DMARC::Report::Store->new();
+};
+
+sub uri {
+    my $self = shift;
+    return $self->{uri} if ref $self->{uri};
+    return $self->{uri} = Mail::DMARC::Report::URI->new();
 };
 
 sub view {

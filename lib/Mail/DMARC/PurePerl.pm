@@ -5,7 +5,6 @@ use warnings;
 use Carp;
 
 use parent 'Mail::DMARC';
-require Mail::DMARC::Report::URI;
 
 sub init {
     my $self = shift;
@@ -243,9 +242,17 @@ sub is_spf_aligned {
 
 sub has_valid_reporting_uri {
     my ($self, $rua) = @_;
-    $self->{uri} ||= Mail::DMARC::Report::URI->new;
-    my $recips_ref = $self->{uri}->parse($rua);
-    return scalar @$recips_ref;
+    my $recips_ref = $self->report->uri->parse($rua);
+    my @has_permission;
+    foreach my $uri_ref ( @$recips_ref ) {
+        if ( ! $self->external_report($uri_ref->{uri}) ) {
+            push @has_permission, $uri_ref;
+            next;
+        };
+        my $ext = $self->verify_external_reporting($uri_ref);
+        push @has_permission, $ext if $ext;
+    };
+    return scalar @has_permission;
 }
 
 sub get_dkim_pass_sigs {
@@ -356,7 +363,7 @@ sub fetch_dmarc_record {
             return $self->fetch_dmarc_record($org_dom); #  <- recursion
         };
     };
- 
+
     $self->result->evaluated->result('fail');
     $self->result->evaluated->disposition('none');
     $self->result->evaluated->reason( type=>'other',comment=>'no policy');
@@ -401,20 +408,78 @@ sub get_dom_from_header {
 }
 
 sub external_report {
-    my $self = shift;
-# TODO
-    return;
+    my ($self, $uri) = @_;
+    my $dmarc_dom = $self->result->published->{domain}
+        or croak "published policy not tagged!";
+
+    if ( 'mailto' eq $uri->scheme ) {
+        my $dest_email = $uri->path;
+        my ($dest_host) = (split /@/, $dest_email)[-1];
+        return 0 if $dest_host eq $dmarc_dom;
+    }
+
+    if ( 'http' eq $uri->scheme ) {
+        return 0 if $uri->host eq $dmarc_dom;
+    };
+
+    return 1;
 };
 
 sub verify_external_reporting {
     my $self = shift;
-# TODO
-    return;
+    my $uri_ref = shift or croak "missing URI";
+
+#  1.  Extract the host portion of the authority component of the URI.
+#      Call this the "destination host".
+    my $dmarc_dom = $self->result->published->{domain}
+        or croak "published policy not tagged!";
+
+    my $dest_email = $uri_ref->{uri}->path or croak("invalid URI");
+    my ($dest_host) = (split /@/, $dest_email)[-1];
+
+#  2.  Prepend the string "_report._dmarc".
+#  3.  Prepend the domain name from which the policy was retrieved,
+#      after conversion to an A-label if needed.
+    my $dest = join '.', $dmarc_dom, '_report._dmarc', $dest_host;
+
+#  4.  Query the DNS for a TXT record at the constructed name.
+    my $query = $self->get_resolver->query($dest, 'TXT') or return;
+
+#  5.  For each record, parse the result...same overall format:
+#      "v=DMARC1" tag is mandatory and MUST appear first in the list.
+    my @matches;
+    for my $rr ($query->answer) {
+        next if $rr->type ne 'TXT';
+
+        next if 'v=dmarc1' ne lc substr($rr->txtdata, 0, 8);
+        my $policy = undef;
+        my $dmarc_str = join('', $rr->txtdata);  # join ports
+        eval { $policy = $self->policy->parse( $dmarc_str ) }; ## no critic (Eval)
+        push @matches, $policy ? $policy : $dmarc_str;
+    };
+
+#  6.  If the result includes no TXT resource records...stop
+    return if ! scalar @matches;
+
+#  7.  If > 1 TXT resource record remains, external reporting authorized
+#  8.  If a "rua" or "ruf" tag is discovered, replace the
+#      corresponding value with the one found in this record.
+    my @overrides = grep { ref $_ && $_->{rua} } @matches;
+    foreach my $or ( @overrides ) {
+        my $recips_ref = $self->report->uri->parse($or->{rua}) or next;
+        if ( (split /@/, $recips_ref->[0]{uri})[-1] eq (split /@/, $uri_ref->{uri})[-1] ) {
+# the overriding URI MUST use the same destination host from the first step.
+            $self->result->published->rua($or->{rua});
+        };
+    };
+
+    return @matches;
 }
 
 1;
 # ABSTRACT: a perl implementation of DMARC
 __END__
+sub {}
 
 =head1 METHODS
 
@@ -477,6 +542,25 @@ there is no delegation from the TLD. That has proven very reliable.
 =head2 get_dom_from_header
 
 =head2 external_report
+
+=head3  8.2.  Verifying External Destinations
+
+It is possible to specify destinations for the different reports that
+are outside the domain making the request.  This is enabled to allow
+domains that do not have mail servers to request reports and have
+them go someplace that is able to receive and process them.
+
+Without checks, this would allow a bad actor to publish a DMARC
+policy record that requests reports be sent to a victim address, and
+then send a large volume of mail that will fail both DKIM and SPF
+checks to a wide variety of destinations, which will in turn flood
+the victim with unwanted reports.  Therefore, a verification
+mechanism is included.
+
+When a Mail Receiver discovers a DMARC policy in the DNS, and the
+domain at which that record was discovered is not identical to the
+host part of the authority component of a [URI] specified in the
+"rua" or "ruf" tag, the following verification steps SHOULD be taken:
 
 =head2 verify_external_reporting
 

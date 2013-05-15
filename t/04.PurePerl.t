@@ -3,6 +3,7 @@ use warnings;
 
 use Data::Dumper;
 use Test::More;
+use URI;
 
 use lib 'lib';
 use_ok( 'Mail::DMARC::PurePerl' );
@@ -10,8 +11,8 @@ use_ok( 'Mail::DMARC::PurePerl' );
 my @test_policy = (
         'v'   , 'DMARC1',    # Section 6.2, Formal Definition
         'p'   , 'reject',    # the v(ersion) and request(p) are ordered
-        'rua' , 'mailto:dmarc@example.com',
-        'ruf' , 'mailto:dmarc@example.com',
+        'rua' , 'mailto:invalid@theartfarm.com',
+        'ruf' , 'mailto:invalid@theartfarm.com',
         'pct' ,  90,
         );
 my %test_policy = @test_policy;
@@ -26,6 +27,8 @@ my $dmarc = Mail::DMARC::PurePerl->new;
 #$dmarc->header_from('example.com');
 isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 
+#done_testing(); exit;
+
 test_get_from_dom();
 test_get_dom_from_header();
 test_fetch_dmarc_record();
@@ -37,19 +40,71 @@ test_is_aligned();
 test_discover_policy();
 test_validate();
 test_has_valid_reporting_uri();
-
-# external_report
-# verify_external_reporting
+test_external_report();
+test_verify_external_reporting( 'tnpi.net', 'theartfarm.com', 1 );
+test_verify_external_reporting( 'cadillac.net', 'theartfarm.com', 1 );
+test_verify_external_reporting( 'mail-dmarc.tnpi.net', 'theartfarm.com', 1 );
 
 done_testing();
 exit;
 
+sub test_verify_external_reporting {
+    my ($dmarc_dom, $dest_dom, $outcome) = @_;
+    my $ver = 'verify_external_reporting';
+
+    my $policy;
+    eval { $policy = $dmarc->policy->parse("v=DMARC1; p=none; rua=mailto:dmarc-feedback\@$dest_dom") };
+    $policy->{domain} = $dmarc_dom;
+    ok( $policy, "new policy");
+    $dmarc->result->published($policy);
+
+    my $uri = URI->new("mailto:test\@$dest_dom");
+    cmp_ok( $outcome, 'eq', $dmarc->$ver( { uri => $uri } ), "$ver");
+
+# a DMARC record with a RUA override
+    return if $dmarc_dom ne 'mail-dmarc.tnpi.net';
+    my $uri_should_be = $dmarc->report->uri->parse( URI->new("mailto:invalid-test\@theartfarm.com") );
+    my $uri_via_net = $dmarc->report->uri->parse( $dmarc->result->published->rua );
+    is_deeply( $uri_via_net->[0], $uri_should_be->[0], "$ver, override rua");
+};
+
+sub test_external_report {
+
+    my @test_doms = qw/ example.com silly.com /;
+    foreach my $dom ( @test_doms ) {
+
+        my $policy = $dmarc->policy->parse('v=DMARC1; p=none');
+        $policy->{domain} = $dom;
+        ok( $policy, "new policy");
+        $dmarc->result->published($policy);
+
+        my $uri = URI->new("mailto:test\@$dom");
+#       warn "path: " . $uri->path;
+        ok( $uri, "new URI");
+        ok( ! $dmarc->external_report($uri), "external_report, $uri for $dom");
+    };
+
+    foreach my $dom ( @test_doms ) {
+        my $policy = $dmarc->policy->parse('v=DMARC1; p=none');
+        $policy->{domain} = "$dom.com";
+        ok( $policy, "new policy");
+        $dmarc->result->published($policy);
+
+        my $uri = URI->new("mailto:test\@$dom");
+#       warn "path: " . $uri->path;
+        ok( $uri, "new URI");
+        ok( $dmarc->external_report($uri), "external_report, $uri for $dom.com");
+    };
+};
+
 sub test_has_valid_reporting_uri {
     my @valid = (
-        'mailto:dmarc@example.com',
-        'mailto:dmarc@example.com,http://www.example.com/dmarc',
-        'ftp://dmarc.example.com,http://www.example.com/dmarc',
+        'mailto:dmarc@example.com',   # canonical example
+        'mailto:dmarc@example.com,http://example.com/dmarc', # two matches
+        'ftp://dmarc.example.com,http://example.com/dmarc',  # http only
         );
+
+    $dmarc->result->published->{domain} = 'example.com';
     foreach my $v ( @valid ) {
         my $r_ref = $dmarc->has_valid_reporting_uri($v);
         ok( $r_ref, "has_valid_reporting_uri, $v");
@@ -57,8 +112,10 @@ sub test_has_valid_reporting_uri {
 
 # invalid tests
     my @invalid = (
-        'ftp://ftp.example.com,gopher://www.example.com/dmarc',
+        'ftp://ftp.example.com',           # invalid schemes
+        'gopher://www.example.com/dmarc',
         'scp://secure.example.com',
+        'http://www.example.com/dmarc',    # host doesn't match
         );
     foreach my $v ( @invalid ) {
         my $r = $dmarc->has_valid_reporting_uri($v);
