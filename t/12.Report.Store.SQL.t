@@ -48,7 +48,17 @@ sub test_ip_store_and_fetch {
 
         my $pres = $sql->inet_ntop( $ipbin );
         ok( $pres, "inet_ntop, $ip");
-        cmp_ok( $pres, 'eq', $ip, "inet_ntop, cmp");
+
+        if ( $pres eq $ip ) {
+            cmp_ok( $pres, 'eq', $ip, "inet_ntop, $ip");
+        }
+        else {
+# on some systems, a :: pattern gets a zero inserted. Mimic that
+            my $zero_filled = $ip;
+            $zero_filled =~ s/::/:0:/g;
+            cmp_ok( $pres, 'eq', $zero_filled, "inet_ntop, $ip")
+                or diag "presentation: $zero_filled\nresult: $pres";
+        };
 
         my $report_id = $sql->query(
             "INSERT INTO report_record ( report_id, source_ip, disposition, dkim,spf,header_from) VALUES (?,?,?,?,?,?)",

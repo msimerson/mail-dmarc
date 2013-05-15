@@ -53,7 +53,7 @@ sub test_inet_to {
             cmp_ok( $pres, 'eq', $ip, "inet_ntop, $ip");
         }
         else {
-# on some linux systems, a :: pattern gets a zero inserted.
+# on some systems, a :: pattern gets a zero inserted. Mimic that
             my $zero_filled = $ip;
             $zero_filled =~ s/::/:0:/g;
             cmp_ok( $pres, 'eq', $zero_filled, "inet_ntop, $ip") 
