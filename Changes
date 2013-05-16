@@ -1,7 +1,13 @@
 
 {{$NEXT}}
 
+ - add email hostname to MX list when attempting SMTP delivery
+ - during report delivery, check report URI max size
+
 0.20130515 2013-05-15 America/Los_Angeles
+
+ - use File::ShareDir to access share/*
+ - added external reporting verification
 
 0.20130514 2013-05-14 America/Los_Angeles
 

@@ -50,6 +50,7 @@ sub via_net_smtp {
     my $hosts = $self->get_smtp_hosts($to_domain);
     my @try_mx = map { $_->{addr} }
         sort { $a->{pref} <=> $b->{pref} } @$hosts;
+    push @try_mx, $to_domain;  # might be 0 MX records
 
     my $c = $self->config->{smtp};
     my $hostname = $c->{hostname};
@@ -62,7 +63,7 @@ sub via_net_smtp {
     my $smtp = Net::SMTPS->new(
             [ @try_mx ],
             Timeout => 10,
-            Port    => $to_domain eq 'theartfarm.com' ? 587 : 25,
+            Port    => 25,
             Hello   => $hostname,
             doSSL   => 'starttls',
             SSL_verify_mode => 'SSL_VERIFY_NONE',

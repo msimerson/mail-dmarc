@@ -2,9 +2,9 @@ package Mail::DMARC::Report::Send;
 use strict;
 use warnings;
 
-use IO::Compress::Gzip;
-
 use Carp;
+use Encode;
+use IO::Compress::Gzip;
 
 use lib 'lib';
 use parent 'Mail::DMARC::Base';
@@ -15,23 +15,29 @@ use Mail::DMARC::Report::URI;
 sub send_rua {
     my ($self, $report, $xml) = @_;
 
-#warn Data::Dumper::Dumper($report);
     my $gz;
     IO::Compress::Gzip::gzip( $xml, \$gz ) or croak "unable to compress";
+    my $bytes = length Encode::encode_utf8($gz);
 
     my $uri_ref = $self->uri->parse($$report->{policy_published}{rua});
     my $sent = 0;
     foreach my $u_ref ( @$uri_ref ) {
         my $method = $u_ref->{uri};
-# TODO: check $u_ref->{max_bytes};
+        my $max = $u_ref->{max_bytes};
+
+        if ( $max && $bytes > $max ) {
+            carp "skipping $method: report size ($bytes) larger than $max\n";
+            next;
+        };
+
         if ( 'mailto:' eq substr($method,0,7) ) {
             my ($to) = (split /:/, $method)[-1];
             carp "sending mailto $to\n";
             $self->send_via_smtp($to, $report, $gz) and $sent++;
-# TODO: check results, append error if failed, delete report if success
+# TODO: check results, append error if failed
         };
         if ( 'http:' eq substr($method,0,5) ) {
-            carp "not implemented yet!";
+            carp "http send not implemented yet!";
         };
     };
     return $sent;
