@@ -333,4 +333,17 @@ can be used to seek assistance.
 possible registration of a new media type, will be added here when
 more operational experience is acquired.]
 
+
+=head1 AFRF reports
+
+
+
+=head1 IODEF reports
+
+https://datatracker.ietf.org/doc/draft-kucherawy-dmarc-base/?include_text=1
+
+Section 3.5 Out of Scope:
+
+    This first version of DMARC supports only a single reporting format.
+
 =cut
