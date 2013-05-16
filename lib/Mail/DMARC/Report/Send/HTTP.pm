@@ -8,12 +8,17 @@ use Net::HTTP;
 
 use parent 'Mail::DMARC::Base';
 
-sub rua_post {
-    my ($self, $args) = @_;
+sub post {
+    my ($self, $uri, $report, $gz) = @_;
+
+    carp "http send incomplete!";
+    return;
+
+# TODO: test
 
     my $ver = $Mail::DMARC::VERSION;
-    my $s = Net::HTTP->new(Host => $args->{host} ) or die $@;
-    $s->write_request(POST => "$args->{path}", 'User-Agent' => "Mail::DMARC/$ver");
+    my $s = Net::HTTP->new(Host => $uri->host ) or die $@;
+    $s->write_request(POST => $uri->path, 'User-Agent' => "Mail::DMARC/$ver");
     my($code, $mess, %h) = $s->read_response_headers;
 
     while (1) {
@@ -22,7 +27,9 @@ sub rua_post {
         die "read failed: $!" unless defined $n;
         last unless $n;
         print $buf;
+        return 1;
     }
+    return 0;
 };
 
 1;

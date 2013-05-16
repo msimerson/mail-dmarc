@@ -179,6 +179,7 @@ sub _assemble_message {
     my ($self, $args) = @_;
 
     my $filename = $self->get_filename($args);
+    my $cf = (time > 1372662000) ? 'gzip' : 'zip'; # gz after 7/1/13
     my @parts = Email::MIME->create(
                 attributes => {
                     content_type => "text/plain",
@@ -191,7 +192,7 @@ sub _assemble_message {
     push @parts, Email::MIME->create(
                 attributes => {
                     filename     => $filename,
-                    content_type => "application/gzip",
+                    content_type => "application/$cf",
                     encoding     => "base64",
                     name         => $filename,
                 },

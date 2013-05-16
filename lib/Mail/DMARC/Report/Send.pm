@@ -5,6 +5,7 @@ use warnings;
 use Carp;
 use Encode;
 use IO::Compress::Gzip;
+use IO::Compress::Zip;
 
 use lib 'lib';
 use parent 'Mail::DMARC::Base';
@@ -15,9 +16,8 @@ use Mail::DMARC::Report::URI;
 sub send_rua {
     my ($self, $report, $xml) = @_;
 
-    my $gz;
-    IO::Compress::Gzip::gzip( $xml, \$gz ) or croak "unable to compress";
-    my $bytes = length Encode::encode_utf8($gz);
+    my $shrunk = $self->compress_report($xml);
+    my $bytes = length Encode::encode_utf8($shrunk);
 
     my $uri_ref = $self->uri->parse($$report->{policy_published}{rua});
     my $sent = 0;
@@ -31,13 +31,10 @@ sub send_rua {
         };
 
         if ( 'mailto:' eq substr($method,0,7) ) {
-            my ($to) = (split /:/, $method)[-1];
-            carp "sending mailto $to\n";
-            $self->send_via_smtp($to, $report, $gz) and $sent++;
-# TODO: check results, append error if failed
+            $self->send_via_smtp($method, $report, $shrunk) and $sent++;
         };
         if ( 'http:' eq substr($method,0,5) ) {
-            carp "http send not implemented yet!";
+            $self->http->post($method,$report, $shrunk) and $sent++;
         };
     };
     return $sent;
@@ -50,6 +47,7 @@ sub human_summary {
     my $OrgName = $self->config->{organization}{org_name};
     my $pass = grep { $_->{dkim} eq 'pass' || $_->{spf} eq 'pass' } @{ $$report->{rows} };
     my $fail = grep { $_->{dkim} ne 'pass' && $_->{spf} ne 'pass' } @{ $$report->{rows} };
+    my $ver = $Mail::DMARC::VERSION || ''; # undef in author environ
 
     return <<"EO_REPORT"
 
@@ -58,24 +56,47 @@ $rows rows.
 $pass passed.
 $fail failed.
 
+Generated with Mail::DMARC $ver
+
 EO_REPORT
 ;
 };
 
+sub compress_report {
+    my ($self, $xml) = @_;
+
+    my $shrunk;
+    my $zipper = { gz  => \&IO::Compress::Gzip::gzip,  # 2013 draft
+                   zip => \&IO::Compress::Zip::zip,    # legacy format
+                 };
+    my $cf = (time > 1372662000) ? 'gz' : 'zip';       # gz after 7/1/13
+    $zipper->{$cf}->( $xml, \$shrunk ) or croak "unable to compress: $!";
+    return $shrunk;
+};
+
 sub send_via_smtp {
-    my ($self,$to,$report,$gz) = @_;
+    my ($self,$method,$report,$shrunk) = @_;
     my $rid = $$report->{id};
     my $dom = $$report->{domain};
+    my ($to) = (split /:/, $method)[-1];
+    carp "sending mailto $to\n";
+# TODO: check results, append error to report if failed
     return $self->smtp->email(
         to            => $to,
         subject       => $self->smtp->get_subject({report_id=>$rid,policy_domain=>$dom}),
         body          => $self->human_summary($report),
-        report        => $gz,
+        report        => $shrunk,
         policy_domain => $dom,
         begin         => $$report->{begin},
         end           => $$report->{end},
         report_id     => $rid,
         );
+};
+
+sub http {
+    my $self = shift;
+    return $self->{http} if ref $self->{http};
+    return $self->{http} = Mail::DMARC::Report::Send::HTTP->new();
 };
 
 sub smtp {
