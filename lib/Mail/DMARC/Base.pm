@@ -143,6 +143,14 @@ sub is_valid_domain {
     return 0;
 };
 
+sub slurp {
+    my ($self, $file) = @_;
+    open my $FH, '<', $file or croak "unable to read $file: $!";
+    my $contents = do { local $/; <$FH> }; ## no critic (Local)
+    close $FH;
+    return $contents;
+};
+
 1;
 # ABSTRACT: DMARC utility functions
 __END__

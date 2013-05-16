@@ -221,9 +221,7 @@ sub db_connect {
 
 sub apply_db_schema {
     my ($self, $file) = @_;
-    open my $FH, '<', $file or croak "unable to read $file";
-    my $setup = do { local $/; <$FH> }; ## no critic (Local)
-    close $FH;
+    my $setup = $self->slurp($file);
     foreach ( split /;/, $setup ) { $self->{dbh}->query($_); };
     return;
 };

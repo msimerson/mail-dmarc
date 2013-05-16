@@ -48,16 +48,6 @@ sub view {
     return $self->{view} = Mail::DMARC::Report::View->new;
 };
 
-sub send_each {
-    my $self = shift;
-    croak "missing dmarc object!" if ! $self->{dmarc};
-#   foreach my $rua ( @$ruas ) {
-        return $self->store->sendit->via->email($self->{dmarc});
-#         or
-#       return $self->store->sendit->via->http($self->{dmarc});
-#   };
-};
-
 sub save {
     my $self = shift;
     return $self->store->backend->save(@_);
