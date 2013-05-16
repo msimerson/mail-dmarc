@@ -17,14 +17,14 @@ sub post {
 # TODO: test
 
     my $ver = $Mail::DMARC::VERSION;
-    my $s = Net::HTTP->new(Host => $uri->host ) or die $@;
+    my $s = Net::HTTP->new(Host => $uri->host ) or croak $@;
     $s->write_request(POST => $uri->path, 'User-Agent' => "Mail::DMARC/$ver");
     my($code, $mess, %h) = $s->read_response_headers;
 
     while (1) {
         my $buf;
         my $n = $s->read_entity_body($buf, 1024);
-        die "read failed: $!" unless defined $n;
+        croak "read failed: $!" unless defined $n;
         last unless $n;
         print $buf;
         return 1;
