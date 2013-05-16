@@ -7,7 +7,6 @@ use Test::More;
 use lib 'lib';
 use_ok( 'Mail::DMARC::PurePerl' );
 use_ok( 'Mail::DMARC::Result' );
-use_ok( 'Mail::DMARC::Result::Evaluated' );
 
 my $pp = Mail::DMARC::PurePerl->new;
 my $result = Mail::DMARC::Result->new;
@@ -16,8 +15,14 @@ isa_ok( $result, 'Mail::DMARC::Result' );
 
 my $test_dom = 'tnpi.net';
 test_published();
-test_evaluated();
 test_no_policy();
+test_disposition();
+test_dkim();
+test_dkim_align();
+test_spf();
+test_result();
+test_reason();
+test_dkim_meta();
 
 done_testing();
 exit;
@@ -28,7 +33,8 @@ sub _test_pass_strict {
     $pp->dkim([{ domain => $test_dom, result=>'pass', selector=> 'apr2013' }]);
     $pp->spf({ domain => $test_dom, result=>'pass' });
     $pp->validate();
-    is_deeply( $pp->result->evaluated, {
+    delete $pp->result->{published};
+    is_deeply( $pp->result, {
         'result' => 'pass',
         'disposition' => 'none',
         'dkim' => 'pass',
@@ -41,7 +47,7 @@ sub _test_pass_strict {
         },
         'dkim_align' => 'strict',
         },
-        "evaluated, pass, strict, $test_dom")
+        "result, pass, strict, $test_dom")
         or diag Data::Dumper::Dumper($pp->result);
 };
 
@@ -51,7 +57,8 @@ sub _test_pass_relaxed {
     $pp->dkim([{ domain => $test_dom, result=>'pass', selector=> 'apr2013' }]);
     $pp->spf({ domain => $test_dom, result=>'pass' });
     $pp->validate();
-    is_deeply( $pp->result->evaluated, {
+    delete $pp->result->{published};
+    is_deeply( $pp->result, {
         'result' => 'pass',
         'dkim' => 'pass',
         'spf' => 'pass',
@@ -64,7 +71,7 @@ sub _test_pass_relaxed {
         },
         'spf_align' => 'relaxed',
         },
-        "evaluated, pass, relaxed, $test_dom")
+        "pass, relaxed, $test_dom")
         or diag Data::Dumper::Dumper($pp->result);
 };
 
@@ -85,13 +92,14 @@ sub _test_fail_strict {
     ok( ! $pp->is_dkim_aligned, "is_dkim_aligned, neg");
     ok( ! $pp->is_spf_aligned, "is_spf_aligned, neg");
     ok( ! $pp->is_aligned(), "is_aligned, neg");
-    is_deeply( $pp->result->evaluated, {
+    delete $pp->result->{published};
+    is_deeply( $pp->result, {
         'disposition' => $pol,
         'dkim'   => 'fail',
         'spf'    => 'fail',
         'result' => 'fail',
         },
-        "evaluated, fail, strict, $test_dom")
+        "result, fail, strict, $test_dom")
         or diag Data::Dumper::Dumper($pp->result);
 };
 
@@ -112,14 +120,15 @@ sub _test_fail_sampled_out {
     ok( ! $pp->is_dkim_aligned, "is_dkim_aligned, neg");
     ok( ! $pp->is_spf_aligned, "is_spf_aligned, neg");
     ok( ! $pp->is_aligned(), "is_aligned, neg");
-    is_deeply( $pp->result->evaluated, {
+    delete $pp->result->{published};
+    is_deeply( $pp->result, {
         'disposition' => 'none',
         'dkim'   => 'fail',
         'spf'    => 'fail',
         'reason' => { 'type' => 'sampled_out' },
         'result' => 'fail',
         },
-        "evaluated, fail, strict, sampled out, $test_dom")
+        "result, fail, strict, sampled out, $test_dom")
         or diag Data::Dumper::Dumper($pp->result);
 };
 
@@ -133,9 +142,9 @@ sub _test_fail_nonexist {
 
 SKIP: {
     skip "DNS returned 'interesting' results for invalid domain", 1
-        if $pp->result->evaluated->reason->comment ne 'host.nonexistent-tld not in DNS';
+        if $pp->result->reason->comment ne 'host.nonexistent-tld not in DNS';
 
-    is_deeply( $pp->result->evaluated, {
+    is_deeply( $pp->result, {
             'result' => 'fail',
             'disposition' => 'reject',
             'dkim' => '',
@@ -145,7 +154,7 @@ SKIP: {
                 'type' => 'other',
             },
         },
-        "evaluated, fail, nonexist")
+        "result, fail, nonexist")
         or diag Data::Dumper::Dumper($pp->result);
     };
 };
@@ -160,17 +169,13 @@ sub test_published {
     _test_fail_nonexist();
 };
 
-sub test_evaluated {
-    ok( $result->evaluated(), "evaluated");
-};
-
 sub test_no_policy {
 
     $pp->init();
     $pp->{header_from} = 'responsebeacon.com';
     $pp->validate();
 
-    is_deeply( $pp->result->evaluated, {
+    is_deeply( $pp->result, {
             'result' => 'fail',
             'disposition' => 'none',
             'dkim' => '',
@@ -180,6 +185,91 @@ sub test_no_policy {
                 'type' => 'other',
             },
         },
-        "evaluated, fail, nonexist")
+        "result, fail, nonexist")
         or diag Data::Dumper::Dumper($pp->result);
 };
+
+sub test_disposition {
+# positive tests
+    foreach (qw/ none reject quarantine NONE REJECT QUARANTINE /) {
+        ok( $result->disposition($_), "disposition, $_")
+    };
+
+# negative tests
+    foreach (qw/ non rejec quarantin NON REJEC QUARANTIN /) {
+        eval { $result->disposition($_) };
+        chomp $@;
+        ok( $@, "disposition, neg, $_, $@")
+    };
+}
+
+sub test_dkim {
+    test_pass_fail('dkim');
+}
+
+sub test_dkim_align{
+    strict_relaxed('dkim_align');
+};
+
+sub test_dkim_meta {
+    ok( $result->dkim_meta( { domain => 'test' } ), "dkim_meta");
+}
+
+sub test_spf {
+    test_pass_fail('spf');
+}
+
+sub test_spf_align {
+    strict_relaxed('spf_align');
+}
+
+sub test_reason{
+# positive tests
+    foreach (qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /) {
+        ok( $result->reason->type( $_ ), "reason type: $_");
+        ok( $result->reason->comment('test'), "reason comment");
+    };
+
+# negative tests
+    foreach (qw/ any reason not in above list /) {
+        eval { $result->reason->type( $_ ) };
+        chomp $@;
+        ok( $@, "reason, $_, $@");
+    };
+}
+
+sub test_result {
+    test_pass_fail('result');
+}
+
+sub test_pass_fail {
+    my $sub = shift;
+
+# positive tests
+    foreach (qw/ pass fail PASS FAIL /) {
+        ok( $result->$sub($_), "$sub, $_")
+    };
+
+# negative tests
+    foreach (qw/ pas fai PAS FAI /) {
+        eval { $result->$sub($_) };
+        chomp $@;
+        ok( $@, "$sub, neg, $_, $@")
+    };
+};
+
+sub strict_relaxed {
+    my $sub = shift;
+# positive tests
+    foreach (qw/ strict relaxed STRICT RELAXED /) {
+        ok( $result->$sub($_), "$sub, $_")
+    };
+
+# negative tests
+    foreach (qw/ stric relaxe STRIC RELAXE /) {
+        eval { $result->$sub($_) };
+        chomp $@;
+        ok( $@, "$sub, neg, $_, $@")
+    };
+}
+

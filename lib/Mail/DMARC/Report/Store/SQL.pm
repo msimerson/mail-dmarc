@@ -71,10 +71,10 @@ sub dmarc { return $_[0]->{dmarc}; };
 
 sub insert_rr_reason {
     my $self = shift;
-    my $type = $self->dmarc->result->evaluated->reason->type or do {
+    my $type = $self->dmarc->result->reason->type or do {
         return 1;
     };
-    my $comment = $self->dmarc->result->evaluated->reason->comment || '';
+    my $comment = $self->dmarc->result->reason->comment || '';
     return $self->query( 'INSERT INTO report_record_disp_reason (report_record_id, type, comment) VALUES (?,?,?)',
             [ $self->{report_row_id},
               $type,
@@ -121,7 +121,7 @@ sub insert_rr_spf {
 sub insert_report_row {
     my $self = shift;
     my $report_id = $self->{report_id} or croak "no report_id?!";
-    my $eva = $self->dmarc->result->evaluated or croak "no evaluated report?!";
+    my $eva = $self->dmarc->result or croak "no results?!";
 # using SQL SET rather than INSERT won't break when the table schema changes
     my $query = <<'EO_ROW_INSERT'
 INSERT INTO report_record

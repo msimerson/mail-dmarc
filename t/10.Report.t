@@ -44,7 +44,8 @@ sub setup_dmarc_result {
     $dmarc->dkim([{ domain => $test_dom, result=>'pass', selector=> 'apr2013' }]);
     $dmarc->spf({ domain => $test_dom, scope=>'mfrom', result=>'pass' });
     $dmarc->validate() or diag Dumper($dmarc) and return;
-    is_deeply( $dmarc->result->evaluated, {
+    delete $dmarc->result->{published};
+    is_deeply( $dmarc->result, {
         'result' => 'pass',
         'disposition' => 'none',
         'dkim_meta' => {
@@ -57,7 +58,7 @@ sub setup_dmarc_result {
         'dkim_align' => 'strict',
         'spf_align' => 'strict',
         },
-        "evaluated, pass, strict, $test_dom")
+        "result, pass, strict, $test_dom")
         or diag Dumper($dmarc->result);
 };
 

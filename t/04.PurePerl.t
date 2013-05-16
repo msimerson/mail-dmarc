@@ -129,7 +129,7 @@ sub test_discover_policy {
     $dmarc->header_from('mail-dmarc.tnpi.net');
     my $policy = $dmarc->discover_policy;
     ok( $policy, "discover_policy") or do {
-        diag Data::Dumper::Dumper($dmarc->result->evaluated);
+        diag Data::Dumper::Dumper($dmarc->result);
         return;
     };
     $policy->apply_defaults;
@@ -163,14 +163,14 @@ sub test_is_spf_aligned {
     ok( $dmarc->header_from('example.com'), "spf, set header_from");
     ok( $dmarc->spf( domain => 'example.com', scope=>'mfrom', result => 'pass' ), 'spf, set spf');
     ok( $dmarc->is_spf_aligned(), "is_spf_aligned");
-    ok( 'strict' eq $dmarc->result->evaluated->spf_align, "is_spf_aligned, strict")
+    ok( 'strict' eq $dmarc->result->spf_align, "is_spf_aligned, strict")
         or diag Dumper($dmarc->result);
 
     $dmarc->header_from('mail.example.com');
     ok( $dmarc->spf( domain => 'example.com', scope=>'mfrom', result => 'pass' ), 'spf, set spf');
     ok( $dmarc->policy->aspf('r'), "spf alignment->r");
     ok( $dmarc->is_spf_aligned(), "is_spf_aligned, relaxed");
-    ok( 'relaxed' eq $dmarc->result->evaluated->spf_align, "is_spf_aligned, relaxed");
+    ok( 'relaxed' eq $dmarc->result->spf_align, "is_spf_aligned, relaxed");
 
     $dmarc->header_from('mail.exUmple.com');
     ok( $dmarc->spf( domain => 'example.com', scope=>'mfrom', result => 'pass' ), 'spf, set spf');
@@ -210,18 +210,18 @@ sub test_is_dkim_aligned {
 };
 
 sub test_is_aligned {
-    $dmarc->result->evaluated->spf('pass');
-    $dmarc->result->evaluated->dkim('pass');
+    $dmarc->result->spf('pass');
+    $dmarc->result->dkim('pass');
     ok( $dmarc->is_aligned(), "is_aligned, both");
 
-    $dmarc->result->evaluated->dkim('fail');
+    $dmarc->result->dkim('fail');
     ok( $dmarc->is_aligned(), "is_aligned, spf");
 
-    $dmarc->result->evaluated->dkim('pass');
-    $dmarc->result->evaluated->spf('fail');
+    $dmarc->result->dkim('pass');
+    $dmarc->result->spf('fail');
     ok( $dmarc->is_aligned(), "is_aligned, dkim");
 
-    $dmarc->result->evaluated->dkim('fail');
+    $dmarc->result->dkim('fail');
     ok( ! $dmarc->is_aligned(), "is_aligned, none")
         or diag Data::Dumper::Dumper($dmarc->is_aligned());
 };

@@ -43,7 +43,7 @@ sub validate {
     #        disposed of in accordance with the discovered DMARC policy of the
     #        Domain Owner.  See Section 6.2 for details.
     if ( lc $effective_p eq 'none' ) {
-        $self->result->evaluated->disposition('none');
+        $self->result->disposition('none');
         return;
     };
 
@@ -51,15 +51,15 @@ sub validate {
 # If the "pct" tag is present in a policy record, application of policy
 # is done on a selective basis.
     if ( ! defined $policy->pct ) {
-        $self->result->evaluated->disposition($effective_p);
+        $self->result->disposition($effective_p);
         return;
     };
 
 # The stated percentage of messages that fail the DMARC test MUST be
 # subjected to whatever policy is selected by the "p" or "sp" tag
     if ( int(rand(100)) >= $policy->pct ) {
-        $self->result->evaluated->disposition('none');
-        $self->result->evaluated->reason( type=>'sampled_out' );
+        $self->result->disposition('none');
+        $self->result->reason( type=>'sampled_out' );
         return;
     };
 
@@ -73,7 +73,7 @@ sub validate {
 # RFC5322.From field which fail the DMARC test would be subjected to
 # "reject" action, and the remainder subjected to "quarantine" action.
 
-    $self->result->evaluated->disposition(
+    $self->result->disposition(
         ( $effective_p eq 'reject' ) ? 'quarantine' : 'none' );
     return;
 }
@@ -83,7 +83,7 @@ sub discover_policy {
     my $from_dom = shift || $self->header_from or croak;
     my $org_dom  = $self->get_organizational_domain($from_dom);
 
-    my $e = $self->result->evaluated;
+    my $e = $self->result;
 
     # 9.1  Mail Receivers MUST query the DNS for a DMARC TXT record
     my $matches = $self->fetch_dmarc_record($from_dom, $org_dom);
@@ -138,20 +138,20 @@ sub is_aligned {
 #        failures, identifier mismatches) are considered to be DMARC
 #        mechanism check failures.
 
-    if (    'pass' eq $self->result->evaluated->spf
-         || 'pass' eq $self->result->evaluated->dkim ) {
-        $self->result->evaluated->result('pass');
-        $self->result->evaluated->disposition('none');
+    if (    'pass' eq $self->result->spf
+         || 'pass' eq $self->result->dkim ) {
+        $self->result->result('pass');
+        $self->result->disposition('none');
         return 1;
     };
-    $self->result->evaluated->result('fail');
+    $self->result->result('fail');
     return 0;
 };
 
 sub is_dkim_aligned {
     my $self = shift;
 
-    $self->result->evaluated->dkim('fail'); # our 'default' result
+    $self->result->dkim('fail'); # our 'default' result
     my $pass_sigs = $self->get_dkim_pass_sigs() or return;
 
 # 11.2.3 Perform DKIM signature verification checks.  A single email may
@@ -176,9 +176,9 @@ sub is_dkim_aligned {
         };
 
         if ($dkim_dom eq $from_dom) { # strict alignment requires exact match
-            $self->result->evaluated->dkim('pass');
-            $self->result->evaluated->dkim_align('strict');
-            $self->result->evaluated->dkim_meta( $dkmeta );
+            $self->result->dkim('pass');
+            $self->result->dkim_align('strict');
+            $self->result->dkim_meta( $dkmeta );
             last;
         }
 
@@ -186,17 +186,17 @@ sub is_dkim_aligned {
         next if $policy->adkim && lc $policy->adkim eq 's';
 
         # don't try relaxed if we already got a strict match
-        next if 'pass' eq $self->result->evaluated->dkim;
+        next if 'pass' eq $self->result->dkim;
 
         # relaxed policy (default): Org. Dom must match a DKIM sig
         my $dkim_org = $self->get_organizational_domain($dkim_dom);
         if ( $dkim_org eq $from_org ) {
-            $self->result->evaluated->dkim('pass');
-            $self->result->evaluated->dkim_align('relaxed');
-            $self->result->evaluated->dkim_meta( $dkmeta );
+            $self->result->dkim('pass');
+            $self->result->dkim_align('relaxed');
+            $self->result->dkim_meta( $dkmeta );
         };
     };
-    return 1 if 'pass' eq $self->result->evaluated->dkim;
+    return 1 if 'pass' eq $self->result->dkim;
     return;
 };
 
@@ -212,31 +212,31 @@ sub is_spf_aligned {
 #        evaluation returned a "pass" result.
 
     if ( ! $spf_dom ) {
-        $self->result->evaluated->spf('fail');
+        $self->result->spf('fail');
         return 0;
     };
 
     my $from_dom = $self->header_from or croak "header_from not set!";
 
     if ($spf_dom eq $from_dom) {
-        $self->result->evaluated->spf('pass');
-        $self->result->evaluated->spf_align('strict');
+        $self->result->spf('pass');
+        $self->result->spf_align('strict');
         return 1;
     }
 
     # don't try relaxed match if strict policy requested
     if ($self->policy->aspf && lc $self->policy->aspf eq 's' ) {
-        $self->result->evaluated->spf('fail');
+        $self->result->spf('fail');
         return 0;
     };
 
     if (     $self->get_organizational_domain( $spf_dom )
           eq $self->get_organizational_domain( $from_dom ) ) {
-        $self->result->evaluated->spf('pass');
-        $self->result->evaluated->spf_align('relaxed');
+        $self->result->spf('pass');
+        $self->result->spf_align('relaxed');
         return 1;
     }
-    $self->result->evaluated->spf('fail');
+    $self->result->spf('fail');
     return 0;
 };
 
@@ -325,9 +325,9 @@ sub exists_in_dns {
         $matched++ and next if $self->has_dns_rr('AAAA', $_);
     };
     if ( ! $matched ) {
-        $self->result->evaluated->result('fail');
-        $self->result->evaluated->disposition('reject');
-        $self->result->evaluated->reason(
+        $self->result->result('fail');
+        $self->result->disposition('reject');
+        $self->result->reason(
                 type=>'other', comment => "$from_dom not in DNS");
     };
     return $matched;
@@ -364,9 +364,9 @@ sub fetch_dmarc_record {
         };
     };
 
-    $self->result->evaluated->result('fail');
-    $self->result->evaluated->disposition('none');
-    $self->result->evaluated->reason( type=>'other',comment=>'no policy');
+    $self->result->result('fail');
+    $self->result->disposition('none');
+    $self->result->reason( type=>'other',comment=>'no policy');
     return \@matches;
 }
 
@@ -382,7 +382,7 @@ sub get_from_dom {
 
 sub get_dom_from_header {
     my $self = shift;
-    my $e = $self->result->evaluated;
+    my $e = $self->result;
     my $header = $self->header_from_raw or do {
         $e->result('fail');
         $e->disposition('none');

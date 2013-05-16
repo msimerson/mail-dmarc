@@ -4,29 +4,6 @@ DMARC: Domain-based Message Authentication, Reporting and Conformance
 
 A reliable means to authenticate who mail is from, at internet scale.
 
-# CLASSES
-
-[Mail::DMARC](http://search.cpan.org/perldoc?Mail::DMARC) - A perl implementation of the DMARC draft
-
-[Mail::DMARC::Policy](http://search.cpan.org/perldoc?Mail::DMARC::Policy) - a DMARC record in object format
-
-[Mail::DMARC::PurePerl](http://search.cpan.org/perldoc?Mail::DMARC::PurePerl) - a DMARC implementation
-
-- [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result)
-- [Mail::DMARC::Result::Evaluated](http://search.cpan.org/perldoc?Mail::DMARC::Result::Evaluated)
-
-[Mail::DMARC::Report](http://search.cpan.org/perldoc?Mail::DMARC::Report) - the R in DMARC
-
-    [Mail::DMARC::Report::Send](http://search.cpan.org/perldoc?Mail::DMARC::Report::Send) - deliver formatted reports via SMTP & HTTP
-
-    [Mail::DMARC::Report::Receive](http://search.cpan.org/perldoc?Mail::DMARC::Report::Receive) - parse incoming email and HTTP reports to store
-
-    [Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail::DMARC::Report::Store) - a persistent data store for DMARC reports
-
-    [Mail::DMARC::Report::View](http://search.cpan.org/perldoc?Mail::DMARC::Report::View) - CLI and (eventually) CGI methods for report viewing
-
-[Mail::DMARC::libopendmarc](http://search.cpan.org/~shari/Mail-DMARC-opendmarc) - an XS implementation using libopendmarc
-
 # DESCRIPTION
 
 Determine if:
@@ -42,7 +19,7 @@ Results of DMARC processing are stored in a [Mail::DMARC::Result](http://search.
     my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
     my $result = $dmarc->verify();
 
-    if ( $result->evaluated->result eq 'pass' ) {
+    if ( $result->result eq 'pass' ) {
         ...continue normal processing...
         return;
     };
@@ -59,7 +36,29 @@ Results of DMARC processing are stored in a [Mail::DMARC::Result](http://search.
         ...continue normal processing...
     };
 
-There's a lot more information available in the $result object. See [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) page for complete details.
+There's a lot of information available in the $result object. See [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) page for complete details.
+
+# CLASSES
+
+[Mail::DMARC](http://search.cpan.org/perldoc?Mail::DMARC) - A perl implementation of the DMARC draft
+
+[Mail::DMARC::Policy](http://search.cpan.org/perldoc?Mail::DMARC::Policy) - a DMARC policy, as published or retrieved via DNS
+
+[Mail::DMARC::PurePerl](http://search.cpan.org/perldoc?Mail::DMARC::PurePerl) - a perl DMARC implementation
+
+[Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) - results of DMARC processing
+
+[Mail::DMARC::Report](http://search.cpan.org/perldoc?Mail::DMARC::Report) - Reporting: the R in DMARC
+
+    [Mail::DMARC::Report::Send](http://search.cpan.org/perldoc?Mail::DMARC::Report::Send) - deliver formatted reports via SMTP & HTTP
+
+    [Mail::DMARC::Report::Receive](http://search.cpan.org/perldoc?Mail::DMARC::Report::Receive) - parse incoming email and HTTP reports to store
+
+    [Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail::DMARC::Report::Store) - a persistent data store for DMARC reports
+
+    [Mail::DMARC::Report::View](http://search.cpan.org/perldoc?Mail::DMARC::Report::View) - CLI and (eventually) CGI methods for report viewing
+
+[Mail::DMARC::libopendmarc](http://search.cpan.org/~shari/Mail-DMARC-opendmarc) - an XS implementation using libopendmarc
 
 # METHODS
 

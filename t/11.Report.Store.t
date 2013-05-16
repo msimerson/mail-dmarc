@@ -31,8 +31,6 @@ $dmarc->report->store->backend->config('t/mail-dmarc.ini');
 test_reason();
 test_save();
 
-
-#unlink 't/reports-test.sqlite';  # test DB
 done_testing();
 exit;
 
@@ -43,8 +41,8 @@ sub test_save {
 };
 
 sub test_reason {
-    $dmarc->result->evaluated->reason->type('other');
-    $dmarc->result->evaluated->reason->comment('testing');
+    $dmarc->result->reason->type('other');
+    $dmarc->result->reason->comment('testing');
 }
 
 sub setup_dmarc_result {
@@ -55,7 +53,8 @@ sub setup_dmarc_result {
     $dmarc->dkim([{ domain => $test_dom, result=>'pass', selector=> 'apr2013' }]);
     $dmarc->spf({ domain => $test_dom, scope=>'mfrom', result=>'pass' });
     $dmarc->validate() or diag Dumper($dmarc) and return;
-    is_deeply( $dmarc->result->evaluated, {
+    my $pub = delete $dmarc->result->{published};
+    is_deeply( $dmarc->result, {
         'result' => 'pass',
         'disposition' => 'none',
         'dkim_meta' => {
@@ -68,7 +67,8 @@ sub setup_dmarc_result {
         'dkim_align' => 'strict',
         'spf_align' => 'strict',
         },
-        "evaluated, pass, strict, $test_dom")
+        "result, pass, strict, $test_dom")
         or diag Dumper($dmarc->result);
+    return $dmarc->result->published( $pub );
 };
 

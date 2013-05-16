@@ -143,23 +143,51 @@ DMARC: Domain-based Message Authentication, Reporting and Conformance
 
 A reliable means to authenticate who mail is from, at internet scale.
 
+=head1 DESCRIPTION
+
+Determine if:
+
+    a. the header_from domain exists
+    b. the header_from domain publishes a DMARC policy
+    c. does the message conform to the published policy?
+
+Results of DMARC processing are stored in a L<Mail::DMARC::Result> object.
+
+=head1 HOW TO USE
+
+ my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
+ my $result = $dmarc->verify();
+
+ if ( $result->result eq 'pass' ) {
+     ...continue normal processing...
+     return;
+ };
+
+ # any result that did not pass is a fail. Now for disposition
+
+ if ( $result->evalated->disposition eq 'reject' ) {
+     ...treat the sender to a 550 ...
+ };
+ if ( $result->evalated->disposition eq 'quarantine' ) {
+     ...assign a bunch of spam points...
+ };
+ if ( $result->evalated->disposition eq 'none' ) {
+     ...continue normal processing...
+ };
+
+There's a lot of information available in the $result object. See L<Mail::DMARC::Result> page for complete details.
+
 =head1 CLASSES
 
 L<Mail::DMARC> - A perl implementation of the DMARC draft
 
-L<Mail::DMARC::Policy> - a DMARC record in object format
+L<Mail::DMARC::Policy> - a DMARC policy, as published or retrieved via DNS
 
-L<Mail::DMARC::PurePerl> - a DMARC implementation
+L<Mail::DMARC::PurePerl> - a perl DMARC implementation
 
-=over 4
+L<Mail::DMARC::Result> - results of DMARC processing
 
-=item L<Mail::DMARC::Result>
-
-=item L<Mail::DMARC::Result::Evaluated>
-
-=back
-
-L<Mail::DMARC::Report> - the R in DMARC
+L<Mail::DMARC::Report> - Reporting: the R in DMARC
 
 =over 4
 
@@ -174,40 +202,6 @@ L<Mail::DMARC::Report::View> - CLI and (eventually) CGI methods for report viewi
 =back
 
 L<Mail::DMARC::libopendmarc|http://search.cpan.org/~shari/Mail-DMARC-opendmarc> - an XS implementation using libopendmarc
-
-=head1 DESCRIPTION
-
-Determine if:
-
-    a. the header_from domain exists
-    b. the header_from domain publishes a DMARC policy
-    c. does the message conform to the published policy?
-
-Results of DMARC processing are stored in a L<Mail::DMARC::Result> object.
-
-=head1 HOW TO USE
-
-    my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
-    my $result = $dmarc->verify();
-
-    if ( $result->evaluated->result eq 'pass' ) {
-        ...continue normal processing...
-        return;
-    };
-
-    # any result that did not pass is a fail. Now for disposition
-
-    if ( $result->evalated->disposition eq 'reject' ) {
-        ...treat the sender to a 550 ...
-    };
-    if ( $result->evalated->disposition eq 'quarantine' ) {
-        ...assign a bunch of spam points...
-    };
-    if ( $result->evalated->disposition eq 'none' ) {
-        ...continue normal processing...
-    };
-
-There's a lot more information available in the $result object. See L<Mail::DMARC::Result> page for complete details.
 
 =head1 METHODS
 
