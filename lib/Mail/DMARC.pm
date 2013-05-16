@@ -273,7 +273,7 @@ You can instead pass in the entire From: header with header_from_raw.
 
 =head2 header_from_raw
 
-This retrieves the header_from domain by extracing it from a raw From field/header.  The domain portion is extracted by Mail::DMARC::PurePerl::get_dom_from_header, which is fast, generally effective, but also rather crude. It does have limits, so read the description.
+Retrieve the header_from domain by parsing it from a raw From field/header. The domain portion is extracted by L<get_dom_from_header|Mail::DMARC::PurePerl#get_dom_from_header>, which is fast, generally effective, but also rather crude. It has limits, so read the description.
 
 =head2 dkim
 
