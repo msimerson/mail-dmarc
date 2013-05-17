@@ -25,7 +25,7 @@ eval { $base->config('t/mail-dmarc.ini'); };
 chomp $@;
 ok( ! $@, "alternate config file");
 
-test_inet_to();
+test_any_inet_to();
 test_is_public_suffix();
 test_has_dns_rr();
 test_is_valid_ip();
@@ -35,7 +35,7 @@ done_testing();
 exit;
 #warn Dumper($base);
 
-sub test_inet_to {
+sub test_any_inet_to {
 
     my @test_ips = (
             '1.1.1.1',
@@ -45,18 +45,18 @@ sub test_inet_to {
             );
 
     foreach my $ip ( @test_ips ) {
-        my $bin = $base->inet_pton( $ip );
-        ok( $bin, "inet_pton, $ip");
-        my $pres = $base->inet_ntop( $bin );
-        ok( $pres, "inet_ntop, $ip");
+        my $bin = $base->any_inet_pton( $ip );
+        ok( $bin, "any_inet_pton, $ip");
+        my $pres = $base->any_inet_ntop( $bin );
+        ok( $pres, "any_inet_ntop, $ip");
         if ( $pres eq $ip ) {
-            cmp_ok( $pres, 'eq', $ip, "inet_ntop, $ip");
+            cmp_ok( $pres, 'eq', $ip, "any_inet_ntop, $ip");
         }
         else {
 # on some systems, a :: pattern gets a zero inserted. Mimic that
             my $zero_filled = $ip;
             $zero_filled =~ s/::/:0:/g;
-            cmp_ok( $pres, 'eq', $zero_filled, "inet_ntop, $ip") 
+            cmp_ok( $pres, 'eq', $zero_filled, "any_inet_ntop, $ip")
                 or diag "presentation: $zero_filled\nresult: $pres";
         };
     };

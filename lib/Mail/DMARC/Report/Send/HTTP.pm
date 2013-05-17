@@ -15,7 +15,7 @@ sub post {
     return;
 
 # TODO: test
-
+## no critic (Unreachable)
     my $ver = $Mail::DMARC::VERSION;
     my $s = Net::HTTP->new(Host => $uri->host ) or croak $@;
     $s->write_request(POST => $uri->path, 'User-Agent' => "Mail::DMARC/$ver");

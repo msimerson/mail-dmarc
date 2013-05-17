@@ -9,7 +9,8 @@ use IO::File;
 use Net::DNS::Resolver;
 use Net::IP;
 use Regexp::Common qw /net/;
-use Socket 2;
+use Socket;
+use Socket6 qw//; # don't export symbols
 
 sub new {
     my ($class, @args) = @_;
@@ -41,26 +42,26 @@ sub get_config {
     croak "unable to find config file $file\n";
 }
 
-sub inet_ntop {
+sub any_inet_ntop {
     my ($self, $ip_bin) = @_;
     $ip_bin or croak "missing IP in request";
 
     if ( length $ip_bin == 16 ) {
-        return Socket::inet_ntop( AF_INET6, $ip_bin );
+        return Socket6::inet_ntop( AF_INET6, $ip_bin );
     };
 
-    return Socket::inet_ntop( AF_INET, $ip_bin );
+    return Socket6::inet_ntop( AF_INET, $ip_bin );
 };
 
-sub inet_pton {
+sub any_inet_pton {
     my ($self, $ip_txt) = @_;
     $ip_txt or croak "missing IP in request";
 
     if ( $ip_txt =~ /:/ ) {
-        return Socket::inet_pton( AF_INET6, $ip_txt ) or croak "invalid IPv6: $ip_txt";
+        return Socket6::inet_pton( AF_INET6, $ip_txt ) or croak "invalid IPv6: $ip_txt";
     };
 
-    return Socket::inet_pton( AF_INET, $ip_txt ) or croak "invalid IPv4: $ip_txt";
+    return Socket6::inet_pton( AF_INET, $ip_txt ) or croak "invalid IPv4: $ip_txt";
 };
 
 sub is_public_suffix {

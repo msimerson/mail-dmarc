@@ -43,13 +43,13 @@ sub test_ip_store_and_fetch {
 
     foreach my $ip ( @test_ips ) {
 
-        my $ipbin = $sql->inet_pton( $ip );
-        ok( $ipbin, "inet_pton, $ip");
+        my $ipbin = $sql->any_inet_pton( $ip );
+        ok( $ipbin, "any_inet_pton, $ip");
 
-        my $pres = $sql->inet_ntop( $ipbin );
-        ok( $pres, "inet_ntop, $ip");
+        my $pres = $sql->any_inet_ntop( $ipbin );
+        ok( $pres, "any_inet_ntop, $ip");
 
-        compare_inet_round_trip($ip, $pres);
+        compare_any_inet_round_trip($ip, $pres);
 
         my $report_id = $sql->query(
             "INSERT INTO report_record ( report_id, source_ip, disposition, dkim,spf,header_from) VALUES (?,?,?,?,?,?)",
@@ -57,9 +57,9 @@ sub test_ip_store_and_fetch {
                 or die "failed to insert?";
 
         my $r_ref = $sql->query("SELECT id,source_ip FROM report_record WHERE id=?", [$report_id])->[0];
-        compare_inet_round_trip(
+        compare_any_inet_round_trip(
                 $ip,
-                $sql->inet_ntop($r_ref->{source_ip}),
+                $sql->any_inet_ntop($r_ref->{source_ip}),
                 );
     };
 };
@@ -134,17 +134,17 @@ sub test_db_connect {
     isa_ok( $dbh, "DBIx::Simple");
 }
 
-sub compare_inet_round_trip {
+sub compare_any_inet_round_trip {
     my ($ip, $pres) = @_;
 
     if ( $pres eq $ip ) {
-        cmp_ok( $pres, 'eq', $ip, "inet_ntop, round_trip, $ip");
+        cmp_ok( $pres, 'eq', $ip, "any_inet_ntop, round_trip, $ip");
     }
     else {
 # on some systems, a :: pattern gets a zero inserted. Mimic that
         my $zero_filled = $ip;
         $zero_filled =~ s/::/:0:/g;
-        cmp_ok( $pres, 'eq', $zero_filled, "inet_ntop, round_trip, zero-pad, $ip")
+        cmp_ok( $pres, 'eq', $zero_filled, "any_inet_ntop, round_trip, zero-pad, $ip")
             or diag "presentation: $zero_filled\nresult: $pres";
     };
 };
