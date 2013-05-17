@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+0.20130517 2013-05-17 America/Los_Angeles
+
  - send reports with zip until 7/1, gzip after
  - replace Socket 2 with Socket6 (better Windows compatibility)
  - added parsing of incoming email reports
