@@ -29,14 +29,14 @@ setup_dmarc_result() or die "failed setup\n";
 $dmarc->report->store->backend->config('t/mail-dmarc.ini');
 
 test_reason();
-test_save();
+test_save_receiver();
 
 done_testing();
 exit;
 
-sub test_save {
-    my $r = $dmarc->report->save($dmarc);
-    ok( $r, "save results" );
+sub test_save_receiver {
+    my $r = $dmarc->report->save_receiver($dmarc);
+    ok( $r, "save receiver results" );
     print Dumper($r);
 };
 
@@ -49,6 +49,7 @@ sub setup_dmarc_result {
 
     $dmarc->init();
     $dmarc->header_from( $test_dom );
+    $dmarc->envelope_to( 'recipient.com' );
     $dmarc->source_ip( '192.2.1.1' );
     $dmarc->dkim([{ domain => $test_dom, result=>'pass', selector=> 'apr2013' }]);
     $dmarc->spf({ domain => $test_dom, scope=>'mfrom', result=>'pass' });

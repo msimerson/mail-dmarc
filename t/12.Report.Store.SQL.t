@@ -5,6 +5,7 @@ use Data::Dumper;
 use Test::More;
 
 use lib 'lib';
+use Mail::DMARC::Policy;
 
 eval "use DBD::SQLite 1.31";
 if ( $@ ) {
@@ -29,9 +30,87 @@ test_query_delete();
 test_query();
 test_query_any();
 test_ip_store_and_fetch();
+test_insert_report_published_policy();
+test_insert_report_row();
+test_insert_rr_spf();
+test_insert_rr_dkim();
+test_insert_rr_reason();
+test_insert_author_report();
 
 done_testing();
 exit;
+
+sub test_insert_author_report {
+    my %meta = (
+            id       => time,
+            domain   => 'test.com',
+            org_name => 'Test Company',
+            begin    => time,
+            end      => time + 10,
+            );
+    my $policy = Mail::DMARC::Policy->new("v=DMARC1; p=reject");
+    $policy->rua( 'mailto:' . $sql->config->{organization}{email} );
+    $policy->{domain} = 'recip.example.com';
+    ok( $sql->insert_author_report( \%meta, $policy ), 'insert_author_report');
+};
+
+sub test_insert_rr_reason {
+    my $row_id = $sql->query('SELECT * FROM report_record LIMIT 1')->[0]{id} or return;
+    my @reasons = qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /;
+    foreach my $r ( @reasons ) {
+        ok( $sql->insert_rr_reason($row_id, $r, 'testing'), "insert_rr_reason, $r");
+    };
+};
+
+sub test_insert_rr_dkim {
+    my $row_id = $sql->query('SELECT * FROM report_record LIMIT 1')->[0]{id} or return;
+    my $dkim = { domain => 'example.com', selector => 'blah', result => 'pass', human_result => 'yay' };
+
+    ok( $sql->insert_rr_dkim( $row_id, $dkim), 'insert_rr_dkim');
+
+    $dkim->{human_result} = undef;
+    ok( $sql->insert_rr_dkim( $row_id, $dkim), 'insert_rr_dkim');
+
+    delete $dkim->{human_result};
+    ok( $sql->insert_rr_dkim( $row_id, $dkim), 'insert_rr_dkim');
+};
+
+sub test_insert_rr_spf {
+    my $row_id = $sql->query('SELECT * FROM report_record LIMIT 1')->[0]{id} or return;
+    my $spf = { domain => 'example.com', scope => 'helo', result => 'pass' };
+    ok( $sql->insert_rr_spf( $row_id, $spf), 'insert_rr_spf');
+    $spf->{scope} = 'mfrom';
+    ok( $sql->insert_rr_spf( $row_id, $spf), 'insert_rr_spf');
+    $spf->{result} = 'fail';
+    ok( $sql->insert_rr_spf( $row_id, $spf), 'insert_rr_spf');
+};
+
+sub test_insert_report_row {
+    my $rid = $sql->query('SELECT * FROM report LIMIT 1')->[0]{id} or return;
+    my %identifers = (
+            source_ip      => '192.1.1.1',
+            header_from    => 'from.com',
+            envelope_to    => 'to.com',
+            envelope_from  => 'from.com',
+            );
+    my %result = (
+            disposition => 'none',
+            dkim        => 'fail',
+            spf         => 'pass',
+            );
+    ok( $sql->insert_report_row($rid,\%identifers,\%result), 'insert_report_row');
+};
+
+sub test_insert_report_published_policy {
+    my $rid = $sql->query('SELECT * FROM report LIMIT 1')->[0]{id} or return;
+    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=none;');
+    $pol->apply_defaults;
+    $pol->rua( 'mailto:' . $sql->config->{organization}{email} );
+    my $r = $sql->insert_report_published_policy($rid,$pol);
+    ok( $r, 'insert_report_published_policy');
+#   print "r: $r\n";
+#my $rpp = $sql->query('SELECT * FROM report LIMIT 1');
+};
 
 sub test_ip_store_and_fetch {
     my @test_ips = (
@@ -72,8 +151,8 @@ sub test_query_insert {
     my $start = time;
     my $end = time + 86400;
     my $report_id = $sql->query(
-        "INSERT INTO report (domain, begin, end) VALUES (?,?,?)",
-        [ $test_domain, $start, $end] );
+        "INSERT INTO report (author_id,rcpt_domain_id,from_domain_id, begin, end) VALUES (??)",
+        [ 0,0,0, $start, $end] );
     ok( $report_id, "query_insert, report, $report_id");
 
     return unless $ENV{RELEASE_TESTING}; # these tests are noisy

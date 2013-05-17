@@ -1,13 +1,13 @@
 # ************************************************************
 # Sequel Pro SQL dump
-# Version 4004
+# Version 4096
 #
 # http://www.sequelpro.com/
 # http://code.google.com/p/sequel-pro/
 #
 # Host: 127.0.0.2 (MySQL 5.5.30)
 # Database: mail_dmarc
-# Generation Time: 2013-05-07 19:54:37 +0000
+# Generation Time: 2013-05-17 07:47:45 +0000
 # ************************************************************
 
 
@@ -18,6 +18,33 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+
+# Dump of table author
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `author`;
+
+CREATE TABLE `author` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `org_name` varchar(253) CHARACTER SET ascii NOT NULL DEFAULT '',
+  `email`    varchar(255) CHARACTER SET ascii DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+
+# Dump of table domain
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `domain`;
+
+CREATE TABLE `domain` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `domain` varchar(253) CHARACTER SET ascii NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 
 
 # Dump of table fk_disposition
@@ -152,11 +179,19 @@ DROP TABLE IF EXISTS `report`;
 
 CREATE TABLE `report` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `domain` varchar(253) NOT NULL DEFAULT '',
   `begin` datetime NOT NULL,
   `end` datetime NOT NULL,
+  `author_id` int(11) unsigned NOT NULL,
+  `rcpt_domain_id` int(11) unsigned NOT NULL,
+  `from_domain_id` int(11) unsigned NOT NULL,
   `error` varchar(255) CHARACTER SET utf8 DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `author_id` (`author_id`),
+  KEY `rcpt_domain_id` (`rcpt_domain_id`),
+  KEY `from_domain_id` (`from_domain_id`),
+  CONSTRAINT `report_ibfk_3` FOREIGN KEY (`from_domain_id`) REFERENCES `domain` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `report_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `author` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  CONSTRAINT `report_ibfk_2` FOREIGN KEY (`rcpt_domain_id`) REFERENCES `domain` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
 
 
@@ -204,19 +239,19 @@ CREATE TABLE `report_record` (
 
 
 
-# Dump of table report_record_disp_reason
+# Dump of table report_record_reason
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `report_record_disp_reason`;
+DROP TABLE IF EXISTS `report_record_reason`;
 
-CREATE TABLE `report_record_disp_reason` (
+CREATE TABLE `report_record_reason` (
   `report_record_id` int(11) unsigned NOT NULL,
   `type` varchar(24) NOT NULL DEFAULT '',
   `comment` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
   PRIMARY KEY (`report_record_id`),
   KEY `type` (`type`),
-  CONSTRAINT `report_record_disp_reason_ibfk_4` FOREIGN KEY (`type`) REFERENCES `fk_disposition_reason` (`type`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  CONSTRAINT `report_record_disp_reason_ibfk_3` FOREIGN KEY (`report_record_id`) REFERENCES `report_record` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `report_record_reason_ibfk_3` FOREIGN KEY (`report_record_id`) REFERENCES `report_record` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `report_record_reason_ibfk_4` FOREIGN KEY (`type`) REFERENCES `fk_disposition_reason` (`type`) ON DELETE NO ACTION ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
 
 

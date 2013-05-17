@@ -17,7 +17,7 @@ sub parse {
     foreach my $raw ( split /,/, $str ) {
         my ($u, $size_f) = split /!/, $raw;
         my $bytes = $self->get_size_limit($size_f);
-        my $uri = URI->new($u);
+        my $uri = URI->new($u) or carp "can't parse URI from $u";
         if ( $uri->scheme eq 'mailto' && lc substr($u, 0, 7) eq 'mailto:' ) {
             push @valids, { max_bytes => $bytes, uri => $uri };
             next;

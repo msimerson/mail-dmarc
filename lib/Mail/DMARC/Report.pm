@@ -48,9 +48,14 @@ sub view {
     return $self->{view} = Mail::DMARC::Report::View->new;
 };
 
-sub save {
+sub save_receiver {
     my $self = shift;
-    return $self->store->backend->save(@_);
+    return $self->store->backend->save_receiver(@_);
+};
+
+sub save_author {
+    my $self = shift;
+    return $self->store->backend->save_author(@_);
 };
 
 sub assemble_xml {

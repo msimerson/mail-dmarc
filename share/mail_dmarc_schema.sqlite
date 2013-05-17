@@ -99,14 +99,41 @@ VALUES
 /*!40000 ALTER TABLE `fk_spf_scope` ENABLE KEYS */;
 
 
+
+DROP TABLE IF EXISTS `author`;
+
+CREATE TABLE `author` (
+  `id` integer PRIMARY KEY AUTOINCREMENT,
+  `org_name` varchar(253) NOT NULL DEFAULT '',
+  `email` varchar(255) DEFAULT NULL
+);
+
+
+
+DROP TABLE IF EXISTS `domain`;
+
+CREATE TABLE `domain` (
+  `id` integer PRIMARY KEY AUTOINCREMENT,
+  `domain` varchar(253) NOT NULL DEFAULT ''
+);
+
+
+
 DROP TABLE IF EXISTS `report`;
 
 CREATE TABLE `report` (
   `id` integer PRIMARY KEY AUTOINCREMENT,
-  `domain` varchar(253) NOT NULL DEFAULT '',
   `begin` datetime NOT NULL,
   `end` datetime NOT NULL,
-  `error` varchar(255) DEFAULT NULL
+  `author_id` tinyint(1) NOT NULL,
+  `rcpt_domain_id` varchar(253) NOT NULL,
+  `from_domain_id` varchar(253) NOT NULL,
+  `error` varchar(255) DEFAULT NULL,
+  `uuid` varchar(255) DEFAULT NULL,
+  CONSTRAINT `report_ibfk_3` FOREIGN KEY (`from_domain_id`) REFERENCES `domain` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `report_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `author` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `report_ibfk_2` FOREIGN KEY (`rcpt_domain_id`) REFERENCES `domain` (`id`) ON UPDATE CASCADE
+
 );
 
 
@@ -143,14 +170,14 @@ CREATE TABLE `report_record` (
 
 
 
-DROP TABLE IF EXISTS `report_record_disp_reason`;
+DROP TABLE IF EXISTS `report_record_reason`;
 
-CREATE TABLE `report_record_disp_reason` (
+CREATE TABLE `report_record_reason` (
   `report_record_id` int(11) NOT NULL,
   `type` varchar(24) NOT NULL DEFAULT '',
   `comment` varchar(255) DEFAULT NULL,
-  CONSTRAINT `report_record_disp_reason_ibfk_4` FOREIGN KEY (`type`) REFERENCES `fk_disposition_reason` (`type`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  CONSTRAINT `report_record_disp_reason_ibfk_3` FOREIGN KEY (`report_record_id`) REFERENCES `report_record` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `report_record_reason_ibfk_3` FOREIGN KEY (`report_record_id`) REFERENCES `report_record` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `report_record_reason_ibfk_4` FOREIGN KEY (`type`) REFERENCES `fk_disposition_reason` (`type`) ON DELETE NO ACTION ON UPDATE CASCADE
 );
 
 

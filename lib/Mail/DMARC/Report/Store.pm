@@ -6,12 +6,6 @@ use Carp;
 
 use parent 'Mail::DMARC::Base';
 
-sub save {
-    my $self = shift;
-    my $dmarc = shift or croak "need a DMARC object!";
-    return $self->backend->save($dmarc);
-};
-
 sub delete_report {
     my $self = shift;
     return $self->backend->delete_report(@_);

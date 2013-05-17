@@ -9,16 +9,69 @@ use File::ShareDir;
 
 use parent 'Mail::DMARC::Base';
 
-sub save {
+sub save_author {
+    my ($self,$meta,$pol_pub,$records) = @_;
+
+    $self->insert_author_report($meta,$pol_pub) or croak "failed to create report!";
+
+    foreach my $rec ( @$records ) {
+        next if ! $rec;
+
+        my $row_id = $self->insert_report_row(
+                $self->{report_id},
+                { map { $_ => $self->dmarc->$_ } qw/ source_ip header_from envelope_to envelope_from / },
+                $self->dmarc->result,
+                ) or croak "failed to insert row";
+
+        my $reason = $self->dmarc->result->reason;
+        if ( $reason && $reason->type ) {
+            $self->insert_rr_reason($row_id, $reason->type, $reason->comment );
+        };
+
+        my $spf = $self->dmarc->spf;
+        if ( $spf ) {
+            $self->insert_rr_spf( $row_id, $spf );
+        };
+
+        my $dkim = $self->dmarc->dkim;
+        if ( $dkim ) {
+            foreach my $sig ( @$dkim ) {
+                $self->insert_rr_dkim($row_id, $sig);
+            };
+        };
+    };
+
+    return $self->{report_row_id};
+};
+
+sub save_receiver {
     my $self = shift;
     $self->{dmarc} = shift or croak "missing object with DMARC results\n";
     my $too_many = shift and croak "invalid arguments";
 
-    $self->insert_report or croak "failed to create report!";
-    $self->insert_report_row or croak "failed to insert row";
-    $self->insert_rr_reason;  # optional
-    $self->insert_rr_spf;     # optional
-    $self->insert_rr_dkim;    # optional, multiple possible
+    $self->insert_receiver_report or croak "failed to create report!";
+    my $row_id = $self->insert_report_row(
+            $self->{report_id},
+            { map { $_ => $self->dmarc->$_ } qw/ source_ip header_from envelope_to envelope_from / },
+            $self->dmarc->result,
+            ) or croak "failed to insert row";
+
+    my $reason = $self->dmarc->result->reason;
+    if ( $reason && $reason->type ) {
+        $self->insert_rr_reason($row_id, $reason->type, $reason->comment );
+    };
+
+    my $spf = $self->dmarc->spf;
+    if ( $spf ) {
+        $self->insert_rr_spf( $row_id, $spf );
+    };
+
+    my $dkim = $self->dmarc->dkim;
+    if ( $dkim ) {
+        foreach my $sig ( @$dkim ) {
+            $self->insert_rr_dkim($row_id, $sig);
+        };
+    };
 
 #warn Dumper($self->{dmarc});
     return $self->{report_row_id};
@@ -39,7 +92,7 @@ sub retrieve {
         my $rows = $r->{rows} = $self->query( 'SELECT * from report_record WHERE report_id=?', [ $r->{id} ] );
         foreach my $row ( @$rows ) {
             $row->{source_ip} = $self->any_inet_ntop( $row->{source_ip} );
-            $row->{reason} = $self->query( 'SELECT type,comment from report_record_disp_reason WHERE report_record_id=?', [ $row->{id} ]);
+            $row->{reason} = $self->query( 'SELECT type,comment from report_record_reason WHERE report_record_id=?', [ $row->{id} ]);
             $row->{auth_results}{spf} = $self->query( 'SELECT domain,result,scope from report_record_spf WHERE report_record_id=?', [ $row->{id} ] );
             $row->{auth_results}{dkim} = $self->query( 'SELECT domain,selector,result,human_result from report_record_dkim WHERE report_record_id=?', [ $row->{id} ] );
         };
@@ -55,7 +108,7 @@ sub delete_report {
     # deletes with FK don't cascade in SQLite? Clean each table manually
     my $rows = $self->query( 'SELECT id FROM report_record WHERE report_id=?', [ $report_id ] );
     my $row_ids = join(',', map { $_->{id} } @$rows) or return 1;
-    foreach my $table ( qw/ report_record_spf report_record_dkim report_record_disp_reason / ) {
+    foreach my $table ( qw/ report_record_spf report_record_dkim report_record_reason / ) {
         print "deleting $table rows $row_ids\n";
         $self->query("DELETE FROM $table WHERE report_record_id IN ($row_ids)");
     };
@@ -69,91 +122,88 @@ sub delete_report {
 
 sub dmarc { return $_[0]->{dmarc}; };
 
-sub insert_rr_reason {
-    my $self = shift;
-    my $type = $self->dmarc->result->reason->type or do {
-        return 1;
+sub get_domain_id {
+    my ($self, $domain) = @_;
+    croak "missing domain!" if ! $domain;
+    my $r = $self->query('SELECT id FROM domain WHERE domain=?', [$domain]);
+    if ( $r && scalar @$r ) {
+        return $r->[0]{id};
     };
-    my $comment = $self->dmarc->result->reason->comment || '';
-    return $self->query( 'INSERT INTO report_record_disp_reason (report_record_id, type, comment) VALUES (?,?,?)',
-            [ $self->{report_row_id},
-              $type,
-              $comment || ''
-            ]
+    return $self->query('INSERT INTO domain (domain) VALUES (?)', [$domain]);
+};
+
+sub get_author_id {
+    my ($self, $author, $email) = @_;
+    croak "missing author name" if ! $author;
+    my $r = $self->query('SELECT id FROM author WHERE org_name=?', [$author]);
+    if ( $r && scalar @$r ) {
+        return $r->[0]{id};
+    };
+    carp "missing email" if ! $email;
+    return $self->query('INSERT INTO author (org_name,email) VALUES (??)', [$author, $email]);
+};
+
+sub insert_rr_reason {
+    my ($self,$row_id,$type,$comment) = @_;
+    return $self->query( 'INSERT INTO report_record_reason (report_record_id, type, comment) VALUES (?,?,?)',
+            [ $row_id, $type, $comment || '' ]
         );
 };
 
 sub insert_rr_dkim {
-    my $self = shift;
-    my $dkim = $self->dmarc->dkim or do {
-        carp "no DKIM results!\n";
-        return;
-    };
-    foreach my $sig ( @$dkim ) {
-    $self->query(
-'INSERT INTO report_record_dkim (report_record_id, domain, selector, result, human_result) VALUES (?,?,?,?,?)',
-            [ $self->{report_row_id}, $sig->{domain}, $sig->{selector}, $sig->{result}, $sig->{human_result} ]
-        );
-    };
+    my ($self,$row_id,$dkim) = @_;
+
+    my $query = <<'EO_DKIM'
+INSERT INTO report_record_dkim
+    (report_record_id, domain, selector, result, human_result)
+VALUES (??)
+EO_DKIM
+;
+    my @dkim_fields = qw/ domain selector result human_result /;
+    $self->query( $query, [ $row_id, map { $dkim->{$_} } @dkim_fields ] );
     return 1;
 };
 
 sub insert_rr_spf {
-    my $self = shift;
-    my $spf = $self->dmarc->spf or do {
-        warn "no SPF results!\n";
-        return;
-    };
-#warn Dumper($spf);
+    my ($self,$row_id,$spf) = @_;
     my $r = $self->query(
-'INSERT INTO report_record_spf (report_record_id, domain, scope, result) VALUES(?,?,?,?)',
-            [
-            $self->{report_row_id},
-            $spf->{domain},
-            $spf->{scope},
-            $spf->{result},
-            ]
+'INSERT INTO report_record_spf (report_record_id, domain, scope, result) VALUES(??)',
+            [ $row_id, $spf->{domain}, $spf->{scope}, $spf->{result}, ]
         ) or croak "failed to insert SPF";
-
     return $r;
 };
 
 sub insert_report_row {
-    my $self = shift;
-    my $report_id = $self->{report_id} or croak "no report_id?!";
-    my $eva = $self->dmarc->result or croak "no results?!";
-# using SQL SET rather than INSERT won't break when the table schema changes
+    my ($self,$report_id,$identifiers,$result) = @_;
+    $report_id or croak "report ID required?!";
     my $query = <<'EO_ROW_INSERT'
 INSERT INTO report_record
-   (report_id, source_ip, disposition, dkim, spf,
-    header_from, envelope_to, envelope_from )
-   VALUES (?,?,?,?,?,?,?,?)
+   (report_id, source_ip, header_from, envelope_to, envelope_from,
+    disposition, dkim, spf
+    )
+   VALUES (??)
 EO_ROW_INSERT
 ;
     my $args = [
-        $self->{report_id},
-        $self->any_inet_pton($self->dmarc->source_ip),
-        $eva->disposition,
-        $eva->dkim,
-        $eva->spf,
-        $self->dmarc->header_from,
-        $self->dmarc->envelope_to || '',
-        $self->dmarc->envelope_from || '',
+        $report_id,
+        (map { $identifiers->{$_} || '' } qw/ source_ip header_from envelope_to envelope_from /),
+        (map { $result->{$_} } qw/ disposition dkim spf /),
         ];
-
-    my $row_id = $self->query( $query, $args )
-        or croak "query failed: $query\n";
-#warn "row_id: $row_id\n";
+    my $row_id = $self->query( $query, $args ) or croak;
     return $self->{report_row_id} = $row_id;
 };
 
-sub insert_report {
-    my $self = shift;
+sub insert_author_report {
+    my ($self, $meta, $pub) = @_;
 
-    my $header_from = $self->dmarc->header_from or croak "missing header_from!";
+# check if report exists
+    my $rcpt_dom_id = $self->get_domain_id( $meta->{domain} );
+    my $author_id   = $self->get_author_id($meta->{org_name}, $meta->{email});
+    my $from_dom_id = $self->get_domain_id( $pub->{domain} );
+
     my $ids = $self->query(
-        'SELECT id FROM report WHERE domain=? AND end > ?',
-        [ $header_from, time ]
+        'SELECT id FROM report WHERE rcpt_domain_id=? AND uuid=? AND author_id=?',
+        [ $rcpt_dom_id, $meta->{id} || $meta->{report_id}, $author_id ]
         );
 
     if ( scalar @$ids ) {
@@ -161,26 +211,50 @@ sub insert_report {
         return $self->{report_id} = $ids->[0]{id};
     }
 
-# if a report for author_domain does not exist, insert new report
-    $self->{report_id} = $self->query(
-        'INSERT INTO report (domain, begin, end) VALUES (?, ?, ?)',
-        [
-        $header_from, time,
-        time + ($self->dmarc->result->published->ri || 86400),
-        ]
+# report for this author_domain does not exist, insert new
+    my $rid = $self->{report_id} = $self->query(
+        'INSERT INTO report (from_domain_id, rcpt_domain_id, begin, end, author_id) VALUES (??)',
+        [ $from_dom_id, $rcpt_dom_id, $meta->{begin}, $meta->{end}, $author_id ]
     ) or return;
 
-    $self->insert_report_published_policy();
-    return $self->{report_id};
+    $self->insert_report_published_policy($rid,$pub);
+    return $rid;
+};
+
+sub insert_receiver_report {
+    my $self = shift;
+
+    my $from_id = $self->get_domain_id($self->dmarc->header_from) or croak "missing header_from!";
+    my $rcpt_id = $self->get_domain_id($self->dmarc->envelope_to);
+    my $author_id = $self->get_author_id($self->config->{organization}{org_name});
+
+    my $ids = $self->query(
+        'SELECT id FROM report WHERE from_domain_id=? AND end > ?',
+        [ $from_id, time ]
+        );
+
+    if ( scalar @$ids ) {
+#       warn "found " . scalar @$ids . " matching reports!";
+        return $self->{report_id} = $ids->[0]{id};
+    }
+
+# report for this author_domain does not exist, insert new
+    my $pub = $self->dmarc->result->published or croak "unable to get published policy";
+    my $rid = $self->{report_id} = $self->query(
+        'INSERT INTO report (author_id, from_domain_id, rcpt_domain_id, begin, end) VALUES (??)',
+        [ $author_id, $from_id, $rcpt_id, time, time + ($pub->ri || 86400) ]
+    ) or return;
+
+    $pub->apply_defaults or croak "failed to apply policy defaults?!";
+    $self->insert_report_published_policy($rid,$pub);
+    return $rid;
 };
 
 sub insert_report_published_policy {
-    my $self = shift;
-    my $pub = $self->dmarc->result->published or croak "unable to get published policy";
-    $pub->apply_defaults or croak "failed to apply defaults?!";
+    my ($self,$id,$pub) = @_;
     my $query = 'INSERT INTO report_policy_published (report_id, adkim, aspf, p, sp, pct, rua) VALUES (?,?,?,?,?,?,?)';
     return $self->query( $query, [
-            $self->{report_id},
+            $id,
             $pub->adkim,
             $pub->aspf,
             $pub->p,
