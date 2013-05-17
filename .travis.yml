@@ -23,7 +23,8 @@ install:
 
    - dzil listdeps | grep -vP '[^\w:]' | cpanm --verbose
 
-   - cpanm --quiet --notest --skip-satisfied 'Socket~2'
+# using Socket6 instead, no need to force this upgrade
+#  - cpanm --quiet --notest --skip-satisfied 'Socket~2'
 
 script:
 
