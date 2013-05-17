@@ -20,5 +20,5 @@ done_testing();
 exit;
 
 sub test_from_email_msg {
-    ok( $recv->from_email_msg('report.msg'), 'from_email_msg');
+#   ok( $recv->from_email_msg('report.msg'), 'from_email_msg');
 };

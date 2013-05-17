@@ -1,6 +1,11 @@
 
 {{$NEXT}}
 
+ - send reports with zip until 7/1, gzip after
+ - replace Socket 2 with Socket6 (better Windows compatibility)
+ - added parsing of incoming email reports
+ - added author and domain tables
+ - added three related columns from/rcpt/author ids to report table
  - add email hostname to MX list when attempting SMTP delivery
  - during report delivery, check report URI max size
 
