@@ -29,6 +29,7 @@ CREATE TABLE `author` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `org_name` varchar(253) CHARACTER SET ascii NOT NULL DEFAULT '',
   `email`    varchar(255) CHARACTER SET ascii DEFAULT NULL,
+  `extra_contact` varchar(255) CHARACTER SET ascii DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -208,7 +209,7 @@ CREATE TABLE `report_policy_published` (
   `p` varchar(10) DEFAULT NULL,
   `sp` varchar(10) DEFAULT NULL,
   `pct` tinyint(1) unsigned DEFAULT NULL,
-  `rua` varchar(255) NOT NULL,
+  `rua` varchar(255) DEFAULT NULL,
   KEY `report_id` (`report_id`),
   CONSTRAINT `report_policy_published_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `report` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
@@ -264,7 +265,7 @@ DROP TABLE IF EXISTS `report_record_dkim`;
 CREATE TABLE `report_record_dkim` (
   `report_record_id` int(11) unsigned NOT NULL,
   `domain` varchar(253) NOT NULL DEFAULT '',
-  `selector` varchar(253) NOT NULL DEFAULT '',
+  `selector` varchar(253) DEFAULT NULL,
   `result` varchar(9) NOT NULL DEFAULT '',
   `human_result` varchar(64) DEFAULT NULL,
   PRIMARY KEY (`report_record_id`),
@@ -283,7 +284,7 @@ DROP TABLE IF EXISTS `report_record_spf`;
 CREATE TABLE `report_record_spf` (
   `report_record_id` int(11) unsigned NOT NULL,
   `domain` varchar(253) NOT NULL DEFAULT '',
-  `scope` varchar(5) NOT NULL DEFAULT '',
+  `scope` varchar(5) DEFAULT NULL,
   `result` varchar(9) NOT NULL DEFAULT '',
   PRIMARY KEY (`report_record_id`),
   KEY `scope` (`scope`),

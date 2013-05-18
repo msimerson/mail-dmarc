@@ -105,7 +105,8 @@ DROP TABLE IF EXISTS `author`;
 CREATE TABLE `author` (
   `id` integer PRIMARY KEY AUTOINCREMENT,
   `org_name` varchar(253) NOT NULL DEFAULT '',
-  `email` varchar(255) DEFAULT NULL
+  `email` varchar(255) DEFAULT NULL,
+  `extra_contact` varchar(255) DEFAULT NULL
 );
 
 
@@ -146,7 +147,7 @@ CREATE TABLE `report_policy_published` (
   `p` varchar(10) DEFAULT NULL,
   `sp` varchar(10) DEFAULT NULL,
   `pct` tinyint(1) DEFAULT NULL,
-  `rua` varchar(255) NOT NULL,
+  `rua` varchar(255) DEFAULT NULL,
   CONSTRAINT `report_policy_published_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `report` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -187,8 +188,8 @@ DROP TABLE IF EXISTS `report_record_dkim`;
 CREATE TABLE `report_record_dkim` (
   `report_record_id` integer int(11) NOT NULL,
   `domain` varchar(253) NOT NULL DEFAULT '',
-  `selector` varchar(253) NOT NULL DEFAULT '',
-  `result` varchar(9) NOT NULL DEFAULT '',
+  `selector` varchar(253) DEFAULT NULL,
+  `result` varchar(9) DEFAULT NULL,
   `human_result` varchar(64) DEFAULT NULL,
   CONSTRAINT `report_record_dkim_ibfk_2` FOREIGN KEY (`result`) REFERENCES `fk_dkim_result` (`result`),
   CONSTRAINT `report_record_dkim_ibfk_1` FOREIGN KEY (`report_record_id`) REFERENCES `report_record` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
@@ -201,7 +202,7 @@ DROP TABLE IF EXISTS `report_record_spf`;
 CREATE TABLE `report_record_spf` (
   `report_record_id` int(11) NOT NULL,
   `domain` varchar(253) NOT NULL DEFAULT '',
-  `scope` varchar(5) NOT NULL DEFAULT '',
+  `scope` varchar(5) DEFAULT NULL,
   `result` varchar(9) NOT NULL DEFAULT '',
   CONSTRAINT `report_record_spf_ibfk_1` FOREIGN KEY (`report_record_id`) REFERENCES `report_record` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `report_record_spf_ibfk_2` FOREIGN KEY (`scope`) REFERENCES `fk_spf_scope` (`scope`) ON DELETE CASCADE ON UPDATE CASCADE,
