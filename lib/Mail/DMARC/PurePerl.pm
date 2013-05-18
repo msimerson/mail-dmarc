@@ -341,8 +341,7 @@ sub fetch_dmarc_record {
     #     the message. A possibly empty set of records is returned.
     $self->is_subdomain( defined $org_dom ? 0 : 1 );
     my @matches = ();
-    my $res = $self->get_resolver();
-    my $query = $res->send("_dmarc.$zone", 'TXT') or return \@matches;
+    my $query = $self->get_resolver->send("_dmarc.$zone", 'TXT') or return \@matches;
     for my $rr ($query->answer) {
         next if $rr->type ne 'TXT';
 
@@ -443,7 +442,7 @@ sub verify_external_reporting {
     my $dest = join '.', $dmarc_dom, '_report._dmarc', $dest_host;
 
 #  4.  Query the DNS for a TXT record at the constructed name.
-    my $query = $self->get_resolver->query($dest, 'TXT') or return;
+    my $query = $self->get_resolver->send($dest, 'TXT') or return;
 
 #  5.  For each record, parse the result...same overall format:
 #      "v=DMARC1" tag is mandatory and MUST appear first in the list.

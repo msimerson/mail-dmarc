@@ -101,8 +101,7 @@ sub via_net_smtp {
 
 sub get_domain_mx {
     my ($self, $domain) = @_;
-    my $res = $self->get_resolver();
-    my $query = $res->query($domain, 'MX') or return [];
+    my $query = $self->get_resolver->send($domain, 'MX') or return [];
     my @mx;
     for my $rr ($query->answer) {
         next if $rr->type ne 'MX';
