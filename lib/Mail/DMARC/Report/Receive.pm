@@ -25,7 +25,8 @@ sub from_email_msg {
         $msg = $self->slurp( $msg );
     };
 
-    $self->get_submitter_from_subject(\$msg);
+    my $email = Email::Simple->new($msg);
+    $self->get_submitter_from_subject( $email->header('Subject') );
 
     my $unzipper = { gz  => \&IO::Uncompress::Gunzip::gunzip,  # 2013 draft
                      zip => \&IO::Uncompress::Unzip::unzip,    # legacy format
@@ -53,12 +54,16 @@ sub from_email_msg {
 };
 
 sub get_submitter_from_subject {
-    my ($self, $msg_ref ) = @_;
-    my $email = Email::Simple->new($$msg_ref);
-    my $subject = Encode::decode('MIME-Header', $email->header('Subject') );
-    $subject =~ s/(?:subject|report domain|submitter|report-id)//ig; # remove keywords
+    my ($self, $subject ) = @_;
+# The 2013 DMARC spec section 12.2.1 suggests that the header SHOULD conform
+# to a supplied ABNF. Rather than "require" such conformance, this method is
+# more concerned with reliably extracting the submitter domain. Quickly.
+    $subject = lc Encode::decode('MIME-Header', $$subject );
+    $subject = substr($subject, 8) if 'subject:' eq substr($subject,0,8);
+    $subject =~ s/(?:report\sdomain|submitter|report-id)//gx; # remove keywords
     $subject =~ s/\s+//g;  # remove white space
     my (undef, $report_dom, $submitter_dom, $report_id) = split /:/, $subject;
+    $self->{_report}{report_metadata}{uuid} = $report_id;
     return $self->{_report}{report_metadata}{domain} = $submitter_dom;
 };
 
@@ -68,7 +73,7 @@ sub handle_body {
 
     my $reader = XML::LibXML::Reader->new( string => $body );
     while ($reader->read) {
-        $self->processNode($reader);
+        $self->process_xml_node($reader);
     }
 
     return $self->save_report();
@@ -93,7 +98,7 @@ sub save_report {
             );
 };
 
-sub processNode {
+sub process_xml_node {
     my ($self, $reader) = @_;
 
     return if $reader->isEmptyElement;
@@ -115,50 +120,7 @@ sub processNode {
         return;
     };
     if ( $tag0 eq 'record' ) {
-        my $ip = $self->{_cur_ip};
-        my $row_index = scalar keys %{ $self->{_ips_list} } || 0;
-        my $dkim_idx = $self->{_dkim_idx} || 0;
-        my $spf_idx = $self->{_spf_idx} || 0;
-
-        if ( $tag2 eq 'source_ip' ) {
-# if we had to parse REALLY big files with lots of records, this would be
-# a good place to commit previous records to the DB and delete them
-            $ip = $self->{_cur_ip} = $reader->value;
-            $self->{_ips_list}{$ip} = 1;
-            $self->{_report}{$tag0}[$row_index+1]{identifiers}{source_ip} = $ip;
-            return;
-        };
-
-        if ( $tag2 && $tag2 eq 'count' ) {
-            $self->{_report}{$tag0}[$row_index]{$tag2} = $reader->value;
-            return;
-        };
-
-        if ( $tag1 eq 'identifiers' ) {
-            $self->{_report}{$tag0}[$row_index]{$tag1}{$tag2} = $reader->value;
-            return;
-        };
-        if ( $tag1 eq 'auth_results' ) {
-#           // record / row / auth_results / dkim|spf /
-            if ( $tag2 eq 'dkim' ) {
-                if ( $self->{_report}{$tag0}[$row_index]{$tag1}{dkim}[$dkim_idx]{$tag3} ) {
-                    $dkim_idx++;
-                };
-                $self->{_report}{$tag0}[$row_index]{$tag1}{dkim}[$dkim_idx]{$tag3} = $reader->value;
-                return;
-            };
-            if ( $tag2 eq 'spf' ) {
-                if ( $self->{_report}{$tag0}[$row_index]{$tag1}{spf}[$spf_idx]{$tag3} ) {
-                    $dkim_idx++;
-                };
-                $self->{_report}{$tag0}[$row_index]{$tag1}{spf}[$spf_idx]{$tag3} = $reader->value;
-                return;
-            };
-        };
-        if ( $tag1 eq 'row' && $tag2 eq 'policy_evaluated' ) {
-            $self->{_report}{$tag0}[$row_index]{$tag2}{$tag3} = $reader->value;
-            return;
-        };
+        return $self->process_xml_record($reader);
     };
 
     print "0: $tag0, 1: $tag1, 2: $tag2, 3: $tag3\n";
@@ -166,6 +128,58 @@ sub processNode {
     croak "unrecognized tags";
 }
 
+sub process_xml_record {
+    my ($self, $reader) = @_;
+    my (undef,$top,$tag0,$tag1,$tag2,$tag3) = split /\//, $reader->nodePath;
+
+    my $value = $reader->value;
+    my $ip    = $self->{_cur_ip};
+    my $row_index = scalar keys %{ $self->{_ips_list} } || 0;
+    my $dkim_idx = $self->{_dkim_idx} || 0;
+    my $spf_idx = $self->{_spf_idx} || 0;
+
+    if ( $tag2 eq 'source_ip' ) {
+# if we had to parse REALLY big files with lots of records, this would be
+# a good place to commit previous records to the DB and delete them
+        $ip = $self->{_cur_ip} = $value;
+        $self->{_ips_list}{$ip} = 1;
+        $self->{_report}{$tag0}[$row_index+1]{identifiers}{source_ip} = $ip;
+        return;
+    };
+
+    if ( $tag2 && $tag2 eq 'count' ) {
+        $self->{_report}{$tag0}[$row_index]{$tag2} = $value;
+        return;
+    };
+
+    if ( $tag1 eq 'identifiers' ) {
+        $self->{_report}{$tag0}[$row_index]{$tag1}{$tag2} = $value;
+        return;
+    };
+    if ( $tag1 eq 'auth_results' ) {
+#   // record / row / auth_results / dkim|spf /
+        if ( $tag2 eq 'dkim' ) {
+            if ( $self->{_report}{$tag0}[$row_index]{$tag1}{dkim}[$dkim_idx]{$tag3} ) {
+                $dkim_idx++;
+            };
+            $self->{_report}{$tag0}[$row_index]{$tag1}{dkim}[$dkim_idx]{$tag3} = $value;
+            return;
+        };
+        if ( $tag2 eq 'spf' ) {
+            if ( $self->{_report}{$tag0}[$row_index]{$tag1}{spf}[$spf_idx]{$tag3} ) {
+                $dkim_idx++;
+            };
+            $self->{_report}{$tag0}[$row_index]{$tag1}{spf}[$spf_idx]{$tag3} = $value;
+            return;
+        };
+    };
+    if ( $tag1 eq 'row' && $tag2 eq 'policy_evaluated' ) {
+        $self->{_report}{$tag0}[$row_index]{$tag2}{$tag3} = $value;
+        return;
+    };
+
+    croak "unrecognized tags: 0: $tag0, 1: $tag1, 2: $tag2, 3: $tag3\n";
+};
 
 1;
 # ABSTRACT: receive a DMARC report

@@ -18,7 +18,7 @@ sub save_author {
         policy  => [ qw/  / ],
         records => [ qw/  / ],
     );
-warn Dumper($meta);
+warn Dumper($meta); ## no critic (Carp)
     foreach my $k ( keys %required ) {
         foreach my $f ( @{ $required{$k} } ) {
             croak "missing $k, $f" if 'policy'  eq $k && ! $policy->{$f};
@@ -68,9 +68,9 @@ sub save_receiver {
     $self->{dmarc} = shift or croak "missing object with DMARC results\n";
     my $too_many = shift and croak "invalid arguments";
 
-    $self->insert_receiver_report or croak "failed to create report!";
+    my $rid = $self->insert_receiver_report or croak "failed to create report!";
     my $row_id = $self->insert_report_row(
-            $self->{report_id},
+            $rid,
             { map { $_ => $self->dmarc->$_ } qw/ source_ip header_from envelope_to envelope_from / },
             $self->dmarc->result,
             ) or croak "failed to insert row";
@@ -92,8 +92,7 @@ sub save_receiver {
         };
     };
 
-#warn Dumper($self->{dmarc});
-    return $self->{report_row_id};
+    return $row_id;
 };
 
 sub retrieve {
