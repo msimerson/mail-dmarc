@@ -274,12 +274,9 @@ sub insert_report_published_policy {
     my $query = 'INSERT INTO report_policy_published (report_id, adkim, aspf, p, sp, pct, rua) VALUES (?,?,?,?,?,?,?)';
     return $self->query( $query, [
             $id,
-            $pub->{adkim},
-            $pub->{aspf},
-            $pub->{p},
-            $pub->{sp},
-            $pub->{pct},
-            $pub->{rua},
+            $pub->{adkim}, $pub->{aspf},
+            $pub->{p},     $pub->{sp},
+            $pub->{pct},   $pub->{rua},
             ]
             ) or croak "failed to insert published policy";
 };
