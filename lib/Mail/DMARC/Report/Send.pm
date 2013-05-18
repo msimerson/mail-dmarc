@@ -48,14 +48,17 @@ sub human_summary {
     my $pass = grep { $_->{dkim} eq 'pass' || $_->{spf} eq 'pass' } @{ $$report->{rows} };
     my $fail = grep { $_->{dkim} ne 'pass' && $_->{spf} ne 'pass' } @{ $$report->{rows} };
     my $ver = $Mail::DMARC::VERSION || ''; # undef in author environ
+    my $from = $$report->{domain};
 
     return <<"EO_REPORT"
 
-DMARC report submitted by $OrgName
+This is a DMARC aggregate report for $from
+
 $rows rows.
 $pass passed.
 $fail failed.
 
+Submitted by $OrgName
 Generated with Mail::DMARC $ver
 
 EO_REPORT

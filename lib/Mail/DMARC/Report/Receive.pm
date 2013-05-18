@@ -5,20 +5,27 @@ use warnings;
 use Carp;
 use Data::Dumper;
 use Email::MIME;
+use Email::Simple;
+use Encode;
 use IO::Uncompress::Unzip;
 use IO::Uncompress::Gunzip;
 use XML::LibXML::Reader;
 
 use parent 'Mail::DMARC::Base';
+use Mail::DMARC::Report::Store;
 
 sub from_email_msg {
     my ($self, $msg) = @_;
+
+    $self->init();
 
     croak "missing message!" if ! $msg;
     if ( $msg !~ /\n/ ) {  # a filename
         croak "What is $msg?" if ! -f $msg;
         $msg = $self->slurp( $msg );
     };
+
+    $self->get_submitter_from_subject(\$msg);
 
     my $unzipper = { gz  => \&IO::Uncompress::Gunzip::gunzip,  # 2013 draft
                      zip => \&IO::Uncompress::Unzip::unzip,    # legacy format
@@ -45,6 +52,16 @@ sub from_email_msg {
     return 1;
 };
 
+sub get_submitter_from_subject {
+    my ($self, $msg_ref ) = @_;
+    my $email = Email::Simple->new($$msg_ref);
+    my $subject = Encode::decode('MIME-Header', $email->header('Subject') );
+    $subject =~ s/(?:subject|report domain|submitter|report-id)//ig; # remove keywords
+    $subject =~ s/\s+//g;  # remove white space
+    my (undef, $report_dom, $submitter_dom, $report_id) = split /:/, $subject;
+    return $self->{_report}{report_metadata}{domain} = $submitter_dom;
+};
+
 sub handle_body {
     my ($self, $body) = @_;
     print "handling decompressed body\n";
@@ -57,12 +74,23 @@ sub handle_body {
     return $self->save_report();
 };
 
+sub init {
+    my $self;
+    foreach ( qw/ _ips_list _report _dkim_idx _spf_idx / ) {
+        $self->{$_} = undef;
+    };
+    return;
+};
+
 sub save_report {
     my $self = shift;
-    print Dumper $self->{_report};
-    return;
-
-#   return $self->store->backend->save_author();
+    $self->{store} ||= Mail::DMARC::Report::Store->new();
+#   croak Dumper $self->{_report};
+    return $self->{store}->backend->save_author(
+            $self->{_report}{report_metadata},
+            $self->{_report}{policy_published},
+            $self->{_report}{record},
+            );
 };
 
 sub processNode {
@@ -88,32 +116,47 @@ sub processNode {
     };
     if ( $tag0 eq 'record' ) {
         my $ip = $self->{_cur_ip};
-        my $index = scalar keys %{ $self->{_ips_list} } || 0;
+        my $row_index = scalar keys %{ $self->{_ips_list} } || 0;
+        my $dkim_idx = $self->{_dkim_idx} || 0;
+        my $spf_idx = $self->{_spf_idx} || 0;
 
         if ( $tag2 eq 'source_ip' ) {
 # if we had to parse REALLY big files with lots of records, this would be
 # a good place to commit previous records to the DB and delete them
             $ip = $self->{_cur_ip} = $reader->value;
             $self->{_ips_list}{$ip} = 1;
-            $self->{_report}{$tag0}[$index+1]{identifiers}{source_ip} = $ip;
+            $self->{_report}{$tag0}[$row_index+1]{identifiers}{source_ip} = $ip;
             return;
         };
 
         if ( $tag2 && $tag2 eq 'count' ) {
-            $self->{_report}{$tag0}[$index]{$tag2} = $reader->value;
+            $self->{_report}{$tag0}[$row_index]{$tag2} = $reader->value;
             return;
         };
 
         if ( $tag1 eq 'identifiers' ) {
-            $self->{_report}{$tag0}[$index]{$tag1}{$tag2} = $reader->value;
+            $self->{_report}{$tag0}[$row_index]{$tag1}{$tag2} = $reader->value;
             return;
         };
         if ( $tag1 eq 'auth_results' ) {
-            $self->{_report}{$tag0}[$index]{$tag1}{$tag2}{$tag3} = $reader->value;
-            return;
+#           // record / row / auth_results / dkim|spf /
+            if ( $tag2 eq 'dkim' ) {
+                if ( $self->{_report}{$tag0}[$row_index]{$tag1}{dkim}[$dkim_idx]{$tag3} ) {
+                    $dkim_idx++;
+                };
+                $self->{_report}{$tag0}[$row_index]{$tag1}{dkim}[$dkim_idx]{$tag3} = $reader->value;
+                return;
+            };
+            if ( $tag2 eq 'spf' ) {
+                if ( $self->{_report}{$tag0}[$row_index]{$tag1}{spf}[$spf_idx]{$tag3} ) {
+                    $dkim_idx++;
+                };
+                $self->{_report}{$tag0}[$row_index]{$tag1}{spf}[$spf_idx]{$tag3} = $reader->value;
+                return;
+            };
         };
         if ( $tag1 eq 'row' && $tag2 eq 'policy_evaluated' ) {
-            $self->{_report}{$tag0}[$index]{$tag2}{$tag3} = $reader->value;
+            $self->{_report}{$tag0}[$row_index]{$tag2}{$tag3} = $reader->value;
             return;
         };
     };

@@ -10,30 +10,48 @@ use File::ShareDir;
 use parent 'Mail::DMARC::Base';
 
 sub save_author {
-    my ($self,$meta,$pol_pub,$records) = @_;
+    my ($self,$meta,$policy,$records) = @_;
+# Reports that others generate, when they receive email purporting to be us
 
-    $self->insert_author_report($meta,$pol_pub) or croak "failed to create report!";
+    my %required = (
+        meta    => [ qw/ domain org_name email begin end report_id / ],
+        policy  => [ qw/  / ],
+        records => [ qw/  / ],
+    );
+warn Dumper($meta);
+    foreach my $k ( keys %required ) {
+        foreach my $f ( @{ $required{$k} } ) {
+            croak "missing $k, $f" if 'policy'  eq $k && ! $policy->{$f};
+            croak "missing $k, $f" if 'meta'    eq $k && ! $meta->{$f};
+            croak "missing $k, $f" if 'records' eq $k && ! $records->{$f};
+        };
+    };
+
+
+    my $rid = $self->insert_author_report($meta,$policy) or croak "failed to create report!";
 
     foreach my $rec ( @$records ) {
         next if ! $rec;
 
-        my $row_id = $self->insert_report_row(
-                $self->{report_id},
-                { map { $_ => $self->dmarc->$_ } qw/ source_ip header_from envelope_to envelope_from / },
-                $self->dmarc->result,
+        my $row_id = $self->insert_report_row( $rid,
+                { map { $_ => $rec->{identifiers}{$_} } qw/ source_ip header_from envelope_to envelope_from / },
+                { map { $_ => $rec->{policy_evaluated}{$_} } qw/ disposition dkim spf / },
                 ) or croak "failed to insert row";
 
-        my $reason = $self->dmarc->result->reason;
-        if ( $reason && $reason->type ) {
-            $self->insert_rr_reason($row_id, $reason->type, $reason->comment );
+# TODO
+#       my $reason = $self->dmarc->result->reason;
+#       if ( $reason && $reason->type ) {
+#           $self->insert_rr_reason($row_id, $reason->type, $reason->comment );
+#       };
+
+        my $spf_ref = $rec->{auth_results}{spf};
+        if (scalar @$spf_ref ) {
+            foreach my $spf ( @$spf_ref ) {
+                $self->insert_rr_spf( $row_id, $spf );
+            };
         };
 
-        my $spf = $self->dmarc->spf;
-        if ( $spf ) {
-            $self->insert_rr_spf( $row_id, $spf );
-        };
-
-        my $dkim = $self->dmarc->dkim;
+        my $dkim = $rec->{auth_results}{dkim};
         if ( $dkim ) {
             foreach my $sig ( @$dkim ) {
                 $self->insert_rr_dkim($row_id, $sig);
@@ -46,6 +64,7 @@ sub save_author {
 
 sub save_receiver {
     my $self = shift;
+# Reports we generate locally, while receiving email
     $self->{dmarc} = shift or croak "missing object with DMARC results\n";
     my $too_many = shift and croak "invalid arguments";
 
@@ -124,7 +143,7 @@ sub dmarc { return $_[0]->{dmarc}; };
 
 sub get_domain_id {
     my ($self, $domain) = @_;
-    croak "missing domain!" if ! $domain;
+    croak "missing domain calling ".(caller(0))[3] if ! $domain;
     my $r = $self->query('SELECT id FROM domain WHERE domain=?', [$domain]);
     if ( $r && scalar @$r ) {
         return $r->[0]{id};
@@ -197,9 +216,9 @@ sub insert_author_report {
     my ($self, $meta, $pub) = @_;
 
 # check if report exists
-    my $rcpt_dom_id = $self->get_domain_id( $meta->{domain} );
+    my $rcpt_dom_id = $self->get_domain_id($meta->{domain} );
     my $author_id   = $self->get_author_id($meta->{org_name}, $meta->{email});
-    my $from_dom_id = $self->get_domain_id( $pub->{domain} );
+    my $from_dom_id = $self->get_domain_id($pub->{domain} );
 
     my $ids = $self->query(
         'SELECT id FROM report WHERE rcpt_domain_id=? AND uuid=? AND author_id=?',
@@ -255,12 +274,12 @@ sub insert_report_published_policy {
     my $query = 'INSERT INTO report_policy_published (report_id, adkim, aspf, p, sp, pct, rua) VALUES (?,?,?,?,?,?,?)';
     return $self->query( $query, [
             $id,
-            $pub->adkim,
-            $pub->aspf,
-            $pub->p,
-            $pub->sp,
-            $pub->pct,
-            $pub->rua,
+            $pub->{adkim},
+            $pub->{aspf},
+            $pub->{p},
+            $pub->{sp},
+            $pub->{pct},
+            $pub->{rua},
             ]
             ) or croak "failed to insert published policy";
 };
