@@ -8,7 +8,7 @@ use File::ShareDir;
 use IO::File;
 use Net::DNS::Resolver;
 use Net::IP;
-use Regexp::Common qw /net/;
+use Regexp::Common 2013031301 qw /net/;
 use Socket;
 use Socket6 qw//; # don't export symbols
 
