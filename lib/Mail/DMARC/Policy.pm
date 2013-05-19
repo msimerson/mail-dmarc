@@ -57,7 +57,7 @@ sub p {
 
 sub sp {
     return $_[0]->{sp} if 1 == scalar @_;
-    croak "invalid sp" if ! $_[0]->is_valid_p($_[1]);
+    croak "invalid sp ($_[1])" if ! $_[0]->is_valid_p($_[1]);
     return $_[0]->{sp} = $_[1];
 };
 
@@ -112,6 +112,11 @@ sub pct {
     croak "not an integer!" if $_[1] != int $_[1];
     croak "out of range" if $_[1] < 0 || $_[1] > 100;
     return $_[0]->{pct} = $_[1];
+};
+
+sub domain {
+    return $_[0]->{domain} if 1 == scalar @_;
+    return $_[0]->{domain} = $_[1];
 };
 
 sub is_valid_rf {

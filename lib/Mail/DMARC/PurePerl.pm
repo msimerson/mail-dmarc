@@ -100,7 +100,7 @@ sub discover_policy {
 
 #   $e->dmarc_rr($matches->[0]);  # why save this?
     my $policy = $self->policy( $matches->[0] ) or return;
-    $policy->{domain} = $from_dom;
+    $policy->domain( $from_dom );
     $self->result->published( $policy );
 
     # 9.6 If a retrieved policy record does not contain a valid "p" tag, or
@@ -408,7 +408,7 @@ sub get_dom_from_header {
 
 sub external_report {
     my ($self, $uri) = @_;
-    my $dmarc_dom = $self->result->published->{domain}
+    my $dmarc_dom = $self->result->published->domain
         or croak "published policy not tagged!";
 
     if ( 'mailto' eq $uri->scheme ) {
@@ -430,7 +430,7 @@ sub verify_external_reporting {
 
 #  1.  Extract the host portion of the authority component of the URI.
 #      Call this the "destination host".
-    my $dmarc_dom = $self->result->published->{domain}
+    my $dmarc_dom = $self->result->published->domain
         or croak "published policy not tagged!";
 
     my $dest_email = $uri_ref->{uri}->path or croak("invalid URI");
