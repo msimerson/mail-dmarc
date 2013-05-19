@@ -245,8 +245,9 @@ sub insert_receiver_report {
 
     my $from_id = $self->get_domain_id($self->dmarc->header_from) or croak "missing header_from!";
     my $rcpt_id = $self->get_domain_id($self->dmarc->envelope_to);
-    my $meta = $self->dmarc->result->meta->org_name( $self->config->{organization}{org_name} );
-    my $author_id = $self->get_author_id( $meta);
+    my $meta = $self->dmarc->report->meta;
+    $meta->org_name( $self->config->{organization}{org_name} );
+    my $author_id = $self->get_author_id( $meta );
 
     my $ids = $self->query(
         'SELECT id FROM report WHERE from_domain_id=? AND end > ?',
