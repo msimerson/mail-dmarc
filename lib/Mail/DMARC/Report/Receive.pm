@@ -20,7 +20,10 @@ sub from_imap {
     eval "require Net::IMAP::Simple"; ## no critic (Eval)
     croak "Net::IMAP::Simple seems to not work, is it installed?" if $@;
 
-    my $server = $self->config->{imap}{server};
+    my $server = $self->config->{imap}{server} or croak "missing imap server setting";
+    my $folder = $self->config->{imap}{folder} or croak "missing imap folder setting";
+    my $a_done = $self->config->{imap}{a_done} or croak "missing imap a_done setting";
+    my $f_done = $self->config->{imap}{f_done} or croak "missing imap f_done setting";
 
     no warnings qw(once); ## no critic (Warn)
     my $imap = Net::IMAP::Simple->new($server, Port => 995, use_ssl => 1 )
@@ -29,14 +32,29 @@ sub from_imap {
     $imap->login( $self->config->{imap}{user}, $self->config->{imap}{pass} )
         or croak "Login failed: " . $imap->errstr . "\n";
 
-    # Print the subject's of all the messages in the INBOX
     my $nm = $imap->select( $self->config->{imap}{folder} );
+    $imap->expunge_mailbox( $self->config->{imap}{folder} );
+    my @mess = $imap->search('SEEN', 'DATE');
 
-    for(my $i = 1; $i <= $nm; $i++){
+#   for(my $i = 1; $i <= $nm; $i++){
+    foreach my $i ( @mess ) {
         print $imap->seen($i) ? '*' : ' ';
         printf "[%03d] ", $i;
-        my $message = $imap->get($i);
-        $self->from_email_simple( Email::Simple->new( "$message" ) );
+        my $message = $imap->get($i) or do {
+            carp "unable to get message $i\n";
+            next;
+        };
+        my $type = $self->from_email_simple( Email::Simple->new( "$message" ) );
+        next if ! $type;
+        my $done_box = $type eq 'aggregate' ? $a_done
+                     : $type eq 'forensic'  ? $f_done
+                     : croak "unknown type!";
+
+        $imap->copy( $i, $done_box ) or do {
+            warn $imap->errstr;
+            next;
+        };
+        $imap->delete( $i );
     }
 
     $imap->quit;
@@ -60,26 +78,45 @@ sub from_email_simple {
                      zip => \&IO::Uncompress::Unzip::unzip,    # legacy format
                    };
 
+    my $rep_type;
     foreach my $part ( Email::MIME->new($email->as_string)->parts ) {
-        my ($type) = split /;/, $part->content_type;
-        next if $type eq 'text/plain';
-        next if $type eq 'text/rfc822-headers';
+        my ($c_type) = split /;/, $part->content_type;
+        next if $c_type eq 'text/plain';
+        if ( $c_type eq 'text/rfc822-headers' ) {
+            carp "TODO: handle forensic reports\n";
+            $rep_type = 'forensic';
+            next;
+        };
+        if ( $c_type eq 'message/feedback-report' ) {
+            carp "TODO: handle forensic reports\n";
+            $rep_type = 'forensic';
+            next;
+        };
         my $bigger;
-        if ( $type eq 'application/zip' || $type eq 'application/x-zip-compressed' ) {
-            print "got a zip!\n";
+        if ( $c_type eq 'application/zip' || $c_type eq 'application/x-zip-compressed' ) {
+            $self->get_submitter_from_filename( $part->{ct}{attributes}{name} );
             $unzipper->{zip}->( \$part->body, \$bigger );
             $self->handle_body( $bigger );
+            $rep_type = 'aggregate';
             next;
         };
-        if ( $type eq 'application/gzip' ) {
-            print "got a gzip!\n";
+        if ( $c_type eq 'application/gzip' ) {
+            $self->get_submitter_from_filename( $part->{ct}{attributes}{name} );
             $unzipper->{gz}->( \$part->body, \$bigger );
             $self->handle_body( $bigger );
+            $rep_type = 'aggregate';
             next;
         };
-        carp "What is type $type doing in here?\n";
+        carp "What is type $c_type doing in here?\n";
     };
-    return 1;
+    return $rep_type;
+};
+
+sub get_submitter_from_filename {
+    my ($self, $filename ) = @_;
+    return if $self->report->meta->domain;
+    my ($submitter_dom, $report_dom, $begin, $end) = split /!/, $filename;
+    return $self->report->meta->domain( $submitter_dom ) if $submitter_dom;
 };
 
 sub get_submitter_from_subject {
@@ -99,7 +136,7 @@ sub get_submitter_from_subject {
 
 sub handle_body {
     my ($self, $body) = @_;
-    print "handling decompressed body\n";
+#   print "handling decompressed body\n";
 
     my $dom = XML::LibXML->load_xml( string => $body );
     foreach my $top ( qw/ report_metadata policy_published / ) {
@@ -144,6 +181,7 @@ sub handle_node_policy_published {
 
     foreach my $n ( qw/ domain adkim aspf p sp pct / ) {
         my $val = $node->findnodes("./$n")->string_value or next;
+        $val =~ s/\s*//g;  # remove whitespace
         $pol->$n( $val );
     };
 
@@ -181,7 +219,7 @@ sub handle_node_record {
 
 #reason
     foreach my $r ( $node->findnodes("./row/policy_evaluated/reason" ) ) {
-        push @{ $row->policy_evaluated->reason }, $r->string_value;
+        push @{ $row->{policy_evaluated}{reason} }, $r->string_value;
     };
 
 #identifiers:

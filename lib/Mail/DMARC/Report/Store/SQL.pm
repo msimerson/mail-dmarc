@@ -44,7 +44,7 @@ sub save_author {
         };
 
         my $spf_ref = $rec->{auth_results}{spf};
-        if (scalar @$spf_ref ) {
+        if ($spf_ref && scalar @$spf_ref ) {
             foreach my $spf ( @$spf_ref ) {
                 $self->insert_rr_spf( $row_id, $spf );
             };
