@@ -64,9 +64,40 @@ sub from_imap {
 
 sub from_file {
     my ($self, $file) = @_;
-    croak "missing message!" if ! $file;
+    croak "missing message" if ! $file;
     croak "No such file $file: $!" if ! -f $file;
     return $self->from_email_simple( Email::Simple->new( $self->slurp( $file ) ));
+};
+
+sub from_mbox {
+    my ($self, $file_name) = @_;
+    croak "missing mbox file" if ! $file_name;
+
+    eval "require Mail::Mbox::MessageParser"; ## no critic (Eval)
+    croak "is Mail::Mbox::MessageParser installed?" if $@;
+
+    my $file_handle = new FileHandle($file_name);
+
+    my $folder_reader =
+        Mail::Mbox::MessageParser->new( {
+                'file_name' => $file_name,
+                'file_handle' => $file_handle,
+                'enable_cache' => 1,
+                'enable_grep' => 1,
+                } );
+
+    die $folder_reader unless ref $folder_reader;
+
+    my $prologue = $folder_reader->prologue;
+    print $prologue;
+
+    while(!$folder_reader->end_of_file()) {
+        $self->from_email_simple(
+                Email::Simple->new(
+                    $folder_reader->read_next_email()
+                )
+            );
+    }
 };
 
 sub from_email_simple {
@@ -131,7 +162,7 @@ sub get_submitter_from_subject {
     $subject =~ s/(?:report\sdomain|submitter|report-id)//gx; # remove keywords
     $subject =~ s/\s+//g;  # remove white space
     my (undef, $report_dom, $submitter_dom, $report_id) = split /:/, $subject;
-    $self->report->meta->uuid( $report_id );
+    $self->report->meta->uuid( $report_id ) if ! $self->report->meta->uuid;
     return $self->report->meta->domain( $submitter_dom );
 };
 
@@ -239,13 +270,28 @@ sub {}
 
 =head1 DESCRIPTION
 
-Receive DMARC reports, via SMTP or HTTP.
+Receive DMARC reports and save them to the report store/database.
 
-=head1 Report Receiver
+=head1 METHODS
 
-=head2 HTTP
+=head2 from_imap, from_file, from_mbox
 
-=head2 SMTP
+These methods are called by L<dmarc_receive> program, which has its own documentation and usage instructions. The methods accept a message (or list of messages) and create an Email::Simple object from each, passing that object to from_email_simple.
 
+=head2 from_email_simple
+
+Accepts an Email::Simple message object. Returns the type of DMARC report detected or undef if no DMARC report was detected.
+
+When forensic reports are detected, no further processing is done.
+
+When an aggregate report is detected, the report details are extracted from the message body as well as the Subject field/header and attachment metadata.
+
+Parsing of the Subject and MIME metadata is necessary because the 2013 draft DMARC specification does not REQUIRE the submitter domain name to be included in the XML report. The submitter domain is the domain the message was destined to. For example, the only way to B<know> that the email which generated this particular report was sent to hotmail.com is to extract the submitter domain from the message metadata (Org Name=Microsoft, hotmail.com is not in the XML). So far, every messsage I have seen has had the submitter domain in one location or the other.
+
+To extract messages from the message body, the MIME attachments are decompressed and passed to L<handle_body>.
+
+=head2 handle_body
+
+Accepts a XML message, parsing it with XML::LibXML and XPath expressions. The parsed data is stored in a L<Mail::DMARC::Report> object. When the parsing is complete, the report object is saved to the report store.
 
 =cut
