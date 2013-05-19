@@ -150,14 +150,16 @@ sub get_domain_id {
 };
 
 sub get_author_id {
-    my ($self, $author, $email) = @_;
-    croak "missing author name" if ! $author;
-    my $r = $self->query('SELECT id FROM author WHERE org_name=?', [$author]);
+    my ($self, $meta) = @_;
+    croak "missing author name" if ! $meta->org_name;
+    my $r = $self->query('SELECT id FROM author WHERE org_name=?', [$meta->org_name]);
     if ( $r && scalar @$r ) {
         return $r->[0]{id};
     };
-    carp "missing email" if ! $email;
-    return $self->query('INSERT INTO author (org_name,email) VALUES (??)', [$author, $email]);
+    carp "missing email" if ! $meta->email;
+    return $self->query('INSERT INTO author (org_name,email,extra_contact) VALUES (??)',
+            [ $meta->org_name, $meta->email, $meta->extra_contact_info ]
+        );
 };
 
 sub insert_rr_reason {
@@ -214,9 +216,9 @@ sub insert_author_report {
     my ($self, $meta, $pub_pol) = @_;
 
 # check if report exists
-    my $rcpt_dom_id = $self->get_domain_id($meta->domain );
-    my $author_id   = $self->get_author_id($meta->org_name, $meta->email);
-    my $from_dom_id = $self->get_domain_id($pub_pol->domain );
+    my $rcpt_dom_id = $self->get_domain_id( $meta->domain );
+    my $author_id   = $self->get_author_id( $meta );
+    my $from_dom_id = $self->get_domain_id( $pub_pol->domain );
 
     my $ids = $self->query(
         'SELECT id FROM report WHERE rcpt_domain_id=? AND uuid=? AND author_id=?',
@@ -243,7 +245,8 @@ sub insert_receiver_report {
 
     my $from_id = $self->get_domain_id($self->dmarc->header_from) or croak "missing header_from!";
     my $rcpt_id = $self->get_domain_id($self->dmarc->envelope_to);
-    my $author_id = $self->get_author_id($self->config->{organization}{org_name});
+    my $meta = $self->dmarc->result->meta->org_name( $self->config->{organization}{org_name} );
+    my $author_id = $self->get_author_id( $meta);
 
     my $ids = $self->query(
         'SELECT id FROM report WHERE from_domain_id=? AND end > ?',

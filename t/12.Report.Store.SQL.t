@@ -46,11 +46,14 @@ sub test_insert_author_report {
             report_id => time,
             domain    => 'test.com',
             org_name  => 'Test Company',
+            email     => 'dmarc-reporter@example.com',
             begin     => time,
             end       => time + 10,
             );
     my $report = Mail::DMARC::Report->new();
-    foreach ( keys %meta) { $report->meta->$_($meta{$_} ) };
+    foreach ( keys %meta) {
+        ok( $report->meta->$_($meta{$_}), "meta, $_" );
+    };
     my $policy = Mail::DMARC::Policy->new("v=DMARC1; p=reject");
     $policy->rua( 'mailto:' . $sql->config->{organization}{email} );
     $policy->{domain} = 'recip.example.com';
