@@ -247,6 +247,7 @@ sub insert_receiver_report {
     my $rcpt_id = $self->get_domain_id($self->dmarc->envelope_to);
     my $meta = $self->dmarc->report->meta;
     $meta->org_name( $self->config->{organization}{org_name} );
+    $meta->email( $self->config->{organization}{email} );
     my $author_id = $self->get_author_id( $meta );
 
     my $ids = $self->query(
@@ -286,7 +287,7 @@ sub insert_report_published_policy {
 sub db_connect {
     my $self = shift;
 
-    return $self->{dbh} if $self->{dbh};   # caching
+    return $self->{dbix} if $self->{dbix};   # caching
 
     my $dsn  = $self->config->{report_store}{dsn} or croak;
     my $user = $self->config->{report_store}{user};
@@ -302,19 +303,30 @@ sub db_connect {
         };
     };
 
-    $self->{dbh} = DBIx::Simple->connect( $dsn, $user, $pass )
+    $self->{dbix} = DBIx::Simple->connect( $dsn, $user, $pass )
         or return $self->error( DBIx::Simple->error );
 
     if ( $needs_tables ) {
         $self->apply_db_schema($needs_tables);
     };
-    return $self->{dbh};
+    return $self->{dbix};
 };
+
+sub db_check_err {
+    my ($self, $err) = @_;
+    ## no critic (PackageVars)
+    return if ! defined $DBI::errstr;
+    return if ! $DBI::errstr;
+    return if $DBI::errstr eq 'DBI error: ';
+    croak $err . $DBI::errstr;
+};
+
+sub dbix { return $_[0]->{dbix}; };
 
 sub apply_db_schema {
     my ($self, $file) = @_;
     my $setup = $self->slurp($file);
-    foreach ( split /;/, $setup ) { $self->{dbh}->query($_); };
+    foreach ( split /;/, $setup ) { $self->dbix->query($_); };
     return;
 };
 
@@ -351,59 +363,43 @@ sub query {
 
 sub query_any {
     my ($self, $query, $err, @params) = @_;
-    my $dbix = $self->{dbh} or croak "no DB handle";
-    my $r;
-    eval { $r = $dbix->query( $query, @params )->hashes } or do {
-        carp $err . $dbix->error if $dbix->error ne 'DBI error: ';
-    };
-    carp "$err\n$@\n" if $@;
+    my $r = $self->dbix->query( $query, @params )->hashes or croak $err;
+    $self->db_check_err($err);
     return $r;
 };
 
 sub query_insert {
     my ($self, $query, $err, @params) = @_;
-    my $dbix = $self->{dbh};
+    $self->dbix->query( $query, @params ) or croak $err;
+    $self->db_check_err($err);
+
+    # If the table has no autoincrement field, last_id is zero
     my (undef,undef,$table) = split /\s+/, $query;
     ($table) = split( /\(/, $table) if $table =~ /\(/;
-    eval { $dbix->query( $query, @params ); } or do {
-        carp $dbix->error if $dbix->error ne 'DBI error: ';
-    };
-    if ( $@ ) { carp "$@\n$err"; return; };
-    # If the table has no autoincrement field, last_id is zero
-    return $dbix->last_insert_id( undef, undef, $table, undef );
+    croak "unable to determine table in query: $query" if ! $table;
+    return $self->dbix->last_insert_id( undef, undef, $table, undef );
 };
 
 sub query_replace {
     my ($self, $query, $err, @params) = @_;
-    my $dbix = $self->{dbh};
-    eval { $dbix->query( $query, @params ) } or do {
-        carp $dbix->error if $dbix->error ne 'DBI error: ';
-        return;
-    };
-    if ( $@ ) { carp "$@\n$err"; return; };
+    $self->dbix->query( $query, @params ) or croak $err;
+    $self->db_check_err($err);
     return 1;  # sorry, no indication of success
 };
 
 sub query_update {
     my ($self, $query, $err, @params) = @_;
-    my $dbix = $self->{dbh};
-    eval { $dbix->query( $query, @params ) } or do {
-        carp $dbix->error if $dbix->error ne 'DBI error: ';
-        return;
-    };
-    if ( $@ ) { carp "$@\n$err"; return; };
+    $self->dbix->query( $query, @params ) or croak $err;
+    $self->db_check_err($err);
     return 1;
 };
 
 sub query_delete {
     my ($self, $query, $err, @params) = @_;
-    my $dbix = $self->{dbh};
-    $dbix->query( $query, @params ) or do {
-        carp $err . $dbix->error if $dbix->error ne 'DBI error: ';
-        return;
-    };
+    $self->dbix->query( $query, @params ) or croak $err;
+    $self->db_check_err($err);
     my $affected = 0;
-    eval { $affected = $dbix->query("SELECT ROW_COUNT()")->list }; ## no critic (Eval)
+    eval { $affected = $self->dbix->query("SELECT ROW_COUNT()")->list }; ## no critic (Eval)
     return 1 if $@;  # succeed for SQLite
     return $affected;
 };

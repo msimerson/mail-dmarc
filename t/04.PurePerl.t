@@ -128,10 +128,8 @@ sub test_discover_policy {
     $dmarc->init();
     $dmarc->header_from('mail-dmarc.tnpi.net');
     my $policy = $dmarc->discover_policy;
-    ok( $policy, "discover_policy") or do {
-        diag Data::Dumper::Dumper($dmarc->result);
-        return;
-    };
+    ok( $policy, "discover_policy")
+        or return diag Data::Dumper::Dumper($dmarc);
     $policy->apply_defaults;
     is_deeply( $policy, { %test_policy,
             aspf => 'r',          # $pol->new adds the defaults that are

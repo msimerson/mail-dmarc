@@ -26,9 +26,9 @@ $recv->from_file($file) if $file;
 
 exit;
 
-__END__
 # PODNAME: dmarc_receive
 # ABSTRACT: process received DMARC reports
+__END__
 
 =head1 DESCRIPTION
 

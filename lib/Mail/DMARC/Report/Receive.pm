@@ -76,7 +76,7 @@ sub from_mbox {
     eval "require Mail::Mbox::MessageParser"; ## no critic (Eval)
     croak "is Mail::Mbox::MessageParser installed?" if $@;
 
-    my $file_handle = new FileHandle($file_name);
+    my $file_handle = FileHandle->new($file_name);
 
     my $folder_reader =
         Mail::Mbox::MessageParser->new( {
@@ -86,7 +86,7 @@ sub from_mbox {
                 'enable_grep' => 1,
                 } );
 
-    die $folder_reader unless ref $folder_reader;
+    croak $folder_reader unless ref $folder_reader;
 
     my $prologue = $folder_reader->prologue;
     print $prologue;
@@ -98,6 +98,7 @@ sub from_mbox {
                 )
             );
     }
+    return 1;
 };
 
 sub from_email_simple {
