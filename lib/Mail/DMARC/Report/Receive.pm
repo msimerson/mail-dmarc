@@ -34,7 +34,7 @@ sub from_imap {
 
     my $nm = $imap->select( $self->config->{imap}{folder} );
     $imap->expunge_mailbox( $self->config->{imap}{folder} );
-    my @mess = $imap->search('SEEN', 'DATE');
+    my @mess = $imap->search('UNSEEN', 'DATE');
 
 #   for(my $i = 1; $i <= $nm; $i++){
     foreach my $i ( @mess ) {
@@ -50,11 +50,12 @@ sub from_imap {
                      : $type eq 'forensic'  ? $f_done
                      : croak "unknown type!";
 
+        $imap->add_flags( $i, '\Seen' );
         $imap->copy( $i, $done_box ) or do {
             warn $imap->errstr;
             next;
         };
-        $imap->delete( $i );
+        $imap->add_flags( $i, '\Deleted' );
     }
 
     $imap->quit;

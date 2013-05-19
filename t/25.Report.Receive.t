@@ -22,7 +22,21 @@ done_testing();
 exit;
 
 sub test_from_imap {
-    ok( $recv->from_imap(), "from_imap");
+    my $skip_reason = '';
+
+    eval "require Net::IMAP::Simple";
+    $skip_reason .= "Net::IMAP::Simple not installed" if $@;
+
+    my $c = $recv->config->{imap};
+    if ( !$c->{server} || !$c->{user} || !$c->{pass} ) {
+        $skip_reason .= " and \n" if $skip_reason;
+        $skip_reason .= "imap not configured in mail-dmarc.ini"
+    };
+
+SKIP: {
+    skip $skip_reason, 1 if $skip_reason;
+        ok( $recv->from_imap(), "from_imap");
+    };
 };
 
 sub test_get_submitter_from_subject {
