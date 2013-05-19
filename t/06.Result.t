@@ -58,21 +58,30 @@ sub _test_pass_relaxed {
     $pp->spf({ domain => $test_dom, result=>'pass' });
     $pp->validate();
     delete $pp->result->{published};
-    is_deeply( $pp->result, {
-        'result' => 'pass',
-        'dkim' => 'pass',
-        'spf' => 'pass',
-        'disposition' => 'none',
-        'dkim_align' => 'relaxed',
-        'dkim_meta' => {
-            'domain' => 'tnpi.net',
-            'identity' => '',
-            'selector' => 'apr2013',
-        },
-        'spf_align' => 'relaxed',
-        },
-        "pass, relaxed, $test_dom")
-        or diag Data::Dumper::Dumper($pp->result);
+
+    my $skip_reason;
+    if ( ! $pp->result->dkim ) {   # typically a DNS failure,
+        $skip_reason = "look like DNS is not working";
+    };
+    SKIP: {
+        skip $skip_reason, 1 if $skip_reason;
+
+        is_deeply( $pp->result, {
+            'result' => 'pass',
+            'dkim' => 'pass',
+            'spf' => 'pass',
+            'disposition' => 'none',
+            'dkim_align' => 'relaxed',
+            'dkim_meta' => {
+                'domain' => 'tnpi.net',
+                'identity' => '',
+                'selector' => 'apr2013',
+            },
+            'spf_align' => 'relaxed',
+            },
+            "pass, relaxed, $test_dom")
+            or diag Data::Dumper::Dumper($pp->result);
+    };
 };
 
 sub _test_fail_strict {
