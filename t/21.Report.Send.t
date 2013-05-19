@@ -31,6 +31,7 @@ sub test_human_summary {
                 { dkim => 'fail', spf => 'pass' },
                 { dkim => 'fail', spf => 'fail' },
             ],
+        domain => 'example.com',
     };
     ok( $send->human_summary(\$report), 'human_summary');
 };

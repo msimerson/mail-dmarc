@@ -52,7 +52,7 @@ sub from_imap {
 
         $imap->add_flags( $i, '\Seen' );
         $imap->copy( $i, $done_box ) or do {
-            warn $imap->errstr;
+            carp $imap->errstr;
             next;
         };
         $imap->add_flags( $i, '\Deleted' );
@@ -117,7 +117,7 @@ sub get_submitter_from_filename {
     my ($self, $filename ) = @_;
     return if $self->report->meta->domain;
     my ($submitter_dom, $report_dom, $begin, $end) = split /!/, $filename;
-    return $self->report->meta->domain( $submitter_dom ) if $submitter_dom;
+    return $self->report->meta->domain( $submitter_dom );
 };
 
 sub get_submitter_from_subject {
