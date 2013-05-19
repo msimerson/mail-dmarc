@@ -9,32 +9,61 @@ use Email::Simple;
 use Encode;
 use IO::Uncompress::Unzip;
 use IO::Uncompress::Gunzip;
-use XML::LibXML::Reader;
+use XML::LibXML;
 
 use parent 'Mail::DMARC::Base';
-use Mail::DMARC::Report::Store;
+require Mail::DMARC::Policy;
+require Mail::DMARC::Report;
 
-sub from_email_msg {
-    my ($self, $msg) = @_;
+sub from_imap {
+    my $self = shift;
+    eval "require Net::IMAP::Simple"; ## no critic (Eval)
+    croak "Net::IMAP::Simple seems to not work, is it installed?" if $@;
 
-    $self->init();
+    my $server = $self->config->{imap}{server};
 
-    croak "missing message!" if ! $msg;
-    if ( $msg !~ /\n/ ) {  # a filename
-        croak "What is $msg?" if ! -f $msg;
-        $msg = $self->slurp( $msg );
-    };
+    no warnings qw(once); ## no critic (Warn)
+    my $imap = Net::IMAP::Simple->new($server, Port => 995, use_ssl => 1 )
+        or croak "Unable to connect to IMAP: $Net::IMAP::Simple::SSL::errstr\n";
 
-    my $email = Email::Simple->new($msg);
+    $imap->login( $self->config->{imap}{user}, $self->config->{imap}{pass} )
+        or croak "Login failed: " . $imap->errstr . "\n";
+
+    # Print the subject's of all the messages in the INBOX
+    my $nm = $imap->select( $self->config->{imap}{folder} );
+
+    for(my $i = 1; $i <= $nm; $i++){
+        print $imap->seen($i) ? '*' : ' ';
+        printf "[%03d] ", $i;
+        my $message = $imap->get($i);
+        $self->from_email_simple( Email::Simple->new( "$message" ) );
+    }
+
+    $imap->quit;
+    return 1;
+};
+
+sub from_file {
+    my ($self, $file) = @_;
+    croak "missing message!" if ! $file;
+    croak "No such file $file: $!" if ! -f $file;
+    return $self->from_email_simple( Email::Simple->new( $self->slurp( $file ) ));
+};
+
+sub from_email_simple {
+    my ($self, $email) = @_;
+
+    $self->report->init();
     $self->get_submitter_from_subject( $email->header('Subject') );
 
     my $unzipper = { gz  => \&IO::Uncompress::Gunzip::gunzip,  # 2013 draft
                      zip => \&IO::Uncompress::Unzip::unzip,    # legacy format
                    };
 
-    foreach my $part ( Email::MIME->new($msg)->parts ) {
+    foreach my $part ( Email::MIME->new($email->as_string)->parts ) {
         my ($type) = split /;/, $part->content_type;
         next if $type eq 'text/plain';
+        next if $type eq 'text/rfc822-headers';
         my $bigger;
         if ( $type eq 'application/zip' || $type eq 'application/x-zip-compressed' ) {
             print "got a zip!\n";
@@ -58,132 +87,115 @@ sub get_submitter_from_subject {
 # The 2013 DMARC spec section 12.2.1 suggests that the header SHOULD conform
 # to a supplied ABNF. Rather than "require" such conformance, this method is
 # more concerned with reliably extracting the submitter domain. Quickly.
-    $subject = lc Encode::decode('MIME-Header', $$subject );
+    $subject = lc Encode::decode('MIME-Header', $subject );
+    print $subject . "\n";
     $subject = substr($subject, 8) if 'subject:' eq substr($subject,0,8);
     $subject =~ s/(?:report\sdomain|submitter|report-id)//gx; # remove keywords
     $subject =~ s/\s+//g;  # remove white space
     my (undef, $report_dom, $submitter_dom, $report_id) = split /:/, $subject;
-    $self->{_report}{report_metadata}{uuid} = $report_id;
-    return $self->{_report}{report_metadata}{domain} = $submitter_dom;
+    $self->report->meta->uuid( $report_id );
+    return $self->report->meta->domain( $submitter_dom );
 };
 
 sub handle_body {
     my ($self, $body) = @_;
     print "handling decompressed body\n";
 
-    my $reader = XML::LibXML::Reader->new( string => $body );
-    while ($reader->read) {
-        $self->process_xml_node($reader);
-    }
-
-    return $self->save_report();
-};
-
-sub init {
-    my $self;
-    foreach ( qw/ _ips_list _report _dkim_idx _spf_idx / ) {
-        $self->{$_} = undef;
+    my $dom = XML::LibXML->load_xml( string => $body );
+    foreach my $top ( qw/ report_metadata policy_published / ) {
+        my $sub = 'handle_node_' . $top;
+        $self->$sub( $dom->findnodes("/feedback/$top") );
     };
-    return;
+
+    foreach my $record ( $dom->findnodes("/feedback/record" ) ) {
+        $self->handle_node_record( $record );
+    };
+
+    return $self->report->save_author();
 };
 
-sub save_report {
+sub report {
     my $self = shift;
-    $self->{store} ||= Mail::DMARC::Report::Store->new();
-#   croak Dumper $self->{_report};
-    return $self->{store}->backend->save_author(
-            $self->{_report}{report_metadata},
-            $self->{_report}{policy_published},
-            $self->{_report}{record},
-            );
+    return $self->{report} if ref $self->{report};
+    return $self->{report} = Mail::DMARC::Report->new();
 };
 
-sub process_xml_node {
-    my ($self, $reader) = @_;
+sub handle_node_report_metadata {
+    my ($self, $node) = @_;
 
-    return if $reader->isEmptyElement;
-    return if ! $reader->hasValue;
-
-    my (undef,$top,$tag0,$tag1,$tag2,$tag3) = split /\//, $reader->nodePath;
-    croak "unrecognized XML format ($top)\n" if 'feedback' ne $top;
-
-    if ( $tag0 eq 'report_metadata' ) {
-        if ( $tag1 eq 'date_range' ) {
-            $self->{_report}{report_metadata}{$tag2} = $reader->value;
-            return;
-        };
-        $self->{_report}{$tag0}{$tag1} = $reader->value;
-        return;
-    };
-    if ( $tag0 eq 'policy_published' ) {
-        $self->{_report}{$tag0}{$tag1} = $reader->value;
-        return;
-    };
-    if ( $tag0 eq 'record' ) {
-        return $self->process_xml_record($reader);
+    foreach my $n ( qw/ org_name email extra_contact_info report_id / ) {
+        $self->report->meta->$n( $node->findnodes("./$n")->string_value );
     };
 
-    print "0: $tag0, 1: $tag1, 2: $tag2, 3: $tag3\n";
-    printf "%d %s\n", ($reader->depth, $reader->name );
-    croak "unrecognized tags";
-}
-
-sub process_xml_record {
-    my ($self, $reader) = @_;
-    my (undef,$top,$tag0,$tag1,$tag2,$tag3) = split /\//, $reader->nodePath;
-
-    my $value = $reader->value;
-    my $ip    = $self->{_cur_ip};
-    my $row_index = scalar keys %{ $self->{_ips_list} } || 0;
-    my $dkim_idx = $self->{_dkim_idx} || 0;
-    my $spf_idx = $self->{_spf_idx} || 0;
-
-    if ( $tag2 eq 'source_ip' ) {
-# if we had to parse REALLY big files with lots of records, this would be
-# a good place to commit previous records to the DB and delete them
-        $ip = $self->{_cur_ip} = $value;
-        $self->{_ips_list}{$ip} = 1;
-        $self->{_report}{$tag0}[$row_index+1]{identifiers}{source_ip} = $ip;
-        return;
+    foreach my $n ( qw/ begin end / ) {
+        $self->report->meta->$n( $node->findnodes("./date_range/$n")->string_value );
     };
 
-    if ( $tag2 && $tag2 eq 'count' ) {
-        $self->{_report}{$tag0}[$row_index]{$tag2} = $value;
-        return;
+    foreach my $n ( $node->findnodes("./error") ) {
+        $self->report->meta->error( $n->string_value );
+    };
+    return $self->report->meta;
+};
+
+sub handle_node_policy_published {
+    my ($self, $node) = @_;
+
+    my $pol = Mail::DMARC::Policy->new();
+
+    foreach my $n ( qw/ domain adkim aspf p sp pct / ) {
+        my $val = $node->findnodes("./$n")->string_value or next;
+        $pol->$n( $val );
     };
 
-    if ( $tag1 eq 'identifiers' ) {
-        $self->{_report}{$tag0}[$row_index]{$tag1}{$tag2} = $value;
-        return;
-    };
-    if ( $tag1 eq 'auth_results' ) {
-#   // record / row / auth_results / dkim|spf /
-        if ( $tag2 eq 'dkim' ) {
-            if ( $self->{_report}{$tag0}[$row_index]{$tag1}{dkim}[$dkim_idx]{$tag3} ) {
-                $dkim_idx++;
+    $self->report->policy_published( $pol );
+    return $pol;
+};
+
+sub handle_node_record {
+    my ($self, $node) = @_;
+
+    my $row;
+    my %auth = (
+        dkim => [ qw/ domain selector result human_result / ],
+        spf  => [ qw/ domain scope result / ],
+    );
+
+#auth_results: dkim, spf
+    foreach my $a ( keys %auth ) {
+        foreach my $n ( $node->findnodes("./auth_results/$a" ) ) {
+            push @{ $row->{auth_results}{$a} }, {
+                map { $_ => $node->findnodes("./auth_results/$a/$_")->string_value } @{ $auth{$a} }
             };
-            $self->{_report}{$tag0}[$row_index]{$tag1}{dkim}[$dkim_idx]{$tag3} = $value;
-            return;
         };
-        if ( $tag2 eq 'spf' ) {
-            if ( $self->{_report}{$tag0}[$row_index]{$tag1}{spf}[$spf_idx]{$tag3} ) {
-                $dkim_idx++;
-            };
-            $self->{_report}{$tag0}[$row_index]{$tag1}{spf}[$spf_idx]{$tag3} = $value;
-            return;
-        };
-    };
-    if ( $tag1 eq 'row' && $tag2 eq 'policy_evaluated' ) {
-        $self->{_report}{$tag0}[$row_index]{$tag2}{$tag3} = $value;
-        return;
     };
 
-    croak "unrecognized tags: 0: $tag0, 1: $tag1, 2: $tag2, 3: $tag3\n";
+    $row->{identifiers}{source_ip} =
+        $node->findnodes("./row/source_ip")->string_value;
+
+    $row->{count} = $node->findnodes("./row/count")->string_value;
+
+#row: policy_evaluated
+    foreach my $pe ( qw/ disposition dkim spf / ) {
+        $row->{policy_evaluated}{$pe} = $node->findnodes("./row/policy_evaluated/$pe")->string_value;
+    };
+
+#reason
+    foreach my $r ( $node->findnodes("./row/policy_evaluated/reason" ) ) {
+        push @{ $row->policy_evaluated->reason }, $r->string_value;
+    };
+
+#identifiers:
+    foreach my $i ( qw/ envelope_to envelope_from header_from / ) {
+        $row->{identifiers}{$i} = $node->findnodes("./identifiers/$i")->string_value;
+    };
+
+    $self->report->add_record($row);
+    return $row;
 };
 
 1;
-# ABSTRACT: receive a DMARC report
 __END__
+# ABSTRACT: process incoming DMARC reports
 sub {}
 
 =head1 DESCRIPTION

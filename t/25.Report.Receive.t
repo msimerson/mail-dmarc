@@ -16,9 +16,14 @@ isa_ok( $recv, $mod );
 
 test_from_email_msg();
 test_get_submitter_from_subject();
+test_from_imap();
 
 done_testing();
 exit;
+
+sub test_from_imap {
+    ok( $recv->from_imap(), "from_imap");
+};
 
 sub test_get_submitter_from_subject {
     my %subjects = (
@@ -33,7 +38,7 @@ sub test_get_submitter_from_subject {
 
     foreach my $dom ( keys %subjects ) {
         my $subject = $subjects{$dom};
-        cmp_ok( $recv->get_submitter_from_subject( \$subject ), 'eq', $dom, "get_submitter_from_subject, $dom");
+        cmp_ok( $recv->get_submitter_from_subject( $subject ), 'eq', $dom, "get_submitter_from_subject, $dom");
     };
 };
 

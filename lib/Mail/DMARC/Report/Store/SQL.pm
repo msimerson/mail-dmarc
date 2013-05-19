@@ -18,15 +18,14 @@ sub save_author {
         policy  => [ qw/  / ],
         records => [ qw/  / ],
     );
-warn Dumper($meta); ## no critic (Carp)
+#warn Dumper($meta); ## no critic (Carp)
     foreach my $k ( keys %required ) {
         foreach my $f ( @{ $required{$k} } ) {
             croak "missing $k, $f" if 'policy'  eq $k && ! $policy->{$f};
-            croak "missing $k, $f" if 'meta'    eq $k && ! $meta->{$f};
+            croak "missing $k, $f" if 'meta'    eq $k && ! $meta->$f;
             croak "missing $k, $f" if 'records' eq $k && ! $records->{$f};
         };
     };
-
 
     my $rid = $self->insert_author_report($meta,$policy) or croak "failed to create report!";
 
@@ -39,10 +38,10 @@ warn Dumper($meta); ## no critic (Carp)
                 ) or croak "failed to insert row";
 
 # TODO
-#       my $reason = $self->dmarc->result->reason;
-#       if ( $reason && $reason->type ) {
-#           $self->insert_rr_reason($row_id, $reason->type, $reason->comment );
-#       };
+        my $reason = $rec->{reason};
+        if ( $reason && $reason->{type} ) {
+            $self->insert_rr_reason($row_id, $reason->{type}, $reason->{comment} );
+        };
 
         my $spf_ref = $rec->{auth_results}{spf};
         if (scalar @$spf_ref ) {
@@ -212,16 +211,16 @@ EO_ROW_INSERT
 };
 
 sub insert_author_report {
-    my ($self, $meta, $pub) = @_;
+    my ($self, $meta, $pub_pol) = @_;
 
 # check if report exists
-    my $rcpt_dom_id = $self->get_domain_id($meta->{domain} );
-    my $author_id   = $self->get_author_id($meta->{org_name}, $meta->{email});
-    my $from_dom_id = $self->get_domain_id($pub->{domain} );
+    my $rcpt_dom_id = $self->get_domain_id($meta->domain );
+    my $author_id   = $self->get_author_id($meta->org_name, $meta->email);
+    my $from_dom_id = $self->get_domain_id($pub_pol->domain );
 
     my $ids = $self->query(
         'SELECT id FROM report WHERE rcpt_domain_id=? AND uuid=? AND author_id=?',
-        [ $rcpt_dom_id, $meta->{id} || $meta->{report_id}, $author_id ]
+        [ $rcpt_dom_id, $meta->report_id, $author_id ]
         );
 
     if ( scalar @$ids ) {
@@ -232,10 +231,10 @@ sub insert_author_report {
 # report for this author_domain does not exist, insert new
     my $rid = $self->{report_id} = $self->query(
         'INSERT INTO report (from_domain_id, rcpt_domain_id, begin, end, author_id) VALUES (??)',
-        [ $from_dom_id, $rcpt_dom_id, $meta->{begin}, $meta->{end}, $author_id ]
+        [ $from_dom_id, $rcpt_dom_id, $meta->begin, $meta->end, $author_id ]
     ) or return;
 
-    $self->insert_report_published_policy($rid,$pub);
+    $self->insert_report_published_policy($rid,$pub_pol);
     return $rid;
 };
 

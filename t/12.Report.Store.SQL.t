@@ -5,7 +5,8 @@ use Data::Dumper;
 use Test::More;
 
 use lib 'lib';
-use Mail::DMARC::Policy;
+require Mail::DMARC::Report;
+require Mail::DMARC::Policy;
 
 eval "use DBD::SQLite 1.31";
 if ( $@ ) {
@@ -42,16 +43,18 @@ exit;
 
 sub test_insert_author_report {
     my %meta = (
-            id       => time,
-            domain   => 'test.com',
-            org_name => 'Test Company',
-            begin    => time,
-            end      => time + 10,
+            report_id => time,
+            domain    => 'test.com',
+            org_name  => 'Test Company',
+            begin     => time,
+            end       => time + 10,
             );
+    my $report = Mail::DMARC::Report->new();
+    foreach ( keys %meta) { $report->meta->$_($meta{$_} ) };
     my $policy = Mail::DMARC::Policy->new("v=DMARC1; p=reject");
     $policy->rua( 'mailto:' . $sql->config->{organization}{email} );
     $policy->{domain} = 'recip.example.com';
-    ok( $sql->insert_author_report( \%meta, $policy ), 'insert_author_report');
+    ok( $sql->insert_author_report( $report->meta, $policy ), 'insert_author_report');
 };
 
 sub test_insert_rr_reason {
