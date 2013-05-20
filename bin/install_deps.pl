@@ -332,13 +332,13 @@ sub is_freebsd_port_installed {
 sub get_cpan_config {
 
 ## no critic (BackTick)
-    my $ftp = `which ftp`;
-    my $gzip = `which gzip`;
+    my $ftp   = `which ftp`;
+    my $gzip  = `which gzip`;
     my $unzip = `which unzip`;
-    my $tar = `which tar`;
-    my $make = `which make`;
-    my $wget = `which wget`;
-    chomp($ftp,$wget,$gzip,$unzip,$tar,$make);
+    my $tar   = `which tar`;
+    my $make  = `which make`;
+    my $wget  = `which wget`;
+    chomp( $ftp, $wget, $gzip, $unzip, $tar, $make );
 
     return {
         'build_cache'             => q[10],
