@@ -111,7 +111,7 @@ sub comment {
 };
 
 1;
-# ABSTRACT: the results of applying a DMARC policy
+# ABSTRACT: the results of applying a policy
 __END__
 sub {}
 
@@ -121,31 +121,33 @@ An DMARC result looks like the following data structure:
 
     result       => 'pass',   # pass, fail
     disposition  => 'none',   # reject, quarantine, none
-    reason       => {
-        type     => '',       # forwarded, sampled_out, trusted_forwarder,
-        comment  => '',       #   mailing_list, local_policy, other
-    },
+    reason       => [         # there can be many reasons...
+            {
+                type     => '',   # forwarded, sampled_out, trusted_forwarder,
+                comment  => '',   #   mailing_list, local_policy, other
+            },
+        ],
     dkim         => 'pass',   # pass, fail
     dkim_align   => 'strict', # strict, relaxed
     spf          => 'pass',   # pass, fail
     spf_align    => 'strict', # strict, relaxed
     policy       => L<Mail::DMARC::Policy>,
 
-The reason is optional and may not be present.
+Reasons are optional and may not be present.
 
-The dkim_align and spf_align fields will only be present if the corresponding test value equals pass.
+The dkim_align and spf_align fields will only be present if the corresponding test value equals pass. The are "extra" info, not specified in the DMARC spec.
 
-=head1 METHDS
+=head1 METHODS
 
 =head2 published
 
-Published is a L<Mail::DMARC::Policy> object with one extra attribute: domain. The domain attribute is the DNS domain name where the DMARC record was found.
+Published is a L<Mail::DMARC::Policy> tagged with a domain. The domain attribute is the DNS domain name where the DMARC record was found.
 
 =head2 result
 
 Whether the message passed the DMARC test. Possible values are: pass, fail.
 
-In order to pass, at least one of the defined authentication alignments must pass. At present (2013 Draft) the defined alignments are DKIM and SPF. The alignment list is expected to grow.
+In order to pass, at least one authentication alignment must pass. The 2013 draft defines just two authentication methods: DKIM and SPF. The list is expected to grow.
 
 =head2 disposition
 

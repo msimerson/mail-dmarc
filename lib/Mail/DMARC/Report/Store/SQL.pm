@@ -406,12 +406,12 @@ sub query_delete {
 
 
 1;
-# ABSTRACT: Store DMARC reports
+# ABSTRACT: SQL storage for DMARC reports
 __END__
 
 =head1 SYPNOSIS
 
-Retreive DMARC reports from SQL data store
+Store and retrieve DMARC reports from SQL data store.
 
 =head1 DESCRIPTION
 

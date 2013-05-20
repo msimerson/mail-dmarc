@@ -1,6 +1,13 @@
 
 {{$NEXT}}
 
+ - added bin/dmarc_receive (via IMAP, mbox, or message file)
+ - added report retrieval via IMAP
+ - extract sender domain from subject or MIME metadata
+ - SQL: added author.extra_contact
+ - SQL: removed 'NOT NULL' requirements for values often missing from incoming
+        reports.
+
 0.20130517 2013-05-17 America/Los_Angeles
 
  - send reports with zip until 7/1, gzip after

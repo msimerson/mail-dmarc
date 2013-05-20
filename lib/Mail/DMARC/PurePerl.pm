@@ -476,7 +476,7 @@ sub verify_external_reporting {
 }
 
 1;
-# ABSTRACT: a perl implementation of DMARC
+# ABSTRACT: Pure Perl implementation of DMARC
 __END__
 sub {}
 
