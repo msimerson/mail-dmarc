@@ -80,18 +80,20 @@ sub from_mbox {
     my ( $self, $file_name ) = @_;
     croak "missing mbox file" if !$file_name;
 
-    eval "require Mail::Mbox::MessageParser";    ## no critic (Eval)
-    croak "is Mail::Mbox::MessageParser installed?" if $@;
+# TODO: replace this module
+# commented out due to build test failures
+#   eval "require Mail::Mbox::MessageParser";    ## no critic (Eval)
+#   croak "is Mail::Mbox::MessageParser installed?" if $@;
 
-    my $file_handle = FileHandle->new($file_name);
+#   my $file_handle = FileHandle->new($file_name);
 
-    my $folder_reader = Mail::Mbox::MessageParser->new(
-        {   'file_name'    => $file_name,
-            'file_handle'  => $file_handle,
-            'enable_cache' => 1,
-            'enable_grep'  => 1,
-        }
-    );
+#   my $folder_reader = Mail::Mbox::MessageParser->new(
+#       {   'file_name'    => $file_name,
+#           'file_handle'  => $file_handle,
+#           'enable_cache' => 1,
+#           'enable_grep'  => 1,
+#       }
+#   );
 
     croak $folder_reader unless ref $folder_reader;
 
