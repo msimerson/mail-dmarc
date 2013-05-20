@@ -147,7 +147,7 @@ sub {}  # for vim automatic code folding
 DMARC: Domain-based Message Authentication, Reporting and Conformance
 
  my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
- my $result = $dmarc->verify();
+ my $result = $dmarc->validate();
 
  if ( $result->result eq 'pass' ) {
      ...continue normal processing...
@@ -237,7 +237,7 @@ Create an empty DMARC object. Then populate it and run the request:
         scope  => 'mfrom',
         result => 'pass',
             );
-    my $result = $dmarc->verify();
+    my $result = $dmarc->validate();
 
 Alternatively, you can pass in all the required parameters in one shot:
 
@@ -249,7 +249,7 @@ Alternatively, you can pass in all the required parameters in one shot:
             dkim          => $dkim_results,  # same format
             spf           => $spf_results,   # as previous example
             );
-    my $result = $dmarc->verify();
+    my $result = $dmarc->validate();
 
 
 =head2 source_ip
