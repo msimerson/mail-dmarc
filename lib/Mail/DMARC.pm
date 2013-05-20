@@ -190,8 +190,6 @@ When a message arrives via SMTP, the MTA or filtering application can pass in a 
 
 The validation results are stored in a L<Mail::DMARC::Result> object. If the author domain requested a report, it was saved via L<Mail::DMARC::Report::Store>. A SQL implementation is provided and tested with SQLite and MySQL. ANSI SQL queries syntax is preferred, making it straight forward to extend to other RDBMS.
 
-=head1 HOW TO USE
-
 There is more information available in the $result object. See L<Mail::DMARC::Result> for complete details.
 
 =head1 CLASSES
