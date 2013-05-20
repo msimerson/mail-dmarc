@@ -87,7 +87,7 @@ sub from_mbox {
 
 #   my $file_handle = FileHandle->new($file_name);
 
-#   my $folder_reader = Mail::Mbox::MessageParser->new(
+    my $folder_reader; #  = Mail::Mbox::MessageParser->new(
 #       {   'file_name'    => $file_name,
 #           'file_handle'  => $file_handle,
 #           'enable_cache' => 1,
