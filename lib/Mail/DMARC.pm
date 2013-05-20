@@ -11,128 +11,133 @@ require Mail::DMARC::Result;
 
 sub source_ip {
     return $_[0]->{source_ip} if 1 == scalar @_;
-    croak "invalid source_ip" if ! $_[0]->is_valid_ip($_[1]);
+    croak "invalid source_ip" if !$_[0]->is_valid_ip( $_[1] );
     return $_[0]->{source_ip} = $_[1];
-};
+}
 
 sub envelope_to {
     return $_[0]->{envelope_to} if 1 == scalar @_;
-    croak "invalid envelope_to" if ! $_[0]->is_valid_domain($_[1]);
+    croak "invalid envelope_to" if !$_[0]->is_valid_domain( $_[1] );
     return $_[0]->{envelope_to} = $_[1];
-};
+}
 
 sub envelope_from {
     return $_[0]->{envelope_from} if 1 == scalar @_;
-    croak "invalid envelope_from" if ! $_[0]->is_valid_domain($_[1]);
+    croak "invalid envelope_from" if !$_[0]->is_valid_domain( $_[1] );
     return $_[0]->{envelope_from} = $_[1];
-};
+}
 
 sub header_from {
     return $_[0]->{header_from} if 1 == scalar @_;
-    croak "invalid header_from" if ! $_[0]->is_valid_domain($_[1]);
+    croak "invalid header_from" if !$_[0]->is_valid_domain( $_[1] );
     return $_[0]->{header_from} = $_[1];
-};
+}
 
 sub header_from_raw {
     return $_[0]->{header_from_raw} if 1 == scalar @_;
-#croak "invalid header_from_raw: $_[1]" if 'from:' ne lc substr($_[1], 0, 5);
+
+ #croak "invalid header_from_raw: $_[1]" if 'from:' ne lc substr($_[1], 0, 5);
     return $_[0]->{header_from_raw} = $_[1];
-};
+}
 
 sub local_policy {
     return $_[0]->{local_policy} if 1 == scalar @_;
-# TODO: document this, when and why it would be used
+
+    # TODO: document this, when and why it would be used
     return $_[0]->{local_policy} = $_[1];
-};
+}
 
 sub dkim {
-    my ($self, $dkim) = @_;
-    return $self->{dkim} if ! $dkim;
+    my ( $self, $dkim ) = @_;
+    return $self->{dkim} if !$dkim;
 
     if ( ref $dkim && ref $dkim eq 'Mail::DKIM::Verifier' ) {
         return $self->dkim_from_mail_dkim($dkim);
-    };
+    }
 
     if ( 'ARRAY' ne ref $dkim ) {
         croak "dkim must be an array reference!";
-    };
-    foreach my $s ( @$dkim ) {
-        foreach my $f ( qw/ domain result / ) {
-            croak "DKIM '$f' is required!" if ! $s->{$f};
-        };
-    };
+    }
+    foreach my $s (@$dkim) {
+        foreach my $f (qw/ domain result /) {
+            croak "DKIM '$f' is required!" if !$s->{$f};
+        }
+    }
     return $self->{dkim} = $dkim;
-};
+}
 
 sub dkim_from_mail_dkim {
-    my ($self, $dkim) = @_;
-# A DKIM verifier will have result and signature methods.
+    my ( $self, $dkim ) = @_;
+
+    # A DKIM verifier will have result and signature methods.
     foreach my $s ( $dkim->signatures ) {
-        push @{ $self->{dkim} }, {
+        push @{ $self->{dkim} },
+            {
             domain       => $s->domain,
             selector     => $s->selector,
             result       => $s->result,
             human_result => $s->result_detail,
-        };
-    };
+            };
+    }
     return $self->{dkim};
-};
+}
 
 sub spf {
-    my ($self, @args) = @_;
+    my ( $self, @args ) = @_;
     return $self->{spf} if 0 == scalar @args;
 
     if ( scalar @args == 1 && ref $args[0] && ref $args[0] eq 'HASH' ) {
         return $self->{spf} = $args[0];
-    };
+    }
 
     croak "invalid arguments" if @args % 2 != 0;
-    $self->{spf} = { @args };
+    $self->{spf} = {@args};
     $self->is_valid_spf();
     return $self->{spf};
-};
+}
 
 sub policy {
-    my ($self, @args) = @_;
+    my ( $self, @args ) = @_;
     return $self->{policy} if ref $self->{policy} && 0 == scalar @args;
     return $self->{policy} = Mail::DMARC::Policy->new(@args);
-};
+}
 
 sub report {
     my $self = shift;
     return $self->{report} if ref $self->{report};
     return $self->{report} = Mail::DMARC::Report->new();
-};
+}
 
 sub result {
     my $self = shift;
     return $self->{result} if ref $self->{result};
     return $self->{result} = Mail::DMARC::Result->new();
-};
+}
 
 sub is_subdomain {
     return $_[0]->{is_subdomain} if 1 == scalar @_;
     croak "invalid boolean" if 0 == grep {/^$_[1]$/ix} qw/ 0 1/;
     return $_[0]->{is_subdomain} = $_[1];
-};
+}
 
 sub is_valid_spf {
     my $self = shift;
-    foreach my $f ( qw/ domain result scope / ) {
-        if ( ! $self->{spf}{$f} ) {
+    foreach my $f (qw/ domain result scope /) {
+        if ( !$self->{spf}{$f} ) {
             croak "SPF $f is required!";
-        };
-    };
-    if ( ! grep {$_ eq lc $self->{spf}{scope}} qw/ mfrom helo / ) {
+        }
+    }
+    if ( !grep { $_ eq lc $self->{spf}{scope} } qw/ mfrom helo / ) {
         croak "invalid SPF scope!";
-    };
-    if ( $self->{spf}{result} eq 'pass' && ! $self->{spf}{domain} ) {
+    }
+    if ( $self->{spf}{result} eq 'pass' && !$self->{spf}{domain} ) {
         croak "SPF pass MUST include the RFC5321.MailFrom domain!";
-    };
+    }
     return 1;
-};
+}
 
 1;
+
 # ABSTRACT: Perl implementation of DMARC
 __END__
 sub {}  # for vim automatic code folding
@@ -140,6 +145,26 @@ sub {}  # for vim automatic code folding
 =head1 SYNOPSIS
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
+
+ my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
+ my $result = $dmarc->verify();
+
+ if ( $result->result eq 'pass' ) {
+     ...continue normal processing...
+     return;
+ };
+
+ # any result that did not pass is a fail. Now for disposition
+
+ if ( $result->evalated->disposition eq 'reject' ) {
+     ...treat the sender to a 550 ...
+ };
+ if ( $result->evalated->disposition eq 'quarantine' ) {
+     ...assign a bunch of spam points...
+ };
+ if ( $result->evalated->disposition eq 'none' ) {
+     ...continue normal processing...
+ };
 
 =head1 DESCRIPTION
 
@@ -163,29 +188,9 @@ When a message arrives via SMTP, the MTA or filtering application can pass in a 
  d. does the message conform to the published policy?
  e. did the policy request reporting? If so, save details.
 
-The validation results are stored in a L<Mail::DMARC::Result> object. Example inspection of a result object is shown in HOW TO USE. If a report was requested, it was saved via L<Mail::DMARC::Report::Store>. A SQL implementation is provided and tested with SQLite and MySQL. ANSI SQL queries syntax is preferred, making it straight forward to extend to other RDBMS.
+The validation results are stored in a L<Mail::DMARC::Result> object. If the author domain requested a report, it was saved via L<Mail::DMARC::Report::Store>. A SQL implementation is provided and tested with SQLite and MySQL. ANSI SQL queries syntax is preferred, making it straight forward to extend to other RDBMS.
 
 =head1 HOW TO USE
-
- my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
- my $result = $dmarc->verify();
-
- if ( $result->result eq 'pass' ) {
-     ...continue normal processing...
-     return;
- };
-
- # any result that did not pass is a fail. Now for disposition
-
- if ( $result->evalated->disposition eq 'reject' ) {
-     ...treat the sender to a 550 ...
- };
- if ( $result->evalated->disposition eq 'quarantine' ) {
-     ...assign a bunch of spam points...
- };
- if ( $result->evalated->disposition eq 'none' ) {
-     ...continue normal processing...
- };
 
 There is more information available in the $result object. See L<Mail::DMARC::Result> for complete details.
 
@@ -356,6 +361,8 @@ The DMARC spec is lengthy and evolving, making correctness a moving target. In c
 =head2 Easy to use
 
 The effectiveness of DMARC will improve significantly as adoption increases. Proving an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
+
+The list of dependencies is long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is less than 5.
 
 =head2 Maintainable
 

@@ -3,36 +3,41 @@ use strict;
 use warnings;
 
 use Carp;
+
 #use Data::Dumper;
 use Net::HTTP;
 
 use parent 'Mail::DMARC::Base';
 
 sub post {
-    my ($self, $uri, $report, $gz) = @_;
+    my ( $self, $uri, $report, $gz ) = @_;
 
     carp "http send incomplete!";
     return;
 
-# TODO: test
+    # TODO: test
 ## no critic (Unreachable)
     my $ver = $Mail::DMARC::VERSION;
-    my $s = Net::HTTP->new(Host => $uri->host ) or croak $@;
-    $s->write_request(POST => $uri->path, 'User-Agent' => "Mail::DMARC/$ver");
-    my($code, $mess, %h) = $s->read_response_headers;
+    my $s = Net::HTTP->new( Host => $uri->host ) or croak $@;
+    $s->write_request(
+        POST         => $uri->path,
+        'User-Agent' => "Mail::DMARC/$ver"
+    );
+    my ( $code, $mess, %h ) = $s->read_response_headers;
 
     while (1) {
         my $buf;
-        my $n = $s->read_entity_body($buf, 1024);
+        my $n = $s->read_entity_body( $buf, 1024 );
         croak "read failed: $!" unless defined $n;
         last unless $n;
         print $buf;
         return 1;
     }
     return 0;
-};
+}
 
 1;
+
 # ABSTRACT: send DMARC reports via HTTP
 __END__
 sub {}

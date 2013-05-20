@@ -10,149 +10,155 @@ use Net::DNS::Resolver;
 use Net::IP;
 use Regexp::Common 2013031301 qw /net/;
 use Socket;
-use Socket6 qw//; # don't export symbols
+use Socket6 qw//;    # don't export symbols
 
 sub new {
-    my ($class, @args) = @_;
+    my ( $class, @args ) = @_;
     croak "invalid args" if scalar @args % 2 != 0;
     return bless {
         config_file => 'mail-dmarc.ini',
-        @args,    # this may override config_file
+        @args,       # this may override config_file
     }, $class;
-};
+}
 
 sub config {
-    my ($self, $file, @too_many) = @_;
+    my ( $self, $file, @too_many ) = @_;
     croak "invalid args" if scalar @too_many;
-    return $self->{config} if ref $self->{config} && ! $file;
+    return $self->{config} if ref $self->{config} && !$file;
     return $self->{config} = $self->get_config($file);
-};  
-    
+}
+
 sub get_config {
     my $self = shift;
     my $file = shift || $self->{config_file} or croak;
     my @dirs = qw[ /usr/local/etc /opt/local/etc /etc ./ ];
-    foreach my $d ( @dirs ) {
-        next if ! -d $d;
-        next if ! -e "$d/$file";
-        croak "unreadable file: $d/$file" if ! -r "$d/$file";
+    foreach my $d (@dirs) {
+        next                              if !-d $d;
+        next                              if !-e "$d/$file";
+        croak "unreadable file: $d/$file" if !-r "$d/$file";
         my $Config = Config::Tiny->new;
-        return Config::Tiny->read( "$d/$file" );
-    };
+        return Config::Tiny->read("$d/$file");
+    }
     croak "unable to find config file $file\n";
 }
 
 sub any_inet_ntop {
-    my ($self, $ip_bin) = @_;
+    my ( $self, $ip_bin ) = @_;
     $ip_bin or croak "missing IP in request";
 
     if ( length $ip_bin == 16 ) {
         return Socket6::inet_ntop( AF_INET6, $ip_bin );
-    };
+    }
 
     return Socket6::inet_ntop( AF_INET, $ip_bin );
-};
+}
 
 sub any_inet_pton {
-    my ($self, $ip_txt) = @_;
+    my ( $self, $ip_txt ) = @_;
     $ip_txt or croak "missing IP in request";
 
     if ( $ip_txt =~ /:/ ) {
-        return Socket6::inet_pton( AF_INET6, $ip_txt ) or croak "invalid IPv6: $ip_txt";
-    };
+        return Socket6::inet_pton( AF_INET6, $ip_txt )
+            or croak "invalid IPv6: $ip_txt";
+    }
 
-    return Socket6::inet_pton( AF_INET, $ip_txt ) or croak "invalid IPv4: $ip_txt";
-};
+    return Socket6::inet_pton( AF_INET, $ip_txt )
+        or croak "invalid IPv4: $ip_txt";
+}
 
 sub is_public_suffix {
-    my ($self, $zone) = @_;
+    my ( $self, $zone ) = @_;
 
-    croak "missing zone name!" if ! $zone;
+    croak "missing zone name!" if !$zone;
 
-    my $file = $self->config->{dns}{public_suffix_list} || 'share/public_suffix_list';
+    my $file = $self->config->{dns}{public_suffix_list}
+        || 'share/public_suffix_list';
     my @dirs = qw[ ./ /usr/local/ /opt/local /usr/ ];
     my $match;
-    foreach my $dir ( @dirs ) {
+    foreach my $dir (@dirs) {
         $match = $dir . $file;
         last if ( -f $match && -r $match );
-    };
-    if ( ! -r $match ) {
+    }
+    if ( !-r $match ) {
+
         # Fallback to included suffic list, dies if not found/readable
-        $match = File::ShareDir::dist_file('Mail-DMARC', 'public_suffix_list');
-    };
+        $match
+            = File::ShareDir::dist_file( 'Mail-DMARC', 'public_suffix_list' );
+    }
 
     my $fh = IO::File->new( $match, 'r' )
         or croak "unable to open $match for read: $!\n";
 
-    $zone =~ s/\*/\\*/g;   # escape * char
+    $zone =~ s/\*/\\*/g;    # escape * char
     return 1 if grep {/^$zone$/} <$fh>;
 
     my @labels = split /\./, $zone;
-    $zone = join '.', '\*', (@labels)[1 .. scalar(@labels) - 1];
+    $zone = join '.', '\*', (@labels)[ 1 .. scalar(@labels) - 1 ];
 
-    $fh = IO::File->new( $match, 'r' );  # reopen
+    $fh = IO::File->new( $match, 'r' );    # reopen
     return 1 if grep {/^$zone$/} <$fh>;
 
     return 0;
-};
+}
 
 sub has_dns_rr {
-    my ($self, $type, $domain) = @_;
+    my ( $self, $type, $domain ) = @_;
 
     my $matches = 0;
-    my $res = $self->get_resolver();
-    my $query = $res->query($domain, $type) or return $matches;
-    for my $rr ($query->answer) {
+    my $res     = $self->get_resolver();
+    my $query   = $res->query( $domain, $type ) or return $matches;
+    for my $rr ( $query->answer ) {
         next if $rr->type ne $type;
         $matches++;
     }
     return $matches;
-};
+}
 
 sub get_resolver {
     my $self = shift;
     my $timeout = shift || $self->config->{dns}{timeout} || 5;
     return $self->{resolver} if defined $self->{resolver};
-    $self->{resolver} = Net::DNS::Resolver->new(dnsrch => 0);
+    $self->{resolver} = Net::DNS::Resolver->new( dnsrch => 0 );
     $self->{resolver}->tcp_timeout($timeout);
     $self->{resolver}->udp_timeout($timeout);
     return $self->{resolver};
 }
 
 sub is_valid_ip {
-    my ($self, $ip) = @_;
+    my ( $self, $ip ) = @_;
 
-# Using Regexp::Common removes perl 5.8 compat
-# Perl 5.008009 does not support the pattern $RE{net}{IPv6}.
-# You need Perl 5.01 or later at lib/Mail/DMARC/DNS.pm line 83.
+    # Using Regexp::Common removes perl 5.8 compat
+    # Perl 5.008009 does not support the pattern $RE{net}{IPv6}.
+    # You need Perl 5.01 or later at lib/Mail/DMARC/DNS.pm line 83.
 
     if ( $ip =~ /:/ ) {
         return Net::IP->new( $ip, 6 );
-    };
+    }
 
     return Net::IP->new( $ip, 4 );
-};
+}
 
 sub is_valid_domain {
-    my ($self, $domain) = @_;
+    my ( $self, $domain ) = @_;
     if ( $domain =~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x ) {
-        my $tld = (split /\./,$domain)[-1];
+        my $tld = ( split /\./, $domain )[-1];
         return 1 if $self->is_public_suffix($tld);
-        $tld = join('.', (split /\./,$domain)[-2,-1] );
+        $tld = join( '.', ( split /\./, $domain )[ -2, -1 ] );
         return 1 if $self->is_public_suffix($tld);
-    };
+    }
     return 0;
-};
+}
 
 sub slurp {
-    my ($self, $file) = @_;
+    my ( $self, $file ) = @_;
     open my $FH, '<', $file or croak "unable to read $file: $!";
-    my $contents = do { local $/; <$FH> }; ## no critic (Local)
+    my $contents = do { local $/; <$FH> };    ## no critic (Local)
     close $FH;
     return $contents;
-};
+}
 
 1;
+
 # ABSTRACT: DMARC utility functions
 __END__
 sub {}

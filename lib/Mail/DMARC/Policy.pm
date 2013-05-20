@@ -7,155 +7,159 @@ use Carp;
 use Mail::DMARC::Report::URI;
 
 sub new {
-    my ($class, @args) = @_;
+    my ( $class, @args ) = @_;
     my $package = ref $class ? ref $class : $class;
     my $self = bless {}, $package;
 
-    return $self                  if 0 == @args; # no args, empty pol
-    return $self->parse($args[0]) if 1 == @args; # a string to parse
+    return $self if 0 == @args;                       # no args, empty pol
+    return $self->parse( $args[0] ) if 1 == @args;    # a string to parse
 
     croak "invalid arguments" if @args % 2 != 0;
-    my $policy = { @args };
+    my $policy = {@args};
     bless $policy, $package;
-    croak "invalid  policy" if ! $self->is_valid( $policy );
+    croak "invalid  policy" if !$self->is_valid($policy);
     return bless $policy, $package;
-};
+}
 
 sub parse {
-    my ($self, $str, @fluff) = @_;
+    my ( $self, $str, @fluff ) = @_;
     croak "invalid parse request" if 0 != scalar @fluff;
-    $str =~ s/\s//g;                         # remove all whitespace
-    $str =~ s/\\;/;/;                        # replace \; with ;
+    $str =~ s/\s//g;                                  # remove all whitespace
+    $str =~ s/\\;/;/;                                 # replace \; with ;
     my $policy = { map { split /=/, $_ } split /;/, $str };
-    croak "invalid policy" if ! $self->is_valid( $policy );
-    return bless $policy, ref $self;  # inherited defaults + overrides
+    croak "invalid policy" if !$self->is_valid($policy);
+    return bless $policy, ref $self;    # inherited defaults + overrides
 }
 
 sub apply_defaults {
     my $self = shift;
 
-    $self->adkim('r') if ! defined $self->adkim;
-    $self->aspf('r')  if ! defined $self->aspf;
-    $self->fo(0)      if ! defined $self->fo;
-    $self->ri(86400)  if ! defined $self->ri;
-    $self->rf('afrf') if ! defined $self->rf;
-#   pct   # default is 100%, but 100% -vs- not defined is different
+    $self->adkim('r') if !defined $self->adkim;
+    $self->aspf('r')  if !defined $self->aspf;
+    $self->fo(0)      if !defined $self->fo;
+    $self->ri(86400)  if !defined $self->ri;
+    $self->rf('afrf') if !defined $self->rf;
+
+    #   pct   # default is 100%, but 100% -vs- not defined is different
     return 1;
-};
+}
 
 sub v {
     return $_[0]->{v} if 1 == scalar @_;
     croak "unsupported DMARC version" if 'DMARC1' ne uc $_[1];
     return $_[0]->{v} = $_[1];
-};
+}
 
 sub p {
     return $_[0]->{p} if 1 == scalar @_;
-    croak "invalid p" if ! $_[0]->is_valid_p($_[1]);
+    croak "invalid p" if !$_[0]->is_valid_p( $_[1] );
     return $_[0]->{p} = $_[1];
-};
+}
 
 sub sp {
     return $_[0]->{sp} if 1 == scalar @_;
-    croak "invalid sp ($_[1])" if ! $_[0]->is_valid_p($_[1]);
+    croak "invalid sp ($_[1])" if !$_[0]->is_valid_p( $_[1] );
     return $_[0]->{sp} = $_[1];
-};
+}
 
 sub adkim {
     return $_[0]->{adkim} if 1 == scalar @_;
     croak "invalid adkim" if 0 == grep {/^$_[1]$/ix} qw/ r s /;
     return $_[0]->{adkim} = $_[1];
-};
+}
 
 sub aspf {
     return $_[0]->{aspf} if 1 == scalar @_;
     croak "invalid aspf" if 0 == grep {/^$_[1]$/ix} qw/ r s /;
     return $_[0]->{aspf} = $_[1];
-};
+}
 
 sub fo {
     return $_[0]->{fo} if 1 == scalar @_;
     croak "invalid fo: $_[1]" if 0 == grep {/^$_[1]$/ix} qw/ 0 1 d s /;
     return $_[0]->{fo} = $_[1];
-};
+}
 
 sub rua {
     return $_[0]->{rua} if 1 == scalar @_;
-    croak "invalid rua" if ! $_[0]->is_valid_uri_list( $_[1] );
+    croak "invalid rua" if !$_[0]->is_valid_uri_list( $_[1] );
     return $_[0]->{rua} = $_[1];
-};
+}
 
 sub ruf {
     return $_[0]->{ruf} if 1 == scalar @_;
-    croak "invalid rua" if ! $_[0]->is_valid_uri_list( $_[1] );
+    croak "invalid rua" if !$_[0]->is_valid_uri_list( $_[1] );
     return $_[0]->{ruf} = $_[1];
-};
+}
 
 sub rf {
     return $_[0]->{rf} if 1 == scalar @_;
     foreach my $f ( split /,/, $_[1] ) {
-        croak "invalid format: $f" if ! $_[0]->is_valid_rf( $f );
+        croak "invalid format: $f" if !$_[0]->is_valid_rf($f);
     }
     return $_[0]->{rf} = $_[1];
-};
+}
+
 sub ri {
-    return $_[0]->{ri} if 1 == scalar @_;
+    return $_[0]->{ri}           if 1 == scalar @_;
     croak "not numeric ($_[1])!" if $_[1] =~ /\D/;
-    croak "not an integer!" if $_[1] != int $_[1];
-    croak "out of range" if ($_[1] < 0 || $_[1] > 4294967295);
+    croak "not an integer!"      if $_[1] != int $_[1];
+    croak "out of range" if ( $_[1] < 0 || $_[1] > 4294967295 );
     return $_[0]->{ri} = $_[1];
-};
+}
 
 sub pct {
-    return $_[0]->{pct} if 1 == scalar @_;
+    return $_[0]->{pct}          if 1 == scalar @_;
     croak "not numeric ($_[1])!" if $_[1] =~ /\D/;
-    croak "not an integer!" if $_[1] != int $_[1];
+    croak "not an integer!"      if $_[1] != int $_[1];
     croak "out of range" if $_[1] < 0 || $_[1] > 100;
     return $_[0]->{pct} = $_[1];
-};
+}
 
 sub domain {
     return $_[0]->{domain} if 1 == scalar @_;
     return $_[0]->{domain} = $_[1];
-};
+}
 
 sub is_valid_rf {
-    my ($self, $f) = @_;
-    return (grep {/^$f$/i} qw/ iodef afrf /) ? 1 : 0;
-};
+    my ( $self, $f ) = @_;
+    return ( grep {/^$f$/i} qw/ iodef afrf / ) ? 1 : 0;
+}
 
 sub is_valid_p {
-    my ($self, $p) = @_;
-    croak "unspecified p" if ! defined $p;
-    return (grep {/^$p$/i} qw/ none reject quarantine /) ? 1 : 0;
-};
+    my ( $self, $p ) = @_;
+    croak "unspecified p" if !defined $p;
+    return ( grep {/^$p$/i} qw/ none reject quarantine / ) ? 1 : 0;
+}
 
 sub is_valid_uri_list {
-    my ($self, $str) = @_;
+    my ( $self, $str ) = @_;
     $self->{uri} ||= Mail::DMARC::Report::URI->new;
-    my $uris = $self->{uri}->parse( $str );
+    my $uris = $self->{uri}->parse($str);
     return scalar @$uris;
-};
+}
 
 sub is_valid {
-    my ($self, $obj) = @_;
-    $obj = $self if ! $obj;
-    croak "missing version specifier" if ! $obj->{v};
+    my ( $self, $obj ) = @_;
+    $obj = $self if !$obj;
+    croak "missing version specifier" if !$obj->{v};
     croak "invalid version" if 'DMARC1' ne uc $obj->{v};
-    if ( ! $obj->{p} ) {
-        if ( $obj->{rua} && $self->is_valid_uri_list($obj->{rua}) ) {
+    if ( !$obj->{p} ) {
+        if ( $obj->{rua} && $self->is_valid_uri_list( $obj->{rua} ) ) {
             $obj->{p} = 'none';
         }
         else {
             croak "missing policy action (p=)";
-        };
-    };
-    croak "invalid policy action" if ! $self->is_valid_p( $obj->{p} );
-# everything else is optional
+        }
+    }
+    croak "invalid policy action" if !$self->is_valid_p( $obj->{p} );
+
+    # everything else is optional
     return 1;
-};
+}
 
 1;
+
 # ABSTRACT: a DMARC policy in object format
 __END__
 sub {}

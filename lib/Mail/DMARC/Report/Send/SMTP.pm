@@ -12,18 +12,18 @@ use POSIX;
 use parent 'Mail::DMARC::Base';
 
 sub email {
-    my ($self, @args) = @_;
+    my ( $self, @args ) = @_;
     croak "invalid args to email" if @args % 2;
     my %args = @args;
 
     my @required = qw/ to subject body report policy_domain begin end /;
     my @optional = qw/ report_id /;
-    my %all = map { $_ => 1 } ( @required, @optional );
-    foreach ( keys %args ) { croak "unknown arg $_" if ! $all{$_} };
+    my %all      = map { $_ => 1 } ( @required, @optional );
+    foreach ( keys %args ) { croak "unknown arg $_" if !$all{$_} }
 
-    foreach my $req ( @required ) {
-        croak "missing required header: $req" if ! $args{$req};
-    };
+    foreach my $req (@required) {
+        croak "missing required header: $req" if !$args{$req};
+    }
 
     my $cc = $self->config->{smtp}{cc};
     if ( $cc && $cc ne 'set.this@for.a.while.example.com' ) {
@@ -31,105 +31,105 @@ sub email {
         $args{to} = $cc;
         $self->via_net_smtp( \%args );
         $args{to} = $original_to;
-    };
-    return $self->via_net_smtp(\%args);
+    }
+    return $self->via_net_smtp( \%args );
 
-#    eval { require MIME::Lite; }; ## no critic (Eval)
-#    if ( !$EVAL_ERROR ) {
-#        return 1 if $self->via_mime_lite( \%args );
-#    }
+    #    eval { require MIME::Lite; }; ## no critic (Eval)
+    #    if ( !$EVAL_ERROR ) {
+    #        return 1 if $self->via_mime_lite( \%args );
+    #    }
 
-#    carp "failed to send with MIME::Lite.";
-#   croak "unable to send message";
-};
+    #    carp "failed to send with MIME::Lite.";
+    #   croak "unable to send message";
+}
 
 sub via_net_smtp {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $to_domain = $args->{domain} = $self->get_to_dom($args);
     my $hosts = $self->get_smtp_hosts($to_domain);
     my @try_mx = map { $_->{addr} }
         sort { $a->{pref} <=> $b->{pref} } @$hosts;
-    push @try_mx, $to_domain;  # might be 0 MX records
+    push @try_mx, $to_domain;    # might be 0 MX records
 
-    my $c = $self->config->{smtp};
+    my $c        = $self->config->{smtp};
     my $hostname = $c->{hostname};
-    if ( ! $hostname || $hostname eq 'mail.example.com' ) {
+    if ( !$hostname || $hostname eq 'mail.example.com' ) {
         $hostname = Sys::Hostname::hostname;
-    };
+    }
     my $body = $self->_assemble_message($args);
 
-    my $err = "found " . scalar @try_mx . " MX";
+    my $err  = "found " . scalar @try_mx . " MX";
     my $smtp = Net::SMTPS->new(
-            [ @try_mx ],
-            Timeout => 10,
-            Port    => 25,
-            Hello   => $hostname,
-            doSSL   => 'starttls',
-            SSL_verify_mode => 'SSL_VERIFY_NONE',
-            )
+        [@try_mx],
+        Timeout         => 10,
+        Port            => 25,
+        Hello           => $hostname,
+        doSSL           => 'starttls',
+        SSL_verify_mode => 'SSL_VERIFY_NONE',
+        )
         or do {
-            carp "$err but 0 available for $to_domain\n";
-            return;
+        carp "$err but 0 available for $to_domain\n";
+        return;
         };
 
     carp "deliving message to $args->{to}\n";
 
     if ( $c->{smarthost} && $c->{smartuser} && $c->{smartpass} ) {
-        $smtp->auth($c->{smartuser}, $c->{smartpass} ) or do {
+        $smtp->auth( $c->{smartuser}, $c->{smartpass} ) or do {
             carp "$err but auth attempt for $c->{smartuser} failed";
         };
-    };
+    }
     my $from = $self->config->{organization}{email};
     $smtp->mail($from) or do {
         carp "MAIL FROM $from rejected\n";
         $smtp->quit;
         return;
     };
-    $smtp->recipient($args->{to}) or do {
+    $smtp->recipient( $args->{to} ) or do {
         carp "RCPT TO $args->{to} rejected\n";
         $smtp->quit;
         return;
     };
-    $smtp->data( $body ) or do {
+    $smtp->data($body) or do {
         carp "DATA for $args->{domain} rejected\n";
         return;
     };
     $smtp->quit;
     return 1;
-};
+}
 
 sub get_domain_mx {
-    my ($self, $domain) = @_;
-    my $query = $self->get_resolver->send($domain, 'MX') or return [];
+    my ( $self, $domain ) = @_;
+    my $query = $self->get_resolver->send( $domain, 'MX' ) or return [];
     my @mx;
-    for my $rr ($query->answer) {
+    for my $rr ( $query->answer ) {
         next if $rr->type ne 'MX';
-        push @mx, { pref=> $rr->preference, addr=> $rr->exchange };
+        push @mx, { pref => $rr->preference, addr => $rr->exchange };
     }
     return \@mx;
-};
+}
 
 sub get_to_dom {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
     croak "invalid args" if 'HASH' ne ref $args;
-    my ($to_dom) = (split /@/, $args->{to} )[-1];
+    my ($to_dom) = ( split /@/, $args->{to} )[-1];
     return $to_dom;
-};
+}
 
 sub get_smtp_hosts {
     my $self = shift;
     my $domain = shift or croak "missing domain!";
 
     if ( $self->config->{smtp}{smarthost} ) {
-        return [ {addr => $self->config->{smtp}{smarthost} } ];
-    };
+        return [ { addr => $self->config->{smtp}{smarthost} } ];
+    }
 
     return $self->get_domain_mx($domain);
-};
+}
 
 sub get_subject {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
 =head2 SUBJECT FIELD
 
@@ -152,67 +152,69 @@ sent by a Mail Receiver.
 
 =cut
 
-    my $id = POSIX::strftime("%Y.%m.%d.", localtime) . ($args->{report_id} || time);
+    my $id = POSIX::strftime( "%Y.%m.%d.", localtime )
+        . ( $args->{report_id} || time );
     my $us = $self->config->{organization}{domain};
-    return "Report Domain: $args->{policy_domain} Submitter: $us Report-ID: <$id>";
-};
+    return
+        "Report Domain: $args->{policy_domain} Submitter: $us Report-ID: <$id>";
+}
 
 sub get_filename {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
-#  2013 DMARC Draft, 12.2.1 Email
-#
-#   filename = receiver "!" policy-domain "!" begin-timestamp "!"
-#              end-timestamp [ "!" unique-id ] "." extension
-#   filename="mail.receiver.example!example.com!1013662812!1013749130.gz"
+    #  2013 DMARC Draft, 12.2.1 Email
+    #
+    #   filename = receiver "!" policy-domain "!" begin-timestamp "!"
+    #              end-timestamp [ "!" unique-id ] "." extension
+    #   filename="mail.receiver.example!example.com!1013662812!1013749130.gz"
     return join( '!',
-            $self->config->{organization}{domain},
-            $args->{policy_domain},
-            $args->{begin},
-            $args->{end},
-            $args->{report_id} || time,
-            ) . '.xml.gz';
-};
+        $self->config->{organization}{domain},
+        $args->{policy_domain},
+        $args->{begin}, $args->{end}, $args->{report_id} || time,
+    ) . '.xml.gz';
+}
 
 sub _assemble_message {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     my $filename = $self->get_filename($args);
-    my $cf = (time > 1372662000) ? 'gzip' : 'zip'; # gz after 7/1/13
-    my @parts = Email::MIME->create(
-                attributes => {
-                    content_type => "text/plain",
-                    disposition  => "inline",
-                    charset      => "US-ASCII",
-                },
-                body => $args->{body},
-            ) or croak "unable to add body!";
+    my $cf       = ( time > 1372662000 ) ? 'gzip' : 'zip';   # gz after 7/1/13
+    my @parts    = Email::MIME->create(
+        attributes => {
+            content_type => "text/plain",
+            disposition  => "inline",
+            charset      => "US-ASCII",
+        },
+        body => $args->{body},
+    ) or croak "unable to add body!";
 
-    push @parts, Email::MIME->create(
-                attributes => {
-                    filename     => $filename,
-                    content_type => "application/$cf",
-                    encoding     => "base64",
-                    name         => $filename,
-                },
-                body => $args->{report},
-            ) or croak "unable to add report!";
+    push @parts,
+        Email::MIME->create(
+        attributes => {
+            filename     => $filename,
+            content_type => "application/$cf",
+            encoding     => "base64",
+            name         => $filename,
+        },
+        body => $args->{report},
+        ) or croak "unable to add report!";
 
     my $email = Email::MIME->create(
-            header_str => [
-                From => $self->config->{organization}{email},
-                To   => $args->{to},
-                Date => strftime('%a, %d %b %Y %H:%M:%S %z', localtime), # RFC 2822 format
-                Subject => $args->{subject},
-            ],
-            parts => [ @parts ],
-        ) or croak "unable to assemble message\n";
+        header_str => [
+            From => $self->config->{organization}{email},
+            To   => $args->{to},
+            Date => strftime( '%a, %d %b %Y %H:%M:%S %z', localtime )
+            ,    # RFC 2822 format
+            Subject => $args->{subject},
+        ],
+        parts => [@parts],
+    ) or croak "unable to assemble message\n";
 
     return $email->as_string;
 }
 
 sub via_mail_sender {
-};
+}
 
 sub via_mime_lite {
     my $self = shift;
@@ -227,25 +229,28 @@ sub via_mime_lite {
     );
 
     $message->attach( Type => 'TEXT', Data => $args->{body} ) or croak;
-    $message->attach( Type => 'application/gzip', Data => $args->{report} ) or croak;
+    $message->attach( Type => 'application/gzip', Data => $args->{report} )
+        or croak;
 
     my $smart_host = $args->{smart_host};
     if ($smart_host) {
+
         #warn "using smart_host $smart_host\n";
         eval { $message->send( 'smtp', $smart_host, Timeout => 20 ) }; ## no critic (Eval)
         if ( !$EVAL_ERROR ) {
+
             #warn "sent using MIME::Lite and smart host $smart_host\n";
             return 1;
         }
         carp "failed to send using MIME::Lite to $smart_host\n";
     }
 
-    eval { $message->send('smtp'); }; ## no critic (Eval)
+    eval { $message->send('smtp'); };    ## no critic (Eval)
     if ( !$EVAL_ERROR ) {
         return 1;
     }
 
-    eval { $message->send(); }; ## no critic (Eval)
+    eval { $message->send(); };          ## no critic (Eval)
     if ( !$EVAL_ERROR ) {
         return 1;
     }
@@ -254,6 +259,7 @@ sub via_mime_lite {
 }
 
 1;
+
 # ABSTRACT: send DMARC reports via SMTP
 __END__
 sub {}

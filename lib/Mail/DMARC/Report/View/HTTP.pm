@@ -7,9 +7,10 @@ use parent 'Mail::DMARC::Report';
 sub new {
     my $class = shift;
     return bless {}, $class;
-};
+}
 
 1;
+
 # ABSTRACT: view locally stored DMARC reports
 __END__
 

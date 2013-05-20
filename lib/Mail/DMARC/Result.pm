@@ -7,110 +7,118 @@ use Carp;
 sub new {
     my $class = shift;
     return bless {
-        dkim   => '',
-        spf    => '',
-    },
-    $class;
+        dkim => '',
+        spf  => '',
+        },
+        $class;
 }
 
 sub published {
-    my ($self, $policy) = @_;
+    my ( $self, $policy ) = @_;
 
-    if ( ! $policy ) {
-        if ( ! defined $self->{published} ) {
-            croak "no policy discovered. Did you validate(), or at least fetch_dmarc_record() first? Or inspected results to detect a 'No Results Found' type error?";
-        };
+    if ( !$policy ) {
+        if ( !defined $self->{published} ) {
+            croak
+                "no policy discovered. Did you validate(), or at least fetch_dmarc_record() first? Or inspected results to detect a 'No Results Found' type error?";
+        }
         return $self->{published};
-    };
+    }
 
-    $policy->{domain} or croak "tag the policy object with a domain indicating where the DMARC record was found!";
+    $policy->{domain}
+        or croak
+        "tag the policy object with a domain indicating where the DMARC record was found!";
     return $self->{published} = $policy;
-};
+}
 
 sub disposition {
     return $_[0]->{disposition} if 1 == scalar @_;
     croak "invalid disposition ($_[1]"
         if 0 == grep {/^$_[1]$/ix} qw/ reject quarantine none /;
     return $_[0]->{disposition} = $_[1];
-};
+}
 
 sub dkim {
     return $_[0]->{dkim} if 1 == scalar @_;
     croak "invalid dkim" if 0 == grep {/^$_[1]$/ix} qw/ pass fail /;
     return $_[0]->{dkim} = $_[1];
-};
+}
 
 sub dkim_align {
     return $_[0]->{dkim_align} if 1 == scalar @_;
-    croak "invalid dkim_align" if 0 == grep {/^$_[1]$/ix} qw/ relaxed strict /;
+    croak "invalid dkim_align"
+        if 0 == grep {/^$_[1]$/ix} qw/ relaxed strict /;
     return $_[0]->{dkim_align} = $_[1];
-};
+}
 
 sub dkim_meta {
     return $_[0]->{dkim_meta} if 1 == scalar @_;
     return $_[0]->{dkim_meta} = $_[1];
-};
+}
 
 sub spf {
     return $_[0]->{spf} if 1 == scalar @_;
     croak "invalid spf" if 0 == grep {/^$_[1]$/ix} qw/ pass fail /;
     return $_[0]->{spf} = $_[1];
-};
+}
 
 sub spf_align {
     return $_[0]->{spf_align} if 1 == scalar @_;
     croak "invalid spf_align" if 0 == grep {/^$_[1]$/ix} qw/ relaxed strict /;
     return $_[0]->{spf_align} = $_[1];
-};
+}
 
 sub result {
     return $_[0]->{result} if 1 == scalar @_;
     croak "invalid result" if 0 == grep {/^$_[1]$/ix} qw/ pass fail /;
     return $_[0]->{result} = $_[1];
-};
+}
 
 sub reason {
     my $self = shift;
     my @args = @_;
-    return $self->{reason} if ref $self->{reason} && ! scalar @args;
+    return $self->{reason} if ref $self->{reason} && !scalar @args;
     return $self->{reason} = Mail::DMARC::Result::Reason->new(@args);
-};
+}
 
 1;
+
 # ABSTRACT: DMARC processing results
 
-package Mail::DMARC::Result::Reason;  ## no critic (MultiplePackages)
+package Mail::DMARC::Result::Reason;    ## no critic (MultiplePackages)
 use strict;
 use warnings;
 
 use Carp;
 
 sub new {
-    my ($class, @args) = @_;
+    my ( $class, @args ) = @_;
     croak "invalid arguments" if @args % 2 != 0;
     my $self = bless {}, $class;
     my %args = @args;
-    foreach my $key ( keys %args) {
+    foreach my $key ( keys %args ) {
         $self->$key( $args{$key} );
-    };
+    }
     return $self;
 }
 
 sub type {
     return $_[0]->{type} if 1 == scalar @_;
-    croak "invalid type" if 0 == grep {/^$_[1]$/ix}
+    croak "invalid type"
+        if 0 == grep {/^$_[1]$/ix}
         qw/ forwarded sampled_out trusted_forwarder
-            mailing_list local_policy other /;
+        mailing_list local_policy other /;
     return $_[0]->{type} = $_[1];
-};
+}
 
 sub comment {
     return $_[0]->{comment} if 1 == scalar @_;
+
     # comment is optional and requires no validation
     return $_[0]->{comment} = $_[1];
-};
+}
 
 1;
+
 # ABSTRACT: the results of applying a policy
 __END__
 sub {}
