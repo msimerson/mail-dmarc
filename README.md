@@ -1,23 +1,17 @@
+# NAME
+
+Mail::DMARC - Perl implementation of DMARC
+
+# VERSION
+
+version 0.20130520
+
 # SYNOPSIS
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
 
-A reliable means to authenticate who mail is from, at internet scale.
-
-# DESCRIPTION
-
-Determine if:
-
-    a. the header_from domain exists
-    b. the header_from domain publishes a DMARC policy
-    c. does the message conform to the published policy?
-
-Results of DMARC processing are stored in a [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) object.
-
-# HOW TO USE
-
     my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
-    my $result = $dmarc->verify();
+    my $result = $dmarc->validate();
 
     if ( $result->result eq 'pass' ) {
         ...continue normal processing...
@@ -36,27 +30,47 @@ Results of DMARC processing are stored in a [Mail::DMARC::Result](http://search.
         ...continue normal processing...
     };
 
-There's a lot of information available in the $result object. See [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) page for complete details.
+# DESCRIPTION
+
+This module is a suite of tools for implementing DMARC. It adheres very tightly to the 2013 DMARC draft, intending to implement every MUST and every SHOULD.
+
+This module can be used...
+
+    by MTAs and filtering tools such as SpamAssassin to validate that incoming messages are aligned with the purported senders policies.
+
+    by an email sender that wishes to receive DMARC reports from other mail servers.
+
+When a message arrives via SMTP, the MTA or filtering application can pass in a small amount of metadata about the connection (envelope details, SPF results, and DKIM results) to Mail::DMARC. When the __validate__ method is called, the Mail::DMARC will determine if:
+
+    a. the header_from domain exists
+    b. the header_from domain publishes a DMARC policy
+    c. if not, end processing
+    d. does the message conform to the published policy?
+    e. did the policy request reporting? If so, save details.
+
+The validation results are stored in a [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) object. If the author domain requested a report, it was saved via [Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail::DMARC::Report::Store). A SQL implementation is provided and tested with SQLite and MySQL. ANSI SQL queries syntax is preferred, making it straight forward to extend to other RDBMS.
+
+There is more information available in the $result object. See [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) for complete details.
 
 # CLASSES
 
-[Mail::DMARC](http://search.cpan.org/perldoc?Mail::DMARC) - A perl implementation of the DMARC draft
+[Mail::DMARC](http://search.cpan.org/perldoc?Mail::DMARC) - the perl interface for DMARC
 
-[Mail::DMARC::Policy](http://search.cpan.org/perldoc?Mail::DMARC::Policy) - a DMARC policy, as published or retrieved via DNS
+[Mail::DMARC::Policy](http://search.cpan.org/perldoc?Mail::DMARC::Policy) - a DMARC policy
 
-[Mail::DMARC::PurePerl](http://search.cpan.org/perldoc?Mail::DMARC::PurePerl) - a perl DMARC implementation
+[Mail::DMARC::PurePerl](http://search.cpan.org/perldoc?Mail::DMARC::PurePerl) - Pure Perl implementation of DMARC
 
-[Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) - results of DMARC processing
+[Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) - the results of applying policy
 
 [Mail::DMARC::Report](http://search.cpan.org/perldoc?Mail::DMARC::Report) - Reporting: the R in DMARC
 
-    [Mail::DMARC::Report::Send](http://search.cpan.org/perldoc?Mail::DMARC::Report::Send) - deliver formatted reports via SMTP & HTTP
+    [Mail::DMARC::Report::Send](http://search.cpan.org/perldoc?Mail::DMARC::Report::Send) - send reports via SMTP & HTTP
 
-    [Mail::DMARC::Report::Receive](http://search.cpan.org/perldoc?Mail::DMARC::Report::Receive) - parse incoming email and HTTP reports to store
+    [Mail::DMARC::Report::Receive](http://search.cpan.org/perldoc?Mail::DMARC::Report::Receive) - receive and store reports from email, HTTP
 
-    [Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail::DMARC::Report::Store) - a persistent data store for DMARC reports
+    [Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail::DMARC::Report::Store) - a persistent data store for aggregate reports
 
-    [Mail::DMARC::Report::View](http://search.cpan.org/perldoc?Mail::DMARC::Report::View) - CLI and (eventually) CGI methods for report viewing
+    [Mail::DMARC::Report::View](http://search.cpan.org/perldoc?Mail::DMARC::Report::View) - CLI and CGI methods for viewing reports
 
 [Mail::DMARC::libopendmarc](http://search.cpan.org/~shari/Mail-DMARC-opendmarc) - an XS implementation using libopendmarc
 
@@ -77,7 +91,7 @@ Create an empty DMARC object. Then populate it and run the request:
         scope  => 'mfrom',
         result => 'pass',
             );
-    my $result = $dmarc->verify();
+    my $result = $dmarc->validate();
 
 Alternatively, you can pass in all the required parameters in one shot:
 
@@ -89,9 +103,7 @@ Alternatively, you can pass in all the required parameters in one shot:
             dkim          => $dkim_results,  # same format
             spf           => $spf_results,   # as previous example
             );
-    my $result = $dmarc->verify();
-
-
+    my $result = $dmarc->validate();
 
 ## source\_ip
 
@@ -119,7 +131,7 @@ You can instead pass in the entire From: header with header\_from\_raw.
 
 ## header\_from\_raw
 
-This retrieves the header\_from domain by extracing it from a raw From field/header.  The domain portion is extracted by Mail::DMARC::PurePerl::get\_dom\_from\_header, which is fast, generally effective, but also rather crude. It does have limits, so read the description.
+Retrieve the header\_from domain by parsing it from a raw From field/header. The domain portion is extracted by [get\_dom\_from\_header](http://search.cpan.org/perldoc?Mail::DMARC::PurePerl\#get\_dom\_from\_header), which is fast, generally effective, but also rather crude. It has limits, so read the description.
 
 ## dkim
 
@@ -180,3 +192,51 @@ The scope of the checked domain: mfrom, helo
 ### result
 
 The SPF result code: none, neutral, pass, fail, softfail, temperror, or permerror.
+
+# DESIGN & GOALS
+
+## Correct
+
+The DMARC spec is lengthy and evolving, making correctness a moving target. In cases where correctness is ambiguous, options are generally provided.
+
+## Easy to use
+
+The effectiveness of DMARC will improve significantly as adoption increases. Proving an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
+
+The list of dependencies is long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is less than 5.
+
+## Maintainable
+
+Since DMARC is evolving, this implementation aims to be straight forward and dare I say, easy, to alter and extend. The programming style is primarily OO, which carries a small performance penalty but large dividends in maintainability.
+
+When multiple options are available, such as when sending reports via SMTP or HTTP, calls are made to the parent Send class, which brokers the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than the many provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
+
+## Fast
+
+I have conducted no optimization nor benchmarking and I am not a High Performance Perl expert. If you deploy this in an environment where performance is not sufficient, please do submit patches that are aligned with these goals.
+
+# SEE ALSO
+
+Mail::DMARC on GitHub: https://github.com/msimerson/mail-dmarc
+
+Mar 13, 2013 Draft: http://tools.ietf.org/html/draft-kucherawy-dmarc-base-00
+
+Mar 30, 2012 Draft: http://www.dmarc.org/draft-dmarc-base-00-02.txt
+
+# HISTORY
+
+The daddy of this perl module was a DMARC module for the qpsmtpd MTA.
+
+Qpsmtpd plugin: https://github.com/qpsmtpd-dev/qpsmtpd-dev/blob/master/plugins/dmarc
+
+# AUTHORS
+
+- Matt Simerson <msimerson@cpan.org>
+- Davide Migliavacca <shari@cpan.org>
+
+# COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by The Network People, Inc..
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
