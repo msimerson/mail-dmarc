@@ -109,8 +109,7 @@ trusted_forwarder:  Message authentication failure was anticipated by
 <xs:complexType name="PolicyOverrideReason">
   <xs:all>
     <xs:element name="type" type="PolicyOverrideType"/>
-    <xs:element name="comment" type="xs:string"
-               minOccurs="0"/>
+    <xs:element name="comment" type="xs:string" minOccurs="0"/>
   </xs:all>
 </xs:complexType>
 

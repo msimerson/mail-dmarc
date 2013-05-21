@@ -15,8 +15,8 @@ require Mail::DMARC::Report::View;
 
 sub init {
     my $self = shift;
-    delete $_->{dmarc};
-    delete $_->{aggregate};
+    delete $self->{dmarc};
+    delete $self->{aggregate};
     return;
 }
 

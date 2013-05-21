@@ -43,7 +43,6 @@ sub from_imap {
 
     print "\tfound " . scalar @mess . " messages\n" if $self->verbose;
 
-    #   for(my $i = 1; $i <= $nm; $i++){
     foreach my $i (@mess) {
         print $imap->seen($i) ? '*' : ' ';
         printf "[%03d] ", $i;
@@ -182,8 +181,11 @@ sub get_submitter_from_subject {
     $subject =~ s/\s+//g;    # remove white space
     my ( undef, $report_dom, $sub_dom, $report_id ) = split /:/, $subject;
     my $meta = $self->report->aggregate->metadata;
-    if ( $report_id ) {
-        $meta->uuid($report_id) if !$meta->uuid;
+    if ( $report_id && !$meta->uuid ) {
+        # remove <containment brackets> if present
+        $report_id = substr($report_id,1) if '<' eq substr($report_id,0,1);
+        chop $report_id if '>' eq substr($report_id,-1,1);
+        $meta->uuid($report_id);
     };
     return $meta->domain($sub_dom);
 }
@@ -213,14 +215,17 @@ sub report {
 sub do_node_report_metadata {
     my ( $self, $node ) = @_;
 
-    foreach my $n (qw/ org_name email extra_contact_info report_id /) {
-        $self->report->aggregate->metadata->$n( $node->findnodes("./$n")->string_value );
+    foreach my $n (qw/ org_name email extra_contact_info /) {
+        $self->report->aggregate->metadata->$n(
+            $node->findnodes("./$n")->string_value );
     }
 
     if ( ! $self->report->aggregate->metadata->uuid ) {
-        $self->report->aggregate->metadata->uuid(
-            $self->report->aggregate->metadata->uuid( $node->findnodes("./report_id")->string_value )
-            );
+        my $rid = $node->findnodes("./report_id")->string_value;
+        $rid = substr($rid,1) if '<' eq substr($rid,0,1);
+        chop $rid if '>' eq substr($rid,-1,1);
+        $self->report->aggregate->metadata->uuid( $rid );
+        $self->report->aggregate->metadata->report_id( $rid );
     };
 
     foreach my $n (qw/ begin end /) {
@@ -253,40 +258,23 @@ sub do_node_record {
     my ( $self, $node ) = @_;
 
     my $row;
-    my %auth = (
-        dkim => [qw/ domain selector result human_result /],
-        spf  => [qw/ domain scope result /],
-    );
-
-    #auth_results: dkim, spf
-    foreach my $a ( keys %auth ) {
-        foreach my $n ( $node->findnodes("./auth_results/$a") ) {
-            push @{ $row->{auth_results}{$a} }, {
-                map {
-                    $_ =>
-                        $node->findnodes("./auth_results/$a/$_")->string_value
-                } @{ $auth{$a} }
-            };
-        }
-    }
+    $self->do_node_record_auth(\$row, $node);
 
     $row->{identifiers}{source_ip}
         = $node->findnodes("./row/source_ip")->string_value;
 
     $row->{count} = $node->findnodes("./row/count")->string_value;
 
-    #row: policy_evaluated
+    # policy_evaluated
     foreach my $pe (qw/ disposition dkim spf /) {
         $row->{policy_evaluated}{$pe}
             = $node->findnodes("./row/policy_evaluated/$pe")->string_value;
     }
 
-    #reason
-    foreach my $r ( $node->findnodes("./row/policy_evaluated/reason") ) {
-        push @{ $row->{policy_evaluated}{reason} }, $r->string_value;
-    }
+    # reason
+    $self->do_node_record_reason( \$row, $node );
 
-    #identifiers:
+    # identifiers
     foreach my $i (qw/ envelope_to envelope_from header_from /) {
         $row->{identifiers}{$i}
             = $node->findnodes("./identifiers/$i")->string_value;
@@ -295,6 +283,46 @@ sub do_node_record {
     $self->report->aggregate->record($row);
     return $row;
 }
+
+sub do_node_record_auth {
+    my ($self, $row, $node) = @_;
+
+    my %auth = (
+        dkim => [qw/ domain selector result human_result /],
+        spf  => [qw/ domain scope result /],
+    );
+
+    #auth_results: dkim, spf
+    foreach my $a ( keys %auth ) {
+        foreach my $n ( $node->findnodes("./auth_results/$a") ) {
+            push @{ $$row->{auth_results}{$a} }, {
+                map {
+                    $_ =>
+                        $node->findnodes("./auth_results/$a/$_")->string_value
+                } @{ $auth{$a} }
+            };
+        }
+    }
+    return;
+};
+
+sub do_node_record_reason {
+    my ($self, $row, $node) = @_;
+
+    my @types = qw/ forwarded sampled_out trusted_forwarder mailing_list
+                    local_policy other /;
+    my %types = map { $_ => 1 } @types;
+
+    foreach my $r ( $node->findnodes("./row/policy_evaluated/reason") ) {
+        my $type = $r->findnodes('./type')->string_value or next;
+        my $comment = $r->findnodes('./comment')->string_value;
+        push @{ $$row->{policy_evaluated}{reason} }, {
+            type    => $type,
+            comment => $comment,
+        };
+    }
+    return;
+};
 
 sub verbose {
     return $_[0]->{verbose} if 1 == scalar @_;

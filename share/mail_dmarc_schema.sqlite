@@ -146,6 +146,7 @@ CREATE TABLE `report_record` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `report_id` INTEGER NOT NULL REFERENCES "report"("id") ON UPDATE CASCADE ON DELETE CASCADE,
   `source_ip` varbinary(16) NOT NULL,
+  `count` INTEGER DEFAULT NULL,
   `disposition` TEXT NOT NULL REFERENCES "fk_disposition"("disposition") ON UPDATE CASCADE ON DELETE NO ACTION,
   `dkim` TEXT DEFAULT NULL,
   `spf` TEXT DEFAULT NULL,

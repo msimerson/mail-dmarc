@@ -167,16 +167,34 @@ sub get_aggregate_rid {
     }
 
     my $rid = $self->{report_id} = $self->query(
-        'INSERT INTO report (from_domain_id, rcpt_domain_id, begin, end, author_id) VALUES (??)',
-        [ $from_dom_id, $rcpt_dom_id, $meta->begin, $meta->end, $author_id ]
+        'INSERT INTO report (from_domain_id, rcpt_domain_id, begin, end, author_id, uuid) VALUES (??)',
+        [ $from_dom_id, $rcpt_dom_id, $meta->begin, $meta->end, $author_id, $meta->uuid ]
     ) or return;
 
     $self->insert_published_policy( $rid, $pol );
     return $rid;
 }
 
+sub row_exists {
+    my ($self, $rid, $rec ) = @_;
+
+    if ( ! defined $rec->{count} ) {
+        carp "\tnew record";
+        return;
+    };
+
+    my $rows = $self->query('SELECT id FROM report_record WHERE report_id=? AND source_ip=? AND count=?',
+            [ $rid, $rec->{identifiers}{source_ip}, $rec->{count}, ]
+            );
+
+    return 1 if scalar @$rows;
+    return;
+};
+
 sub insert_aggregate_row {
     my ($self, $rid, $rec) = @_;
+
+    return 1 if $self->row_exists( $rid, $rec);
 
     my @idfs = qw/ source_ip header_from envelope_to envelope_from /;
     my @evfs = qw/ disposition dkim spf /;

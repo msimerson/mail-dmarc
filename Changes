@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+ - check for report_record existence before insertion
+ - SQL: added report_record.count column
  - subclassed aggregreate reports into Report::Aggregate
    - consolidates two agg. rep. generation methods to one
  - SQL: added table report_error

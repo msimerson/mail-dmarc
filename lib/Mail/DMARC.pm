@@ -157,14 +157,14 @@ sub save_aggregate {
                     header_from   => $self->header_from,
                     },
                 auth_results => {
-                    dkim => $self->dkim,
-                    spf  => $self->spf,
+                    dkim          => $self->dkim,
+                    spf           => $self->spf,
                     },
-                policy_evaluated => {
-                    disposition => $self->result->disposition,
-                    dkim        => $self->result->dkim,
-                    spf         => $self->result->spf,
-                    reason      => $self->result->reason,
+                policy_evaluated  => {
+                    disposition   => $self->result->disposition,
+                    dkim          => $self->result->dkim,
+                    spf           => $self->result->spf,
+                    reason        => $self->result->reason,
                     }
             });
 
