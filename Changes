@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+ - subclassed aggregreate reports into Report::Aggregate
+   - consolidates two agg. rep. generation methods to one
  - SQL: added table report_error
  - updated SQLite schema with native column types
 

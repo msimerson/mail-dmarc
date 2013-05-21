@@ -8,9 +8,10 @@ use DBIx::Simple;
 use File::ShareDir;
 
 use parent 'Mail::DMARC::Base';
+use Mail::DMARC::Report::Aggregate;
 
 sub save_author {
-    my ( $self, $meta, $policy, $records ) = @_;
+    my ( $self, $agg ) = @_;
 
    # Reports that others generate, when they receive email purporting to be us
 
@@ -23,16 +24,16 @@ sub save_author {
     #warn Dumper($meta); ## no critic (Carp)
     foreach my $k ( keys %required ) {
         foreach my $f ( @{ $required{$k} } ) {
-            croak "missing $k, $f" if 'policy' eq $k  && !$policy->{$f};
-            croak "missing $k, $f" if 'meta' eq $k    && !$meta->$f;
-            croak "missing $k, $f" if 'records' eq $k && !$records->{$f};
+            croak "missing $k, $f" if 'meta' eq $k    && !$agg->metadata->$f;
+#           croak "missing $k, $f" if 'policy' eq $k  && !$agg->policy_published->{$f};
+#           croak "missing $k, $f" if 'records' eq $k && !$agg->records->{$f};
         }
     }
 
-    my $rid = $self->insert_author_report( $meta, $policy )
+    my $rid = $self->insert_author_report( $agg )
         or croak "failed to create report!";
 
-    foreach my $rec (@$records) {
+    foreach my $rec ( @{ $agg->record } ) {
         next if !$rec;
 
         my $row_id = $self->insert_report_row(
@@ -67,7 +68,7 @@ sub save_author {
         }
     }
 
-    return $self->{report_row_id};
+    return $rid;
 }
 
 sub save_receiver {
@@ -109,40 +110,65 @@ sub save_receiver {
 
 sub retrieve {
     my ( $self, %args ) = @_;
-    my $query = 'SELECT * FROM report WHERE 1=1';
-    my @qparm;
-    if ( $args{end} ) {
-        $query .= " AND end < ?";
-        push @qparm, $args{end};
 
-        #       print "query: $query ($args{end})\n";
-    }
-    my $reports = $self->query( $query, [@qparm] );
-    foreach my $r (@$reports) {
-        $r->{policy_published}
-            = $self->query(
+    my $author_id = $self->{author_id} || $self->query(
+            'SELECT id FROM author WHERE org_name=?',
+            [ $self->config->{organization}{org_name} ]
+            )->[0]{id};
+
+#carp "author id: $author_id\n";
+    my $reports = $self->query(
+            'SELECT * FROM report WHERE end < ? AND author_id != ? LIMIT 1',
+            [ time, $author_id ]
+            );
+    return if ! @$reports;
+    my $report = $reports->[0];
+carp "report: " . Dumper($report);
+
+    my $agg = Mail::DMARC::Report::Aggregate->new();
+    $agg->metadata->report_id( $report->{id} );
+
+    foreach my $f ( qw/ domain org_name email extra_contact_info / ) {
+        $agg->metadata->$f( $self->config->{organization}{$f} );
+    };
+    foreach my $f ( qw/ begin end / ) {
+        $agg->metadata->$f( $report->{$f} );
+    };
+
+    my $errors = $self->query('SELECT error FROM report_error WHERE report_id=?', [ $report->{id} ] );
+    foreach ( @$errors ) {
+        $agg->metadata->error( $_->{error} );
+    };
+
+    my $pp = $self->query(
             'SELECT * from report_policy_published WHERE report_id=?',
-            [ $r->{id} ] )->[0];
-        my $rows = $r->{rows}
-            = $self->query( 'SELECT * from report_record WHERE report_id=?',
-            [ $r->{id} ] );
-        foreach my $row (@$rows) {
-            $row->{source_ip} = $self->any_inet_ntop( $row->{source_ip} );
-            $row->{reason}    = $self->query(
-                'SELECT type,comment from report_record_reason WHERE report_record_id=?',
-                [ $row->{id} ]
-            );
-            $row->{auth_results}{spf} = $self->query(
-                'SELECT domain,result,scope from report_record_spf WHERE report_record_id=?',
-                [ $row->{id} ]
-            );
-            $row->{auth_results}{dkim} = $self->query(
-                'SELECT domain,selector,result,human_result from report_record_dkim WHERE report_record_id=?',
-                [ $row->{id} ]
-            );
-        }
+            [ $report->{id} ]
+            )->[0];
+    $pp->{v} = 'DMARC1';
+    $pp->{p} ||= 'none';
+    $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
+#carp "aggregate: " . Dumper($agg);
+
+    my $rows = $self->query( 'SELECT * from report_record WHERE report_id=?',
+        [ $report->{id} ] );
+
+    foreach my $row (@$rows) {
+        $row->{source_ip} = $self->any_inet_ntop( $row->{source_ip} );
+        $row->{reason}    = $self->query(
+            'SELECT type,comment from report_record_reason WHERE report_record_id=?',
+            [ $row->{id} ]
+        );
+        $row->{auth_results}{spf} = $self->query(
+            'SELECT domain,result,scope from report_record_spf WHERE report_record_id=?',
+            [ $row->{id} ]
+        );
+        $row->{auth_results}{dkim} = $self->query(
+            'SELECT domain,selector,result,human_result from report_record_dkim WHERE report_record_id=?',
+            [ $row->{id} ]
+        );
+        $agg->record($row);
     }
-    return $reports;
+    return $agg;
 }
 
 sub delete_report {
@@ -242,8 +268,9 @@ EO_ROW_INSERT
         ;
     my $args = [
         $report_id,
+        $self->any_inet_pton( $identifiers->{source_ip} ),
         (   map { $identifiers->{$_} || '' }
-                qw/ source_ip header_from envelope_to envelope_from /
+                qw/ header_from envelope_to envelope_from /
         ),
         ( map { $result->{$_} } qw/ disposition dkim spf / ),
     ];
@@ -252,12 +279,15 @@ EO_ROW_INSERT
 }
 
 sub insert_author_report {
-    my ( $self, $meta, $pub_pol ) = @_;
+    my ( $self, $aggregate ) = @_;
+
+    my $meta = $aggregate->metadata;
+    my $pol  = $aggregate->policy_published;
 
     # check if report exists
     my $rcpt_dom_id = $self->get_domain_id( $meta->domain );
-    my $author_id   = $self->get_author_id($meta);
-    my $from_dom_id = $self->get_domain_id( $pub_pol->domain );
+    my $author_id   = $self->get_author_id( $meta );
+    my $from_dom_id = $self->get_domain_id( $pol->domain );
 
     my $ids = $self->query(
         'SELECT id FROM report WHERE rcpt_domain_id=? AND uuid=? AND author_id=?',
@@ -266,7 +296,7 @@ sub insert_author_report {
 
     if ( scalar @$ids ) {
 
-        #       warn "found " . scalar @$ids . " matching reports!";
+        #warn "found " . scalar @$ids . " matching reports!";
         return $self->{report_id} = $ids->[0]{id};
     }
 
@@ -276,7 +306,7 @@ sub insert_author_report {
         [ $from_dom_id, $rcpt_dom_id, $meta->begin, $meta->end, $author_id ]
     ) or return;
 
-    $self->insert_report_published_policy( $rid, $pub_pol );
+    $self->insert_report_published_policy( $rid, $pol );
     return $rid;
 }
 
@@ -286,7 +316,7 @@ sub insert_receiver_report {
     my $from_id = $self->get_domain_id( $self->dmarc->header_from )
         or croak "missing header_from!";
     my $rcpt_id = $self->get_domain_id( $self->dmarc->envelope_to );
-    my $meta    = $self->dmarc->report->meta;
+    my $meta    = $self->dmarc->report->aggregate->metadata;
     $meta->org_name( $self->config->{organization}{org_name} );
     $meta->email( $self->config->{organization}{email} );
     my $author_id = $self->get_author_id($meta);

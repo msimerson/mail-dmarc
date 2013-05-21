@@ -20,26 +20,28 @@ sub from_imap {
     eval "require Net::IMAP::Simple";    ## no critic (Eval)
     croak "Net::IMAP::Simple seems to not work, is it installed?" if $@;
 
-    my $server = $self->config->{imap}{server}
-        or croak "missing imap server setting";
-    my $folder = $self->config->{imap}{folder}
-        or croak "missing imap folder setting";
-    my $a_done = $self->config->{imap}{a_done}
-        or croak "missing imap a_done setting";
-    my $f_done = $self->config->{imap}{f_done}
-        or croak "missing imap f_done setting";
+    my $server = $self->config->{imap}{server} or croak "no imap server conf";
+    my $folder = $self->config->{imap}{folder} or croak "no imap folder conf";
+    my $a_done = $self->config->{imap}{a_done};
+    my $f_done = $self->config->{imap}{f_done};
 
     no warnings qw(once);                ## no critic (Warn)
     my $imap = Net::IMAP::Simple->new( $server, Port => 995, use_ssl => 1 )
         or croak
         "Unable to connect to IMAP: $Net::IMAP::Simple::SSL::errstr\n";
 
+    print "connected to IMAP server $server\n" if $self->verbose;
+
     $imap->login( $self->config->{imap}{user}, $self->config->{imap}{pass} )
         or croak "Login failed: " . $imap->errstr . "\n";
+
+    print "\tlogged in\n" if $self->verbose;
 
     my $nm = $imap->select( $self->config->{imap}{folder} );
     $imap->expunge_mailbox( $self->config->{imap}{folder} );
     my @mess = $imap->search( 'UNSEEN', 'DATE' );
+
+    print "\tfound " . scalar @mess . " messages\n" if $self->verbose;
 
     #   for(my $i = 1; $i <= $nm; $i++){
     foreach my $i (@mess) {
@@ -57,11 +59,13 @@ sub from_imap {
             :                        croak "unknown type!";
 
         $imap->add_flags( $i, '\Seen' );
-        $imap->copy( $i, $done_box ) or do {
-            carp $imap->errstr;
-            next;
+        if ( $done_box ) {
+            $imap->copy( $i, $done_box ) or do {
+                carp $imap->errstr;
+                next;
+            };
+            $imap->add_flags( $i, '\Deleted' );
         };
-        $imap->add_flags( $i, '\Deleted' );
     }
 
     $imap->quit;
@@ -158,9 +162,9 @@ sub from_email_simple {
 
 sub get_submitter_from_filename {
     my ( $self, $filename ) = @_;
-    return if $self->report->meta->domain;
+    return if $self->report->aggregate->metadata->domain;
     my ( $submitter_dom, $report_dom, $begin, $end ) = split /!/, $filename;
-    return $self->report->meta->domain($submitter_dom);
+    return $self->report->aggregate->metadata->domain($submitter_dom);
 }
 
 sub get_submitter_from_subject {
@@ -176,25 +180,25 @@ sub get_submitter_from_subject {
     $subject
         =~ s/(?:report\sdomain|submitter|report-id)//gx;    # remove keywords
     $subject =~ s/\s+//g;    # remove white space
-    my ( undef, $report_dom, $submitter_dom, $report_id ) = split /:/,
-        $subject;
-    $self->report->meta->uuid($report_id) if !$self->report->meta->uuid;
-    return $self->report->meta->domain($submitter_dom);
+    my ( undef, $report_dom, $sub_dom, $report_id ) = split /:/, $subject;
+    my $meta = $self->report->aggregate->metadata;
+    if ( $report_id ) {
+        $meta->uuid($report_id) if !$meta->uuid;
+    };
+    return $meta->domain($sub_dom);
 }
 
 sub handle_body {
     my ( $self, $body ) = @_;
 
-    #   print "handling decompressed body\n";
+    print "handling decompressed body\n" if $self->{verbose};
 
     my $dom = XML::LibXML->load_xml( string => $body );
-    foreach my $top (qw/ report_metadata policy_published /) {
-        my $sub = 'handle_node_' . $top;
-        $self->$sub( $dom->findnodes("/feedback/$top") );
-    }
+    $self->do_node_report_metadata( $dom->findnodes("/feedback/report_metadata") );
+    $self->do_node_policy_published( $dom->findnodes("/feedback/policy_published") );
 
     foreach my $record ( $dom->findnodes("/feedback/record") ) {
-        $self->handle_node_record($record);
+        $self->do_node_record($record);
     }
 
     return $self->report->save_author();
@@ -206,25 +210,31 @@ sub report {
     return $self->{report} = Mail::DMARC::Report->new();
 }
 
-sub handle_node_report_metadata {
+sub do_node_report_metadata {
     my ( $self, $node ) = @_;
 
     foreach my $n (qw/ org_name email extra_contact_info report_id /) {
-        $self->report->meta->$n( $node->findnodes("./$n")->string_value );
+        $self->report->aggregate->metadata->$n( $node->findnodes("./$n")->string_value );
     }
 
+    if ( ! $self->report->aggregate->metadata->uuid ) {
+        $self->report->aggregate->metadata->uuid(
+            $self->report->aggregate->metadata->uuid( $node->findnodes("./report_id")->string_value )
+            );
+    };
+
     foreach my $n (qw/ begin end /) {
-        $self->report->meta->$n(
+        $self->report->aggregate->metadata->$n(
             $node->findnodes("./date_range/$n")->string_value );
     }
 
     foreach my $n ( $node->findnodes("./error") ) {
-        $self->report->meta->error( $n->string_value );
+        $self->report->aggregate->metadata->error( $n->string_value );
     }
-    return $self->report->meta;
+    return $self->report->aggregate->metadata;
 }
 
-sub handle_node_policy_published {
+sub do_node_policy_published {
     my ( $self, $node ) = @_;
 
     my $pol = Mail::DMARC::Policy->new();
@@ -235,11 +245,11 @@ sub handle_node_policy_published {
         $pol->$n($val);
     }
 
-    $self->report->policy_published($pol);
+    $self->report->aggregate->policy_published($pol);
     return $pol;
 }
 
-sub handle_node_record {
+sub do_node_record {
     my ( $self, $node ) = @_;
 
     my $row;
@@ -282,9 +292,14 @@ sub handle_node_record {
             = $node->findnodes("./identifiers/$i")->string_value;
     }
 
-    $self->report->add_record($row);
+    $self->report->aggregate->record($row);
     return $row;
 }
+
+sub verbose {
+    return $_[0]->{verbose} if 1 == scalar @_;
+    return $_[0]->{verbose} = $_[1];
+};
 
 1;
 __END__

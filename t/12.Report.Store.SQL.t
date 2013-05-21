@@ -52,13 +52,13 @@ sub test_insert_author_report {
     );
     my $report = Mail::DMARC::Report->new();
     foreach ( keys %meta ) {
-        ok( $report->meta->$_( $meta{$_} ), "meta, $_" );
+        ok( $report->aggregate->metadata->$_( $meta{$_} ), "meta, $_" );
     }
     my $policy = Mail::DMARC::Policy->new("v=DMARC1; p=reject");
     $policy->rua( 'mailto:' . $sql->config->{organization}{email} );
     $policy->{domain} = 'recip.example.com';
-    ok( $sql->insert_author_report( $report->meta, $policy ),
-        'insert_author_report' );
+    $report->aggregate->policy_published( $policy );
+    ok( $sql->insert_author_report( $report->aggregate ), 'insert_author_report' );
 }
 
 sub test_insert_rr_reason {
