@@ -4,6 +4,7 @@ use warnings;
 
 use Data::Dumper;
 use Getopt::Long;
+use Pod::Usage;
 
 use lib 'lib';
 use Mail::DMARC::Report::Receive;
@@ -18,17 +19,25 @@ my %command_line_options = (
     );
 GetOptions (%command_line_options);
 
+pod2usage(0) if ! $imap && ! $mbox && ! $file;
 
-my $recv = Mail::DMARC::Report::Receive->new();
-$recv->from_imap        if $imap;
-$recv->from_mbox($mbox) if $mbox;
-$recv->from_file($file) if $file;
+## no critic (Carp)
+my $recv = Mail::DMARC::Report::Receive->new() or die;
+$recv->verbose($verbose) if $verbose;
+$recv->from_imap         if $imap;
+$recv->from_mbox($mbox)  if $mbox;
+$recv->from_file($file)  if $file;
 
 exit;
 
 # PODNAME: dmarc_receive
 # ABSTRACT: process received DMARC reports
 __END__
+
+=head1 USAGE
+
+ dmarc_receive [ --imap | --mbox | -- file ]
+
 
 =head1 DESCRIPTION
 
@@ -63,6 +72,7 @@ Accepts the filename of a file containing a mail message. The message is parsed 
 =head2 Mbox
 
 Accepts the filename of a mbox format file containing mail messages. The messages are parsed and stored.
+
 
 =cut
 
