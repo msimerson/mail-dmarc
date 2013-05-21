@@ -47,6 +47,14 @@ CREATE TABLE `domain` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
+CREATE TABLE `report_error` (
+  `report_id` int(11) unsigned NOT NULL,
+  `error` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '',
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `report_id` (`report_id`),
+  CONSTRAINT `report_error_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `report` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 
 # Dump of table fk_disposition
 # ------------------------------------------------------------

@@ -1,6 +1,9 @@
 
 {{$NEXT}}
 
+ - SQL: added table report_error
+ - updated SQLite schema with native column types
+
 0.20130520 2013-05-19 America/Los_Angeles
 
  - added bin/dmarc_receive (via IMAP, mbox, or message file)
