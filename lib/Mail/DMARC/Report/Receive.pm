@@ -220,12 +220,13 @@ sub do_node_report_metadata {
             $node->findnodes("./$n")->string_value );
     }
 
+    my $rid = $node->findnodes("./report_id")->string_value;
+    $rid = substr($rid,1) if '<' eq substr($rid,0,1);
+    chop $rid if '>' eq substr($rid,-1,1);
+    $self->report->aggregate->metadata->report_id( $rid );
+
     if ( ! $self->report->aggregate->metadata->uuid ) {
-        my $rid = $node->findnodes("./report_id")->string_value;
-        $rid = substr($rid,1) if '<' eq substr($rid,0,1);
-        chop $rid if '>' eq substr($rid,-1,1);
         $self->report->aggregate->metadata->uuid( $rid );
-        $self->report->aggregate->metadata->report_id( $rid );
     };
 
     foreach my $n (qw/ begin end /) {

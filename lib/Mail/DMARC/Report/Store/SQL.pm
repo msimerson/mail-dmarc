@@ -261,7 +261,7 @@ sub insert_rr {
     $report_id or croak "report ID required?!";
     my $query = <<'EO_ROW_INSERT'
 INSERT INTO report_record
-   (report_id, source_ip, header_from, envelope_to, envelope_from,
+   (report_id, source_ip, count, header_from, envelope_to, envelope_from,
     disposition, dkim, spf
     )
    VALUES (??)
@@ -273,6 +273,7 @@ EO_ROW_INSERT
     my $args = [
         $report_id,
         $self->any_inet_pton( $row->{identifiers}{source_ip} ),
+        $row->{count},
         ( map { $row->{identifiers}{$_} || '' } @idfs ),
         ( map { $row->{policy_evaluated}{$_} } @evfs ),
     ];
