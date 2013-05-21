@@ -59,7 +59,7 @@ IMAP aggregate reports are detected by the presence of zip or gzip attachments. 
  * the XML is parsed
  * the report is saved to the report store
  * the message is marked as read/seen
- * the message is moved to the [imap][a_done] IMAP folder
+ * move message to [imap][a_done] folder (if defined)
 
 =head3 IMAP Forensic report
 
