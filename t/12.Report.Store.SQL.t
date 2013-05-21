@@ -31,17 +31,17 @@ test_query_delete();
 test_query();
 test_query_any();
 test_ip_store_and_fetch();
-test_insert_report_published_policy();
-test_insert_report_row();
+test_insert_published_policy();
+test_insert_rr();
 test_insert_rr_spf();
 test_insert_rr_dkim();
 test_insert_rr_reason();
-test_insert_author_report();
+test_get_aggregate_rid();
 
 done_testing();
 exit;
 
-sub test_insert_author_report {
+sub test_get_aggregate_rid {
     my %meta = (
         report_id => time,
         domain    => 'test.com',
@@ -58,7 +58,7 @@ sub test_insert_author_report {
     $policy->rua( 'mailto:' . $sql->config->{organization}{email} );
     $policy->{domain} = 'recip.example.com';
     $report->aggregate->policy_published( $policy );
-    ok( $sql->insert_author_report( $report->aggregate ), 'insert_author_report' );
+    ok( $sql->get_aggregate_rid( $report->aggregate ), 'get_aggregate_rid' );
 }
 
 sub test_insert_rr_reason {
@@ -102,7 +102,7 @@ sub test_insert_rr_spf {
     ok( $sql->insert_rr_spf( $row_id, $spf ), 'insert_rr_spf' );
 }
 
-sub test_insert_report_row {
+sub test_insert_rr {
     my $rid = $sql->query('SELECT * FROM report LIMIT 1')->[0]{id} or return;
     my %identifers = (
         source_ip     => '192.1.1.1',
@@ -115,17 +115,19 @@ sub test_insert_report_row {
         dkim        => 'fail',
         spf         => 'pass',
     );
-    ok( $sql->insert_report_row( $rid, \%identifers, \%result ),
-        'insert_report_row' );
+    ok( $sql->insert_rr( $rid,
+            { identifiers => \%identifers, policy_evaluated => \%result }
+        ),
+        'insert_rr' );
 }
 
-sub test_insert_report_published_policy {
+sub test_insert_published_policy {
     my $rid = $sql->query('SELECT * FROM report LIMIT 1')->[0]{id} or return;
     my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=none;');
     $pol->apply_defaults;
     $pol->rua( 'mailto:' . $sql->config->{organization}{email} );
-    my $r = $sql->insert_report_published_policy( $rid, $pol );
-    ok( $r, 'insert_report_published_policy' );
+    my $r = $sql->insert_published_policy( $rid, $pol );
+    ok( $r, 'insert_published_policy' );
 
     #   print "r: $r\n";
     #my $rpp = $sql->query('SELECT * FROM report LIMIT 1');

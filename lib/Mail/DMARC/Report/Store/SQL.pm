@@ -10,103 +10,27 @@ use File::ShareDir;
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate;
 
-sub save_author {
+sub save_aggregate {
     my ( $self, $agg ) = @_;
 
-   # Reports that others generate, when they receive email purporting to be us
-
-    my %required = (
-        meta    => [qw/ domain org_name email begin end report_id /],
-        policy  => [qw/  /],
-        records => [qw/  /],
-    );
+    croak "policy_published must be a Mail::DMARC::Policy object"
+        if 'Mail::DMARC::Policy' ne ref $agg->policy_published;
 
     #warn Dumper($meta); ## no critic (Carp)
-    foreach my $k ( keys %required ) {
-        foreach my $f ( @{ $required{$k} } ) {
-            croak "missing $k, $f" if 'meta' eq $k    && !$agg->metadata->$f;
-#           croak "missing $k, $f" if 'policy' eq $k  && !$agg->policy_published->{$f};
-#           croak "missing $k, $f" if 'records' eq $k && !$agg->records->{$f};
-        }
+    foreach my $f ( qw/ domain org_name email begin end report_id / ) {
+        croak "meta field $f required" if ! $agg->metadata->$f;
     }
 
-    my $rid = $self->insert_author_report( $agg )
+    my $rid = $self->get_aggregate_rid( $agg )
         or croak "failed to create report!";
 
     foreach my $rec ( @{ $agg->record } ) {
         next if !$rec;
-
-        my $row_id = $self->insert_report_row(
-            $rid,
-            {   map { $_ => $rec->{identifiers}{$_} }
-                    qw/ source_ip header_from envelope_to envelope_from /
-            },
-            {   map { $_ => $rec->{policy_evaluated}{$_} }
-                    qw/ disposition dkim spf /
-            },
-        ) or croak "failed to insert row";
-
-        # TODO
-        my $reason = $rec->{reason};
-        if ( $reason && $reason->{type} ) {
-            $self->insert_rr_reason( $row_id, $reason->{type},
-                $reason->{comment} );
-        }
-
-        my $spf_ref = $rec->{auth_results}{spf};
-        if ( $spf_ref && scalar @$spf_ref ) {
-            foreach my $spf (@$spf_ref) {
-                $self->insert_rr_spf( $row_id, $spf );
-            }
-        }
-
-        my $dkim = $rec->{auth_results}{dkim};
-        if ($dkim) {
-            foreach my $sig (@$dkim) {
-                $self->insert_rr_dkim( $row_id, $sig );
-            }
-        }
-    }
+        $self->insert_aggregate_row($rid, $rec);
+    };
 
     return $rid;
-}
-
-sub save_receiver {
-    my $self = shift;
-
-    # Reports we generate locally, while receiving email
-    $self->{dmarc} = shift or croak "missing object with DMARC results\n";
-    my $too_many = shift and croak "invalid arguments";
-
-    my $rid = $self->insert_receiver_report
-        or croak "failed to create report!";
-    my $row_id = $self->insert_report_row(
-        $rid,
-        {   map { $_ => $self->dmarc->$_ }
-                qw/ source_ip header_from envelope_to envelope_from /
-        },
-        $self->dmarc->result,
-    ) or croak "failed to insert row";
-
-    my $reason = $self->dmarc->result->reason;
-    if ( $reason && $reason->type ) {
-        $self->insert_rr_reason( $row_id, $reason->type, $reason->comment );
-    }
-
-    my $spf = $self->dmarc->spf;
-    if ($spf) {
-        $self->insert_rr_spf( $row_id, $spf );
-    }
-
-    my $dkim = $self->dmarc->dkim;
-    if ($dkim) {
-        foreach my $sig (@$dkim) {
-            $self->insert_rr_dkim( $row_id, $sig );
-        }
-    }
-
-    return $row_id;
-}
+};
 
 sub retrieve {
     my ( $self, %args ) = @_;
@@ -196,8 +120,6 @@ sub delete_report {
     return 1;
 }
 
-sub dmarc { return $_[0]->{dmarc}; }
-
 sub get_domain_id {
     my ( $self, $domain ) = @_;
     croak "missing domain calling " . ( caller(0) )[3] if !$domain;
@@ -222,6 +144,67 @@ sub get_author_id {
         'INSERT INTO author (org_name,email,extra_contact) VALUES (??)',
         [ $meta->org_name, $meta->email, $meta->extra_contact_info ]
     );
+}
+
+sub get_aggregate_rid {
+    my ( $self, $aggregate ) = @_;
+
+    my $meta = $aggregate->metadata;
+    my $pol  = $aggregate->policy_published;
+
+    # check if report exists
+    my $rcpt_dom_id = $self->get_domain_id( $meta->domain );
+    my $author_id   = $self->get_author_id( $meta );
+    my $from_dom_id = $self->get_domain_id( $pol->domain );
+
+    my $ids = $self->query(
+        'SELECT id FROM report WHERE rcpt_domain_id=? AND uuid=? AND author_id=?',
+        [ $rcpt_dom_id, $meta->report_id, $author_id ]
+    );
+
+    if ( scalar @$ids ) { # report already exists
+        return $self->{report_id} = $ids->[0]{id};
+    }
+
+    my $rid = $self->{report_id} = $self->query(
+        'INSERT INTO report (from_domain_id, rcpt_domain_id, begin, end, author_id) VALUES (??)',
+        [ $from_dom_id, $rcpt_dom_id, $meta->begin, $meta->end, $author_id ]
+    ) or return;
+
+    $self->insert_published_policy( $rid, $pol );
+    return $rid;
+}
+
+sub insert_aggregate_row {
+    my ($self, $rid, $rec) = @_;
+
+    my @idfs = qw/ source_ip header_from envelope_to envelope_from /;
+    my @evfs = qw/ disposition dkim spf /;
+    my $row_id = $self->insert_rr( $rid, $rec )
+        or croak "failed to insert report row";
+
+    my $reasons = $rec->{policy_evaluated}{reason};
+    if ( $reasons ) {
+        foreach my $reason ( @$reasons ) {
+            $self->insert_rr_reason( $row_id, $reason->{type},
+                $reason->{comment} );
+        };
+    }
+
+    my $spf_ref = $rec->{auth_results}{spf};
+    if ( $spf_ref && scalar @$spf_ref ) {
+        foreach my $spf (@$spf_ref) {
+            $self->insert_rr_spf( $row_id, $spf );
+        }
+    }
+
+    my $dkim = $rec->{auth_results}{dkim};
+    if ($dkim) {
+        foreach my $sig (@$dkim) {
+            $self->insert_rr_dkim( $row_id, $sig );
+        }
+    }
+    return 1;
 }
 
 sub insert_rr_reason {
@@ -255,8 +238,8 @@ sub insert_rr_spf {
     return $r;
 }
 
-sub insert_report_row {
-    my ( $self, $report_id, $identifiers, $result ) = @_;
+sub insert_rr {
+    my ( $self, $report_id, $row ) = @_;
     $report_id or croak "report ID required?!";
     my $query = <<'EO_ROW_INSERT'
 INSERT INTO report_record
@@ -266,90 +249,23 @@ INSERT INTO report_record
    VALUES (??)
 EO_ROW_INSERT
         ;
+
+    my @idfs = qw/ header_from envelope_to envelope_from /;
+    my @evfs = qw/ disposition dkim spf /;
     my $args = [
         $report_id,
-        $self->any_inet_pton( $identifiers->{source_ip} ),
-        (   map { $identifiers->{$_} || '' }
-                qw/ header_from envelope_to envelope_from /
-        ),
-        ( map { $result->{$_} } qw/ disposition dkim spf / ),
+        $self->any_inet_pton( $row->{identifiers}{source_ip} ),
+        ( map { $row->{identifiers}{$_} || '' } @idfs ),
+        ( map { $row->{policy_evaluated}{$_} } @evfs ),
     ];
     my $row_id = $self->query( $query, $args ) or croak;
     return $self->{report_row_id} = $row_id;
 }
 
-sub insert_author_report {
-    my ( $self, $aggregate ) = @_;
-
-    my $meta = $aggregate->metadata;
-    my $pol  = $aggregate->policy_published;
-
-    # check if report exists
-    my $rcpt_dom_id = $self->get_domain_id( $meta->domain );
-    my $author_id   = $self->get_author_id( $meta );
-    my $from_dom_id = $self->get_domain_id( $pol->domain );
-
-    my $ids = $self->query(
-        'SELECT id FROM report WHERE rcpt_domain_id=? AND uuid=? AND author_id=?',
-        [ $rcpt_dom_id, $meta->report_id, $author_id ]
-    );
-
-    if ( scalar @$ids ) {
-
-        #warn "found " . scalar @$ids . " matching reports!";
-        return $self->{report_id} = $ids->[0]{id};
-    }
-
-    # report for this author_domain does not exist, insert new
-    my $rid = $self->{report_id} = $self->query(
-        'INSERT INTO report (from_domain_id, rcpt_domain_id, begin, end, author_id) VALUES (??)',
-        [ $from_dom_id, $rcpt_dom_id, $meta->begin, $meta->end, $author_id ]
-    ) or return;
-
-    $self->insert_report_published_policy( $rid, $pol );
-    return $rid;
-}
-
-sub insert_receiver_report {
-    my $self = shift;
-
-    my $from_id = $self->get_domain_id( $self->dmarc->header_from )
-        or croak "missing header_from!";
-    my $rcpt_id = $self->get_domain_id( $self->dmarc->envelope_to );
-    my $meta    = $self->dmarc->report->aggregate->metadata;
-    $meta->org_name( $self->config->{organization}{org_name} );
-    $meta->email( $self->config->{organization}{email} );
-    my $author_id = $self->get_author_id($meta);
-
-    my $ids
-        = $self->query(
-        'SELECT id FROM report WHERE from_domain_id=? AND end > ?',
-        [ $from_id, time ] );
-
-    if ( scalar @$ids ) {
-
-        #       warn "found " . scalar @$ids . " matching reports!";
-        return $self->{report_id} = $ids->[0]{id};
-    }
-
-    # report for this author_domain does not exist, insert new
-    my $pub = $self->dmarc->result->published
-        or croak "unable to get published policy";
-    my $rid = $self->{report_id} = $self->query(
-        'INSERT INTO report (author_id, from_domain_id, rcpt_domain_id, begin, end) VALUES (??)',
-        [   $author_id, $from_id, $rcpt_id, time, time + ( $pub->ri || 86400 )
-        ]
-    ) or return;
-
-    $pub->apply_defaults or croak "failed to apply policy defaults?!";
-    $self->insert_report_published_policy( $rid, $pub );
-    return $rid;
-}
-
-sub insert_report_published_policy {
+sub insert_published_policy {
     my ( $self, $id, $pub ) = @_;
     my $query
-        = 'INSERT INTO report_policy_published (report_id, adkim, aspf, p, sp, pct, rua) VALUES (?,?,?,?,?,?,?)';
+        = 'INSERT INTO report_policy_published (report_id, adkim, aspf, p, sp, pct, rua) VALUES (??)';
     return $self->query(
         $query,
         [   $id,        $pub->{adkim}, $pub->{aspf}, $pub->{p},
@@ -452,7 +368,7 @@ sub query_insert {
     $self->dbix->query( $query, @params ) or croak $err;
     $self->db_check_err($err);
 
-    # If the table has no autoincrement field, last_id is zero
+    # If the table has no autoincrement field, last_insert_id is zero
     my ( undef, undef, $table ) = split /\s+/, $query;
     ($table) = split( /\(/, $table ) if $table =~ /\(/;
     croak "unable to determine table in query: $query" if !$table;

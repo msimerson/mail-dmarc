@@ -201,7 +201,7 @@ sub handle_body {
         $self->do_node_record($record);
     }
 
-    return $self->report->save_author();
+    return $self->report->save_aggregate();
 }
 
 sub report {

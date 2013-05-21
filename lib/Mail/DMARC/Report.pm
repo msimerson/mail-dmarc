@@ -15,7 +15,7 @@ require Mail::DMARC::Report::View;
 
 sub init {
     my $self = shift;
-    delete $_->{_record};
+    delete $_->{dmarc};
     delete $_->{aggregate};
     return;
 }
@@ -24,12 +24,6 @@ sub aggregate {
     my $self = shift;
     return $self->{aggregate} if ref $self->{aggregate};
     return $self->{aggregate} = Mail::DMARC::Report::Aggregate->new();
-}
-
-sub add_record {
-    my ( $self, $rrecord ) = @_;
-    croak "invalid record format!" if 'HASH' ne ref $rrecord;
-    return push @{ $self->{_report}{record} }, $rrecord;
 }
 
 sub dmarc {
@@ -67,14 +61,9 @@ sub view {
     return $self->{view} = Mail::DMARC::Report::View->new;
 }
 
-sub save_receiver {
+sub save_aggregate {
     my $self = shift;
-    return $self->store->backend->save_receiver(@_);
-}
-
-sub save_author {
-    my $self = shift;
-    return $self->store->backend->save_author( $self->aggregate );
+    return $self->store->backend->save_aggregate( $self->aggregate );
 }
 
 1;

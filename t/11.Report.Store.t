@@ -29,16 +29,9 @@ setup_dmarc_result() or die "failed setup\n";
 $dmarc->report->store->backend->config('t/mail-dmarc.ini');
 
 test_reason();
-test_save_receiver();
 
 done_testing();
 exit;
-
-sub test_save_receiver {
-    my $r = $dmarc->report->save_receiver($dmarc);
-    ok( $r, "save receiver results" );
-    print Dumper($r);
-}
 
 sub test_reason {
     $dmarc->result->reason->type('other');

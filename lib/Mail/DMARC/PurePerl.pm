@@ -19,10 +19,10 @@ sub validate {
     my $self   = shift;
     my $policy = shift;
 
-    my $from_dom = $self->get_from_dom()  # 11.2.1 Extract RFC5322.From domain
-        or return;
-    $self->exists_in_dns()    # 9.6. Receivers should reject email if
-        or return;            #      the domain appears to not exist
+# 11.2.1 Extract RFC5322.From domain
+    my $from_dom = $self->get_from_dom() or return;
+# 9.6. reject email if the domain appears to not exist
+    $self->exists_in_dns() or return;
     $policy ||= $self->discover_policy();  # 11.2.2 Query DNS for DMARC policy
     $policy or return;
 
@@ -30,10 +30,9 @@ sub validate {
     #         specifying that a pass from one authentication test allows one
     #         to skip the other(s). All are required for reporting.
 
-    $self->is_dkim_aligned
-        ;    # 11.2.3. Perform DKIM signature verification checks
-    $self->is_spf_aligned;    # 11.2.4. Perform SPF validation checks
-    $self->is_aligned()       # 11.2.5. Conduct identifier alignment checks
+    $self->is_dkim_aligned;   # 11.2.3. DKIM signature verification checks
+    $self->is_spf_aligned;    # 11.2.4. SPF validation checks
+    $self->is_aligned()       # 11.2.5. identifier alignment checks
         and return 1;
 
     my $effective_p

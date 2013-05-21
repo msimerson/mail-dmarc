@@ -49,7 +49,7 @@ sub local_policy {
 
 sub dkim {
     my ( $self, $dkim ) = @_;
-    return $self->{dkim} if !$dkim;
+    return $self->{dkim} if !defined $dkim;
 
     if ( ref $dkim && ref $dkim eq 'Mail::DKIM::Verifier' ) {
         return $self->dkim_from_mail_dkim($dkim);
@@ -135,6 +135,41 @@ sub is_valid_spf {
     }
     return 1;
 }
+
+sub save_aggregate {
+    my ($self) = @_;
+
+    my $agg = $self->report->aggregate;
+
+    # put config information in report metadata
+    foreach my $f ( qw/ domain org_name email extra_contact_info / ) {
+        $agg->metadata->$f( $self->config->{organization}{$f} );
+    };
+
+    $agg->policy_published( $self->result->published );
+# I could just pass in the $self as the identifer, and $self->result as the
+# policy_evaluated, but this way documents what's being passed along.
+    $agg->record({
+                identifiers => {
+                    source_ip     => $self->source_ip,
+                    envelope_to   => $self->envelope_to,
+                    envelope_from => $self->envelope_from,
+                    header_from   => $self->header_from,
+                    },
+                auth_results => {
+                    dkim => $self->dkim,
+                    spf  => $self->spf,
+                    },
+                policy_evaluated => {
+                    disposition => $self->result->disposition,
+                    dkim        => $self->result->dkim,
+                    spf         => $self->result->spf,
+                    reason      => $self->result->reason,
+                    }
+            });
+
+    return $self->report->save_aggregate;
+};
 
 1;
 
