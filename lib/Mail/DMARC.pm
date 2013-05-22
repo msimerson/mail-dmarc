@@ -395,17 +395,17 @@ The DMARC spec is lengthy and evolving, making correctness a moving target. In c
 
 The effectiveness of DMARC will improve significantly as adoption increases. Proving an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
 
-The list of dependencies is long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is less than 5.
+The list of dependencies appears long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is about 5. See the [Prereq] versus [Prereq / Recommends] sections in dist.ini.
 
 =head2 Maintainable
 
 Since DMARC is evolving, this implementation aims to be straight forward and dare I say, easy, to alter and extend. The programming style is primarily OO, which carries a small performance penalty but large dividends in maintainability.
 
-When multiple options are available, such as when sending reports via SMTP or HTTP, calls are made to the parent Send class, which brokers the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than the many provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
+When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class, to broker the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than the many provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
 
 =head2 Fast
 
-I have conducted no optimization nor benchmarking and I am not a High Performance Perl expert. If you deploy this in an environment where performance is not sufficient, please do submit patches that are aligned with these goals.
+If you deploy this in an environment where performance is insufficient, please profile the app and submit a report and preferably, patches.
 
 =head1 SEE ALSO
 

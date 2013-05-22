@@ -4,7 +4,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 # VERSION
 
-version 0.20130520
+version 0.20130522
 
 # SYNOPSIS
 
@@ -203,17 +203,17 @@ The DMARC spec is lengthy and evolving, making correctness a moving target. In c
 
 The effectiveness of DMARC will improve significantly as adoption increases. Proving an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
 
-The list of dependencies is long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is less than 5.
+The list of dependencies appears long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is about 5. See the \[Prereq\] versus \[Prereq / Recommends\] sections in dist.ini.
 
 ## Maintainable
 
 Since DMARC is evolving, this implementation aims to be straight forward and dare I say, easy, to alter and extend. The programming style is primarily OO, which carries a small performance penalty but large dividends in maintainability.
 
-When multiple options are available, such as when sending reports via SMTP or HTTP, calls are made to the parent Send class, which brokers the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than the many provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
+When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class, to broker the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than the many provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
 
 ## Fast
 
-I have conducted no optimization nor benchmarking and I am not a High Performance Perl expert. If you deploy this in an environment where performance is not sufficient, please do submit patches that are aligned with these goals.
+If you deploy this in an environment where performance is insufficient, please profile the app and submit a report and preferably, patches.
 
 # SEE ALSO
 
@@ -234,9 +234,13 @@ Qpsmtpd plugin: https://github.com/qpsmtpd-dev/qpsmtpd-dev/blob/master/plugins/d
 - Matt Simerson <msimerson@cpan.org>
 - Davide Migliavacca <shari@cpan.org>
 
+# CONTRIBUTOR
+
+ColocateUSA.net <company@colocateusa.net>
+
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2013 by The Network People, Inc..
+This software is copyright (c) 2013 by ColocateUSA.com.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
