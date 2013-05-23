@@ -114,6 +114,22 @@ sub has_dns_rr {
     return $matches;
 }
 
+sub epoch_to_iso {
+    my ($self, $epoch) = @_;
+
+    my @fields = localtime( $epoch );
+
+    my $ss = sprintf( "%02i", $fields[0] );    # seconds
+    my $mn = sprintf( "%02i", $fields[1] );    # minutes
+    my $hh = sprintf( "%02i", $fields[2] );    # hours (24 hour clock)
+
+    my $dd = sprintf( "%02i", $fields[3] );        # day of month
+    my $mm = sprintf( "%02i", $fields[4] + 1 );    # month
+    my $yy = ( $fields[5] + 1900 );                # year
+
+    return "$yy-$mm-$dd" .'T'."$hh:$mn:$ss";
+};
+
 sub get_resolver {
     my $self = shift;
     my $timeout = shift || $self->config->{dns}{timeout} || 5;
