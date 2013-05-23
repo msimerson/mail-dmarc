@@ -200,19 +200,28 @@ sub test_no_policy {
     $pp->{header_from} = 'responsebeacon.com';
     $pp->validate();
 
-    is_deeply(
-        $pp->result,
-        {   'result'      => 'fail',
-            'disposition' => 'none',
-            'dkim'        => '',
-            'spf'         => '',
-            'reason'      => {
-                'comment' => 'no policy',
-                'type'    => 'other',
+    my $skip_reason;
+    if ( !$pp->result->disposition ) {    # typically a DNS failure,
+        $skip_reason = "look like DNS is not working";
+    };
+
+SKIP: {
+        skip $skip_reason, 1 if $skip_reason;
+
+        is_deeply(
+            $pp->result,
+            {   'result'      => 'fail',
+                'disposition' => 'none',
+                'dkim'        => '',
+                'spf'         => '',
+                'reason'      => {
+                    'comment' => 'no policy',
+                    'type'    => 'other',
+                },
             },
-        },
-        "result, fail, nonexist"
-    ) or diag Data::Dumper::Dumper( $pp->result );
+            "result, fail, nonexist"
+        ) or diag Data::Dumper::Dumper( $pp->result );
+    };
 }
 
 sub test_disposition {

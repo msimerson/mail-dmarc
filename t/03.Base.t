@@ -30,11 +30,17 @@ test_is_public_suffix();
 test_has_dns_rr();
 test_is_valid_ip();
 test_is_valid_domain();
+test_epoch_to_iso();
 
 done_testing();
 exit;
 
 #warn Dumper($base);
+
+sub test_epoch_to_iso {
+    my $iso = $base->epoch_to_iso(time);
+    ok( $iso, "epoch_to_iso, $iso" );
+};
 
 sub test_any_inet_to {
 
