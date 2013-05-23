@@ -247,7 +247,7 @@ AGGREGATE REPORTS
 The report SHOULD include the following data:
 
    o  Enough information for the report consumer to re-calculate DMARC
-      disposition based on the published policy, message dispositon, and
+      disposition based on the published policy, message disposition, and
       SPF, DKIM, and identifier alignment results. {R12}
 
    o  Data for each sender subdomain separately from mail from the
