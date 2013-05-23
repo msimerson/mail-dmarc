@@ -14,6 +14,8 @@ use_ok($mod);
 my $recv = $mod->new;
 isa_ok( $recv, $mod );
 
+$recv->config('t/mail-dmarc.ini');
+
 test_from_email_msg();
 test_get_submitter_from_subject();
 test_from_imap();

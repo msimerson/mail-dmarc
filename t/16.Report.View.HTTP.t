@@ -17,6 +17,9 @@ use_ok($mod);
 my $http = $mod->new;
 isa_ok( $http, $mod );
 
+# this starts up the httpd daemon
+#$http->dmarc_httpd();
+
 done_testing();
 exit;
 

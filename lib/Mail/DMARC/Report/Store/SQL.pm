@@ -32,6 +32,16 @@ sub save_aggregate {
     return $rid;
 };
 
+sub retrieve {
+    my ( $self, %args ) = @_;
+    my $reports = $self->query( $self->get_report_query );
+    foreach (@$reports ) {
+        $_->{begin} = join(" ", split(/T/, $self->epoch_to_iso( $_->{begin} )));
+        $_->{end} = join(" ", split(/T/, $self->epoch_to_iso( $_->{end} )));
+    };
+    return $reports;
+}
+
 sub retrieve_todo {
     my ( $self, %args ) = @_;
 
@@ -168,26 +178,12 @@ sub get_aggregate_rid {
 }
 
 sub get_report {
-    my $self = shift;
-    croak "invalid parameters" if @_ % 2;
-    my %args = @_;
+    my ($self,@args) = @_;
+    croak "invalid parameters" if @args % 2;
+    my %args = @args;
 #warn Dumper(\%args);
 
-    my $query = <<'EO_REPORTS'
-SELECT r.id AS rid,
-    r.uuid,
-    r.begin AS begin,
-    r.end   AS end,
-    a.org_name AS author,
-    rd.domain  AS rcpt_domain,
-    fd.domain  AS from_domain
-FROM report r
-LEFT JOIN author a ON r.author_id=a.id
-LEFT JOIN domain rd ON r.rcpt_domain_id=rd.id
-LEFT JOIN domain fd ON r.from_domain_id=fd.id
-EO_REPORTS
-;
-
+    my $query = $self->get_report_query;
     my @params;
     my @known = qw/ rid author rcpt_domain from_domain begin end /;
     my %known = map { $_ => 1 } @known;
@@ -243,10 +239,28 @@ EO_REPORTS
     };
 };
 
-sub get_row {
+sub get_report_query {
     my $self = shift;
-    croak "invalid parameters".Dumper(\@_) if @_ % 2;
-    my %args = @_;
+    return <<'EO_REPORTS'
+SELECT r.id AS rid,
+    r.uuid,
+    r.begin AS begin,
+    r.end   AS end,
+    a.org_name AS author,
+    rd.domain  AS rcpt_domain,
+    fd.domain  AS from_domain
+FROM report r
+LEFT JOIN author a ON r.author_id=a.id
+LEFT JOIN domain rd ON r.rcpt_domain_id=rd.id
+LEFT JOIN domain fd ON r.from_domain_id=fd.id
+EO_REPORTS
+;
+};
+
+sub get_row {
+    my ($self,@args) = @_;
+    croak "invalid parameters" if @args % 2;
+    my %args = @args;
 #warn Dumper(\%args);
     croak "missing report ID (rid)!" if ! defined $args{rid};
 

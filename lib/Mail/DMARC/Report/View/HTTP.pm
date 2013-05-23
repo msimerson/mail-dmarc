@@ -16,10 +16,6 @@ use URI;
 use lib 'lib';
 require Mail::DMARC::Report;
 my $report = Mail::DMARC::Report->new;
-my $port   = $report->config->{http}{port}   || 8080;
-my $ports  = $report->config->{https}{port};
-my $sslkey = $report->config->{https}{ssl_key};
-my $sslcrt = $report->config->{https}{ssl_crt};
 
 my %mimes  = (
     css  => 'text/css',
@@ -28,13 +24,28 @@ my %mimes  = (
     json => 'application/json',
 );
 
-Net::Server::HTTP->run(
-    app => sub { &dmarc_dispatch },
-    port  => [$port, ($ports ? "$ports/ssl" : ()) ],
-    ipv   => '*', # IPv6 if available
-    ($sslkey ? (SSL_key_file => $sslkey) : ()),
-    ($sslcrt ? (SSL_cert_file => $sslcrt) : ()),
-);
+sub new {
+    my $class = shift;
+    return bless {}, $class;
+};
+
+sub dmarc_httpd {
+    my $self = shift;
+
+    my $port   = $report->config->{http}{port}   || 8080;
+    my $ports  = $report->config->{https}{port};
+    my $sslkey = $report->config->{https}{ssl_key};
+    my $sslcrt = $report->config->{https}{ssl_crt};
+
+    Net::Server::HTTP->run(
+        app => sub { &dmarc_dispatch },
+        port  => [$port, ($ports ? "$ports/ssl" : ()) ],
+        ipv   => '*', # IPv6 if available
+        ($sslkey ? (SSL_key_file => $sslkey) : ()),
+        ($sslcrt ? (SSL_cert_file => $sslcrt) : ()),
+    );
+    return;
+};
 
 sub dmarc_dispatch {
     my $self = shift;
@@ -46,7 +57,7 @@ sub dmarc_dispatch {
         warn "path: $path\n";
         return report_json_report($self) if $path eq '/dmarc/json/report';
         return report_json_row($self)    if $path eq '/dmarc/json/row';
-        return serve_file($self,$path)   if $path =~ /\.(?:js|css|html)$/;
+        return serve_file($self,$path)   if $path =~ /\.(?:js|css|html)$/x;
     };
 
     return serve_file($self,'/dmarc/index.html');
@@ -55,12 +66,14 @@ sub dmarc_dispatch {
 sub serve_pretty_error {
     my $error = shift || 'Sorry, that operation is not supported.';
         ;
-    print <<EO_ERROR
+    print <<"EO_ERROR"
 Content-Type: text/html
 
 <p>$error</p>
 
 EO_ERROR
+;
+    return;
 };
 
 sub serve_file {
@@ -104,6 +117,7 @@ sub report_json_report {
     print "Content-type: application/json\n\n";
     my $reports = $report->store->backend->get_report( CGI->new->Vars );
     print encode_json $reports;
+    return;
 };
 
 sub report_json_row {
@@ -111,6 +125,7 @@ sub report_json_row {
     my $row = $report->store->backend->get_row( CGI->new->Vars );
     print encode_json $row;
 #   warn Dumper($row);
+    return;
 };
 
 1;

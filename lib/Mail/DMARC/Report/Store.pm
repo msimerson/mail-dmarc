@@ -11,6 +11,11 @@ sub delete_report {
     return $self->backend->delete_report(@_);
 }
 
+sub retrieve {
+    my $self = shift;
+    return $self->backend->retrieve(@_);
+}
+
 sub retrieve_todo {
     my $self = shift;
     return $self->backend->retrieve_todo(@_);

@@ -20,7 +20,7 @@ isa_ok( $cli, $mod );
 $cli->store->backend->config('t/mail-dmarc.ini');
 
 my $list = $cli->list();
-ok( $list, "list" );
+ok( $list, "list, ".scalar @$list );
 
 #warn Dumper($list);
 

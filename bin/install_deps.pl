@@ -111,7 +111,7 @@ sub get_perl_modules_from_ini {
     my $in = 0;
     my @modules;
     while ( my $line = <$fh> ) {
-        if ( $line =~ /^\[Prereqs/ ) {
+        if ( $line =~ /^\[Prereqs/ ) {  ## no critic (Extended)
             $in++;
             next;
         }

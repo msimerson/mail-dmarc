@@ -43,16 +43,17 @@ done_testing();
 exit;
 
 sub test_get_report {
-    my $reports = $sql->get_report( author => 'The Art Farm' );
-
-    if ( ! scalar @$reports ) {
+    my $r = $sql->get_report( author => 'The Art Farm' );
+    my $reports = $r->{rows};
+    if ( ! $reports || ! scalar @$reports ) {
         ok( 1, "skipping author tests" );
         return;
     };
 
     ok( scalar @$reports, "get_report, no limits, " . scalar @$reports );
     my $limit = 10;
-    $reports = $sql->get_report( rows => $limit );
+    $r = $sql->get_report( rows => $limit );
+    $reports = $r->{rows};
     cmp_ok( scalar @$reports, '==', $limit, "get_report, limit $limit" );
 
     my @queries = (
@@ -66,10 +67,12 @@ sub test_get_report {
 
     while ( my $key = shift @queries ) {
         my $val = shift @queries;
-        $reports = $sql->get_report( $key => $val );
+        $r = $sql->get_report( $key => $val );
+        $reports = $r->{rows};
         ok( scalar @$reports, "get_report, $key, $val, " . scalar @$reports );
     };
     $reports = $sql->get_report( rows => 1, sord => 'desc', sidx => 'rid'  );
+    ok( $reports->{rows}, "get_report, multisearch");
 };
 
 sub test_get_aggregate_rid {
