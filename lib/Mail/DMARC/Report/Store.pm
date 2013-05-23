@@ -11,9 +11,9 @@ sub delete_report {
     return $self->backend->delete_report(@_);
 }
 
-sub retrieve {
+sub retrieve_todo {
     my $self = shift;
-    return $self->backend->retrieve(@_);
+    return $self->backend->retrieve_todo(@_);
 }
 
 sub backend {

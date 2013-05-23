@@ -9,14 +9,14 @@ use lib 'lib';
 use Mail::DMARC::Report;
 my $report = Mail::DMARC::Report->new();
 
-# 1. get list of reports where end < now
-while (defined(my $aggregate = $report->store->retrieve ) ) {
+# 1. get list of reports ready to send
+while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 
     print $aggregate->metadata->domain . "\n";
     print "rua: " . $aggregate->policy_published->rua . "\n";
     my $xml = $aggregate->as_xml();
-    $report->sendit->send_rua(\$aggregate, \$xml) # deliver via SMTP/HTTP
-        and $report->store->delete_report($aggregate->metadata->report_id);
+#   $report->sendit->send_rua(\$aggregate, \$xml) # deliver via SMTP/HTTP
+#       and $report->store->delete_report($aggregate->metadata->report_id);
     print $xml;
     print "sleeping 5";
     foreach ( 1 .. 5 ) { print '.'; sleep 1; };
