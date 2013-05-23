@@ -181,8 +181,9 @@ sub {}  # for vim automatic code folding
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
 
- my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
- my $result = $dmarc->validate();
+my $dmarc = Mail::DMARC->new( see L<new|#new> for required args );
+
+my $result = $dmarc->validate();
 
  if ( $result->result eq 'pass' ) {
      ...continue normal processing...
@@ -272,7 +273,7 @@ Create an empty DMARC object. Then populate it and run the request:
             );
     my $result = $dmarc->validate();
 
-Alternatively, you can pass in all the required parameters in one shot:
+Alternatively, pass in all the required parameters in one shot:
 
     my $dmarc = Mail::DMARC->new(
             source_ip     => '192.0.1.1',
@@ -363,7 +364,7 @@ Additional information about the DKIM result. This is comparable to Mail::DKIM::
 
 =head2 spf
 
-The spf method accepts a hashref or named arguments:
+The spf method accepts a hashref of named arguments:
 
     $dmarc->spf(
         domain => 'example.com',
