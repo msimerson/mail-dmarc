@@ -441,7 +441,10 @@ sub dbix { return $_[0]->{dbix} if $_[0]->{dbix}; return $_[0]->db_connect(); }
 sub apply_db_schema {
     my ( $self, $file ) = @_;
     my $setup = $self->slurp($file);
-    foreach ( split /;/, $setup ) { $self->dbix->query($_); }
+    foreach ( split /;/, $setup ) {
+#       warn "$_\n";
+        $self->dbix->query($_);
+    }
     return;
 }
 

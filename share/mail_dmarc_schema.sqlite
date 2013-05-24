@@ -28,11 +28,9 @@ CREATE TABLE `fk_disposition` (
   `disposition` TEXT NOT NULL,
   PRIMARY KEY (`disposition`)
 );
-INSERT INTO `fk_disposition` (`disposition`)
-VALUES
-    ('none'),
-    ('quarantine'),
-    ('reject');
+INSERT INTO "fk_disposition" VALUES ('none');
+INSERT INTO "fk_disposition" VALUES ('quarantine');
+INSERT INTO "fk_disposition" VALUES ('reject');
 
 
 DROP TABLE IF EXISTS `fk_disposition_reason`;
@@ -42,14 +40,12 @@ CREATE TABLE `fk_disposition_reason` (
   PRIMARY KEY (`type`)
 );
 
-INSERT INTO `fk_disposition_reason` (`type`)
-VALUES
-    ('forwarded'),
-    ('local_policy'),
-    ('mailing_list'),
-    ('other'),
-    ('sampled_out'),
-    ('trusted_forwarder');
+INSERT INTO "fk_disposition_reason" VALUES ('forwarded');
+INSERT INTO "fk_disposition_reason" VALUES ('local_policy');
+INSERT INTO "fk_disposition_reason" VALUES ('mailing_list');
+INSERT INTO "fk_disposition_reason" VALUES ('other');
+INSERT INTO "fk_disposition_reason" VALUES ('sampled_out');
+INSERT INTO "fk_disposition_reason" VALUES ('trusted_forwarder');
 
 
 DROP TABLE IF EXISTS `fk_dkim_result`;
@@ -59,16 +55,13 @@ CREATE TABLE `fk_dkim_result` (
   PRIMARY KEY (`result`)
 );
 
-INSERT INTO `fk_dkim_result` (`result`)
-VALUES
-    ('fail'),
-    ('neutral'),
-    ('none'),
-    ('pass'),
-    ('permerror'),
-    ('policy'),
-    ('temperror');
-
+INSERT INTO "fk_dkim_result" VALUES ('fail');
+INSERT INTO "fk_dkim_result" VALUES ('neutral');
+INSERT INTO "fk_dkim_result" VALUES ('none');
+INSERT INTO "fk_dkim_result" VALUES ('pass');
+INSERT INTO "fk_dkim_result" VALUES ('permerror');
+INSERT INTO "fk_dkim_result" VALUES ('policy');
+INSERT INTO "fk_dkim_result" VALUES ('temperror');
 
 
 DROP TABLE IF EXISTS `fk_spf_result`;
@@ -78,15 +71,13 @@ CREATE TABLE `fk_spf_result` (
   PRIMARY KEY (`result`)
 );
 
-INSERT INTO `fk_spf_result` (`result`)
-VALUES
-    ('fail'),
-    ('neutral'),
-    ('none'),
-    ('pass'),
-    ('permerror'),
-    ('softfail'),
-    ('temperror');
+INSERT INTO "fk_spf_result" VALUES ('fail');
+INSERT INTO "fk_spf_result" VALUES ('neutral');
+INSERT INTO "fk_spf_result" VALUES ('none');
+INSERT INTO "fk_spf_result" VALUES ('pass');
+INSERT INTO "fk_spf_result" VALUES ('permerror');
+INSERT INTO "fk_spf_result" VALUES ('softfail');
+INSERT INTO "fk_spf_result" VALUES ('temperror');
 
 
 
@@ -97,10 +88,8 @@ CREATE TABLE `fk_spf_scope` (
   PRIMARY KEY (`scope`)
 );
 
-INSERT INTO `fk_spf_scope` (`scope`)
-VALUES
-    ('helo'),
-    ('mfrom');
+INSERT INTO "fk_spf_scope" VALUES ('helo');
+INSERT INTO "fk_spf_scope" VALUES ('mfrom');
 
 
 
