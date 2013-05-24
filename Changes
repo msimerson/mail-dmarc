@@ -1,6 +1,12 @@
 
 {{$NEXT}}
 
+0.20130524 2013-05-23 America/Los_Angeles
+
+ - added bin/dmarc_httpd
+ - added bin/dmarc_view_reports
+ - renamed: dmarc_report -> dmarc_send_reports
+
 0.20130521 2013-05-21 America/Los_Angeles
 
  - check for report_record existence before insertion
