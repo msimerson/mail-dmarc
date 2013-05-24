@@ -135,22 +135,6 @@ __END__
 
 =head1 SYNOPSIS
 
-A HTTP interface for the local DMARC report store.
-
-Start the HTTP server by running: dmarc_httpd
-
-Connect with a web browser to L<http://localhost:8080|http://localhost:8080/>.
-
-=head1 DESCRIPTION
-
-A L<Sample Report|http://search.cpan.org/dist/Mail-DMARC/example/report_cgi.png> is available which shows the web interface. It is implemented almost entirely in JavaScript, using jQuery, jQueryUI, and jgGrid.
-
-Web server settings are in the [http] and [https] sections of mail-dmarc.ini.
-
-=head1 THANKS
-
-jQuery - http://www.jquery.com/
-
-jqGrid - http://www.trirand.com/blog/
+See the POD docs / man page for L<dmarc_httpd>.
 
 =cut
