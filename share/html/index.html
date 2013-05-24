@@ -2,19 +2,43 @@
 <html>
 <head>
  <meta charset="utf-8" />
- <title>DMARC</title>
- <link rel="stylesheet" type="text/css" media="screen" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
+ <title>Mail::DMARC::Report::View::HTTP</title>
+ <link rel="stylesheet" type="text/css" media="screen" href="http://code.jquery.com/ui/1.10.3/themes/cupertino/jquery-ui.css" />
  <link rel="stylesheet" type="text/css" media="screen" href="/dmarc/css/ui.jqgrid.css" />
  <script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.js"></script>
  <script type="text/javascript" src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
  <script type="text/javascript" src="/dmarc/js/i18n/grid.locale-en.js"></script>
  <script type="text/javascript" src="/dmarc/js/jquery.jqGrid.min.js"></script>
 
+<style type="text/css">
+html, body {
+  margin: 0;
+  padding: 0;
+  font-size: 80%;
+}
+</style>
+
 <script type="text/javascript">
-// Here we set the altRows option globally
-jQuery.extend(jQuery.jgrid.defaults, { 
-		altRows:true, 
+// Set the options globally
+jQuery.extend(jQuery.jgrid.defaults, {
+		altRows:true,
+    datatype: "json",
     height:'500',
+    jsonReader : {
+		  root:   'rows',
+			page:   'cur_page',
+			total:  'total_pages',
+			records:'total_rows',
+        repeatitems:false,
+			subgrid: {
+				root:   'rows',
+				page:   'cur_page',
+				total:  'total_pages',
+				records:'total_rows',
+				repeatitems:false,
+			},
+    },
+    pager: '#gridpager',
   });
 </script>
 
@@ -22,36 +46,20 @@ jQuery.extend(jQuery.jgrid.defaults, {
 jQuery(document).ready(function(){
   jQuery("#grid").jqGrid({
       url:'/dmarc/json/report',
-      datatype: "json",
       mtype: 'POST',
-      colNames:['Id','Begin','End','Recipient','From','Org Name','UUID'],
+      colNames:['Id','Recipient','From','Org Name','Begin','End','UUID' ],
       colModel :[
         {name:'rid', index:'rid', width:30, align:'center', sortable: true },
-	  		{name:'begin',       index:'begin',       width:90, sorttype:'date'},
-	  		{name:'end',         index:'end',         width:90, sorttype:'date',},
         {name:'rcpt_domain', index:'rcpt_domain', width:135, align:'right', sortable: true},
         {name:'from_domain', index:'from_domain', width:135, align:'right', sortable: true},
         {name:'author',      index:'author',      width:170, align:'center' },
+        {name:'begin',       index:'begin',       width:90, sorttype:'date'},
+        {name:'end',         index:'end',         width:90, sorttype:'date',},
         {name:'uuid',        index:'uuid',        width:120, align:'left'},
 // {name:'type',index:'type', width:200,editable:true,edittype:'select',editoptions:{dataUrl: '/jqGridOptionData?entity=WineType'}},
       ],
-      jsonReader : {
-				  root:   'rows',
-					page:   'cur_page',
-					total:  'total_pages',
-					records:'total_rows',
-          repeatitems:false,
-					subgrid: {
-						root:   'rows',
-						page:   'cur_page',
-						total:  'total_pages',
-						records:'total_rows',
-						repeatitems:false,
-					},
-      },
       rowNum: 100,
       rowList: [50,100,500],
-      pager: '#gridpager',
       sortname: 'rid',
       viewrecords: true,
       editurl:"/dmarc/json/record/edit",
@@ -60,12 +68,12 @@ jQuery(document).ready(function(){
 			subGrid: true,
 		  subGridUrl:'/dmarc/json/row',
 			subGridModel: [
-				{ 
-				name:['','IP','Count','Disposition','SPF','DKIM','Header From','Envelope To','Envelope From'],
-				width:[50,100,10,30,30,40,100,100,100],
-				align:[,'center','center','center','center','center','right','right','right'],
+				{
+        name:['','IP','Count','Disposition','SPF','DKIM','Envelope To','Envelope From'],
+				width:[70,200,15,40,40,40,100,100,100],
+				align:[,'center','center','center','center','center','right','right'],
 				params: ['rid'],
-        mapping: [,'source_ip','count','disposition','spf','dkim','header_from','envelope_to','envelope_from'],
+        mapping: [,'source_ip','count','disposition','spf','dkim','envelope_to','envelope_from'],
 				},
 			],
 		  filterToolbar: {
@@ -84,7 +92,7 @@ jQuery("#mybutton").click(function() {
 </head>
 
 <body>
-<h2>DMARC Reports</h2>
+<p><a href="http://search.cpan.org/~msimerson/Mail-DMARC/">Mail::DMARC::Report::View::HTTP</a> - sponsored by <a href="http://www.colocateusa.net/">ColocateUSA</a>.</p>
 
 <div id="mybutton"></div>
 

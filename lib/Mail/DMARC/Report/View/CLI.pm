@@ -17,9 +17,6 @@ sub list {
     my $reports = $self->store->retrieve;
     foreach my $report ( reverse @$reports) {
         printf "%3s  %20s  %20s  %15s\n", @$report{qw/ rid rcpt_domain from_domain begin /};
-        foreach my $row ( @{ $report->{rows} } ) {
-            printf "\t%15s  %6s  %6s \n", @$row{qw/ disposition dkim spf /};
-        }
     }
     return $reports;
 }

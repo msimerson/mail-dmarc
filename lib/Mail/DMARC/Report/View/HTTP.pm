@@ -137,9 +137,15 @@ __END__
 
 A HTTP interface for the local DMARC report store.
 
+Start the HTTP server by running: dmarc_httpd
+
+Connect with a web browser to L<http://localhost:8080|http://localhost:8080/>.
+
 =head1 DESCRIPTION
 
-This is implemented almost entirely in JavaScript, using jQuery, jQueryUI, and jgGrid.
+A L<Sample Report|http://search.cpan.org/dist/Mail-DMARC/example/report_cgi.png> is available which shows the web interface. It is implemented almost entirely in JavaScript, using jQuery, jQueryUI, and jgGrid.
+
+Web server settings are in the [http] and [https] sections of mail-dmarc.ini.
 
 =head1 THANKS
 
