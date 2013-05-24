@@ -1,0 +1,84 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use Data::Dumper;
+$|++;
+
+use lib 'lib';
+use Mail::DMARC::Report::View::CLI;
+my $cli = Mail::DMARC::Report::View::CLI->new;
+
+my $reports = $cli->store->retrieve;
+printf "%3s  %20s  %20s  %15s\n", qw[ ID Recipient From/Sender Report-Start ];
+printf "  | -- %3s %32s %13s %7s %7s %20s\n\n", 'Qty','Source IP','Disposition','DKIM','SPF';
+
+foreach my $report ( reverse @$reports) {
+#warn Dumper($report);
+    printf "%3s  %20s  %20s  %15s\n", @$report{qw/ rid rcpt_domain from_domain begin /};
+    my $rows = $cli->store->backend->get_row( rid => $report->{rid} )->{rows};
+    foreach my $row ( @$rows ) {
+        printf "  | -- %3s %32s %13s %7s %7s", @$row{qw/ count source_ip disposition dkim spf /};
+        foreach ( @{ $row->{reasons} } ) {
+            print '  ' . $_->{type};
+            print "( $_->{comment} )" if $_->{comment};
+        };
+        print "\n";
+#print Dumper($row);
+    }
+    print "\n";
+}
+
+exit;
+
+# PODNAME: dmarc_view_reports
+# ABSTRACT: view DMARC reports on the command line
+
+=head1 SYNOPSIS
+
+  dmarc_view_reports | less
+
+
+=head1 DESCRIPTION
+
+Dumps the contents of the DMARC data store to your terminal. The most recent records are show first.
+
+
+=head1 SAMPLE OUTPUT
+
+
+ ID             Recipient           From/Sender     Report-Start
+  | -- Qty                        Source IP   Disposition    DKIM     SPF                     
+
+ 570        theartfarm.com          simerson.net  2013-05-20 09:40:50
+  | --   1                   75.126.200.152    quarantine    fail    fail
+
+ 568              yeah.net              tnpi.net  2013-05-21 09:00:00
+  | --   1                   111.176.77.138        reject    fail    fail
+
+ 567               126.com              tnpi.net  2013-05-21 09:00:00
+  | --   1                    49.73.135.125        reject    fail    fail
+
+ 565            google.com             mesick.us  2013-05-20 17:00:00
+  | --  88                   208.75.177.101          none    pass    pass
+
+ 564            google.com        theartfarm.com  2013-05-20 17:00:00
+  | --   3                   208.75.177.101          none    pass    pass
+
+ 563            google.com          lynboyer.com  2013-05-20 17:00:00
+  | --   1          2a00:1450:4010:c03::235          none    pass    fail  forwarded
+  | --  12                   208.75.177.101          none    pass    pass
+  | --   1                   209.85.217.174          none    pass    fail  forwarded
+
+ 561            google.com          simerson.net  2013-05-20 17:00:00
+  | --   1                   208.75.177.101          none    pass    pass
+
+ 560            google.com              tnpi.net  2013-05-20 17:00:00
+  | --   1                   208.75.177.101          none    pass    pass
+  | --   1                    27.20.110.240        reject    fail    fail
+
+ 559           hotmail.com          lynboyer.com  2013-05-20 20:00:00
+  | --   6                   208.75.177.101          none    pass    pass
+
+=cut
+

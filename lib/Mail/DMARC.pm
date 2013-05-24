@@ -210,9 +210,11 @@ This module can be used...
 
 =over 4
 
-by MTAs and filtering tools such as SpamAssassin to validate that incoming messages are aligned with the purported senders policies.
+by MTAs and filtering tools like SpamAssassin to validate that incoming messages are aligned with the purported senders policies.
 
-by an email sender that wishes to receive DMARC reports from other mail servers.
+by email senders, to receive DMARC reports from other mail servers and display them via CLI and web interfaces.
+
+by MTA operators to send DMARC reports to DMARC author domains.
 
 =back
 

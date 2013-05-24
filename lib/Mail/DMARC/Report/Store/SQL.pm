@@ -269,6 +269,7 @@ sub get_row {
 
     my $rows = $self->query($query, \@params);
     foreach ( @$rows ) {
+        $_->{reasons} = $self->query('SELECT type,comment FROM report_record_reason WHERE report_record_id=?', [ $_->{id} ] );
         $_->{source_ip} = $self->any_inet_ntop( $_->{source_ip} );
     };
     return {

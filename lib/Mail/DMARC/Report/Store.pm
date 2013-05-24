@@ -44,8 +44,8 @@ __END__
 
 =head1 DESCRIPTION
 
-I struggled with choosing between a perl AnyDBM storage backend versus a SQL backend. I deployed with SQL because with a single SQL implementation, the user can choose from the wide availability of DBD drivers, including SQLite, MySQL, DBD (same as AnyDBM) and many others.
+I first toyed with perl's AnyDBM storage backend. I chose to deploy with SQL because with a single SQL implementation, the user can choose from the wide availability of DBD drivers, including SQLite, MySQL, DBD (same as AnyDBM) and many others.
 
-Others might like an alternative. This layer of indirection allows someone to write a new Mail::DMARC::Report::Store::MyGreatDB module, update their config file, and not alter the innards of Mail::DMARC.
+Others might like an alternative. This layer of indirection allows someone to write a new Mail::DMARC::Report::Store::MyGreatDB module, update their config file, and not alter the innards of Mail::DMARC. Much.
 
 =cut
