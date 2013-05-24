@@ -16,6 +16,7 @@ install:
 
    # Deal with all of the DZIL dependencies, quickly and quietly
    - cpanm --quiet --notest --skip-satisfied Dist::Zilla
+   - cpanm --quiet --notest --skip-satisfied Pod::Weaver::Section::Contributors
 
    - dzil authordeps | grep -vP '[^\w:]' | xargs -n 5 -P 10 cpanm --quiet --notest --skip-satisfied
 
