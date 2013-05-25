@@ -34,7 +34,18 @@ sub save_aggregate {
 
 sub retrieve {
     my ( $self, %args ) = @_;
-    my $reports = $self->query( $self->get_report_query );
+
+    my $query = $self->get_report_query;
+    my @params;
+    my @known = qw/ rid author rcpt_domain from_domain begin end /;
+
+    foreach my $known ( @known ) {
+        next if ! defined $args{$known};
+        $query .= " AND $known=?";
+        push @params, $args{$known};
+    };
+    my $reports = $self->query( $query );
+
     foreach (@$reports ) {
         $_->{begin} = join(" ", split(/T/, $self->epoch_to_iso( $_->{begin} )));
         $_->{end} = join(" ", split(/T/, $self->epoch_to_iso( $_->{end} )));
@@ -190,11 +201,8 @@ sub get_report {
 
 # TODO: allow custom search ops?  'searchOper'   => 'eq',
     if ( $args{searchField} && $known{ $args{searchField} } ) {
-        $query .= " WHERE $args{searchField}=?";
+        $query .= " AND $args{searchField}=?";
         push @params, $args{searchString};
-    }
-    else {
-        $query .= " WHERE 1=1";
     };
 
     foreach my $known ( @known ) {
@@ -242,17 +250,18 @@ sub get_report {
 sub get_report_query {
     my $self = shift;
     return <<'EO_REPORTS'
-SELECT r.id AS rid,
+SELECT r.id    AS rid,
     r.uuid,
-    r.begin AS begin,
-    r.end   AS end,
+    r.begin    AS begin,
+    r.end      AS end,
     a.org_name AS author,
     rd.domain  AS rcpt_domain,
     fd.domain  AS from_domain
 FROM report r
-LEFT JOIN author a ON r.author_id=a.id
+LEFT JOIN author a  ON r.author_id=a.id
 LEFT JOIN domain rd ON r.rcpt_domain_id=rd.id
 LEFT JOIN domain fd ON r.from_domain_id=fd.id
+WHERE 1=1
 EO_REPORTS
 ;
 };
