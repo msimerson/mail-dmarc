@@ -68,7 +68,7 @@ sub print_rows {
 
 sub print_header {
     printf "%3s  %20s  %20s  %15s\n", qw[ ID Recipient From/Sender Report-Start ];
-    printf "  | -- %3s %32s %13s %7s %7s %20s\n\n", 'Qty','Source IP','Disposition','DKIM','SPF';
+    printf "  | -- %3s %39s %13s %7s %7s\n\n", 'Qty','Source IP','Disposition','DKIM','SPF';
     return;
 };
 
