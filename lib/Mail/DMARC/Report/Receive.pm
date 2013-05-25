@@ -325,11 +325,6 @@ sub do_node_record_reason {
     return;
 };
 
-sub verbose {
-    return $_[0]->{verbose} if 1 == scalar @_;
-    return $_[0]->{verbose} = $_[1];
-};
-
 1;
 __END__
 # ABSTRACT: process incoming DMARC reports

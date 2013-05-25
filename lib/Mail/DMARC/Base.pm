@@ -173,6 +173,11 @@ sub slurp {
     return $contents;
 }
 
+sub verbose {
+    return $_[0]->{verbose} if 1 == scalar @_;
+    return $_[0]->{verbose} = $_[1];
+};
+
 1;
 
 # ABSTRACT: DMARC utility functions

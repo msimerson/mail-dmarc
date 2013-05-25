@@ -16,17 +16,17 @@ my %command_line_options = (
         'verbose'   => \my $verbose,
         );
 GetOptions (%command_line_options);
+$verbose = 1 if ! defined $verbose;
 
 $domain ||= $ARGV[0] or pod2usage;
 
 my $dmarc = Mail::DMARC::PurePerl->new;
-$dmarc->verbose($verbose) if defined $verbose;
+$dmarc->verbose($verbose);
 $dmarc->header_from($domain);
 my $policy = $dmarc->discover_policy() or
     die "no DMARC policy published for $domain\n";
 
 print Dumper( $policy );
-
 exit;
 
 # PODNAME: dmarc_lookup
