@@ -19,6 +19,9 @@ sub validate {
     my $self   = shift;
     my $policy = shift;
 
+    $self->result->result('fail');        # set a couple
+    $self->result->disposition('none');   # defaults
+
 # 11.2.1 Extract RFC5322.From domain
     my $from_dom = $self->get_from_dom() or return;
 # 9.6. reject email if the domain appears to not exist
@@ -44,7 +47,6 @@ sub validate {
     #        disposed of in accordance with the discovered DMARC policy of the
     #        Domain Owner.  See Section 6.2 for details.
     if ( lc $effective_p eq 'none' ) {
-        $self->result->disposition('none');
         return;
     }
 
@@ -59,7 +61,6 @@ sub validate {
     # The stated percentage of messages that fail the DMARC test MUST be
     # subjected to whatever policy is selected by the "p" or "sp" tag
     if ( int( rand(100) ) >= $policy->pct ) {
-        $self->result->disposition('none');
         $self->result->reason( type => 'sampled_out' );
         return;
     }
@@ -82,9 +83,8 @@ sub validate {
 sub discover_policy {
     my $self     = shift;
     my $from_dom = shift || $self->header_from or croak;
+    print "Header From: $from_dom\n" if $self->verbose;
     my $org_dom  = $self->get_organizational_domain($from_dom);
-
-    my $e = $self->result;
 
     # 9.1  Mail Receivers MUST query the DNS for a DMARC TXT record
     my $matches = $self->fetch_dmarc_record( $from_dom, $org_dom );
@@ -93,14 +93,17 @@ sub discover_policy {
     # 9.5. If the remaining set contains multiple records, processing
     #      terminates and the Mail Receiver takes no action.
     if ( scalar @$matches > 1 ) {
-        $e->result('fail');
-        $e->disposition('none');
-        $e->reason( type => 'other', comment => "too many policies" );
+        $self->result->reason( type => 'other', comment => "too many policies" );
+        print "Too many DMARC records\n" if $self->verbose;
         return;
     }
 
-    #   $e->dmarc_rr($matches->[0]);  # why save this?
-    my $policy = $self->policy( $matches->[0] ) or return;
+    my $policy;
+    eval { $policy = $self->policy( $matches->[0] ) } or return;
+    if ($@) {
+        $self->result->reason( type => 'other', comment => "policy parse error: $@" );
+        return;
+    };
     $policy->domain($from_dom);
     $self->result->published($policy);
 
@@ -119,9 +122,7 @@ sub discover_policy {
         if (   !$policy->rua
             || !$self->has_valid_reporting_uri( $policy->rua ) )
         {
-            $e->result('fail');
-            $e->disposition('none');
-            $e->reason( type => 'other', comment => "no valid rua" );
+            $self->result->reason( type => 'other', comment => "no valid rua" );
             return;
         }
         $policy->v('DMARC1');
@@ -150,7 +151,6 @@ sub is_aligned {
         $self->result->disposition('none');
         return 1;
     }
-    $self->result->result('fail');
     return 0;
 }
 
@@ -309,7 +309,9 @@ sub get_organizational_domain {
     #     from the public suffix list and prefixing to it the "x+1"th
     #     label from the subject domain. This new name is the
     #     Organizational Domain.
-    return join '.', reverse( (@labels)[ 0 .. $greatest ] );
+    my $org_dom = join '.', reverse( (@labels)[ 0 .. $greatest ] );
+    print "Organizational Domain: $org_dom\n" if $self->verbose;
+    return $org_dom;
 }
 
 sub exists_in_dns {
@@ -334,7 +336,6 @@ sub exists_in_dns {
         $matched++ and next if $self->has_dns_rr( 'AAAA', $_ );
     }
     if ( !$matched ) {
-        $self->result->result('fail');
         $self->result->disposition('reject');
         $self->result->reason(
             type    => 'other',
@@ -360,6 +361,7 @@ sub fetch_dmarc_record {
         #   2.  Records that do not start with a "v=" tag that identifies the
         #       current version of DMARC are discarded.
         next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
+        print "\n" . $rr->txtdata . "\n\n" if $self->verbose;
         push @matches, join( '', $rr->txtdata );    # join long records
     }
     return \@matches if scalar @matches;            # found one! (at least)
@@ -375,8 +377,6 @@ sub fetch_dmarc_record {
         }
     }
 
-    $self->result->result('fail');
-    $self->result->disposition('none');
     $self->result->reason( type => 'other', comment => 'no policy' );
     return \@matches;
 }
@@ -393,11 +393,8 @@ sub get_from_dom {
 
 sub get_dom_from_header {
     my $self   = shift;
-    my $e      = $self->result;
     my $header = $self->header_from_raw or do {
-        $e->result('fail');
-        $e->disposition('none');
-        $e->reason( type => 'other', comment => "no header_from" );
+        $self->result->reason( type => 'other', comment => "no header_from" );
         return;
     };
 
@@ -410,9 +407,7 @@ sub get_dom_from_header {
     my ($from_dom) = ( split /@/, $header )[-1]; # grab everything after the @
     ($from_dom) = split /(\s+|>)/, $from_dom;    # remove trailing cruft
     if ( !$from_dom ) {
-        $e->result('fail');
-        $e->disposition('none');
-        $e->reason(
+        $self->result->reason(
             type    => 'other',
             comment => "invalid header_from: ($header)"
         );
@@ -467,7 +462,7 @@ sub verify_external_reporting {
 
         next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
         my $policy = undef;
-        my $dmarc_str = join( '', $rr->txtdata );    # join ports
+        my $dmarc_str = join( '', $rr->txtdata );    # join parts
         eval { $policy = $self->policy->parse($dmarc_str) }; ## no critic (Eval)
         push @matches, $policy ? $policy : $dmarc_str;
     }
@@ -502,21 +497,58 @@ sub {}
 
 =head2 init
 
-Resets the Mail::DMARC object, preparing it for a fresh request.
+Reset the Mail::DMARC object, preparing it for a fresh request.
 
 =head2 validate
 
+This method does the following:
+
+=over 4
+
+* check if the RFC5322.From domain exists (exists_in_dns)
+
+* query DNS for a DMARC policy (discover_policy)
+
+* check DKIM alignment (is_dkim_aligned)
+
+* check SPF alignment (is_spf_aligned)
+
+* determine DMARC alignment (is_aligned)
+
+* calculate the I<effective> DMARC policy
+
+* apply the DMARC policy (see L<Mail::DMARC::Result>)
+
+=back
+
 =head2 discover_policy
+
+Query the DNS to determine if a DMARC policy exists. When the domain name in the email From header (header_from) is not an Organizational Domain (ex: www.example.com), an attempt is made to determine the O.D. using the Mozilla Public Suffix List. When the O.D. differs from the header_from, a second DNS query is sent to _dmarc.[O.D.].
+
+If a DMARC DNS record is found, it is parsed as a L<Mail::DMARC::Policy> object and returned.
 
 =head2 is_aligned
 
+Determine if this message is DMARC aligned. To pass this test, the message must pass at least one of the alignment test (DKIM or SPF).
+
 =head2 is_dkim_aligned
+
+Determine if a valid DKIM signature in the message is aligned with the message's From header domain. This match can be in strict (exact match) or relaxed (subdomains match) alignment.
 
 =head2 is_spf_aligned
 
+Same as DKIM, but for SPF.
+
 =head2 has_valid_reporting_uri
 
+Check for the presence of a valid reporting URI in the rua or ruf DMARC policy tags.
+
 =head2 get_organizational_domain
+
+From the 2013 DMARC spec, section 4:
+
+  Organizational Domain: ..is the domain that was registered with a domain
+  name registrar. Heuristics are used to determine this...
 
 =head2 exists_in_dns
 
@@ -554,11 +586,23 @@ there is no delegation from the TLD. That has proven very reliable.
 
 =head2 fetch_dmarc_record
 
+Query the DNS for the presence of a DMARC record at the header from domain name and the Organizational Domain name. Returns the discovered DNS record answers.
+
 =head2 get_from_dom
+
+Returns the header_from attribute, if defined. When header_from is not defined, returns the results of get_dom_from_header.
 
 =head2 get_dom_from_header
 
+Crudely, and very quickly parse a From header and return the domain name (aka, the header_from domain).
+
+The From header format is defined in RFC 822 and is very complex. The From header can contain multiple email addresses, each with different domains. This method returns the last one. If you want to handle this differently, parse the From header yourself and set header_from.
+
 =head2 external_report
+
+Determine if a report URL is external. If the domain name portion of the URI is not the same as the domain where the DMARC record was discovered, the report address is considered external.
+
+=head2 verify_external_reporting
 
 =head3  8.2.  Verifying External Destinations
 
@@ -579,6 +623,19 @@ domain at which that record was discovered is not identical to the
 host part of the authority component of a [URI] specified in the
 "rua" or "ruf" tag, the following verification steps SHOULD be taken:
 
-=head2 verify_external_reporting
+  1.  Extract the host portion of the authority component of the URI.
+      Call this the "destination host".
+  2.  Prepend the string "_report._dmarc".
+  3.  Prepend the domain name from which the policy was retrieved,
+      after conversion to an A-label if needed.
+  4.  Query the DNS for a TXT record at the constructed name.
+  5.  For each record, parse the result...same overall format:
+      "v=DMARC1" tag is mandatory and MUST appear first in the list.
+  6.  If the result includes no TXT resource records...stop
+  7.  If > 1 TXT resource record remains, external reporting authorized
+  8.  If a "rua" or "ruf" tag is discovered, replace the
+      corresponding value with the one found in this record.
+
+The overriding URI MUST use the same destination host from the first step.
 
 =cut

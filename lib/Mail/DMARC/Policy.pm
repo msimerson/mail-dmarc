@@ -164,26 +164,7 @@ sub is_valid {
 __END__
 sub {}
 
-=head1 EXAMPLES
-
-A DMARC record looks like this:
-
-    v=DMARC1; p=reject; adkim=s; aspf=s; rua=mailto:dmarc@example.com; pct=100;
-
-DMARC records are stored in TXT resource records in the DNS, at _dmarc.example.com. To retrieve a DMARC record for a domain, use a dig query like this:
-
-    dig +short _dmarc.example.com TXT
-
-Or in a more perlish fashion:
-
-    my $res = Net::DNS::Resolver->new(dnsrch => 0);
-    $res->send('_dmarc.example.com', 'TXT');
-
-Or with the provided dmarc_lookup tool:
-
-    dmarc_lookup example.com
-
-=head1 USAGE
+=head1 SYNOPSIS
 
  my $pol = Mail::DMARC::Policy->new(
     'v=DMARC1; p=none; rua=mailto:dmarc@example.com'
@@ -195,7 +176,31 @@ Or with the provided dmarc_lookup tool:
  print "do not send aggregate reports" if ! $pol->rua;
  print "do not send forensic reports"  if ! $pol->ruf;
 
+=head1 EXAMPLES
+
+A DMARC record in DNS format looks like this:
+
+    v=DMARC1; p=reject; adkim=s; aspf=s; rua=mailto:dmarc@example.com; pct=100;
+
+DMARC records are stored in TXT resource records in the DNS, at _dmarc.example.com. To retrieve a DMARC record for a domain:
+
+=head2 dig
+
+    dig +short _dmarc.example.com TXT
+
+=head2 perlishly
+
+    print $_->txtdata."\n"
+      for Net::DNS::Resolver->new(dnsrch=>0)->send('_dmarc.example.com','TXT')->answer;
+
+
+=head2 dmarc_lookup
+
+    dmarc_lookup example.com
+
 =head1 METHODS
+
+All methods validate their input against the 2013 DMARC specification. Attempts to set invalid values will throw exceptions.
 
 =head2 new
 
@@ -219,11 +224,11 @@ Create a new policy from a DMARC DNS resource record:
 
 If a policy is passed in (the latter two examples), the resulting policy object will be an exact representation of the record as returned from DNS.
 
-=head1 apply_defaults
+=head2 apply_defaults
 
 Several of the DMARC tags (adkim,aspf,fo,ri,rf) have default values when not specified in the published DNS record. Calling I<apply_defaults> will apply those default values to the DMARC tags that were not specified in the DNS record. The resulting L<Policy|Mail::DMARC::Policy> object will be a perfect representation of the DMARC policy that is/was applied.
 
-=head1 parse
+=head2 parse
 
 Accepts a string containing a DMARC Resource Record, as it would be retrieved
 via DNS.
@@ -257,8 +262,6 @@ Each tag has a mutator that's a setter and getter. To set any of the tag values,
 
   $pol->p('none');                         set policy action to none
   print "do nothing" if $pol->p eq 'none'; get policy action
-
-When new values are passed in, they are validated. Invalid values throw exceptions.
 
 =head2 v
 
