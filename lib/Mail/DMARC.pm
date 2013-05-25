@@ -141,9 +141,11 @@ sub save_aggregate {
     my $agg = $self->report->aggregate;
 
     # put config information in report metadata
-    foreach my $f ( qw/ domain org_name email extra_contact_info / ) {
+    foreach my $f ( qw/ domain org_name email extra_contact_info report_id / ) {
         $agg->metadata->$f( $self->config->{organization}{$f} );
     };
+    $agg->metadata->begin( time );
+    $agg->metadata->end( time + ($self->result->published->ri || 86400 ));
 
     $agg->policy_published( $self->result->published );
 # I could just pass in the $self as the identifer, and $self->result as the
@@ -156,14 +158,14 @@ sub save_aggregate {
                     header_from   => $self->header_from,
                     },
                 auth_results => {
-                    dkim          => $self->dkim,
-                    spf           => $self->spf,
+                    dkim          => [ $self->dkim ],
+                    spf           => [ $self->spf ],
                     },
                 policy_evaluated  => {
                     disposition   => $self->result->disposition,
                     dkim          => $self->result->dkim,
                     spf           => $self->result->spf,
-                    reason        => $self->result->reason,
+                    reason        => [ $self->result->reason ],
                     }
             });
 
