@@ -35,8 +35,7 @@ sub header_from {
 
 sub header_from_raw {
     return $_[0]->{header_from_raw} if 1 == scalar @_;
-
- #croak "invalid header_from_raw: $_[1]" if 'from:' ne lc substr($_[1], 0, 5);
+#croak "invalid header_from_raw: $_[1]" if 'from:' ne lc substr($_[1], 0, 5);
     return $_[0]->{header_from_raw} = $_[1];
 }
 
@@ -148,7 +147,7 @@ sub save_aggregate {
 
     $agg->policy_published( $self->result->published );
 # I could just pass in the $self as the identifer, and $self->result as the
-# policy_evaluated, but this way documents what's being passed along.
+# policy_evaluated, but this documents what's being passed.
     $agg->record({
                 identifiers => {
                     source_ip     => $self->source_ip,
@@ -218,7 +217,7 @@ by MTA operators to send DMARC reports to DMARC author domains.
 
 =back
 
-When a message arrives via SMTP, the MTA or filtering application can pass in a small amount of metadata about the connection (envelope details, SPF results, and DKIM results) to Mail::DMARC. When the B<validate> method is called, the Mail::DMARC will determine if:
+When a message arrives via SMTP, the MTA or filtering application can pass in a small amount of metadata about the connection (envelope details, SPF results, and DKIM results) to Mail::DMARC. When the B<validate> method is called, Mail::DMARC will determine if:
 
  a. the header_from domain exists
  b. the header_from domain publishes a DMARC policy
@@ -226,7 +225,7 @@ When a message arrives via SMTP, the MTA or filtering application can pass in a 
  d. does the message conform to the published policy?
  e. did the policy request reporting? If so, save details.
 
-The validation results are stored in a L<Mail::DMARC::Result> object. If the author domain requested a report, it was saved via L<Mail::DMARC::Report::Store>. A SQL implementation is provided and tested with SQLite and MySQL. ANSI SQL queries syntax is preferred, making it straight forward to extend to other RDBMS.
+The validation results are stored in a L<Mail::DMARC::Result> object. If the author domain requested a report, it was saved via L<Mail::DMARC::Report::Store>. A SQL implementation is provided and tested with SQLite and MySQL. ANSI SQL queries are preferred, making it straight forward to extend to other RDBMS.
 
 There is more information available in the $result object. See L<Mail::DMARC::Result> for complete details.
 
@@ -260,9 +259,12 @@ L<Mail::DMARC::libopendmarc|http://search.cpan.org/~shari/Mail-DMARC-opendmarc> 
 
 =head2 new
 
-Create an empty DMARC object. Then populate it and run the request:
+Create a DMARC object.
 
-    my $dmarc = Mail::DMARC->new;
+    my $dmarc = Mail::DMARC::PurePerl->new;
+
+Populate it.
+
     $dmarc->source_ip('192.0.1.1');
     $dmarc->envelope_to('recipient.example.com');
     $dmarc->envelope_from('sender.example.com');
@@ -273,11 +275,14 @@ Create an empty DMARC object. Then populate it and run the request:
         scope  => 'mfrom',
         result => 'pass',
             );
+
+Run the request:
+
     my $result = $dmarc->validate();
 
 Alternatively, pass in all the required parameters in one shot:
 
-    my $dmarc = Mail::DMARC->new(
+    my $dmarc = Mail::DMARC::PurePerl->new(
             source_ip     => '192.0.1.1',
             envelope_to   => 'example.com',
             envelope_from => 'cars4you.info',
@@ -286,7 +291,6 @@ Alternatively, pass in all the required parameters in one shot:
             spf           => $spf_results,   # as previous example
             );
     my $result = $dmarc->validate();
-
 
 =head2 source_ip
 
