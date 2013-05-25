@@ -39,7 +39,7 @@ sub dmarc_httpd {
 
     Net::Server::HTTP->run(
         app => sub { &dmarc_dispatch },
-        port  => [$port, ($ports ? "$ports/ssl" : ()) ],
+        port  => [$port, (($ports && $sslkey && $sslcrt) ? "$ports/ssl" : ()) ],
         ipv   => '*', # IPv6 if available
         ($sslkey ? (SSL_key_file => $sslkey) : ()),
         ($sslcrt ? (SSL_cert_file => $sslcrt) : ()),

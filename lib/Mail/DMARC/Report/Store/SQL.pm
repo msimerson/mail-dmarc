@@ -17,7 +17,7 @@ sub save_aggregate {
         if 'Mail::DMARC::Policy' ne ref $agg->policy_published;
 
     #warn Dumper($meta); ## no critic (Carp)
-    foreach my $f ( qw/ domain org_name email begin end report_id / ) {
+    foreach my $f ( qw/ domain org_name email begin end / ) {
         croak "meta field $f required" if ! $agg->metadata->$f;
     }
 
@@ -170,10 +170,21 @@ sub get_aggregate_rid {
     my $author_id   = $self->get_author_id( $meta );
     my $from_dom_id = $self->get_domain_id( $pol->domain );
 
-    my $ids = $self->query(
+    my $ids;
+    if ( $meta->report_id ) {
+# aggregate reports arriving via the wire will have a report ID
+        $ids = $self->query(
         'SELECT id FROM report WHERE rcpt_domain_id=? AND uuid=? AND author_id=?',
         [ $rcpt_dom_id, $meta->report_id, $author_id ]
-    );
+        );
+    }
+    else {
+# reports submitted by our local MTA will not have a report ID
+        $ids = $self->query(
+        'SELECT id FROM report WHERE rcpt_domain_id=? AND author_id=? AND end > ?',
+        [ $rcpt_dom_id, $author_id, time ]
+        );
+    };
 
     if ( scalar @$ids ) { # report already exists
         return $self->{report_id} = $ids->[0]{id};
@@ -318,13 +329,14 @@ sub insert_aggregate_row {
     my $reasons = $rec->{policy_evaluated}{reason};
     if ( $reasons ) {
         foreach my $reason ( @$reasons ) {
+            next if ! $reason || ! $reason->{type};
             $self->insert_rr_reason( $row_id, $reason->{type},
                 $reason->{comment} );
         };
     }
 
     my $spf_ref = $rec->{auth_results}{spf};
-    if ( $spf_ref && scalar @$spf_ref ) {
+    if ( $spf_ref ) {
         foreach my $spf (@$spf_ref) {
             $self->insert_rr_spf( $row_id, $spf );
         }
@@ -333,6 +345,7 @@ sub insert_aggregate_row {
     my $dkim = $rec->{auth_results}{dkim};
     if ($dkim) {
         foreach my $sig (@$dkim) {
+            next if ! $sig || ! $sig->{domain};
             $self->insert_rr_dkim( $row_id, $sig );
         }
     }

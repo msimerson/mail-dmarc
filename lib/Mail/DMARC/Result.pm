@@ -74,9 +74,11 @@ sub result {
 }
 
 sub reason {
-    my $self = shift;
-    my @args = @_;
-    return $self->{reason} if ref $self->{reason} && !scalar @args;
+    my ($self,@args) = @_;
+    if ( ! scalar @args ) {
+        return $self->{reason} if ref $self->{reason};
+        return;
+    };
     return $self->{reason} = Mail::DMARC::Result::Reason->new(@args);
 }
 
@@ -92,9 +94,9 @@ use Carp;
 
 sub new {
     my ( $class, @args ) = @_;
-    croak "invalid arguments" if @args % 2 != 0;
-    my $self = bless {}, $class;
+    croak "invalid arguments" if @args % 2;
     my %args = @args;
+    my $self = bless {}, $class;
     foreach my $key ( keys %args ) {
         $self->$key( $args{$key} );
     }
@@ -139,7 +141,7 @@ An DMARC result looks like the following data structure:
     dkim_align   => 'strict', # strict, relaxed
     spf          => 'pass',   # pass, fail
     spf_align    => 'strict', # strict, relaxed
-    policy       => L<Mail::DMARC::Policy>,
+    published    => L<Mail::DMARC::Policy>,
 
 Reasons are optional and may not be present.
 
