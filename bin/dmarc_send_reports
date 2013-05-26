@@ -15,11 +15,11 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
     print $aggregate->metadata->domain . "\n";
     print "rua: " . $aggregate->policy_published->rua . "\n";
     my $xml = $aggregate->as_xml();
-#   $report->sendit->send_rua(\$aggregate, \$xml) # deliver via SMTP/HTTP
-#       and $report->store->delete_report($aggregate->metadata->report_id);
-    print $xml;
-    print "sleeping 5";
-    foreach ( 1 .. 5 ) { print '.'; sleep 1; };
+    $report->sendit->send_rua(\$aggregate, \$xml) # deliver via SMTP/HTTP
+        and $report->store->delete_report($aggregate->metadata->report_id);
+#   print $xml;
+    print "sleeping 2";
+    foreach ( 1 .. 2 ) { print '.'; sleep 1; };
     print "done.\n";
 };
 
