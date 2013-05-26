@@ -37,6 +37,7 @@ test_insert_rr_spf();
 test_insert_rr_dkim();
 test_insert_rr_reason();
 test_get_aggregate_rid();
+test_get_author_id(3);
 test_get_report();
 
 done_testing();
@@ -75,6 +76,39 @@ sub test_get_report {
     ok( $reports->{rows}, "get_report, multisearch");
 };
 
+sub test_get_author_id {
+    my $times = shift or return;
+    my %meta = (
+        domain             => "test$times.com",
+        org_name           => "Test $times Company",
+        email              => 'dmarc-reporter@example.com',
+        extra_contact_info => undef,
+        report_id          => undef,
+        begin              => time,
+        end                => time + 10,
+    );
+
+    my $report = Mail::DMARC::Report->new();
+    foreach ( keys %meta ) {
+        next if ! defined $_;
+        next if ! defined $meta{$_};
+        ok( $report->aggregate->metadata->$_( $meta{$_} ), "meta, $_, set" );
+    }
+
+    my $policy = Mail::DMARC::Policy->new("v=DMARC1; p=reject");
+    ok( $policy->rua( 'mailto:' . $sql->config->{organization}{email} ), "policy, rua, set");
+    ok( $policy->domain( 'recip.example.com'), "policy, domain, set");
+    ok( $report->aggregate->policy_published( $policy ), "policy published, set");
+
+# find a matching report, or create a new one
+    my $rid = $sql->get_aggregate_rid( $report->aggregate );
+    ok( $rid, "get_aggregate_rid, $rid" );
+
+    my $authors = $sql->get_author_id( $report->aggregate->metadata );
+    print Dumper($authors);
+    test_get_author_id($times - 1);
+}
+
 sub test_get_aggregate_rid {
     my %meta = (
         report_id => time,
@@ -86,13 +120,26 @@ sub test_get_aggregate_rid {
     );
     my $report = Mail::DMARC::Report->new();
     foreach ( keys %meta ) {
-        ok( $report->aggregate->metadata->$_( $meta{$_} ), "meta, $_" );
+        ok( $report->aggregate->metadata->$_( $meta{$_} ), "meta, $_, set" );
     }
     my $policy = Mail::DMARC::Policy->new("v=DMARC1; p=reject");
-    $policy->rua( 'mailto:' . $sql->config->{organization}{email} );
-    $policy->{domain} = 'recip.example.com';
-    $report->aggregate->policy_published( $policy );
-    ok( $sql->get_aggregate_rid( $report->aggregate ), 'get_aggregate_rid' );
+    ok( $policy->rua( 'mailto:' . $sql->config->{organization}{email} ), "policy, rua, set");
+    ok( $policy->domain( 'recip.example.com'), "policy, domain, set");
+    ok( $report->aggregate->policy_published( $policy ), "policy published, set");
+
+# find a matching report, or create a new one
+    my $rid = $sql->get_aggregate_rid( $report->aggregate );
+    ok( $rid, "get_aggregate_rid, $rid" );
+
+    my $reports = $sql->get_report( rcpt_domain => $meta{domain} );
+    print Dumper($reports);
+
+    my $authors = $sql->get_author_id( $report->aggregate->metadata );
+    print Dumper($authors);
+
+    foreach ( keys %meta ) {
+        cmp_ok( $report->aggregate->metadata->$_, 'eq', $meta{$_}, "meta, $_, get");
+    };
 }
 
 sub test_insert_rr_reason {

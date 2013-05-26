@@ -266,13 +266,12 @@ sub test_reason {
         qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /
         )
     {
-        ok( $result->reason->type($_),        "reason type: $_" );
-        ok( $result->reason->comment('test'), "reason comment" );
+        ok( $result->reason( type => $_, comment => "test comment" ), "reason type: $_" );
     }
 
     # negative tests
     foreach (qw/ any reason not in above list /) {
-        eval { $result->reason->type($_) };
+        eval { $result->reason( type => $_ ) };
         chomp $@;
         ok( $@, "reason, $_, $@" );
     }

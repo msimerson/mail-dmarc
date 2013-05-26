@@ -34,6 +34,7 @@ done_testing();
 exit;
 
 sub test_reason {
+    return if ! $dmarc->result->reason;
     $dmarc->result->reason->type('other');
     $dmarc->result->reason->comment('testing');
 }
