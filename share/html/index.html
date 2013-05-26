@@ -47,11 +47,11 @@ jQuery(document).ready(function(){
   jQuery("#grid").jqGrid({
       url:'/dmarc/json/report',
       mtype: 'POST',
-      colNames:['Id','Recipient','From','Org Name','Begin','End','UUID' ],
+      colNames:['Id','Sender/From','Recipient','Org Name','Begin','End','UUID' ],
       colModel :[
         {name:'rid', index:'rid', width:30, align:'center', sortable: true },
-        {name:'rcpt_domain', index:'rcpt_domain', width:135, align:'right', sortable: true},
         {name:'from_domain', index:'from_domain', width:135, align:'right', sortable: true},
+        {name:'rcpt_domain', index:'rcpt_domain', width:135, align:'right', sortable: true},
         {name:'author',      index:'author',      width:170, align:'center' },
         {name:'begin',       index:'begin',       width:90, sorttype:'date'},
         {name:'end',         index:'end',         width:90, sorttype:'date',},
@@ -69,11 +69,11 @@ jQuery(document).ready(function(){
 		  subGridUrl:'/dmarc/json/row',
 			subGridModel: [
 				{
-        name:['','IP','Count','Disposition','SPF','DKIM','Envelope To','Envelope From'],
+        name:['','IP','Count','Disposition','SPF','DKIM','Envelope From','Envelope To'],
 				width:[70,200,15,40,40,40,100,100,100],
 				align:[,'center','center','center','center','center','right','right'],
 				params: ['rid'],
-        mapping: [,'source_ip','count','disposition','spf','dkim','envelope_to','envelope_from'],
+        mapping: [,'source_ip','count','disposition','spf','dkim','envelope_from','envelope_to'],
 				},
 			],
 		  filterToolbar: {

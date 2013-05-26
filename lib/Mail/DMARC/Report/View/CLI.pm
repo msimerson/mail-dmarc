@@ -16,7 +16,7 @@ sub list {
     my $self    = shift;
     my $reports = $self->store->retrieve;
     foreach my $report ( reverse @$reports) {
-        printf "%3s  %20s  %20s  %15s\n", @$report{qw/ rid rcpt_domain from_domain begin /};
+        printf "%3s  %20s  %20s  %15s\n", @$report{qw/ rid from_domain rcpt_domain begin /};
     }
     return $reports;
 }
