@@ -166,23 +166,26 @@ sub get_aggregate_rid {
     my $pol  = $aggregate->policy_published;
 
     # check if report exists
-    my $rcpt_dom_id = $self->get_domain_id( $meta->domain );
-    my $author_id   = $self->get_author_id( $meta );
-    my $from_dom_id = $self->get_domain_id( $pol->domain );
+    my $rcpt_dom_id = $self->get_domain_id( $meta->domain ) or croak;
+    my $author_id   = $self->get_author_id( $meta )         or croak;
+    my $from_dom_id = $self->get_domain_id( $pol->domain )  or croak;
 
     my $ids;
     if ( $meta->report_id ) {
-# aggregate reports arriving via the wire will have a report ID
+# aggregate reports arriving via the wire will have a report ID and author ID,
+# and hopefully a from_domain_id, but not assuredly
         $ids = $self->query(
         'SELECT id FROM report WHERE rcpt_domain_id=? AND uuid=? AND author_id=?',
         [ $rcpt_dom_id, $meta->report_id, $author_id ]
         );
     }
     else {
-# reports submitted by our local MTA will not have a report ID
+# Reports submitted by our local MTA will not have a report ID
+# They are aggregated based on the From domain name where the DMARC policy
+# was discovered.
         $ids = $self->query(
-        'SELECT id FROM report WHERE rcpt_domain_id=? AND author_id=? AND end > ?',
-        [ $rcpt_dom_id, $author_id, time ]
+        'SELECT id FROM report WHERE rcpt_domain_id=? AND from_domain_id=? AND end > ?',
+        [ $rcpt_dom_id, $from_dom_id, time ]
         );
     };
 
