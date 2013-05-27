@@ -171,7 +171,9 @@ sub get_filename {
         $self->config->{organization}{domain},
         $args->{policy_domain},
         $args->{begin}, $args->{end}, $args->{report_id} || time,
-    ) . '.xml.gz';
+    ) . '.xml';
+# don't append .gz extension here, due to 2013 interoperability, using .zip
+# legacy compression until after 7/1/13.
 }
 
 sub _assemble_message {
@@ -179,6 +181,8 @@ sub _assemble_message {
 
     my $filename = $self->get_filename($args);
     my $cf       = ( time > 1372662000 ) ? 'gzip' : 'zip';   # gz after 7/1/13
+      $filename .= $cf eq 'gzip' ? '.gz' : '.zip';
+
     my @parts    = Email::MIME->create(
         attributes => {
             content_type => "text/plain",
