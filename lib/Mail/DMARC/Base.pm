@@ -104,14 +104,25 @@ sub is_public_suffix {
 sub has_dns_rr {
     my ( $self, $type, $domain ) = @_;
 
-    my $matches = 0;
+    my @matches;
     my $res     = $self->get_resolver();
-    my $query   = $res->query( $domain, $type ) or return $matches;
+    my $query   = $res->query( $domain, $type ) or do {
+        return 0 if ! wantarray;
+        return @matches;
+    };
     for my $rr ( $query->answer ) {
         next if $rr->type ne $type;
-        $matches++;
+        push @matches, $rr->type eq  'A'   ? $rr->address
+                     : $rr->type eq 'PTR'  ? $rr->ptrdname
+                     : $rr->type eq  'NS'  ? $rr->nsdname
+                     : $rr->type eq  'TXT' ? $rr->txtdata
+                     : $rr->type eq  'SPF' ? $rr->txtdata
+                     : $rr->type eq 'AAAA' ? $rr->address
+                     : $rr->type eq  'MX'  ? $rr->exchange
+                     : $rr->answer;
     }
-    return $matches;
+    return scalar @matches if ! wantarray;
+    return @matches;
 }
 
 sub epoch_to_iso {
