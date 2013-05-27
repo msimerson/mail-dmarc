@@ -6,6 +6,7 @@ use lib 'lib';
 use Mail::DMARC::Report::View::HTTP;
 my $http = Mail::DMARC::Report::View::HTTP->new;
 $http->dmarc_httpd;
+exit;
 
 # ABSTRACT: a web server for viewing DMARC reports
 # PODNAME: dmarc_httpd
