@@ -2,12 +2,16 @@
 use strict;
 use warnings;
 
-use Data::Dumper;
+#use Data::Dumper;
+#use XML::LibXML;
 
 $|++;
 use lib 'lib';
 use Mail::DMARC::Report;
 my $report = Mail::DMARC::Report->new();
+
+#my $schema = 'http://dmarc.org/dmarc-xml/0.1/rua.xsd';
+#my $xmlschema = XML::LibXML::Schema->new( location => $schema );
 
 # 1. get list of reports ready to send
 while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
@@ -15,9 +19,12 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
     print $aggregate->metadata->domain . "\n";
     print "rua: " . $aggregate->policy_published->rua . "\n";
     my $xml = $aggregate->as_xml();
+#    warn $xml;
+#    my $dom = XML::LibXML->load_xml( string => (\$xml) );
+#    eval { $xmlschema->validate( $dom ); };
+#    die "$@" if $@;
     $report->sendit->send_rua(\$aggregate, \$xml) # deliver via SMTP/HTTP
         and $report->store->delete_report($aggregate->metadata->report_id);
-#   print $xml;
     print "sleeping 2";
     foreach ( 1 .. 2 ) { print '.'; sleep 1; };
     print "done.\n";
