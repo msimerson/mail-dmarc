@@ -70,6 +70,7 @@ sub get_record_as_xml {
     my $rec_xml = " <record>\n";
     foreach my $row ( @{ $self->{record} } ) {
         my $ip = $row->{source_ip} or croak "no source IP!?";
+        $row->{policy_evaluated}{disposition} or croak "no disposition?";
         next if !defined $ips{$ip};    # already reported
         my $count = delete $ips{$ip};
         $rec_xml
@@ -143,6 +144,7 @@ sub get_policy_evaluated_as_xml {
     }
 
     foreach my $reason ( keys %$reasons ) {
+        next if ! $reason;
         $pe .= "    <reason>\n     <type>$reason</type>\n";
         $pe .= "     <comment>$reasons->{$reason}</comment>\n"
             if $reasons->{$reason};
@@ -204,6 +206,7 @@ sub error {
 }
 
 sub domain {
+# this is where locally generated reports store the recipient domain
     return $_[0]->{domain} if 1 == scalar @_;
     return $_[0]->{domain} = $_[1];
 }
