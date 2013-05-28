@@ -1,4 +1,3 @@
-
 # Find the source
 
 [The source code is hosted on GitHub](https://github.com/msimerson/mail-dmarc)
@@ -46,7 +45,7 @@ When the branch is no longer useful, delete it:
 
 Visit your fork on the GitHub web site. On the main page of your fork is a ***Pull Request*** button. That is how you submit your changes to the main repo.
 
-# Check Mail::DKIM build status:
+# Check Mail::DMARC build status:
 
 [![Build Status](https://travis-ci.org/msimerson/mail-dmarc.png?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
 
