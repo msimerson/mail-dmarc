@@ -170,6 +170,7 @@ sub _assemble_message {
     my ( $self, $args ) = @_;
 
     my $filename = $self->get_filename($args);
+# WARNING: changes made here MAY affect Send::compress. Check it!
 #   my $cf       = ( time > 1372662000 ) ? 'gzip' : 'zip';   # gz after 7/1/13
     my $cf       = 'gzip';
       $filename .= $cf eq 'gzip' ? '.gz' : '.zip';

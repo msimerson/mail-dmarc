@@ -5,9 +5,9 @@ use Data::Dumper;
 use Test::More;
 
 use IO::Compress::Gzip;
-use IO::Compress::Zip;
-use IO::Uncompress::Unzip qw($UnzipError);
 use IO::Uncompress::Gunzip qw($GunzipError);
+#use IO::Compress::Zip;    # legacy format
+#use IO::Uncompress::Unzip qw($UnzipError);
 
 use lib 'lib';
 
@@ -47,7 +47,7 @@ sub test_compress_report {
     ok( length $xml > length $compressed, 'compress_report' );
 
     my $decompressed;
-    IO::Uncompress::Unzip::unzip( \$compressed => \$decompressed )
-        or die "unzip failed: $UnzipError\n";
+    IO::Uncompress::Gunzip::gunzip( \$compressed => \$decompressed )
+        or die "unzip failed: $GunzipError\n";
     cmp_ok( $decompressed, 'eq', $xml, "compress_report, extracts" );
 }

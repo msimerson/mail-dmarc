@@ -19,7 +19,7 @@ sub send_rua {
     my $shrunk = $self->compress_report($xml_ref);
     my $bytes  = length Encode::encode_utf8($shrunk);
 
-    my $uri_ref = $self->uri->parse( $agg_ref->{policy_published}{rua} );
+    my $uri_ref = $self->uri->parse( $$agg_ref->{policy_published}{rua} );
     my $sent    = 0;
     foreach my $u_ref (@$uri_ref) {
         my $method = $u_ref->{uri};
@@ -75,7 +75,9 @@ sub compress_report {
         gz  => \&IO::Compress::Gzip::gzip,    # 2013 draft
         zip => \&IO::Compress::Zip::zip,      # legacy format
     };
-    my $cf = ( time > 1372662000 ) ? 'gz' : 'zip';    # gz after 7/1/13
+# WARNING: changes here MAY require updates in SMTP::_assemble_message
+#   my $cf = ( time > 1372662000 ) ? 'gz' : 'zip';    # gz after 7/1/13
+    my $cf = 'gz';
     $zipper->{$cf}->( $xml_ref, \$shrunk ) or croak "unable to compress: $!";
     return $shrunk;
 }
