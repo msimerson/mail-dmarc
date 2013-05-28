@@ -394,7 +394,7 @@ When forensic reports are detected, no further processing is done.
 
 When an aggregate report is detected, the report details are extracted from the message body as well as the Subject field/header and attachment metadata.
 
-Parsing of the Subject and MIME metadata is necessary because the 2013 draft DMARC specification does not REQUIRE the submitter domain name to be included in the XML report. The submitter domain is the domain the message was destined to. For example, the only way to B<know> that the email which generated this particular report was sent to hotmail.com is to extract the submitter domain from the message metadata (Org Name=Microsoft, hotmail.com is not in the XML). So far, every messsage I have seen has had the submitter domain in one location or the other.
+Parsing of the Subject and MIME metadata is necessary because the 2013 draft DMARC specification does not REQUIRE the envelope_to domain name to be included in the XML report. For example, the only way to B<know> that the email which generated this particular report was sent to hotmail.com is to extract the envelope_to domain from the message metadata (Org Name=Microsoft, hotmail.com is not in the XML). So far, every messsage I have seen has had the envelope_to domain in one location or the other.
 
 To extract messages from the message body, the MIME attachments are decompressed and passed to L<handle_body>.
 
