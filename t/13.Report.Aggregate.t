@@ -34,13 +34,14 @@ sub test_policy_published {
     ok( ! defined $agg->policy_published, "policy_published, empty" );
     my $pol = Mail::DMARC::Policy->new();
     $pol->apply_defaults;
+    $pol->domain('test.com');
     ok( $agg->policy_published($pol), "policy_published, default" );
 }
 
 sub test_record {
     my $ip = '192.2.1.1';
     my $test_r = { source_ip => $ip, policy_evaluated => { disposition=>'pass', dkim => 'pass', spf=>'pass' } };
-    $agg->record( $test_r, "record, empty");
+    ok( $agg->record( $test_r ), "record, empty");
     is_deeply( $agg->record, [ $test_r ], "record, deeply");
     $agg->record( $test_r, "record, empty, again");
     is_deeply( $agg->record, [ $test_r,$test_r ], "record, deeply, multiple");
@@ -55,7 +56,6 @@ sub test_as_xml {
     foreach my $m ( qw/ begin end / ) {
         $agg->metadata->$m(time);
     };
-    $agg->policy_published->domain('test.com');
 
     ok( $agg->as_xml(), "as_xml");
 };

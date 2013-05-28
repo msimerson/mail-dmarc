@@ -7,6 +7,7 @@ use Test::More;
 use IO::Compress::Gzip;
 
 use lib 'lib';
+use Mail::DMARC::Report::Aggregate;
 
 my $mod = 'Mail::DMARC::Report::Send::SMTP';
 use_ok($mod);
@@ -18,16 +19,17 @@ chomp $@;
 ok( $@, "email, missing args" );
 
 open my $REP, '<', 'share/dmarc-report-2013-draft.xsd'
-    or die "unable to open";
+    or die "unable to open: $!";
 my $report = join( '', <$REP> );
 close $REP;
 my $zipped;
 IO::Compress::Gzip::gzip( \$report, \$zipped ) or die "unable to compress";
 
-#print Dumper($report);
-my $subject
-    = $smtp->get_subject( { to => 'they.com', policy_domain => 'them.com' } );
+my $agg = Mail::DMARC::Report::Aggregate->new;
+$agg->{policy_published}{domain} = 'they.com';
+my $subject = $smtp->get_subject( \$agg );
 ok( $subject, "get_subject, $subject" );
+
 my %email_args = (
     to            => 'matt@example.com',
     subject       => $subject,
@@ -43,8 +45,7 @@ test_get_smtp_hosts();
 test_assemble_message();
 
 # to spam yourself with 'make test', set 'to' in %email_args
-done_testing();
-exit;    # and comment this out
+done_testing(); exit;    # and comment this out
 
 #test_via_net_smtp();
 $smtp->email(%email_args);
@@ -59,10 +60,10 @@ sub test_assemble_message {
     #warn print $mess;
 }
 
-sub test_net_smtp {
+sub test_via_net_smtp {
     ok( $smtp->via_net_smtp( \%email_args ), "via_net_smtp, example.com" );
 
-#ok( $smtp->via_net_smtp( { to=>'test.user@gmail.com' } ),"via_net_smtp, gmail");
+    ok( $smtp->via_net_smtp( { to=>'matt@example.com' } ),"via_net_smtp, gmail");
 }
 
 sub test_get_smtp_hosts {
