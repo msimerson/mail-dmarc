@@ -307,7 +307,16 @@ sub get_row {
 #warn Dumper(\%args);
     croak "missing report ID (rid)!" if ! defined $args{rid};
 
-    my $query = 'SELECT * FROM report_record WHERE report_id = ?';
+    my $query = '
+SELECT rr.*,
+    etd.domain AS envelope_to,
+    efd.domain AS envelope_from,
+    hfd.domain AS header_from
+FROM report_record rr
+LEFT JOIN domain etd ON etd.id=rr.envelope_to_did
+LEFT JOIN domain efd ON efd.id=rr.envelope_from_did
+LEFT JOIN domain hfd ON hfd.id=rr.header_from_did
+        WHERE report_id = ?';
     my @params = $args{rid};
 
     my $rows = $self->query($query, \@params);
@@ -344,8 +353,6 @@ sub insert_aggregate_row {
 
     return 1 if $self->row_exists( $rid, $rec);
 
-    my @idfs = qw/ source_ip header_from envelope_to envelope_from /;
-    my @evfs = qw/ disposition dkim spf /;
     my $row_id = $self->insert_rr( $rid, $rec )
         or croak "failed to insert report row";
 
@@ -385,25 +392,35 @@ sub insert_rr_reason {
 
 sub insert_rr_dkim {
     my ( $self, $row_id, $dkim ) = @_;
-
-    my $query = <<'EO_DKIM'
+    my (@fields, @values);
+    foreach ( qw/ domain selector result human_result / ) {
+        next if ! $dkim->{$_};
+        push @fields, $_;
+        push @values, $dkim->{$_};
+    };
+    my $fields_str = join ',', @fields;
+    my $query = <<"EO_DKIM"
 INSERT INTO report_record_dkim
-    (report_record_id, domain, selector, result, human_result)
+    (report_record_id, $fields_str)
 VALUES (??)
 EO_DKIM
         ;
-    my @dkim_fields = qw/ domain selector result human_result /;
-    $self->query( $query, [ $row_id, map { $dkim->{$_} } @dkim_fields ] );
+    $self->query( $query, [ $row_id, @values ] );
     return 1;
 }
 
 sub insert_rr_spf {
     my ( $self, $row_id, $spf ) = @_;
-    my $r = $self->query(
-        'INSERT INTO report_record_spf (report_record_id, domain, scope, result) VALUES(??)',
-        [ $row_id, $spf->{domain}, $spf->{scope}, $spf->{result}, ]
-    ) or croak "failed to insert SPF";
-    return $r;
+    my (@fields, @values);
+    for ( qw/ domain scope result / ) {
+        next if ! $spf->{$_};
+        push @fields, $_;
+        push @values, $spf->{$_};
+    };
+    my $fields_str = join ',', @fields;
+    my $query = "INSERT INTO report_record_spf (report_record_id, $fields_str) VALUES(??)";
+    $self->query( $query, [ $row_id, @values ]);
+    return 1;
 }
 
 sub insert_rr {
@@ -411,23 +428,23 @@ sub insert_rr {
     $report_id or croak "report ID required?!";
     my $query = <<'EO_ROW_INSERT'
 INSERT INTO report_record
-   (report_id, source_ip, count, header_from, envelope_to, envelope_from,
+   (report_id, source_ip, count, header_from_did, envelope_to_did, envelope_from_did,
     disposition, dkim, spf
     )
    VALUES (??)
 EO_ROW_INSERT
         ;
 
-    my @idfs = qw/ header_from envelope_to envelope_from /;
-    my @evfs = qw/ disposition dkim spf /;
-    my $args = [
-        $report_id,
+    my @args = ( $report_id,
         $self->any_inet_pton( $row->{identifiers}{source_ip} ),
         $row->{count},
-        ( map { $row->{identifiers}{$_} || '' } @idfs ),
-        ( map { $row->{policy_evaluated}{$_} } @evfs ),
-    ];
-    my $row_id = $self->query( $query, $args ) or croak;
+    );
+    foreach ( qw/ header_from envelope_to envelope_from / ) {
+        push @args, $row->{identifiers}{$_} ?
+            $self->get_domain_id( $row->{identifiers}{$_} ) : undef;
+    };
+    push @args, map { $row->{policy_evaluated}{$_} } qw/ disposition dkim spf /;
+    my $row_id = $self->query( $query, \@args ) or croak;
     return $self->{report_row_id} = $row_id;
 }
 
@@ -538,7 +555,7 @@ sub query_any {
 
 sub query_insert {
     my ( $self, $query, $err, @params ) = @_;
-    $self->dbix->query( $query, @params ) or croak $err;
+    eval { $self->dbix->query( $query, @params ) } or croak $err;
     $self->db_check_err($err);
 
     # If the table has no autoincrement field, last_insert_id is zero

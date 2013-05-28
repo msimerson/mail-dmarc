@@ -231,8 +231,8 @@ sub test_ip_store_and_fetch {
         compare_any_inet_round_trip( $ip, $pres );
 
         my $report_id = $sql->query(
-            "INSERT INTO report_record ( report_id, source_ip, disposition, dkim,spf,header_from) VALUES (?,?,?,?,?,?)",
-            [ 1, $ipbin, 'none', 'pass', 'pass', 'tnpi.net' ]
+            "INSERT INTO report_record ( report_id, source_ip, disposition, dkim,spf,header_from_did) VALUES (?,?,?,?,?,?)",
+            [ 1, $ipbin, 'none', 'pass', 'pass', 1 ]
         ) or die "failed to insert?";
 
         my $r_ref

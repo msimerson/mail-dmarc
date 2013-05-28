@@ -112,7 +112,7 @@ DROP TABLE IF EXISTS `report_error`;
 CREATE TABLE "report_error" (
   `report_id` INTEGER NOT NULL REFERENCES "report"("id") ON UPDATE CASCADE ON DELETE CASCADE,
   `error` TEXT NOT NULL,
-  `time` timestamp NOT NULL
+  `time` integer NOT NULL
 );
 
 
@@ -139,9 +139,9 @@ CREATE TABLE `report_record` (
   `disposition` TEXT NOT NULL REFERENCES "fk_disposition"("disposition") ON UPDATE CASCADE ON DELETE NO ACTION,
   `dkim` TEXT DEFAULT NULL,
   `spf` TEXT DEFAULT NULL,
-  `envelope_to` TEXT DEFAULT NULL,
-  `envelope_from` TEXT DEFAULT NULL,
-  `header_from` TEXT NOT NULL
+  `envelope_to_did` INTEGER DEFAULT NULL,
+  `envelope_from_did` INTEGER DEFAULT NULL,
+  `header_from_did` INTEGER NOT NULL
 );
 
 
