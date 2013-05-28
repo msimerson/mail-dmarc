@@ -56,40 +56,60 @@ sub retrieve {
 sub retrieve_todo {
     my ( $self, %args ) = @_;
 
-#carp "author id: $author_id\n";
-    my $reports = $self->query( 'SELECT * FROM report r LEFT JOIN report_record rr ON r.id=rr.report_id WHERE rr.count IS NULL AND r.end < ? LIMIT 1', [ time ] );
+    my $query = <<'EO_TODO_QUERY'
+SELECT r.id    AS rid,
+    r.begin    AS begin,
+    r.end      AS end,
+    a.org_name AS author,
+    rd.domain  AS rcpt_domain,
+    fd.domain  AS from_domain
+FROM report r
+LEFT JOIN report_record rr ON r.id=rr.report_id
+LEFT JOIN author a  ON r.author_id=a.id
+LEFT JOIN domain rd ON r.rcpt_domain_id=rd.id
+LEFT JOIN domain fd ON r.from_domain_id=fd.id
+WHERE rr.count IS NULL
+  AND r.end < ?
+ORDER BY r.id
+LIMIT 1
+EO_TODO_QUERY
+;
+    my $reports = $self->query( $query, [ time ] );
     return if ! @$reports;
     my $report = $reports->[0];
-carp "report: " . Dumper($report);
 
     my $agg = Mail::DMARC::Report::Aggregate->new();
-    $agg->metadata->report_id( $report->{id} );
+    $agg->metadata->report_id( $report->{rid} );
+    $agg->metadata->domain( $report->{from_domain} );
 
-    foreach my $f ( qw/ domain org_name email extra_contact_info / ) {
+    foreach my $f ( qw/ org_name email extra_contact_info / ) {
         $agg->metadata->$f( $self->config->{organization}{$f} );
     };
     foreach my $f ( qw/ begin end / ) {
         $agg->metadata->$f( $report->{$f} );
     };
 
-    my $errors = $self->query('SELECT error FROM report_error WHERE report_id=?', [ $report->{id} ] );
+    my $errors = $self->query('SELECT error FROM report_error WHERE report_id=?', [ $report->{rid} ] );
     foreach ( @$errors ) {
         $agg->metadata->error( $_->{error} );
     };
 
     my $pp = $self->query(
             'SELECT * from report_policy_published WHERE report_id=?',
-            [ $report->{id} ]
+            [ $report->{rid} ]
             )->[0];
     $pp->{v} = 'DMARC1';
     $pp->{p} ||= 'none';
+    $pp->{domain} = $report->{from_domain};
     $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
-#carp "aggregate: " . Dumper($agg);
 
     my $rows = $self->query( 'SELECT * from report_record WHERE report_id=?',
-        [ $report->{id} ] );
+        [ $report->{rid} ] );
 
     foreach my $row (@$rows) {
+        $row->{policy_evaluated} = {
+            map { $_ => $row->{$_} } qw/ disposition dkim spf /
+        };
         $row->{source_ip} = $self->any_inet_ntop( $row->{source_ip} );
         $row->{reason}    = $self->query(
             'SELECT type,comment from report_record_reason WHERE report_record_id=?',
