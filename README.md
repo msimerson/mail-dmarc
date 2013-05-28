@@ -4,14 +4,15 @@ Mail::DMARC - Perl implementation of DMARC
 
 # VERSION
 
-version 0.20130522
+version 1.20130528
 
 # SYNOPSIS
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
 
-    my $dmarc = Mail::DMARC->new( "see L<new|#new> for required args");
-    my $result = $dmarc->validate();
+my $dmarc = Mail::DMARC->new( see [new](http://search.cpan.org/perldoc?\#new) for required args );
+
+my $result = $dmarc->validate();
 
     if ( $result->result eq 'pass' ) {
         ...continue normal processing...
@@ -36,11 +37,13 @@ This module is a suite of tools for implementing DMARC. It adheres very tightly 
 
 This module can be used...
 
-    by MTAs and filtering tools such as SpamAssassin to validate that incoming messages are aligned with the purported senders policies.
+    by MTAs and filtering tools like SpamAssassin to validate that incoming messages are aligned with the purported sender's policy.
 
-    by an email sender that wishes to receive DMARC reports from other mail servers.
+    by email senders, to receive DMARC reports from other mail servers and display them via CLI and web interfaces.
 
-When a message arrives via SMTP, the MTA or filtering application can pass in a small amount of metadata about the connection (envelope details, SPF results, and DKIM results) to Mail::DMARC. When the __validate__ method is called, the Mail::DMARC will determine if:
+    by MTA operators to send DMARC reports to DMARC author domains.
+
+When a message arrives via SMTP, the MTA or filtering application can pass in a small amount of metadata about the connection (envelope details, SPF results, and DKIM results) to Mail::DMARC. When the __validate__ method is called, Mail::DMARC will determine if:
 
     a. the header_from domain exists
     b. the header_from domain publishes a DMARC policy
@@ -48,7 +51,7 @@ When a message arrives via SMTP, the MTA or filtering application can pass in a 
     d. does the message conform to the published policy?
     e. did the policy request reporting? If so, save details.
 
-The validation results are stored in a [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) object. If the author domain requested a report, it was saved via [Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail::DMARC::Report::Store). A SQL implementation is provided and tested with SQLite and MySQL. ANSI SQL queries syntax is preferred, making it straight forward to extend to other RDBMS.
+The validation results are stored in a [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) object. If the author domain requested a report, it was saved via [Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail::DMARC::Report::Store). A SQL implementation is provided and tested with SQLite and MySQL. ANSI SQL queries are preferred, making it straight forward to extend to other RDBMS.
 
 There is more information available in the $result object. See [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail::DMARC::Result) for complete details.
 
@@ -64,13 +67,13 @@ There is more information available in the $result object. See [Mail::DMARC::Res
 
 [Mail::DMARC::Report](http://search.cpan.org/perldoc?Mail::DMARC::Report) - Reporting: the R in DMARC
 
-    [Mail::DMARC::Report::Send](http://search.cpan.org/perldoc?Mail::DMARC::Report::Send) - send reports via SMTP & HTTP
+[Mail::DMARC::Report::Send](http://search.cpan.org/perldoc?Mail::DMARC::Report::Send) - send reports via SMTP & HTTP
 
-    [Mail::DMARC::Report::Receive](http://search.cpan.org/perldoc?Mail::DMARC::Report::Receive) - receive and store reports from email, HTTP
+[Mail::DMARC::Report::Receive](http://search.cpan.org/perldoc?Mail::DMARC::Report::Receive) - receive and store reports from email, HTTP
 
-    [Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail::DMARC::Report::Store) - a persistent data store for aggregate reports
+[Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail::DMARC::Report::Store) - a persistent data store for aggregate reports
 
-    [Mail::DMARC::Report::View](http://search.cpan.org/perldoc?Mail::DMARC::Report::View) - CLI and CGI methods for viewing reports
+[Mail::DMARC::Report::View](http://search.cpan.org/perldoc?Mail::DMARC::Report::View) - CLI and CGI methods for viewing reports
 
 [Mail::DMARC::libopendmarc](http://search.cpan.org/~shari/Mail-DMARC-opendmarc) - an XS implementation using libopendmarc
 
@@ -78,9 +81,12 @@ There is more information available in the $result object. See [Mail::DMARC::Res
 
 ## new
 
-Create an empty DMARC object. Then populate it and run the request:
+Create a DMARC object.
 
-    my $dmarc = Mail::DMARC->new;
+    my $dmarc = Mail::DMARC::PurePerl->new;
+
+Populate it.
+
     $dmarc->source_ip('192.0.1.1');
     $dmarc->envelope_to('recipient.example.com');
     $dmarc->envelope_from('sender.example.com');
@@ -91,11 +97,14 @@ Create an empty DMARC object. Then populate it and run the request:
         scope  => 'mfrom',
         result => 'pass',
             );
+
+Run the request:
+
     my $result = $dmarc->validate();
 
-Alternatively, you can pass in all the required parameters in one shot:
+Alternatively, pass in all the required parameters in one shot:
 
-    my $dmarc = Mail::DMARC->new(
+    my $dmarc = Mail::DMARC::PurePerl->new(
             source_ip     => '192.0.1.1',
             envelope_to   => 'example.com',
             envelope_from => 'cars4you.info',
@@ -135,7 +144,11 @@ Retrieve the header\_from domain by parsing it from a raw From field/header. The
 
 ## dkim
 
-The dkim method accepts an array reference. Each array element represents a DKIM signature in the message and consists of the 4 keys shown in this example:
+If Mail::DKIM::Verifier was used to validate the message, just pass in the Mail::DKIM::Verifier object that processed the message:
+
+    $dmarc->dkim( $dkim_verifier );
+
+Otherwise, pass in an array reference. Each member of the DKIM array results represents a DKIM signature in the message and consists of the 4 keys shown in this example:
 
     $dmarc->dkim( [
             {
@@ -149,17 +162,23 @@ The dkim method accepts an array reference. Each array element represents a DKIM
             },
         ] );
 
-If you used Mail::DKIM::Verifier to validate the message, just pass in the Mail::DKIM::Verifier object that processed the message:
+The dkim results can also be build iteratively by passing in key value pairs or hash references for each signature in the message:
 
-    $dmarc->dkim( $dkim_verifier );
+    $dmarc->dkim( domain => 'sig1.com', result => 'fail' );
+    $dmarc->dkim( domain => 'sig2.com', result => 'pass' );
+    $dmarc->dkim( { domain => 'example.com', result => 'neutral' } );
+
+Each hash or hashref is appended to the dkim array.
+
+The dkim result is an array reference.
 
 ### domain
 
-The d= parameter in the signature
+The d= parameter in the DKIM signature
 
 ### selector
 
-The s= parameter in the signature
+The s= parameter in the DKIM signature
 
 ### result
 
@@ -171,7 +190,7 @@ Additional information about the DKIM result. This is comparable to Mail::DKIM::
 
 ## spf
 
-The spf method accepts a hashref or named arguments:
+The spf method works exactly the same as dkim. It accepts named arguments, a hashref, or an arrayref:
 
     $dmarc->spf(
         domain => 'example.com',

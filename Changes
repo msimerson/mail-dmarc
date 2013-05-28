@@ -3,6 +3,13 @@
 
 1.20130528 2013-05-28 America/Los_Angeles
 
+ - bump major version to 1
+ - normalized domain columns in report_record
+ - fixups to handle reports with invalid formatting
+ - improved handling for IMAP SSL connections
+ - made internal represention of Mail::DMARC::dkim & spf consistent
+   with their aggregate report representation
+
 0.20130528 2013-05-27 America/Los_Angeles
 
  - updated Send/SMTP to use report::aggregate
