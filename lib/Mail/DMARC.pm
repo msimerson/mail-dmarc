@@ -47,22 +47,37 @@ sub local_policy {
 }
 
 sub dkim {
-    my ( $self, $dkim ) = @_;
-    return $self->{dkim} if !defined $dkim;
+    my ( $self, @args ) = @_;
+    return $self->{dkim} if 0 == scalar @args;
 
-    if ( ref $dkim && ref $dkim eq 'Mail::DKIM::Verifier' ) {
+    if ( scalar @args > 1 ) {
+        croak "invalid arguments to dkim" if @args % 2;
+        push @{ $self->{dkim} }, { @args };
+        $self->is_valid_dkim;
+        return $self->{dkim};
+    };
+
+    my $dkim = shift @args;
+
+    croak "invalid dkim argument" if ! ref $dkim;
+
+    if ( ref $dkim eq 'Mail::DKIM::Verifier' ) {
         return $self->dkim_from_mail_dkim($dkim);
+    };
+
+    if ( 'ARRAY' eq ref $dkim ) {
+        $self->{dkim} = $dkim;
+        $self->is_valid_dkim;
+        return $self->{dkim};
     }
 
-    if ( 'ARRAY' ne ref $dkim ) {
-        croak "dkim must be an array reference!";
-    }
-    foreach my $s (@$dkim) {
-        foreach my $f (qw/ domain result /) {
-            croak "DKIM '$f' is required!" if !$s->{$f};
-        }
-    }
-    return $self->{dkim} = $dkim;
+    if ( 'HASH' eq ref $dkim ) {
+        push @{ $self->{dkim} }, $dkim;
+        $self->is_valid_dkim;
+        return $self->{dkim};
+    };
+
+    croak "invalid dkim argument";
 }
 
 sub dkim_from_mail_dkim {
@@ -85,12 +100,19 @@ sub spf {
     my ( $self, @args ) = @_;
     return $self->{spf} if 0 == scalar @args;
 
-    if ( scalar @args == 1 && ref $args[0] && ref $args[0] eq 'HASH' ) {
-        return $self->{spf} = $args[0];
+    if ( scalar @args == 1 && ref $args[0] ) {
+        if ( ref $args[0] eq 'HASH' ) {
+            push @{ $self->{spf} }, $args[0];
+            return $self->{spf};
+        };
+        if ( ref $args[0] eq 'ARRAY' ) {
+            $self->{spf} = $args[0];
+            return $self->{spf};
+        }
     }
 
-    croak "invalid arguments" if @args % 2 != 0;
-    $self->{spf} = {@args};
+    croak "invalid arguments" if @args % 2;
+    push @{ $self->{spf} }, {@args};
     $self->is_valid_spf();
     return $self->{spf};
 }
@@ -119,19 +141,41 @@ sub is_subdomain {
     return $_[0]->{is_subdomain} = $_[1];
 }
 
+sub is_valid_dkim {
+    my $self = shift;
+
+    foreach my $dkim ( @{ $self->{dkim} } ) {
+        foreach my $f (qw/ domain result /) {
+            if ( !$dkim->{$f} ) {
+                croak "DKIM value $f is required!";
+            }
+        }
+
+        my @dkim_r = qw/ pass fail neutral none permerror policy temperror /;
+        if ( !grep { $_ eq lc $dkim->{result} } @dkim_r ) {
+            croak "invalid DKIM result!";
+        }
+    };
+    return 1;
+};
+
 sub is_valid_spf {
     my $self = shift;
-    foreach my $f (qw/ domain result scope /) {
-        if ( !$self->{spf}{$f} ) {
-            croak "SPF $f is required!";
+
+    foreach my $spf ( @{ $self->{spf} } ) {
+        foreach my $f (qw/ domain result scope /) {
+            if ( !$spf->{$f} ) {
+                croak "SPF $f is required!";
+            }
         }
-    }
-    if ( !grep { $_ eq lc $self->{spf}{scope} } qw/ mfrom helo / ) {
-        croak "invalid SPF scope!";
-    }
-    if ( $self->{spf}{result} eq 'pass' && !$self->{spf}{domain} ) {
-        croak "SPF pass MUST include the RFC5321.MailFrom domain!";
-    }
+
+        if ( !grep { $_ eq lc $spf->{scope} } qw/ mfrom helo / ) {
+            croak "invalid SPF scope!";
+        }
+        if ( $spf->{result} eq 'pass' && !$spf->{domain} ) {
+            croak "SPF pass MUST include the RFC5321.MailFrom domain!";
+        }
+    };
     return 1;
 }
 
@@ -159,8 +203,8 @@ sub save_aggregate {
                     header_from   => $self->header_from,
                     },
                 auth_results => {
-                    dkim          => [ $self->dkim ],
-                    spf           => [ $self->spf ],
+                    dkim          => $self->dkim,
+                    spf           => $self->spf,
                     },
                 policy_evaluated  => {
                     disposition   => $self->result->disposition,
@@ -337,7 +381,11 @@ Retrieve the header_from domain by parsing it from a raw From field/header. The 
 
 =head2 dkim
 
-The dkim method accepts an array reference. Each array element represents a DKIM signature in the message and consists of the 4 keys shown in this example:
+If Mail::DKIM::Verifier was used to validate the message, just pass in the Mail::DKIM::Verifier object that processed the message:
+
+    $dmarc->dkim( $dkim_verifier );
+
+Otherwise, pass in an array reference. Each member of the DKIM array results represents a DKIM signature in the message and consists of the 4 keys shown in this example:
 
     $dmarc->dkim( [
             {
@@ -351,17 +399,23 @@ The dkim method accepts an array reference. Each array element represents a DKIM
             },
         ] );
 
-If you used Mail::DKIM::Verifier to validate the message, just pass in the Mail::DKIM::Verifier object that processed the message:
+The dkim results can also be build iteratively by passing in key value pairs or hash references for each signature in the message:
 
-    $dmarc->dkim( $dkim_verifier );
+    $dmarc->dkim( domain => 'sig1.com', result => 'fail' );
+    $dmarc->dkim( domain => 'sig2.com', result => 'pass' );
+    $dmarc->dkim( { domain => 'example.com', result => 'neutral' } );
+
+Each hash or hashref is appended to the dkim array.
+
+The dkim result is an array reference.
 
 =head3 domain
 
-The d= parameter in the signature
+The d= parameter in the DKIM signature
 
 =head3 selector
 
-The s= parameter in the signature
+The s= parameter in the DKIM signature
 
 =head3 result
 
@@ -373,7 +427,7 @@ Additional information about the DKIM result. This is comparable to Mail::DKIM::
 
 =head2 spf
 
-The spf method accepts a hashref of named arguments:
+The spf method works exactly the same as dkim. It accepts named arguments, a hashref, or an arrayref:
 
     $dmarc->spf(
         domain => 'example.com',

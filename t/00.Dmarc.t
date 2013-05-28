@@ -23,26 +23,80 @@ my %sample_dmarc = (
             human_result => 'fail (body has been altered)',
         }
     ],
-    spf => {
-        domain => 'example.com',
-        scope  => 'mfrom',
-        result => 'pass',
-    },
+    spf => [
+        {   domain => 'example.com',
+            scope  => 'mfrom',
+            result => 'pass',
+        }
+    ],
 );
 
 test_new();
 test_header_from();
 test_setter_values();
 test_spf();
+test_dkim();
 
 done_testing();
 exit;
 
-sub test_spf {
-    ok( $dmarc->spf( domain => 'a.c', scope => 'mfrom', result => 'fail' ),
-        "spf" );
+sub test_dkim {
+# set DKIM with key=>val pairs
+    $dmarc->{dkim} = undef;
+    my %test_dkim = ( domain => 'a.c', result => 'fail' );
+    ok( $dmarc->dkim(%test_dkim), "dkim, hash set" );
+    is_deeply($dmarc->dkim, [ \%test_dkim ], "dkim, hash set result");
 
+# set with a hashref
+    $dmarc->{dkim} = undef;
+    ok( $dmarc->dkim(\%test_dkim), "dkim, hashref set" );
+    is_deeply($dmarc->dkim, [ \%test_dkim ], "dkim, hashref set, result");
+
+# set with an arrayref
+    $dmarc->{dkim} = undef;
+    ok( $dmarc->dkim([ \%test_dkim ]), "dkim, arrayref set" );
+    is_deeply($dmarc->dkim, [ \%test_dkim ], "dkim, arrayref set result");
+
+# set with arrayref, two values
+    $dmarc->{dkim} = undef;
+    ok( $dmarc->dkim([ \%test_dkim, \%test_dkim ]), "dkim, arrayref set" );
+    is_deeply($dmarc->dkim, [ \%test_dkim, \%test_dkim ], "dkim, arrayref set result");
+
+# set DKIM with invalid key=>val pairs
+    eval { $dmarc->dkim( dom => 'foo', 'blah' ) };
+    chomp $@;
+    ok( $@, "dkim, neg, $@" );
+
+    eval { $dmarc->dkim( { domain => 'foo.com', result => 'non-existent' } ) };
+    chomp $@;
+    ok( $@, "dkim, neg, $@" );
+}
+
+sub test_spf {
+# set SPF with key=>val pairs
+    $dmarc->{spf} = undef;
+    my %test_spf = ( domain => 'a.c', scope => 'mfrom', result => 'fail' );
+    ok( $dmarc->spf(%test_spf), "spf, hash set" );
+    is_deeply($dmarc->spf, [ \%test_spf ], "spf, hash set result");
+
+# set with a hashref
+    $dmarc->{spf} = undef;
+    ok( $dmarc->spf(\%test_spf), "spf, hashref set" );
+    is_deeply($dmarc->spf, [ \%test_spf ], "spf, hashref set, result");
+
+# set with an arrayref
+    $dmarc->{spf} = undef;
+    ok( $dmarc->spf([ \%test_spf ]), "spf, arrayref set" );
+    is_deeply($dmarc->spf, [ \%test_spf ], "spf, arrayref set result");
+
+# set with arrayref, two values
+    $dmarc->{spf} = undef;
+    ok( $dmarc->spf([ \%test_spf, \%test_spf ]), "spf, arrayref set" );
+    is_deeply($dmarc->spf, [ \%test_spf, \%test_spf ], "spf, arrayref set result");
+
+# set SPF with invalid key=>val pairs
     eval { $dmarc->spf( dom => 'foo', 'blah' ) };
+    chomp $@;
     ok( $@, "spf, neg, $@" );
 }
 

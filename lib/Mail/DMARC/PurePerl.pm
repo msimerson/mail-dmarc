@@ -211,7 +211,14 @@ sub is_spf_aligned {
     my $self    = shift;
     my $spf_dom = shift;
     if ( !$spf_dom && !$self->spf ) { croak "missing SPF!"; }
-    $spf_dom = $self->spf->{domain} if !$spf_dom;
+
+    if ( ! $spf_dom ) {
+        foreach my $spf ( @{ $self->spf } ) {
+            next if ! $spf->{domain};
+            $spf_dom = $spf->{domain};
+            last;
+        };
+    };
     $spf_dom or croak "missing SPF domain";
 
     # 11.2.4 Perform SPF validation checks.  The results of this step
