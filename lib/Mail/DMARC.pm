@@ -169,9 +169,12 @@ sub is_valid_spf {
             }
         }
 
-        if ( !grep { $_ eq lc $spf->{scope} } qw/ mfrom helo / ) {
-            croak "invalid SPF scope!";
-        }
+        croak if $spf->{result} &&
+            ! $self->is_valid_spf_result( $spf->{result} );
+
+        croak if $spf->{scope} &&
+            ! $self->is_valid_spf_scope( $spf->{scope} );
+
         if ( $spf->{result} eq 'pass' && !$spf->{domain} ) {
             croak "SPF pass MUST include the RFC5321.MailFrom domain!";
         }
