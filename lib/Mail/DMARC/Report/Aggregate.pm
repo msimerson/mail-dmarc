@@ -245,6 +245,12 @@ sub {}
 
 =head1 DESCRIPTION
 
+This class is used internally as the canonization of an aggregate report.
+
+When reports are received, the XML is parsed into a Report::Aggregate object, which then gets passed to the Report::Store to be file away. When operating as a DMARC reporter, data is extracted from the Report::Store as an Aggregate object.
+
+=head1 2013 Draft Description
+
 AGGREGATE REPORTS
 
 The report SHOULD include the following data:
