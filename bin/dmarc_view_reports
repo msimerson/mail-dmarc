@@ -132,10 +132,10 @@ sub get_geoip_db {
 }
 
 exit;
-__END__
-sub {}
 # PODNAME: dmarc_view_reports
 # ABSTRACT: view DMARC reports on the command line
+__END__
+sub {}
 
 =head1 SYNOPSIS
 
