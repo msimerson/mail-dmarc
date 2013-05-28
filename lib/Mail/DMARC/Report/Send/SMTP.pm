@@ -33,14 +33,6 @@ sub email {
         $args{to} = $original_to;
     }
     return $self->via_net_smtp( \%args );
-
-    #    eval { require MIME::Lite; }; ## no critic (Eval)
-    #    if ( !$EVAL_ERROR ) {
-    #        return 1 if $self->via_mime_lite( \%args );
-    #    }
-
-    #    carp "failed to send with MIME::Lite.";
-    #   croak "unable to send message";
 }
 
 sub via_net_smtp {
@@ -129,7 +121,7 @@ sub get_smtp_hosts {
 }
 
 sub get_subject {
-    my ( $self, $args ) = @_;
+    my ( $self, $agg_ref ) = @_;
 
 =head2 SUBJECT FIELD
 
@@ -152,11 +144,11 @@ sent by a Mail Receiver.
 
 =cut
 
-    my $id = POSIX::strftime( "%Y.%m.%d.", localtime )
-        . ( $args->{report_id} || time );
+    my $rid = $$agg_ref->{metadata}{report_id} || time;
+    my $id = POSIX::strftime( "%Y.%m.%d.", localtime ) . $rid;
     my $us = $self->config->{organization}{domain};
-    return
-        "Report Domain: $args->{policy_domain} Submitter: $us Report-ID: <$id>";
+    my $pol_dom = $$agg_ref->{policy_published}{domain};
+    return "Report Domain: $pol_dom Submitter: $us Report-ID: <$id>";
 }
 
 sub get_filename {
@@ -218,49 +210,9 @@ sub _assemble_message {
 }
 
 sub via_mail_sender {
-}
-
-sub via_mime_lite {
-    my $self = shift;
-    my $args = shift;
-
-    #warn "sending email with MIME::Lite\n";
-    my $message = MIME::Lite->new(
-        From    => $self->config->{organization}{email},
-        To      => $args->{to},
-        Subject => $args->{subject},
-        Type    => $args->{type} || 'multipart/alternative',
-    );
-
-    $message->attach( Type => 'TEXT', Data => $args->{body} ) or croak;
-    $message->attach( Type => 'application/gzip', Data => $args->{report} )
-        or croak;
-
-    my $smart_host = $args->{smart_host};
-    if ($smart_host) {
-
-        #warn "using smart_host $smart_host\n";
-        eval { $message->send( 'smtp', $smart_host, Timeout => 20 ) }; ## no critic (Eval)
-        if ( !$EVAL_ERROR ) {
-
-            #warn "sent using MIME::Lite and smart host $smart_host\n";
-            return 1;
-        }
-        carp "failed to send using MIME::Lite to $smart_host\n";
-    }
-
-    eval { $message->send('smtp'); };    ## no critic (Eval)
-    if ( !$EVAL_ERROR ) {
-        return 1;
-    }
-
-    eval { $message->send(); };          ## no critic (Eval)
-    if ( !$EVAL_ERROR ) {
-        return 1;
-    }
-
     return;
 }
+
 
 1;
 

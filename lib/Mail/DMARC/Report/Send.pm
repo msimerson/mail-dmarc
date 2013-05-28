@@ -14,12 +14,12 @@ use Mail::DMARC::Report::Send::HTTP;
 use Mail::DMARC::Report::URI;
 
 sub send_rua {
-    my ( $self, $report, $xml ) = @_;
+    my ( $self, $agg_ref, $xml_ref ) = @_;
 
-    my $shrunk = $self->compress_report($xml);
+    my $shrunk = $self->compress_report($xml_ref);
     my $bytes  = length Encode::encode_utf8($shrunk);
 
-    my $uri_ref = $self->uri->parse( $$report->{policy_published}{rua} );
+    my $uri_ref = $self->uri->parse( $agg_ref->{policy_published}{rua} );
     my $sent    = 0;
     foreach my $u_ref (@$uri_ref) {
         my $method = $u_ref->{uri};
@@ -31,26 +31,26 @@ sub send_rua {
         }
 
         if ( 'mailto:' eq substr( $method, 0, 7 ) ) {
-            $self->send_via_smtp( $method, $report, $shrunk ) and $sent++;
+            $self->send_via_smtp( $method, $agg_ref, $shrunk ) and $sent++;
         }
         if ( 'http:' eq substr( $method, 0, 5 ) ) {
-            $self->http->post( $method, $report, $shrunk ) and $sent++;
+            $self->http->post( $method, $agg_ref, $shrunk ) and $sent++;
         }
     }
     return $sent;
 }
 
 sub human_summary {
-    my ( $self, $report ) = @_;
+    my ( $self, $agg_ref ) = @_;
 
-    my $rows    = scalar @{ $$report->{rows} };
+    my $rows    = scalar @{ $$agg_ref->{record} };
     my $OrgName = $self->config->{organization}{org_name};
     my $pass    = grep { $_->{dkim} eq 'pass' || $_->{spf} eq 'pass' }
-        @{ $$report->{rows} };
+        @{ $$agg_ref->{record} };
     my $fail = grep { $_->{dkim} ne 'pass' && $_->{spf} ne 'pass' }
-        @{ $$report->{rows} };
+        @{ $$agg_ref->{record} };
     my $ver = $Mail::DMARC::VERSION || '';    # undef in author environ
-    my $from = $$report->{domain};
+    my $from = $$agg_ref->{policy_published}{domain} or croak;
 
     return <<"EO_REPORT"
 
@@ -68,37 +68,32 @@ EO_REPORT
 }
 
 sub compress_report {
-    my ( $self, $xml ) = @_;
-
+    my ( $self, $xml_ref ) = @_;
+    die "xml is not a reference!" if 'SCALAR' ne ref $xml_ref;
     my $shrunk;
     my $zipper = {
         gz  => \&IO::Compress::Gzip::gzip,    # 2013 draft
         zip => \&IO::Compress::Zip::zip,      # legacy format
     };
     my $cf = ( time > 1372662000 ) ? 'gz' : 'zip';    # gz after 7/1/13
-    $zipper->{$cf}->( $xml, \$shrunk ) or croak "unable to compress: $!";
+    $zipper->{$cf}->( $xml_ref, \$shrunk ) or croak "unable to compress: $!";
     return $shrunk;
 }
 
 sub send_via_smtp {
-    my ( $self, $method, $report, $shrunk ) = @_;
-    my $rid = $$report->{id};
-    my $dom = $$report->{domain};
+    my ( $self, $method, $agg_ref, $shrunk ) = @_;
     my ($to) = ( split /:/, $method )[-1];
-    carp "sending mailto $to\n";
 
     # TODO: check results, append error to report if failed
     return $self->smtp->email(
-        to      => $to,
-        subject => $self->smtp->get_subject(
-            { report_id => $rid, policy_domain => $dom }
-        ),
-        body          => $self->human_summary($report),
+        to            => $to,
+        subject       => $self->smtp->get_subject( $agg_ref ),
+        body          => $self->human_summary($agg_ref),
         report        => $shrunk,
-        policy_domain => $dom,
-        begin         => $$report->{begin},
-        end           => $$report->{end},
-        report_id     => $rid,
+        policy_domain => $$agg_ref->{policy_published}{domain},
+        begin         => $$agg_ref->{metadata}{date_range}{begin},
+        end           => $$agg_ref->{metadata}{date_range}{end},
+        report_id     => $$agg_ref->{metadata}{report_id},
     );
 }
 
