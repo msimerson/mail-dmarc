@@ -176,6 +176,19 @@ sub is_valid_domain {
     return 0;
 }
 
+sub is_valid_spf_scope {
+    my ($self, $scope ) = @_;
+    return lc $scope if grep { lc $scope eq $_ } qw/ mfrom helo /;
+    return;
+};
+
+sub is_valid_spf_result {
+    my ($self, $result ) = @_;
+    return 1 if grep { lc $result eq $_ }
+        qw/ fail neutral none pass permerror softfail temperror /;
+    return;
+};
+
 sub slurp {
     my ( $self, $file ) = @_;
     open my $FH, '<', $file or croak "unable to read $file: $!";

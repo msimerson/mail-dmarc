@@ -313,6 +313,12 @@ sub do_node_record {
             = $node->findnodes("./identifiers/$i")->string_value;
     }
 
+# this is for reports from junc.org with mis-labeled identifiers
+    if ( ! $row->{identifiers}{header_from} ) {
+        $row->{identifiers}{header_from}
+            = $node->findnodes("./identities/header_from")->string_value;
+    };
+
     $self->report->aggregate->record($row);
     return $row;
 }
@@ -320,22 +326,30 @@ sub do_node_record {
 sub do_node_record_auth {
     my ($self, $row, $node) = @_;
 
-    my %auth = (
-        dkim => [qw/ domain selector result human_result /],
-        spf  => [qw/ domain scope result /],
-    );
+    my @dkim = qw/ domain selector result human_result /,
+    my @spf  = qw/ domain scope result /;
 
-    #auth_results: dkim, spf
-    foreach my $a ( keys %auth ) {
-        foreach my $n ( $node->findnodes("./auth_results/$a") ) {
-            push @{ $$row->{auth_results}{$a} }, {
-                map {
-                    $_ =>
-                        $node->findnodes("./auth_results/$a/$_")->string_value
-                } @{ $auth{$a} }
-            };
-        }
-    }
+    foreach my $n ( $node->findnodes("./auth_results/spf") ) {
+        my %spf = map { $_ => $node->findnodes("./auth_results/spf/$_")->string_value } @spf;
+
+        if ( $spf{scope} && ! $self->is_valid_spf_scope( $spf{scope} ) ) {
+            carp "invalid scope: $spf{scope}, ignoring";
+            delete $spf{scope};
+        };
+# this is for reports from ivenue.com with result=unknown
+        if ( $spf{result} && ! $self->is_valid_spf_result( $spf{result} ) ) {
+            carp "invalid SPF result: $spf{result}, setting to temperror";
+            $spf{result} = 'temperror';
+        };
+        push @{ $$row->{auth_results}{spf} }, \%spf;
+    };
+
+    foreach my $n ( $node->findnodes("./auth_results/dkim") ) {
+        push @{ $$row->{auth_results}{dkim} }, {
+            map { $_ => $node->findnodes("./auth_results/dkim/$_")->string_value } @dkim
+        };
+    };
+
     return;
 };
 
