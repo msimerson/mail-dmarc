@@ -4,6 +4,7 @@ use warnings;
 
 use Data::Dumper;
 use Getopt::Long;
+use Pod::Usage;
 $|++;
 
 my %command_line_options = (
@@ -15,13 +16,20 @@ my %command_line_options = (
     'disposition:s' => \my $disposition,
     'dkim:s'        => \my $dkim,
     'spf:s'         => \my $spf,
+    'dns'           => \my $dns_opt,
+    'geoip'         => \my $geoip_opt,
+    'help'          => \my $help,
     'verbose'       => \my $verbose,
     );
 GetOptions (%command_line_options);
 
 use lib 'lib';
+use Mail::DMARC::Base;
 use Mail::DMARC::Report::View::CLI;
 my $cli = Mail::DMARC::Report::View::CLI->new;
+my $base = Mail::DMARC::Base->new;
+my $gip;
+pod2usage if $help;
 
 my $reports = $cli->store->retrieve(
         (defined $recipient ? (rcpt_domain => $recipient) : () ),
@@ -45,7 +53,7 @@ foreach my $report ( reverse @$reports) {
 
 sub print_record {
     my $rec = shift;
-    printf "%3s  %20s  %20s  %15s\n", 
+    printf "%3s  %20s  %20s  %15s\n",
         @$rec{qw/ rid rcpt_domain from_domain begin /}; # <-- array slice
     return;
 };
@@ -57,12 +65,14 @@ sub print_rows {
         next if $disposition && $disposition ne $row->{disposition};
         next if $dkim && $dkim ne $row->{dkim};
         next if $spf  && $spf ne $row->{spf};
+        my $dns_hostname = get_dns_hostname( $row->{source_ip} );
         printf "  | -- %3s %39s %13s %7s %7s", @$row{qw/ count source_ip disposition dkim spf /};
         foreach my $r ( @{ $row->{reasons} } ) {
             print '  ' . $r->{type};
             print "( $r->{comment} )" if $r->{comment};
         };
-        print "\n";
+        my $geoip = print_geoip( $row->{source_ip} );
+        print "  $dns_hostname\n";
     }
 };
 
@@ -72,8 +82,58 @@ sub print_header {
     return;
 };
 
-exit;
+sub print_geoip {
+    my $ip = shift;
+    return if ! $geoip_opt;
+    $gip ||= get_geoip_db();
+    return if ! $gip;
 
+    my $r = $gip->record_by_addr($ip) or return '';
+    my $country_code = $r->country_code();
+    my $country_name = $r->country_name();
+    my $continent = $r->continent_code();
+    my $city = $r->city;
+    print $city ?  " $city," : ' ';
+    print " $country_code, $continent";
+}
+
+sub get_dns_hostname {
+    my $ip = shift;
+    return if ! $dns_opt;
+
+    my @answers = $base->has_dns_rr('PTR', $ip);
+    return '' if 0 == scalar @answers;
+    return $answers[0] if scalar @answers >= 1;
+    print Dumper(\@answers);
+};
+
+sub get_geoip_db {
+
+    return $gip if $gip;
+    eval "require Geo::IP";
+    if ($@) {
+        warn "unable to load Geo::IP\n";
+        return;
+    };
+
+    foreach my $local ( '/usr/local', '/opt/local' ) {
+        my $db_dir = "$local/share/GeoIP";
+
+        foreach my $db (qw/ GeoIPCity GeoLiteCity /) {
+            if (-f "$db_dir/$db.dat") {
+                print "using db $db" if $verbose;
+                $gip = Geo::IP->open("$db_dir/$db.dat");
+            }
+            last if $gip;
+        }
+        last if $gip;
+    };
+    return $gip;
+}
+
+exit;
+__END__
+sub {}
 # PODNAME: dmarc_view_reports
 # ABSTRACT: view DMARC reports on the command line
 
@@ -91,6 +151,15 @@ exit;
     disposition  - DMARC disposition (none,quarantine,reject)
     dkim         - DKIM alignment result (pass/fail)
     spf          - SPF alignment result  (pass/fail)
+
+=head2 Other Options
+
+  dmarc_view_reports [ --geoip --dns --help --verbose ]
+
+    geoip        - include GeoIP location (requires the free GeoCity Lite db)
+    dns          - do reverse DNS lookups and display hostnames
+    help         - print this syntax guide
+    verbose      - print additional debug info
 
 =head1 EXAMPLES
 
@@ -110,7 +179,7 @@ Dumps the contents of the DMARC data store to your terminal. The most recent rec
 
 
  ID             Recipient           From/Sender     Report-Start
-  | -- Qty                        Source IP   Disposition    DKIM     SPF                     
+  | -- Qty                        Source IP   Disposition    DKIM     SPF
 
  570        theartfarm.com          simerson.net  2013-05-20 09:40:50
   | --   1                   75.126.200.152    quarantine    fail    fail
