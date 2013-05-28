@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+0.20130528 2013-05-27 America/Los_Angeles
+
  - updated Send/SMTP to use report::aggregate
  - switched back to gzip reports (instead of zip)
  - dmarc_view_reports, added filtering ability, GeoIP location
