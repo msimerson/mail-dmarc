@@ -55,7 +55,7 @@ sub via_net_smtp {
     my $smtp = Net::SMTPS->new(
         [@try_mx],
         Timeout         => 10,
-        Port            => 25,
+        Port            => $c->{smarthost} ? 587 : 25,
         Hello           => $hostname,
         doSSL           => 'starttls',
         SSL_verify_mode => 'SSL_VERIFY_NONE',
@@ -164,15 +164,14 @@ sub get_filename {
         $args->{policy_domain},
         $args->{begin}, $args->{end}, $args->{report_id} || time,
     ) . '.xml';
-# don't append .gz extension here, due to 2013 interoperability, using .zip
-# legacy compression until after 7/1/13.
 }
 
 sub _assemble_message {
     my ( $self, $args ) = @_;
 
     my $filename = $self->get_filename($args);
-    my $cf       = ( time > 1372662000 ) ? 'gzip' : 'zip';   # gz after 7/1/13
+#   my $cf       = ( time > 1372662000 ) ? 'gzip' : 'zip';   # gz after 7/1/13
+    my $cf       = 'gzip';
       $filename .= $cf eq 'gzip' ? '.gz' : '.zip';
 
     my @parts    = Email::MIME->create(
