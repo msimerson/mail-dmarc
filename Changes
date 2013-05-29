@@ -1,6 +1,11 @@
 
 {{$NEXT}}
 
+ - POD doc additions
+ - removed unused JS files
+ - add validation and fixup of SPF result for incoming reports
+ - normalized domain columns in spf & dkim tables
+
 1.20130528 2013-05-28 America/Los_Angeles
 
  - bump major version to 1
