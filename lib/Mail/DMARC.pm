@@ -267,7 +267,7 @@ by MTA operators to send DMARC reports to DMARC author domains.
 
 =back
 
-When a message arrives via SMTP, the MTA or filtering application can pass in a small amount of metadata about the connection (envelope details, SPF results, and DKIM results) to Mail::DMARC. When the B<validate> method is called, Mail::DMARC will determine if:
+When a message arrives via SMTP, the MTA or filtering application can pass in a small amount of metadata about the connection (envelope details, SPF and DKIM results) to Mail::DMARC. When the B<validate> method is called, Mail::DMARC will determine if:
 
  a. the header_from domain exists
  b. the header_from domain publishes a DMARC policy
@@ -275,9 +275,20 @@ When a message arrives via SMTP, the MTA or filtering application can pass in a 
  d. does the message conform to the published policy?
  e. did the policy request reporting? If so, save details.
 
-The validation results are stored in a L<Mail::DMARC::Result> object. If the author domain requested a report, it was saved via L<Mail::DMARC::Report::Store>. A SQL implementation is provided and tested with SQLite and MySQL. ANSI SQL queries are preferred, making it straight forward to extend to other RDBMS.
+The validation results are returned as a L<Mail::DMARC::Result> object. If the author domain requested a report, it was saved to the L<Report Store|Mail::DMARC::Report::Store>. The Store class includes a SQL implementation that is tested with SQLite and MySQL.
 
 There is more information available in the $result object. See L<Mail::DMARC::Result> for complete details.
+
+Reports are viewed with the L<dmarc_view_reports> program or with a web browser and the L<dmarc_httpd> program.
+
+Aggregate reports are sent to their requestors with the L<dmarc_send_reports> program.
+
+For aggregate reports that you have been sent, the L<dmarc_receive> program will parse the email messages (from IMAP, Mbox, or files) and save the report results into the L<Report Store|Mail::DMARC::Report::Store>.
+
+The report store can use the same database to store reports you have received as well as reports you will send. There are several ways to identify the difference, including:
+
+  received reports will have a null value for report_policy_published.rua
+  outgoing reports will have null values for report.uuid and report_record.count
 
 =head1 CLASSES
 
@@ -291,7 +302,7 @@ L<Mail::DMARC::Result> - the results of applying policy
 
 L<Mail::DMARC::Report> - Reporting: the R in DMARC
 
-=over 4
+=over 2
 
 L<Mail::DMARC::Report::Send> - send reports via SMTP & HTTP
 

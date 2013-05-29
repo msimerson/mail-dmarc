@@ -598,10 +598,12 @@ __END__
 
 Store and retrieve DMARC reports from SQL data store.
 
+Tested with SQLite and MySQL.
+
 =head1 DESCRIPTION
 
-Using ANSI SQL syntax, so the resulting SQL is as portable as possible.
+Uses ANSI SQL syntax, keeping the SQL as portable as possible.
 
-Working and tested with SQLite and MySQL.
+DB engine specific features are to be avoided.
 
 =cut
