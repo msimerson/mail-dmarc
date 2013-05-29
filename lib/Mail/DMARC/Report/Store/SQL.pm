@@ -56,25 +56,7 @@ sub retrieve {
 sub retrieve_todo {
     my ( $self, %args ) = @_;
 
-    my $query = <<'EO_TODO_QUERY'
-SELECT r.id    AS rid,
-    r.begin    AS begin,
-    r.end      AS end,
-    a.org_name AS author,
-    rd.domain  AS rcpt_domain,
-    fd.domain  AS from_domain
-FROM report r
-LEFT JOIN report_record rr ON r.id=rr.report_id
-LEFT JOIN author a  ON r.author_id=a.id
-LEFT JOIN domain rd ON r.rcpt_domain_id=rd.id
-LEFT JOIN domain fd ON r.from_domain_id=fd.id
-WHERE rr.count IS NULL
-  AND r.end < ?
-ORDER BY r.id
-LIMIT 1
-EO_TODO_QUERY
-;
-    my $reports = $self->query( $query, [ time ] );
+    my $reports = $self->query( $self->get_todo_query, [ time ] );
     return if ! @$reports;
     my $report = $reports->[0];
 
@@ -111,18 +93,9 @@ EO_TODO_QUERY
             map { $_ => $row->{$_} } qw/ disposition dkim spf /
         };
         $row->{source_ip} = $self->any_inet_ntop( $row->{source_ip} );
-        $row->{reason}    = $self->query(
-            'SELECT type,comment from report_record_reason WHERE report_record_id=?',
-            [ $row->{id} ]
-        );
-        $row->{auth_results}{spf} = $self->query(
-            'SELECT domain,result,scope from report_record_spf WHERE report_record_id=?',
-            [ $row->{id} ]
-        );
-        $row->{auth_results}{dkim} = $self->query(
-            'SELECT domain,selector,result,human_result from report_record_dkim WHERE report_record_id=?',
-            [ $row->{id} ]
-        );
+        $row->{reason}    = $self->get_row_reason( $row->{id} );
+        $row->{auth_results}{spf} = $self->get_row_spf($row->{id});
+        $row->{auth_results}{dkim} = $self->get_row_dkim($row->{id});
         $agg->record($row);
     }
     return $agg;
@@ -300,6 +273,27 @@ EO_REPORTS
 ;
 };
 
+sub get_todo_query {
+    return <<'EO_TODO_QUERY'
+SELECT r.id    AS rid,
+    r.begin    AS begin,
+    r.end      AS end,
+    a.org_name AS author,
+    rd.domain  AS rcpt_domain,
+    fd.domain  AS from_domain
+FROM report r
+LEFT JOIN report_record rr ON r.id=rr.report_id
+LEFT JOIN author a  ON r.author_id=a.id
+LEFT JOIN domain rd ON r.rcpt_domain_id=rd.id
+LEFT JOIN domain fd ON r.from_domain_id=fd.id
+WHERE rr.count IS NULL
+  AND r.end < ?
+ORDER BY r.id
+LIMIT 1
+EO_TODO_QUERY
+;
+};
+
 sub get_row {
     my ($self,@args) = @_;
     croak "invalid parameters" if @args % 2;
@@ -307,7 +301,7 @@ sub get_row {
 #warn Dumper(\%args);
     croak "missing report ID (rid)!" if ! defined $args{rid};
 
-    my $query = '
+    my $query = <<'EO_ROW_QUERY'
 SELECT rr.*,
     etd.domain AS envelope_to,
     efd.domain AS envelope_from,
@@ -316,7 +310,9 @@ FROM report_record rr
 LEFT JOIN domain etd ON etd.id=rr.envelope_to_did
 LEFT JOIN domain efd ON efd.id=rr.envelope_from_did
 LEFT JOIN domain hfd ON hfd.id=rr.header_from_did
-        WHERE report_id = ?';
+WHERE report_id = ?
+EO_ROW_QUERY
+        ;
     my @params = $args{rid};
 
     my $rows = $self->query($query, \@params);
@@ -330,6 +326,45 @@ LEFT JOIN domain hfd ON hfd.id=rr.header_from_did
         total_rows  => scalar @$rows,
         rows        => $rows,
     };
+};
+
+sub get_row_spf {
+    my ($self, $rowid) = @_;
+
+    my $spf_query = <<"EO_SPF_ROW"
+SELECT d.domain AS domain,
+       s.result AS result,
+       s.scope  AS scope
+FROM report_record_spf s
+LEFT JOIN domain d ON s.domain_id=d.id
+WHERE s.report_record_id=?
+EO_SPF_ROW
+;
+    return $self->query( $spf_query, [ $rowid ] );
+};
+
+sub get_row_dkim {
+    my ($self, $rowid) = @_;
+
+    my $dkim_query = <<"EO_DKIM_ROW"
+SELECT d.domain       AS domain,
+       k.selector     AS selector,
+       k.result       AS result,
+       k.human_result AS human_result
+FROM report_record_dkim k
+LEFT JOIN domain d ON k.domain_id=d.id
+WHERE report_record_id=?
+EO_DKIM_ROW
+;
+    return $self->query( $dkim_query, [ $rowid ] );
+};
+
+sub get_row_reason {
+    my ($self, $rowid) = @_;
+    return $self->query(
+        'SELECT type,comment from report_record_reason WHERE report_record_id=?',
+        [ $rowid ]
+    );
 };
 
 sub row_exists {
@@ -395,6 +430,11 @@ sub insert_rr_dkim {
     my (@fields, @values);
     foreach ( qw/ domain selector result human_result / ) {
         next if ! $dkim->{$_};
+        if ( 'domain' eq $_ ) {
+            push @fields, 'domain_id';
+            push @values, $self->get_domain_id( $dkim->{domain} );
+            next;
+        };
         push @fields, $_;
         push @values, $dkim->{$_};
     };
@@ -414,6 +454,11 @@ sub insert_rr_spf {
     my (@fields, @values);
     for ( qw/ domain scope result / ) {
         next if ! $spf->{$_};
+        if ( 'domain' eq $_ ) {
+            push @fields, 'domain_id';
+            push @values, $self->get_domain_id( $spf->{domain} );
+            next;
+        };
         push @fields, $_;
         push @values, $spf->{$_};
     };

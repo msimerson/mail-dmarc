@@ -39,9 +39,16 @@ test_insert_rr_reason();
 test_get_aggregate_rid();
 test_get_author_id(3);
 test_get_report();
+test_get_row_reason();
 
 done_testing();
 exit;
+
+sub test_get_row_reason {
+    ok( $sql->get_row_reason( 1 ), 'get_row_reason');
+    ok( $sql->get_row_spf( 1 ), 'get_row_spf');
+    ok( $sql->get_row_dkim( 1 ), 'get_row_dkim');
+};
 
 sub test_get_report {
     my $r = $sql->get_report( author => 'The Art Farm' );

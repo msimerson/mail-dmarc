@@ -158,7 +158,7 @@ DROP TABLE IF EXISTS `report_record_dkim`;
 
 CREATE TABLE `report_record_dkim` (
   `report_record_id` INTEGER NOT NULL REFERENCES "report_record"("id") ON UPDATE CASCADE ON DELETE CASCADE,
-  `domain` TEXT NOT NULL,
+  `domain_id` INTEGER NOT NULL,
   `selector` TEXT DEFAULT NULL,
   `result` TEXT DEFAULT NULL REFERENCES "fk_dkim_result"("result") ON UPDATE CASCADE ON DELETE CASCADE,
   `human_result` TEXT DEFAULT NULL
@@ -169,7 +169,7 @@ DROP TABLE IF EXISTS `report_record_spf`;
 
 CREATE TABLE `report_record_spf` (
   `report_record_id` INTEGER NOT NULL REFERENCES "report_record"("id") ON UPDATE CASCADE ON DELETE CASCADE,
-  `domain` TEXT NOT NULL,
+  `domain_id` INTEGER NOT NULL,
   `scope` TEXT DEFAULT NULL REFERENCES "fk_spf_scope"("scope") ON UPDATE CASCADE ON DELETE RESTRICT,
   `result` TEXT NOT NULL REFERENCES "fk_spf_result"("result") ON UPDATE CASCADE ON DELETE CASCADE
 );

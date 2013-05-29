@@ -274,7 +274,7 @@ DROP TABLE IF EXISTS `report_record_dkim`;
 
 CREATE TABLE `report_record_dkim` (
   `report_record_id` int(11) unsigned NOT NULL,
-  `domain` varchar(253) NOT NULL DEFAULT '',
+  `domain_id` int(11) unsigned NOT NULL,
   `selector` varchar(253) DEFAULT NULL,
   `result` varchar(9) NOT NULL DEFAULT '',
   `human_result` varchar(64) DEFAULT NULL,
@@ -293,7 +293,7 @@ DROP TABLE IF EXISTS `report_record_spf`;
 
 CREATE TABLE `report_record_spf` (
   `report_record_id` int(11) unsigned NOT NULL,
-  `domain` varchar(253) NOT NULL DEFAULT '',
+  `domain_id` int(11) unsigned NOT NULL,
   `scope` varchar(5) DEFAULT NULL,
   `result` varchar(9) NOT NULL DEFAULT '',
   KEY `report_record_id` (`report_record_id`),
