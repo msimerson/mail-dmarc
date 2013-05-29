@@ -10,6 +10,7 @@ use parent 'Net::Server::HTTP';
 use CGI;
 use Data::Dumper;
 use File::ShareDir;
+use IO::Uncompress::Gunzip;
 use JSON;
 use URI;
 
@@ -57,7 +58,7 @@ sub dmarc_dispatch {
         warn "path: $path\n";
         return report_json_report($self) if $path eq '/dmarc/json/report';
         return report_json_row($self)    if $path eq '/dmarc/json/row';
-        return serve_file($self,$path)   if $path =~ /\.(?:js|css|html)$/x;
+        return serve_file($self,$path)   if $path =~ /\.(?:js|css|html|gz)$/x;
     };
 
     return serve_file($self,'/dmarc/index.html');
@@ -84,34 +85,67 @@ sub serve_file {
     return serve_pretty_error("file not found") if 'dmarc' ne $bits[0];
     shift @bits;
     $path = join '/', @bits;
-#warn "url path: $path<br>\n";
     my $file = $bits[-1];
     $file =~ s/[^[ -~]]//g;  # strip out any non-printable chars
-#warn "parsed file: $file<br>\n";
 
     my ($extension) = (split /\./, $file)[-1];
-#warn "parsed extension: $extension<br>\n";
     return serve_pretty_error("$extension not recognized") if ! $mimes{$extension};
-
-    print "Content-Type: $mimes{$extension}\n\n";
 
     my $dir = "share/html";  # distribution dir
     if ( ! -d $dir ) {
         $dir = File::ShareDir::dist_dir( 'Mail-DMARC' ); # installed loc.
         $dir .= "/html";
-#warn "sharedir: $dir\n";
     };
-#warn "serve dir: $dir<br>\n";
     return serve_pretty_error("no such path") if ! $dir;
+    return serve_gzip("$dir/$path.gz") if -f "$dir/$path.gz";
     return serve_pretty_error("no such file") if ! -f "$dir/$path";
-#warn "200 $dir/$path\n";
+
     open my $FH, '<', "$dir/$path" or
         return serve_pretty_error( "unable to read $dir/$path: $!" );
+    print "Content-Type: $mimes{$extension}\n\n";
     print <$FH>;
     close $FH;
     return 1;
 };
 
+sub serve_gzip {
+    my $file = shift;
+
+    open my $FH, '<', "$file" or
+        return serve_pretty_error( "unable to read $file: $!" );
+    my $contents = do { local $/; <$FH> };    ## no critic (Local)
+    close $FH;
+
+    my $decomp = substr($file, 0, -3);  # remove .gz suffix
+    my ($extension) = (split /\./, $decomp)[-1];
+
+# browser accepts gz encoding, serve compressed
+    if ( grep {/gzip/} $ENV{HTTP_ACCEPT_ENCODING} ) {
+        my $length = length $contents;
+        return print <<EO_GZ
+Content-Length: $length
+Content-Type: $mimes{$extension}
+Content-Encoding: gzip
+
+$contents
+EO_GZ
+;
+    };
+
+    # browser doesn't support gzip, decompress and serve
+    my $out;
+    IO::Uncompress::Gunzip::gunzip( \$contents => \$out )
+         or return serve_pretty_error( "unable to decompress" );
+    my $length = length $out;
+
+    return print <<EO_UNGZ
+Content-Length: $length
+Content-Type: $mimes{$extension}
+
+$out
+EO_UNGZ
+;
+};
 
 sub report_json_report {
     print "Content-type: application/json\n\n";
