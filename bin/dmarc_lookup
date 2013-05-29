@@ -18,7 +18,8 @@ my %command_line_options = (
 GetOptions (%command_line_options);
 $verbose = 1 if ! defined $verbose;
 
-$domain ||= $ARGV[0] or pod2usage;
+$domain ||= $ARGV[0];
+$domain or pod2usage;
 
 my $dmarc = Mail::DMARC::PurePerl->new;
 $dmarc->verbose($verbose);

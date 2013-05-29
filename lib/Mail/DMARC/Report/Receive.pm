@@ -31,6 +31,7 @@ sub from_imap {
             ($port==993 ? (use_ssl => 1) : ()),
         )
         or do {
+## no critic (PackageVar)
             my $err = $port == 143 ? $Net::IMAP::Simple::errstr : $Net::IMAP::Simple::SSL::errstr;
             croak "Unable to connect to IMAP: $err\n";
         };
@@ -167,13 +168,13 @@ sub from_email_simple {
 sub get_imap_port {
     my $self = shift;
 
-    eval "use IO::Socket::SSL";
+    eval "use IO::Socket::SSL";  ## no critic (Eval)
     if ( $@ ) {
         carp "no SSL, using insecure connection: $!\n";
         return 143;
     };
 
-    eval "use Mozilla::CA";
+    eval "use Mozilla::CA";    ## no critic (Eval)
     if ( ! $@ ) {
         IO::Socket::SSL::set_ctx_defaults(
                 SSL_verifycn_scheme => 'imap',

@@ -61,7 +61,7 @@ sub print_record {
 sub print_rows {
     my $rows = shift;
     foreach my $row ( @$rows ) {
-        no warnings;
+        no warnings;  ## no critic (NoWarn)
         next if $disposition && $disposition ne $row->{disposition};
         next if $dkim && $dkim ne $row->{dkim};
         next if $spf  && $spf ne $row->{spf};
@@ -74,6 +74,7 @@ sub print_rows {
         my $geoip = print_geoip( $row->{source_ip} );
         print "  $dns_hostname\n";
     }
+    return;
 };
 
 sub print_header {
@@ -95,6 +96,7 @@ sub print_geoip {
     my $city = $r->city;
     print $city ?  " $city," : ' ';
     print " $country_code, $continent";
+    return;
 }
 
 sub get_dns_hostname {
@@ -105,12 +107,13 @@ sub get_dns_hostname {
     return '' if 0 == scalar @answers;
     return $answers[0] if scalar @answers >= 1;
     print Dumper(\@answers);
+    return;
 };
 
 sub get_geoip_db {
 
     return $gip if $gip;
-    eval "require Geo::IP";
+    eval "require Geo::IP";  ## no critic (Eval)
     if ($@) {
         warn "unable to load Geo::IP\n";
         return;
