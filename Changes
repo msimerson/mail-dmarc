@@ -1,7 +1,9 @@
 
 {{$NEXT}}
 
- - POD doc additions
+ - added gzip support to HTTP server, compressed JS files
+ - reason is internally an arrayref of hashrefs (was a single hashref)
+ - documentation additions
  - removed unused JS files
  - add validation and fixup of SPF result for incoming reports
  - normalized domain columns in spf & dkim tables
