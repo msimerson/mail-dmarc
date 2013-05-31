@@ -33,7 +33,6 @@ isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 #done_testing(); exit;
 
 test_get_from_dom();
-test_get_dom_from_header();
 test_fetch_dmarc_record();
 test_get_organizational_domain();
 test_exists_in_dns();
@@ -313,21 +312,13 @@ sub test_fetch_dmarc_record {
 }
 
 sub test_get_from_dom {
-    $dmarc->header_from();
-    my %froms = get_test_headers();
-    foreach my $h ( keys %froms ) {
-        $dmarc->header_from_raw($h);
-        my $s = $dmarc->get_dom_from_header();
-        ok( $s eq $froms{$h}, "get_from_dom, $s eq $froms{$h}" );
-    }
-}
 
-sub test_get_dom_from_header {
     my %froms = get_test_headers();
     foreach my $h ( keys %froms ) {
+        $dmarc->init;
         $dmarc->header_from_raw($h);
-        my $s = $dmarc->get_dom_from_header();
-        ok( $s eq $froms{$h}, "get_dom_from_header, $h" );
+        my $s = $dmarc->get_from_dom();
+        ok( $s eq $froms{$h}, "get_from_dom, $s eq $froms{$h}" );
     }
 }
 
