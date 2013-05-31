@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+ - added SMTP fallback if STARTTLS fails
+
 1.20130531 2013-05-30 America/Los_Angeles
 
  - added gzip support to HTTP server, compressed JS files
