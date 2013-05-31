@@ -122,7 +122,7 @@ sub serve_gzip {
 # browser accepts gz encoding, serve compressed
     if ( grep {/gzip/} $ENV{HTTP_ACCEPT_ENCODING} ) {
         my $length = length $contents;
-        return print <<EO_GZ
+        return print <<"EO_GZ"
 Content-Length: $length
 Content-Type: $mimes{$extension}
 Content-Encoding: gzip
@@ -138,7 +138,7 @@ EO_GZ
          or return serve_pretty_error( "unable to decompress" );
     my $length = length $out;
 
-    return print <<EO_UNGZ
+    return print <<"EO_UNGZ"
 Content-Length: $length
 Content-Type: $mimes{$extension}
 

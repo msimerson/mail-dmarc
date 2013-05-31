@@ -147,7 +147,7 @@ sub _test_fail_sampled_out {
         {   'disposition' => 'none',
             'dkim'        => 'fail',
             'spf'         => 'fail',
-            'reason'      => { 'type' => 'sampled_out' },
+            'reason'      => [{ 'type' => 'sampled_out' }],
             'result'      => 'fail',
         },
         "result, fail, strict, sampled out, $test_dom"
@@ -162,11 +162,14 @@ sub _test_fail_nonexist {
 
  # some test machines return 'interesting' results for queries of non-existent
  # domains. That's not worth raising a test error.
+    my $skip_reason;
+    if ( ! $pp->result->reason || $pp->result->reason->[0]->comment ne
+        'host.nonexistent-tld not in DNS' ) {
+        $skip_reason = "DNS returned 'interesting' results for invalid domain";
+    };
 
 SKIP: {
-        skip "DNS returned 'interesting' results for invalid domain", 1
-            if $pp->result->reason->comment ne
-            'host.nonexistent-tld not in DNS';
+        skip $skip_reason, 1 if $skip_reason;
 
         is_deeply(
             $pp->result,
@@ -174,10 +177,10 @@ SKIP: {
                 'disposition' => 'reject',
                 'dkim'        => '',
                 'spf'         => '',
-                'reason'      => {
+                'reason'      => [{
                     'comment' => 'host.nonexistent-tld not in DNS',
                     'type'    => 'other',
-                },
+                }],
             },
             "result, fail, nonexist"
         ) or diag Data::Dumper::Dumper( $pp->result );
@@ -197,11 +200,11 @@ sub test_published {
 sub test_no_policy {
 
     $pp->init();
-    $pp->{header_from} = 'responsebeacon.com';
+    $pp->header_from( 'responsebeacon.com' );
     $pp->validate();
 
     my $skip_reason;
-    if ( !$pp->result->disposition ) {    # typically a DNS failure,
+    if ( !$pp->result->reason ) {    # typically a DNS failure,
         $skip_reason = "look like DNS is not working";
     };
 
@@ -214,10 +217,10 @@ SKIP: {
                 'disposition' => 'none',
                 'dkim'        => '',
                 'spf'         => '',
-                'reason'      => {
+                'reason'      => [{
                     'comment' => 'no policy',
                     'type'    => 'other',
-                },
+                }],
             },
             "result, fail, nonexist"
         ) or diag Data::Dumper::Dumper( $pp->result );
