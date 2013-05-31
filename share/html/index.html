@@ -16,6 +16,14 @@ html, body {
   padding: 0;
   font-size: 80%;
 }
+span.cellWithoutBackground {
+  display: block;
+  background-image: none;
+  margin-right:-2px;
+  margin-left:-2px;
+  height: 14px;
+  padding:4px;
+}
 </style>
 
 <script type="text/javascript">
@@ -40,9 +48,7 @@ jQuery.extend(jQuery.jgrid.defaults, {
     },
     pager: '#gridpager',
   });
-</script>
 
-<script type="text/javascript">
 jQuery(document).ready(function(){
   jQuery("#grid").jqGrid({
       url:'/dmarc/json/report',
@@ -54,7 +60,7 @@ jQuery(document).ready(function(){
         {name:'rcpt_domain', index:'rcpt_domain', width:135, align:'right', sortable: true},
         {name:'author',      index:'author',      width:170, align:'center' },
         {name:'begin',       index:'begin',       width:90, sorttype:'date'},
-        {name:'end',         index:'end',         width:90, sorttype:'date',},
+        {name:'end',         index:'end',         width:90, sorttype:'date'},
         {name:'uuid',        index:'uuid',        width:120, align:'left'},
 // {name:'type',index:'type', width:200,editable:true,edittype:'select',editoptions:{dataUrl: '/jqGridOptionData?entity=WineType'}},
       ],
@@ -66,22 +72,55 @@ jQuery(document).ready(function(){
       sortorder: 'desc',
       caption:"DMARC Reports",
 			subGrid: true,
-		  subGridUrl:'/dmarc/json/row',
-			subGridModel: [
-				{
-        name:['','IP','Count','Disposition','SPF','DKIM','Envelope From','Envelope To'],
-				width:[70,200,15,40,40,40,100,100,100],
-				align:[,'center','center','center','center','center','right','right'],
-				params: ['rid'],
-        mapping: [,'source_ip','count','disposition','spf','dkim','envelope_from','envelope_to'],
-				},
-			],
+      subGridRowExpanded: function(subgrid_id, row_id) {
+
+    // subgrid_id is a id of the div tag created within a table
+    // the row_id is the id of the row
+    // If we want to pass additional parameters to the url we can use
+    // the method getRowData(row_id) - which returns associative array in type name-value
+    // here we can easy construct the following
+       var subgrid_table_id;
+       subgrid_table_id = subgrid_id+"_t";
+       jQuery("#"+subgrid_id).html("<table id='"+subgrid_table_id+"' class='scroll'></table>");
+       jQuery("#"+subgrid_table_id).jqGrid({
+          url:"/dmarc/json/row?rid="+row_id,
+          datatype: "json",
+          colNames: ['IP','#','Disposition','SPF','DKIM','Envelope From','Envelope To'],
+          colModel: [
+            {name:"source_ip",index:"source_ip",width:200,align:"center",key:true},
+            {name:"count",index:"count",width:20,align:"center"},
+            {name:"disposition",index:"disposition",width:40,align:"center",formatter:dmarcFormatter},
+            {name:"spf",index:"spf",width:40,align:"center",formatter:dmarcFormatter},
+            {name:"dkim",index:"dkim",width:40,align:"center",formatter:dmarcFormatter},
+            {name:"envelope_from",index:"envelope_from",width:100,align:"right"},
+            {name:"envelope_to",index:"envelope_to",width:100,align:"right",sortable:false}
+          ],
+          height: '100%',
+          rowNum:20,
+          sortname: 'num',
+          pager: false,
+          sortorder: "asc"
+       });
+      },
+
 		  filterToolbar: {
 				autosearch:true
 			},
   })
 	.navGrid('#gridpager',{add:false,del:false,edit:false,search:true});
 });
+
+function dmarcFormatter(cellValue, Options, rowObject) {
+    // FFFFCC yellow
+    // FFCCCC salmon / red
+    // CCFFCC green
+  var color;
+  if ( cellValue == 'fail' ) color = '#FFCCCC';
+  if ( cellValue == 'pass' ) color = '#CCFFCC';
+  if ( cellValue == 'reject' ) color = '#FFCCCC';
+  if ( cellValue == 'none' ) color = '#CCFFCC';
+  return '<span class="cellWithoutBackground" style="background-color: '+color+';">' + cellValue +'</span>';
+};
 
 jQuery("#mybutton").click(function() {
    jQuery("#grid").setColumns({'Begin':'begin','End':'end'});
