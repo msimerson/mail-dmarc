@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20130601 2013-05-31 America/Los_Angeles
+
  - make sure a report record exists when fetching SMTP todo
  - added insecure SMTP fallback if STARTTLS fails
  - added color coded results to HTTP grid
