@@ -3,6 +3,13 @@
 [The source code is hosted on GitHub](https://github.com/msimerson/mail-dmarc)
 
 
+# Beware of branches
+
+The two branches of concern are master and devel. Devel is where the action is, but the rides on that playground require Dist::Zilla. Seriously, you can't even run 'make test' in the devel branch without the D.Z. If you fear/loathe/hate the D.Z, stick with the release branch.
+
+The master branch is automatically updated when new releases are made in the devel branch. It contains all the automatically generated files that the devel branch doesn't, such as README, Makefile.PL, and Build.PL. It is identical to the distribution as you'd find it on CPAN, making it far easier for causual perl programmers to patch against.
+
+
 # Download the source
 
 To make changes or submit patches, visit the URL above and click the ***Fork*** button. Then clone your fork to your local disk with this git command:
@@ -30,12 +37,12 @@ If your changes are significant in any way, and/or might possibly involve more t
     ... make more related changes ...
     git commit
 
-When you are done with that branch, you can merge it back into the master branch:
+When you are done with that branch, you can merge it back into the devel branch:
 
-    git checkout master
+    git checkout devel
     git merge fix-knob-handle
 
-When the branch is no longer useful, delete it:
+When the new feature branch is no longer useful, delete it:
 
     git branch -d fix-knob-handle
 
