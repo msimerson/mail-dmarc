@@ -1,4 +1,5 @@
 package Mail::DMARC::Report::Receive;
+# VERSION
 use strict;
 use warnings;
 

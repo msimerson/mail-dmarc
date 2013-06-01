@@ -1,4 +1,5 @@
 package Mail::DMARC::Report::Send::SMTP;
+# VERSION
 use strict;
 use warnings;
 

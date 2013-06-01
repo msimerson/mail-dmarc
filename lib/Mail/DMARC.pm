@@ -1,4 +1,5 @@
 package Mail::DMARC;
+# VERSION
 use strict;
 use warnings;
 

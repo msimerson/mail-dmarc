@@ -1,4 +1,5 @@
 package Mail::DMARC::Report::Aggregate;
+# VERSION
 use strict;
 use warnings;
 

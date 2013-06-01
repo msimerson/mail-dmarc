@@ -1,4 +1,5 @@
 package Mail::DMARC::Report::Store;
+# VERSION
 use strict;
 use warnings;
 

@@ -1,4 +1,5 @@
 package Mail::DMARC::Report::View::CLI;
+# VERSION
 use strict;
 use warnings;
 

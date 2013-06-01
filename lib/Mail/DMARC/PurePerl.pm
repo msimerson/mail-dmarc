@@ -1,4 +1,5 @@
 package Mail::DMARC::PurePerl;
+# VERSION
 use strict;
 use warnings;
 
