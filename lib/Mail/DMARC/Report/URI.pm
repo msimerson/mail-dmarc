@@ -11,7 +11,8 @@ sub new {
 }
 
 sub parse {
-    my ( $self, $str ) = @_;
+    my $self = shift;
+    my $str = shift or croak "URI string is required!";
 
     my @valids = ();
     foreach my $raw ( split /,/, $str ) {

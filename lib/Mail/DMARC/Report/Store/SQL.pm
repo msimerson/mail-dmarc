@@ -287,8 +287,10 @@ LEFT JOIN author a  ON r.author_id=a.id
 LEFT JOIN domain rd ON r.rcpt_domain_id=rd.id
 LEFT JOIN domain fd ON r.from_domain_id=fd.id
 WHERE rr.count IS NULL
+  AND rr.report_id IS NOT NULL
   AND r.end < ?
-ORDER BY r.id
+GROUP BY rid
+ORDER BY rid
 LIMIT 1
 EO_TODO_QUERY
 ;
