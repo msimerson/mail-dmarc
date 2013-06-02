@@ -18,15 +18,15 @@ use_ok($mod);
 my $agg = $mod->new;
 isa_ok( $agg, $mod );
 
-test_metadata();
-test_policy_published();
+test_metadata_isa();
 test_record();
+test_policy_published();
 test_as_xml();
 
 done_testing();
 exit;
 
-sub test_metadata {
+sub test_metadata_isa {
     isa_ok( $agg->metadata, "Mail::DMARC::Report::Aggregate::Metadata");
 };
 
@@ -39,11 +39,31 @@ sub test_policy_published {
 }
 
 sub test_record {
+    ok( ! defined $agg->record, "Mail::DMARC::Report::Aggregate::Record, empty");
+
     my $ip = '192.2.1.1';
-    my $test_r = { source_ip => $ip, policy_evaluated => { disposition=>'pass', dkim => 'pass', spf=>'pass' } };
-    ok( $agg->record( $test_r ), "record, empty");
+    my $test_r = {
+        identifiers => {
+            header_from   => 'example.com',
+            envelope_from => 'example.com',
+        },
+        auth_results => { dkim => [ ], spf => [ ] },
+        row=> {
+            source_ip => $ip,
+            count     => 1,
+            policy_evaluated => { disposition=>'pass', dkim => 'pass', spf=>'pass' },
+        }
+    };
+    my $r;
+    eval { $r = $agg->record( $test_r ) };
+    ok( $r, "record, test") or diag Dumper($r);
+#warn Dumper($r);
+
+    delete $agg->record->[0]{config_file};
     is_deeply( $agg->record, [ $test_r ], "record, deeply");
+
     $agg->record( $test_r, "record, empty, again");
+    delete $agg->record->[1]{config_file};
     is_deeply( $agg->record, [ $test_r,$test_r ], "record, deeply, multiple");
 };
 
@@ -57,5 +77,8 @@ sub test_as_xml {
         $agg->metadata->$m(time);
     };
 
+    ok( $agg->metadata->as_xml(), "metadata, as_xml");
+    ok( $agg->get_policy_published_as_xml(), "policy_published, as_xml");
+    ok( $agg->get_record_as_xml(), "record, as_xml");
     ok( $agg->as_xml(), "as_xml");
 };

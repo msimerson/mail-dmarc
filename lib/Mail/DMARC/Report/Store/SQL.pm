@@ -22,7 +22,7 @@ sub save_aggregate {
         croak "meta field $f required" if ! $agg->metadata->$f;
     }
 
-    my $rid = $self->get_aggregate_rid( $agg )
+    my $rid = $self->get_report_id( $agg )
         or croak "failed to create report!";
 
     foreach my $rec ( @{ $agg->record } ) {
@@ -55,7 +55,7 @@ sub retrieve {
 }
 
 sub retrieve_todo {
-    my ( $self, %args ) = @_;
+    my ( $self, @args ) = @_;
 
     my $reports = $self->query( $self->get_todo_query, [ time ] );
     return if ! @$reports;
@@ -86,18 +86,53 @@ sub retrieve_todo {
     $pp->{domain} = $report->{from_domain};
     $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
 
-    my $rows = $self->query( 'SELECT * from report_record WHERE report_id=?',
-        [ $report->{rid} ] );
+    my $recs = $self->query( $self->get_rr_query, [ $report->{rid} ] );
 
-    foreach my $row (@$rows) {
-        $row->{policy_evaluated} = {
-            map { $_ => $row->{$_} } qw/ disposition dkim spf /
-        };
-        $row->{source_ip} = $self->any_inet_ntop( $row->{source_ip} );
-        $row->{reason}    = $self->get_row_reason( $row->{id} );
-        $row->{auth_results}{spf} = $self->get_row_spf($row->{id});
-        $row->{auth_results}{dkim} = $self->get_row_dkim($row->{id});
-        $agg->record($row);
+    # aggregate the connections per IP
+    my (%ips, %pe, %auth, %ident, %reasons);
+    foreach my $rec ( @$recs ) {
+        my $ip = $rec->{source_ip};
+        $ips{ $ip }++;
+        $ident{$ip}{header_from}   ||= $rec->{header_from};
+        $ident{$ip}{envelope_from} ||= $rec->{envelope_from};
+        $ident{$ip}{envelope_to}   ||= $rec->{envelope_to};
+
+        $pe{$ip}{disposition} ||= $rec->{disposition};
+        $pe{$ip}{dkim} ||= $rec->{dkim};
+        $pe{$ip}{spf} ||= $rec->{spf};
+
+        $auth{ $ip }{spf } ||= $self->get_row_spf($rec->{id});
+        $auth{ $ip }{dkim} ||= $self->get_row_dkim($rec->{id});
+
+        my $reasons = $self->get_row_reason( $rec->{id} );
+        foreach my $reason ( @$reasons ) {
+            my $type = $reason->{type} or next;
+            $reasons{$ip}{$type} = $reason->{comment};   # flatten reasons
+        }
+    }
+
+    foreach my $ip ( keys %ips ) {
+        $agg->record( {
+            identifiers => {
+                header_from   => $ident{$ip}{header_from},
+                envelope_from => $ident{$ip}{envelope_from},
+                envelope_to   => $ident{$ip}{envelope_to},
+            },
+            auth_results => {
+                dkim => $auth{$ip}{dkim},
+                spf  => $auth{$ip}{spf},
+            },
+            row => {
+                source_ip => $self->any_inet_ntop( $ip ),
+                count     => $ips{ $ip },
+                policy_evaluated => {
+                    disposition => $pe{$ip}{disposition},
+                    dkim        => $pe{$ip}{dkim},
+                    spf         => $pe{$ip}{spf},
+                    $reasons{$ip} ? ( reason => [ map { { type => $_, comment => $reasons{$ip}{$_} } } keys %{ $reasons{$ip} } ] ) : (),
+                },
+            },
+        } );
     }
     return $agg;
 }
@@ -153,7 +188,7 @@ sub get_author_id {
     );
 }
 
-sub get_aggregate_rid {
+sub get_report_id {
     my ( $self, $aggregate ) = @_;
 
     my $meta = $aggregate->metadata;
@@ -200,7 +235,6 @@ sub get_report {
     my ($self,@args) = @_;
     croak "invalid parameters" if @args % 2;
     my %args = @args;
-#warn Dumper(\%args);
 
     my $query = $self->get_report_query;
     my @params;
@@ -304,21 +338,7 @@ sub get_row {
 #warn Dumper(\%args);
     croak "missing report ID (rid)!" if ! defined $args{rid};
 
-    my $query = <<'EO_ROW_QUERY'
-SELECT rr.*,
-    etd.domain AS envelope_to,
-    efd.domain AS envelope_from,
-    hfd.domain AS header_from
-FROM report_record rr
-LEFT JOIN domain etd ON etd.id=rr.envelope_to_did
-LEFT JOIN domain efd ON efd.id=rr.envelope_from_did
-LEFT JOIN domain hfd ON hfd.id=rr.header_from_did
-WHERE report_id = ?
-EO_ROW_QUERY
-        ;
-    my @params = $args{rid};
-
-    my $rows = $self->query($query, \@params);
+    my $rows = $self->query( $self->get_rr_query, [ $args{rid} ] );
     foreach ( @$rows ) {
         $_->{reasons} = $self->query('SELECT type,comment FROM report_record_reason WHERE report_record_id=?', [ $_->{id} ] );
         $_->{source_ip} = $self->any_inet_ntop( $_->{source_ip} );
@@ -368,6 +388,21 @@ sub get_row_reason {
         'SELECT type,comment from report_record_reason WHERE report_record_id=?',
         [ $rowid ]
     );
+};
+
+sub get_rr_query {
+    return <<'EO_ROW_QUERY'
+SELECT rr.*,
+    etd.domain AS envelope_to,
+    efd.domain AS envelope_from,
+    hfd.domain AS header_from
+FROM report_record rr
+LEFT JOIN domain etd ON etd.id=rr.envelope_to_did
+LEFT JOIN domain efd ON efd.id=rr.envelope_from_did
+LEFT JOIN domain hfd ON hfd.id=rr.header_from_did
+WHERE report_id = ?
+EO_ROW_QUERY
+        ;
 };
 
 sub row_exists {

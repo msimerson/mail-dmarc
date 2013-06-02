@@ -7,11 +7,13 @@ use Carp;
 use Data::Dumper;
 
 use parent 'Mail::DMARC::Base';
+use Mail::DMARC::Report::Aggregate::Metadata;
+use Mail::DMARC::Report::Aggregate::Record;
 
 sub metadata {
     my $self = shift;
     return $self->{metadata} if ref $self->{metadata};
-    return $self->{metadata} = Mail::DMARC::Report::Aggregate::Metadata->new();
+    return $self->{metadata} = Mail::DMARC::Report::Aggregate::Metadata->new;
 }
 
 sub policy_published {
@@ -22,11 +24,23 @@ sub policy_published {
 }
 
 sub record {   ## no critic (Ambiguous)
-    my ( $self, $rrecord ) = @_;
-    return $self->{record} if ! defined $rrecord;
-    croak "invalid record format!" if 'HASH' ne ref $rrecord;
-    return push @{ $self->{record} }, $rrecord;
-}
+    my ($self, @args) = @_;
+    return $self->{record} if ! scalar @args;
+    my $rec = Mail::DMARC::Report::Aggregate::Record->new;
+    if ( 'HASH' eq ref $args[0] ) {
+        foreach my $s ( qw/ identifiers auth_results row / ) {
+            $rec->$s( $args[0]->{$s} );
+        };
+    }
+    else {
+        my %args = @args;
+        foreach my $s ( qw/ identifiers auth_results row / ) {
+            $rec->$s( $args[$s] );
+        };
+    };
+    push @{ $self->{record} }, $rec;
+    return $self->{record};
+};
 
 sub dump_report {
     my $self = shift;
@@ -54,193 +68,99 @@ EO_XML
 sub get_record_as_xml {
     my $self = shift;
 
-    return '' if ! $self->{record} || 0 == @{ $self->{record} };  # no rows
-
-    my (%ips, %reasons);  # aggregate the connections per IP
-    foreach my $row ( @{ $self->{record} } ) {
-        $ips{ $row->{source_ip} }++;
-        if ( $row->{reason} ) {
-            foreach my $reason ( @{ $row->{reason} } ) {
-                my $type = $reason->{type} or next;
-                $reasons{ $row->{source_ip} }{$type}
-                    = ( $reason->{comment} || '' );
-            }
-        }
-    }
-
-    my $rec_xml = " <record>\n";
-    foreach my $row ( @{ $self->{record} } ) {
-        my $ip = $row->{source_ip} or croak "no source IP!?";
-        $row->{policy_evaluated}{disposition} or croak "no disposition?";
-        next if !defined $ips{$ip};    # already reported
-        my $count = delete $ips{$ip};
+    my $rec_xml = "\t<record>\n";
+    foreach my $rec ( @{ $self->{record} } ) {
+        my $ip = $rec->{row}{source_ip} or croak "no source IP!?";
+        my $count = $rec->{row}{count} or croak "no count!?";
+        $rec->{row}{policy_evaluated}{disposition} or croak "no disposition?";
         $rec_xml
-            .= "  <row>\n"
-            . "   <source_ip>$ip</source_ip>\n"
-            . "   <count>$count</count>\n"
-            . $self->get_policy_evaluated_as_xml( $row, $reasons{$ip} )
-            . "  </row>\n"
-            . $self->get_identifiers_as_xml($row)
-            . $self->get_auth_results_as_xml($row);
+            .="\t\t<row>\n"
+            . "\t\t\t<source_ip>$ip</source_ip>\n"
+            . "\t\t\t<count>$count</count>\n"
+            . $self->get_policy_evaluated_as_xml( $rec )
+            . "\t\t</row>\n"
+            . $self->get_identifiers_as_xml($rec)
+            . $self->get_auth_results_as_xml($rec);
     }
-    $rec_xml .= " </record>";
+    $rec_xml .= "\t</record>";
     return $rec_xml;
 }
 
 sub get_identifiers_as_xml {
-    my ( $self, $row ) = @_;
-    my $id = "  <identifiers>\n";
+    my ( $self, $rec ) = @_;
+    my $id = "\t\t<identifiers>\n";
     foreach my $f (qw/ envelope_to envelope_from header_from /) {
-        next if !$row->{$f};
-        $id .= "   <$f>$row->{$f}</$f>\n";
+        if ( $f eq 'header_from' && ! $rec->{identifiers}{$f} ) {
+            croak "missing header_from!";
+        };
+        next if !$rec->{identifiers}{$f};
+        $id .= "\t\t\t<$f>$rec->{identifiers}{$f}</$f>\n";
     }
-    $id .= "  </identifiers>\n";
+    $id .= "\t\t</identifiers>\n";
     return $id;
 }
 
 sub get_auth_results_as_xml {
-    my ( $self, $row ) = @_;
-    my $ar = "  <auth_results>\n";
+    my ( $self, $rec ) = @_;
+    my $ar = "\t\t<auth_results>\n";
 
-    foreach my $dkim_sig ( @{ $row->{auth_results}{dkim} } ) {
-        $ar .= "   <dkim>\n";
+    foreach my $dkim_sig ( @{ $rec->{auth_results}{dkim} } ) {
+        $ar .= "\t\t\t<dkim>\n";
         foreach my $g (qw/ domain selector result human_result /) {
             next if !defined $dkim_sig->{$g};
-            $ar .= "    <$g>$dkim_sig->{$g}</$g>\n";
+            $ar .= "\t\t\t\t<$g>$dkim_sig->{$g}</$g>\n";
         }
-        $ar .= "   </dkim>\n";
+        $ar .= "\t\t\t</dkim>\n";
     }
 
-    foreach my $spf ( @{ $row->{auth_results}{spf} } ) {
-        $ar .= "   <spf>\n";
+    foreach my $spf ( @{ $rec->{auth_results}{spf} } ) {
+        $ar .= "\t\t\t<spf>\n";
         foreach my $g (qw/ domain scope result /) {
             next if !defined $spf->{$g};
-            $ar .= "    <$g>$spf->{$g}</$g>\n";
+            $ar .= "\t\t\t\t<$g>$spf->{$g}</$g>\n";
         }
-        $ar .= "   </spf>\n";
+        $ar .= "\t\t\t</spf>\n";
     }
 
-    $ar .= "  </auth_results>\n";
+    $ar .= "\t\t</auth_results>\n";
     return $ar;
 }
 
 sub get_policy_published_as_xml {
     my $self = shift;
     my $pp = $self->policy_published or return '';
-    my $xml = " <policy_published>\n  <domain>$pp->{domain}</domain>\n";
+    my $xml = "\t<policy_published>\n\t\t<domain>$pp->{domain}</domain>\n";
     foreach my $f (qw/ adkim aspf p sp pct /) {
         next if !defined $pp->{$f};
-        $xml .= "  <$f>$pp->{$f}</$f>\n";
+        $xml .= "\t\t<$f>$pp->{$f}</$f>\n";
     }
-    $xml .= " </policy_published>";
+    $xml .= "\t</policy_published>";
     return $xml;
 }
 
 sub get_policy_evaluated_as_xml {
-    my ( $self, $row, $reasons ) = @_;
-    my $pe = "   <policy_evaluated>\n";
+    my ( $self, $rec ) = @_;
+    my $pe = "\t\t\t<policy_evaluated>\n";
 
     foreach my $f (qw/ disposition dkim spf /) {
-        $pe .= "    <$f>$row->{policy_evaluated}{$f}</$f>\n";
+        $pe .= "\t\t\t\t<$f>$rec->{row}{policy_evaluated}{$f}</$f>\n";
     }
 
-    foreach my $reason ( keys %$reasons ) {
-        next if ! $reason;
-        $pe .= "    <reason>\n     <type>$reason</type>\n";
-        $pe .= "     <comment>$reasons->{$reason}</comment>\n"
-            if $reasons->{$reason};
-        $pe .= "    </reason>\n";
-    }
-    $pe .= "   </policy_evaluated>\n";
+    my $reasons = $rec->{row}{policy_evaluated}{reason};
+    if ( $reasons && scalar @$reasons ) {
+        foreach my $reason ( @$reasons ) {
+            $pe .= "\t\t\t\t<reason>\n";
+            $pe .= "\t\t\t\t\t<type>$reason->{type}</type>\n";
+            $pe .= "\t\t\t\t\t<comment>$reason->{comment}</comment>\n";
+            $pe .= "\t\t\t\t</reason>\n";
+        }
+    };
+    $pe .= "\t\t\t</policy_evaluated>\n";
     return $pe;
 }
 
 1;
 # ABSTRACT: DMARC aggregate report
-
-package Mail::DMARC::Report::Aggregate::Metadata;
-use strict;
-use warnings;
-
-use parent 'Mail::DMARC::Base';
-
-sub org_name {
-    return $_[0]->{org_name} if 1 == scalar @_;
-    return $_[0]->{org_name} = $_[1];
-}
-
-sub email {
-    return $_[0]->{email} if 1 == scalar @_;
-    return $_[0]->{email} = $_[1];
-}
-
-sub extra_contact_info {
-    return $_[0]->{extra_contact_info} if 1 == scalar @_;
-    return $_[0]->{extra_contact_info} = $_[1];
-}
-
-sub report_id {
-    return $_[0]->{report_id} if 1 == scalar @_;
-    return $_[0]->{report_id} = $_[1];
-}
-
-sub date_range {
-    return $_[0]->{date_range} if 1 == scalar @_;
-
-    #   croak "invalid date_range" if ('HASH' ne ref $_->[1]);
-    return $_[0]->{date_range} = $_[1];
-}
-
-sub begin {
-    return $_[0]->{date_range}{begin} if 1 == scalar @_;
-    return $_[0]->{date_range}{begin} = $_[1];
-}
-
-sub end {
-    return $_[0]->{date_range}{end} if 1 == scalar @_;
-    return $_[0]->{date_range}{end} = $_[1];
-}
-
-sub error {
-    return $_[0]->{error} if 1 == scalar @_;
-    return push @{ $_[0]->{error} }, $_[1];
-}
-
-sub domain {
-# this is where locally generated reports store the recipient domain
-    return $_[0]->{domain} if 1 == scalar @_;
-    return $_[0]->{domain} = $_[1];
-}
-
-sub uuid {
-    return $_[0]->{uuid} if 1 == scalar @_;
-    return $_[0]->{uuid} = $_[1];
-}
-
-sub as_xml {
-    my $self = shift;
-    my $meta = " <report_metadata>\n  <report_id>"
-             . $self->report_id . "</report_id>\n";
-
-    foreach my $f (qw/ org_name email extra_contact_info /) {
-        my $val = $self->$f or next;
-        $meta .= "  <$f>$val</$f>\n";
-    }
-    $meta .= "  <date_range>\n   <begin>" . $self->begin . "</begin>\n"
-          .  "   <end>" . $self->end . "</end>\n  </date_range>\n";
-
-    my $errors = $self->error;
-    if ( $errors && @$errors ) {
-        foreach my $err ( @$errors ) {
-            $meta .= "  <error>$err</error>\n";
-        };
-    };
-    $meta .= " </report_metadata>";
-    return $meta;
-}
-
-1;
-
 __END__
 sub {}
 
@@ -248,7 +168,7 @@ sub {}
 
 This class is used internally as the canonization of an aggregate report.
 
-When reports are received, the XML is parsed into a Report::Aggregate object, which then gets passed to the Report::Store to be file away. When operating as a DMARC reporter, data is extracted from the Report::Store as an Aggregate object.
+When reports are received, the XML is parsed into a Report::Aggregate object, which then gets passed to the Report::Store to be file away. When sending DMARC reports, data is extracted from the Report::Store as an Aggregate object, assembled as XML, and sent.
 
 =head1 2013 Draft Description
 

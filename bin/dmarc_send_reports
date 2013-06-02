@@ -14,7 +14,7 @@ my $report = Mail::DMARC::Report->new();
 #my $schema = 'http://dmarc.org/dmarc-xml/0.1/rua.xsd';
 #my $xmlschema = XML::LibXML::Schema->new( location => $schema );
 
-# 1. get list of reports ready to send
+# 1. get reports, one at a time
 while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 
     print $aggregate->metadata->domain . "\n";

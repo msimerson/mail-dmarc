@@ -76,10 +76,7 @@ sub result {
 
 sub reason {
     my ($self,@args) = @_;
-    if ( ! scalar @args ) {
-        return $self->{reason} if ref $self->{reason};
-        return [];
-    };
+    return $self->{reason} if ! scalar @args;
     push @{ $self->{reason}}, Mail::DMARC::Result::Reason->new(@args);
     return $self->{reason};
 }

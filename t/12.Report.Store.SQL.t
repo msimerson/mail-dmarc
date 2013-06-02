@@ -15,6 +15,7 @@ if ($@) {
 }
 
 my $test_domain = 'example.com';
+my ($report_id, $rr_id);
 
 my $mod = 'Mail::DMARC::Report::Store::SQL';
 use_ok($mod);
@@ -23,6 +24,10 @@ isa_ok( $sql, $mod );
 
 $sql->config('t/mail-dmarc.ini');
 
+# The general gist of the tests is:
+#  test query mechanisms
+#  build and store an aggregate report, as it would happen In Real Life
+#  retrieve an aggregate report, as if reporting it
 test_db_connect();
 test_query_insert();
 test_query_replace();
@@ -31,37 +36,53 @@ test_query_delete();
 test_query();
 test_query_any();
 test_ip_store_and_fetch();
+
+test_get_report_id();   # creates a test report
 test_insert_published_policy();
 test_insert_rr();
 test_insert_rr_spf();
 test_insert_rr_dkim();
 test_insert_rr_reason();
-test_get_aggregate_rid();
+
+test_retrieve_todo();
 test_get_author_id(3);
 test_get_report();
 test_get_row_reason();
+test_get_row_spf();
+test_get_row_dkim();
 
 done_testing();
 exit;
 
+sub test_retrieve_todo {
+    my $r = $sql->retrieve_todo();
+    ok( $r, "retrieve_todo");
+#   warn Dumper($r);
+#   die $r->as_xml;
+};
+
 sub test_get_row_reason {
-    ok( $sql->get_row_reason( 1 ), 'get_row_reason');
-    ok( $sql->get_row_spf( 1 ), 'get_row_spf');
-    ok( $sql->get_row_dkim( 1 ), 'get_row_dkim');
+    ok( $sql->get_row_reason( $rr_id ), 'get_row_reason');
+};
+sub test_get_row_spf {
+    ok( $sql->get_row_spf( $rr_id ), 'get_row_spf');
+};
+sub test_get_row_dkim {
+    ok( $sql->get_row_dkim( $rr_id ), 'get_row_dkim');
 };
 
 sub test_get_report {
-    my $r = $sql->get_report( author => 'The Art Farm' );
-    my $reports = $r->{rows};
-    if ( ! $reports || ! scalar @$reports ) {
+    my $reports = $sql->get_report( rid => $report_id )->{rows};
+
+    ok( scalar @$reports, "get_report, no limits, " . scalar @$reports );
+
+    my $limit = 10;
+    my $r = $sql->get_report( rows => $limit )->{rows};
+    if ( ! $r || ! scalar @$r || scalar @$r < $limit ) {
         ok( 1, "skipping author tests" );
         return;
     };
 
-    ok( scalar @$reports, "get_report, no limits, " . scalar @$reports );
-    my $limit = 10;
-    $r = $sql->get_report( rows => $limit );
-    $reports = $r->{rows};
     cmp_ok( scalar @$reports, '==', $limit, "get_report, limit $limit" );
 
     my @queries = (
@@ -108,22 +129,20 @@ sub test_get_author_id {
     ok( $report->aggregate->policy_published( $policy ), "policy published, set");
 
 # find a matching report, or create a new one
-    my $rid = $sql->get_aggregate_rid( $report->aggregate );
-    ok( $rid, "get_aggregate_rid, $rid" );
+    my $rid = $sql->get_report_id( $report->aggregate );
+    ok( $rid, "get_report_id, $rid" );
 
     my $authors = $sql->get_author_id( $report->aggregate->metadata );
-    print Dumper($authors);
     test_get_author_id($times - 1);
 }
 
-sub test_get_aggregate_rid {
+sub test_get_report_id {
     my %meta = (
-        report_id => time,
         domain    => 'test.com',
         org_name  => 'Test Company',
         email     => 'dmarc-reporter@example.com',
-        begin     => time,
-        end       => time + 10,
+        begin     => time - 10000,
+        end       => time - 100,
     );
     my $report = Mail::DMARC::Report->new();
     foreach ( keys %meta ) {
@@ -135,34 +154,18 @@ sub test_get_aggregate_rid {
     ok( $report->aggregate->policy_published( $policy ), "policy published, set");
 
 # find a matching report, or create a new one
-    my $rid = $sql->get_aggregate_rid( $report->aggregate );
-    ok( $rid, "get_aggregate_rid, $rid" );
-
-    my $reports = $sql->get_report( rcpt_domain => $meta{domain} );
-    print Dumper($reports);
-
-    my $authors = $sql->get_author_id( $report->aggregate->metadata );
-    print Dumper($authors);
-
-    foreach ( keys %meta ) {
-        cmp_ok( $report->aggregate->metadata->$_, 'eq', $meta{$_}, "meta, $_, get");
-    };
+    $report_id = $sql->get_report_id( $report->aggregate );
+    ok( $report_id, "get_report_id, $report_id" );
 }
 
 sub test_insert_rr_reason {
-    my $row_id = $sql->query('SELECT * FROM report_record LIMIT 1')->[0]{id}
-        or return;
-    my @reasons
-        = qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /;
+    my @reasons = qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /;
     foreach my $r (@reasons) {
-        ok( $sql->insert_rr_reason( $row_id, $r, 'testing' ),
-            "insert_rr_reason, $r" );
+        ok( $sql->insert_rr_reason( $rr_id, $r, 'test comment' ), "insert_rr_reason, $r" );
     }
 }
 
 sub test_insert_rr_dkim {
-    my $row_id = $sql->query('SELECT * FROM report_record LIMIT 1')->[0]{id}
-        or return;
     my $dkim = {
         domain       => 'example.com',
         selector     => 'blah',
@@ -170,28 +173,25 @@ sub test_insert_rr_dkim {
         human_result => 'yay'
     };
 
-    ok( $sql->insert_rr_dkim( $row_id, $dkim ), 'insert_rr_dkim' );
+    ok( $sql->insert_rr_dkim( $rr_id, $dkim ), 'insert_rr_dkim' );
 
     $dkim->{human_result} = undef;
-    ok( $sql->insert_rr_dkim( $row_id, $dkim ), 'insert_rr_dkim' );
+    ok( $sql->insert_rr_dkim( $rr_id, $dkim ), 'insert_rr_dkim' );
 
     delete $dkim->{human_result};
-    ok( $sql->insert_rr_dkim( $row_id, $dkim ), 'insert_rr_dkim' );
+    ok( $sql->insert_rr_dkim( $rr_id, $dkim ), 'insert_rr_dkim' );
 }
 
 sub test_insert_rr_spf {
-    my $row_id = $sql->query('SELECT * FROM report_record LIMIT 1')->[0]{id}
-        or return;
     my $spf = { domain => 'example.com', scope => 'helo', result => 'pass' };
-    ok( $sql->insert_rr_spf( $row_id, $spf ), 'insert_rr_spf' );
+    ok( $sql->insert_rr_spf( $rr_id, $spf ), 'insert_rr_spf' );
     $spf->{scope} = 'mfrom';
-    ok( $sql->insert_rr_spf( $row_id, $spf ), 'insert_rr_spf' );
+    ok( $sql->insert_rr_spf( $rr_id, $spf ), 'insert_rr_spf' );
     $spf->{result} = 'fail';
-    ok( $sql->insert_rr_spf( $row_id, $spf ), 'insert_rr_spf' );
+    ok( $sql->insert_rr_spf( $rr_id, $spf ), 'insert_rr_spf' );
 }
 
 sub test_insert_rr {
-    my $rid = $sql->query('SELECT * FROM report LIMIT 1')->[0]{id} or return;
     my %identifers = (
         source_ip     => '192.1.1.1',
         header_from   => 'from.com',
@@ -203,22 +203,18 @@ sub test_insert_rr {
         dkim        => 'fail',
         spf         => 'pass',
     );
-    ok( $sql->insert_rr( $rid,
+    $rr_id = $sql->insert_rr( $report_id,
             { identifiers => \%identifers, policy_evaluated => \%result }
-        ),
-        'insert_rr' );
+        );
+    ok( $rr_id, "insert_rr, $rr_id" );
 }
 
 sub test_insert_published_policy {
-    my $rid = $sql->query('SELECT * FROM report LIMIT 1')->[0]{id} or return;
     my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=none;');
     $pol->apply_defaults;
     $pol->rua( 'mailto:' . $sql->config->{organization}{email} );
-    my $r = $sql->insert_published_policy( $rid, $pol );
+    my $r = $sql->insert_published_policy( $report_id, $pol );
     ok( $r, 'insert_published_policy' );
-
-    #   print "r: $r\n";
-    #my $rpp = $sql->query('SELECT * FROM report LIMIT 1');
 }
 
 sub test_ip_store_and_fetch {
@@ -259,16 +255,17 @@ sub test_query {
 sub test_query_insert {
     my $start     = time;
     my $end       = time + 86400;
-    my $report_id = $sql->query(
+    my $rid = $sql->query(
         "INSERT INTO report (author_id,rcpt_domain_id,from_domain_id, begin, end) VALUES (??)",
         [ 0, 0, 0, $start, $end ]
     );
-    ok( $report_id, "query_insert, report, $report_id" );
+    ok( $rid, "query_insert, report, $rid" );
+
+    ok( $sql->query("DELETE FROM report WHERE id=?", [$rid] ), "query_delete" );
 
     # negative tests
     eval {
-        $report_id
-            = $sql->query(
+        $rid = $sql->query(
             "INSERT INTO reporting (domain, begin, end) VALUES (?,?,?)",
             [ $test_domain, $start, $end ] );
     };
@@ -276,13 +273,12 @@ sub test_query_insert {
     ok( $@, "query_insert, report, neg: $@" );
 
     eval {
-        $report_id
-            = $sql->query(
+        $rid = $sql->query(
             "INSERT INTO report (domin, begin, end) VALUES (?,?,?)",
             [ 'a' x 257, 'yellow', $end ] );
     };
     chomp $@;
-    ok( $@, "query_insert, report, neg: $@" ) or diag Dumper($report_id);
+    ok( $@, "query_insert, report, neg: $@" );
 }
 
 sub test_query_replace {
