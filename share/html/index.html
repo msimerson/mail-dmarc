@@ -81,9 +81,10 @@ jQuery(document).ready(function(){
     // here we can easy construct the following
        var subgrid_table_id;
        subgrid_table_id = subgrid_id+"_t";
+       var row_data = jQuery('#grid').getRowData(row_id);
        jQuery("#"+subgrid_id).html("<table id='"+subgrid_table_id+"' class='scroll'></table>");
        jQuery("#"+subgrid_table_id).jqGrid({
-          url:"/dmarc/json/row?rid="+row_id,
+          url:"/dmarc/json/row?rid="+ row_data.rid,
           datatype: "json",
           colNames: ['IP','#','Disposition','SPF','DKIM','Envelope From','Envelope To'],
           colModel: [
@@ -92,8 +93,8 @@ jQuery(document).ready(function(){
             {name:"disposition",index:"disposition",width:40,align:"center",formatter:dmarcFormatter},
             {name:"spf",index:"spf",width:40,align:"center",formatter:dmarcFormatter},
             {name:"dkim",index:"dkim",width:40,align:"center",formatter:dmarcFormatter},
-            {name:"envelope_from",index:"envelope_from",width:100,align:"right"},
-            {name:"envelope_to",index:"envelope_to",width:100,align:"right",sortable:false}
+            {name:"envelope_from",index:"envelope_from",width:140,align:"right"},
+            {name:"envelope_to",index:"envelope_to",width:140,align:"right",sortable:false}
           ],
           height: '100%',
           rowNum:20,
