@@ -59,8 +59,7 @@ sub as_xml {
 <feedback>
 $meta
 $pubp
-$reco
-</feedback>
+$reco</feedback>
 EO_XML
         ;
 }
@@ -68,8 +67,9 @@ EO_XML
 sub get_record_as_xml {
     my $self = shift;
 
-    my $rec_xml = "\t<record>\n";
+    my $rec_xml;
     foreach my $rec ( @{ $self->{record} } ) {
+        $rec_xml .= "\t<record>\n";
         my $ip = $rec->{row}{source_ip} or croak "no source IP!?";
         my $count = $rec->{row}{count} or croak "no count!?";
         $rec->{row}{policy_evaluated}{disposition} or croak "no disposition?";
@@ -81,8 +81,8 @@ sub get_record_as_xml {
             . "\t\t</row>\n"
             . $self->get_identifiers_as_xml($rec)
             . $self->get_auth_results_as_xml($rec);
+        $rec_xml .= "\t</record>\n";
     }
-    $rec_xml .= "\t</record>";
     return $rec_xml;
 }
 
