@@ -17,6 +17,7 @@ my $report = Mail::DMARC::Report->new();
 # 1. get reports, one at a time
 while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 
+    print "report ID: " . $aggregate->metadata->report_id . "\n";
     print $aggregate->metadata->domain . "\n";
     print "rua: " . $aggregate->policy_published->rua . "\n";
     my $xml = $aggregate->as_xml();
