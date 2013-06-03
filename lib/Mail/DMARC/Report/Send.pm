@@ -44,11 +44,11 @@ sub send_rua {
 sub human_summary {
     my ( $self, $agg_ref ) = @_;
 
-    my $rows    = scalar @{ $$agg_ref->{record} };
+    my $records = scalar @{ $$agg_ref->{record} };
     my $OrgName = $self->config->{organization}{org_name};
-    my $pass    = grep { $_->{dkim} eq 'pass' || $_->{spf} eq 'pass' }
+    my $pass    = grep { $_->{row}{policy_evaluated}{dkim} eq 'pass' || $_->{row}{policy_evaluated}{spf} eq 'pass' }
         @{ $$agg_ref->{record} };
-    my $fail = grep { $_->{dkim} ne 'pass' && $_->{spf} ne 'pass' }
+    my $fail = grep { 'pass' ne $_->{row}{policy_evaluated}{dkim} && 'pass' ne $_->{row}{policy_evaluated}{spf} }
         @{ $$agg_ref->{record} };
     my $ver = $Mail::DMARC::VERSION || '';    # undef in author environ
     my $from = $$agg_ref->{policy_published}{domain} or croak;
@@ -57,7 +57,7 @@ sub human_summary {
 
 This is a DMARC aggregate report for $from
 
-$rows rows.
+$records records.
 $pass passed.
 $fail failed.
 
