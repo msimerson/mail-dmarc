@@ -27,14 +27,33 @@ exit;
 
 sub test_human_summary {
     my $report = {
+
         record => [
-            { disposition=>'none',dkim => 'pass', spf => 'fail' },
-            { disposition=>'none',dkim => 'fail', spf => 'pass' },
-            { disposition=>'none',dkim => 'fail', spf => 'fail' },
+            {
+                row => { policy_evaluated => {
+                        disposition=>'none',
+                        dkim => 'pass',
+                        spf => 'fail'
+                }, },
+            },
+            {
+                row => { policy_evaluated => {
+                            disposition=>'none',
+                            dkim => 'fail',
+                            spf => 'pass'
+                }, },
+            },
+            {
+                row => { policy_evaluated => {
+                        disposition => 'none',
+                        dkim => 'fail',
+                        spf => 'fail'
+                }, },
+            }
         ],
         policy_published => {
             domain => 'example.com',
-        },
+        }
     };
     ok( $send->human_summary( \$report ), 'human_summary' );
 }

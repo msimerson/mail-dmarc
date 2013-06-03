@@ -213,8 +213,8 @@ sub get_report_id {
 # They are aggregated based on the From domain name where the DMARC policy
 # was discovered.
         $ids = $self->query(
-        'SELECT id FROM report WHERE rcpt_domain_id=? AND from_domain_id=? AND end > ?',
-        [ $rcpt_dom_id, $from_dom_id, time ]
+        'SELECT id FROM report WHERE from_domain_id=? AND end > ?',
+        [ $from_dom_id, time ]
         );
     };
 
@@ -507,7 +507,7 @@ sub insert_rr_spf {
 }
 
 sub insert_rr {
-    my ( $self, $report_id, $row ) = @_;
+    my ( $self, $report_id, $rec ) = @_;
     $report_id or croak "report ID required?!";
     my $query = <<'EO_ROW_INSERT'
 INSERT INTO report_record
@@ -519,16 +519,16 @@ EO_ROW_INSERT
         ;
 
     my @args = ( $report_id,
-        $self->any_inet_pton( $row->{identifiers}{source_ip} ),
-        $row->{count},
+        $self->any_inet_pton( $rec->{row}{source_ip} ),
+        $rec->{row}{count},
     );
     foreach ( qw/ header_from envelope_to envelope_from / ) {
-        push @args, $row->{identifiers}{$_} ?
-            $self->get_domain_id( $row->{identifiers}{$_} ) : undef;
+        push @args, $rec->{identifiers}{$_} ?
+            $self->get_domain_id( $rec->{identifiers}{$_} ) : undef;
     };
-    push @args, map { $row->{policy_evaluated}{$_} } qw/ disposition dkim spf /;
-    my $row_id = $self->query( $query, \@args ) or croak;
-    return $self->{report_row_id} = $row_id;
+    push @args, map { $rec->{row}{policy_evaluated}{$_} } qw/ disposition dkim spf /;
+    my $rr_id = $self->query( $query, \@args ) or croak;
+    return $self->{report_row_id} = $rr_id;
 }
 
 sub insert_published_policy {

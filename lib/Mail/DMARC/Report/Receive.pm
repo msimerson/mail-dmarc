@@ -255,8 +255,8 @@ sub do_node_report_metadata {
     }
 
     my $rid = $node->findnodes("./report_id")->string_value;
-    $rid = substr($rid,1) if '<' eq substr($rid,0,1);
-    chop $rid if '>' eq substr($rid,-1,1);
+    $rid = substr($rid,1) if '<' eq substr($rid,0,1); # remove <
+    chop $rid if '>' eq substr($rid,-1,1);            # remove >
     $self->report->aggregate->metadata->report_id( $rid );
 
     if ( ! $self->report->aggregate->metadata->uuid ) {
@@ -292,37 +292,36 @@ sub do_node_policy_published {
 sub do_node_record {
     my ( $self, $node ) = @_;
 
-    my $row;
-    $self->do_node_record_auth(\$row, $node);
+    my $rec;
+    $self->do_node_record_auth(\$rec, $node);
 
-    $row->{identifiers}{source_ip}
-        = $node->findnodes("./row/source_ip")->string_value;
-
-    $row->{count} = $node->findnodes("./row/count")->string_value;
+    foreach my $row (qw/ source_ip count /) {
+        $rec->{row}{$row} = $node->findnodes("./row/$row")->string_value;
+    };
 
     # policy_evaluated
     foreach my $pe (qw/ disposition dkim spf /) {
-        $row->{policy_evaluated}{$pe}
+        $rec->{row}{policy_evaluated}{$pe}
             = $node->findnodes("./row/policy_evaluated/$pe")->string_value;
     }
 
     # reason
-    $self->do_node_record_reason( \$row, $node );
+    $self->do_node_record_reason( \$rec, $node );
 
     # identifiers
     foreach my $i (qw/ envelope_to envelope_from header_from /) {
-        $row->{identifiers}{$i}
+        $rec->{identifiers}{$i}
             = $node->findnodes("./identifiers/$i")->string_value;
     }
 
-# this is for reports from junc.org with mis-labeled identifiers
-    if ( ! $row->{identifiers}{header_from} ) {
-        $row->{identifiers}{header_from}
+# for reports from junc.org with mis-labeled identifiers
+    if ( ! $rec->{identifiers}{header_from} ) {
+        $rec->{identifiers}{header_from}
             = $node->findnodes("./identities/header_from")->string_value;
     };
 
-    $self->report->aggregate->record($row);
-    return $row;
+    $self->report->aggregate->record($rec);
+    return $rec;
 }
 
 sub do_node_record_auth {
@@ -331,7 +330,7 @@ sub do_node_record_auth {
     my @dkim = qw/ domain selector result human_result /,
     my @spf  = qw/ domain scope result /;
 
-    foreach my $n ( $node->findnodes("./auth_results/spf") ) {
+    foreach ( $node->findnodes("./auth_results/spf") ) {
         my %spf = map { $_ => $node->findnodes("./auth_results/spf/$_")->string_value } @spf;
 
         if ( $spf{scope} && ! $self->is_valid_spf_scope( $spf{scope} ) ) {
@@ -346,7 +345,7 @@ sub do_node_record_auth {
         push @{ $$row->{auth_results}{spf} }, \%spf;
     };
 
-    foreach my $n ( $node->findnodes("./auth_results/dkim") ) {
+    foreach ( $node->findnodes("./auth_results/dkim") ) {
         push @{ $$row->{auth_results}{dkim} }, {
             map { $_ => $node->findnodes("./auth_results/dkim/$_")->string_value } @dkim
         };

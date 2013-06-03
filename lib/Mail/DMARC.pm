@@ -197,11 +197,19 @@ sub save_aggregate {
     $agg->metadata->domain( $self->envelope_to );
 
     $agg->policy_published( $self->result->published );
-# I could just pass in the $self as the identifer, and $self->result as the
-# policy_evaluated, but this documents what's being passed.
+# could pass in $self as the identifier, and $self->result as the
+# policy_evaluated. This documents what's being passed.
     $agg->record({
+                row => {
+                    source_ip         => $self->source_ip,
+                    policy_evaluated  => {
+                        disposition   => $self->result->disposition,
+                        dkim          => $self->result->dkim,
+                        spf           => $self->result->spf,
+                        reason        => [ $self->result->reason ],
+                    },
+                },
                 identifiers => {
-                    source_ip     => $self->source_ip,
                     envelope_to   => $self->envelope_to,
                     envelope_from => $self->envelope_from,
                     header_from   => $self->header_from,
@@ -210,12 +218,6 @@ sub save_aggregate {
                     dkim          => $self->dkim,
                     spf           => $self->spf,
                     },
-                policy_evaluated  => {
-                    disposition   => $self->result->disposition,
-                    dkim          => $self->result->dkim,
-                    spf           => $self->result->spf,
-                    reason        => [ $self->result->reason ],
-                    }
             });
 
     return $self->report->save_aggregate;

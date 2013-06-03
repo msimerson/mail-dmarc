@@ -36,8 +36,9 @@ sub auth_results {
 sub row {
     my ($self, @args) = @_;
     return $self->{row} if ! scalar @args;
-    my %row = 1 == scalar @args ? %{ $args[0] }
-            : scalar @args % 2 == 0 ? @args
+    croak "invalid row value!" if ! $args[0];
+    my %row = 1 == scalar @args     ? %{ $args[0] }
+            : 0 == scalar @args % 2 ? @args
             : croak "row is required!";
 
     croak "row/source_ip is required!" if ! $row{source_ip};

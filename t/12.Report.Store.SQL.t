@@ -192,20 +192,22 @@ sub test_insert_rr_spf {
 }
 
 sub test_insert_rr {
-    my %identifers = (
-        source_ip     => '192.1.1.1',
-        header_from   => 'from.com',
-        envelope_to   => 'to.com',
-        envelope_from => 'from.com',
-    );
-    my %result = (
-        disposition => 'none',
-        dkim        => 'fail',
-        spf         => 'pass',
-    );
-    $rr_id = $sql->insert_rr( $report_id,
-            { identifiers => \%identifers, policy_evaluated => \%result }
-        );
+    my $record = {
+        row => {
+            source_ip        => '192.1.1.1',
+            policy_evaluated => {
+                disposition => 'none',
+                dkim        => 'fail',
+                spf         => 'pass',
+            },
+        },
+        identifiers => {
+            header_from   => 'from.com',
+            envelope_to   => 'to.com',
+            envelope_from => 'from.com',
+        },
+    };
+    $rr_id = $sql->insert_rr( $report_id, $record );
     ok( $rr_id, "insert_rr, $rr_id" );
 }
 
