@@ -194,7 +194,6 @@ sub save_aggregate {
     };
     $agg->metadata->begin( time );
     $agg->metadata->end( time + ($self->result->published->ri || 86400 ));
-    $agg->metadata->domain( $self->envelope_to );
 
     $agg->policy_published( $self->result->published );
 # could pass in $self as the identifier, and $self->result as the

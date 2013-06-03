@@ -58,7 +58,7 @@ sub dmarc_dispatch {
     if ( $path ) {
         warn "path: $path\n";
         return report_json_report($self) if $path eq '/dmarc/json/report';
-        return report_json_row($self)    if $path eq '/dmarc/json/row';
+        return report_json_rr($self)     if $path eq '/dmarc/json/row';
         return serve_file($self,$path)   if $path =~ /\.(?:js|css|html|gz)$/x;
     };
 
@@ -155,9 +155,9 @@ sub report_json_report {
     return;
 };
 
-sub report_json_row {
+sub report_json_rr {
     print "Content-type: application/json\n\n";
-    my $row = $report->store->backend->get_row( CGI->new->Vars );
+    my $row = $report->store->backend->get_rr( CGI->new->Vars );
     print encode_json $row;
 #   warn Dumper($row);
     return;

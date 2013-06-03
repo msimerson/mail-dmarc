@@ -70,7 +70,7 @@ sub test_record {
 sub test_as_xml {
 
     $agg->metadata->report_id(1);
-    foreach my $m ( qw/ org_name email extra_contact_info error domain uuid / ) {
+    foreach my $m ( qw/ org_name email extra_contact_info error uuid / ) {
         $agg->metadata->$m("test");
     };
     foreach my $m ( qw/ begin end / ) {

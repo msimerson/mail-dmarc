@@ -91,7 +91,6 @@ sub test_get_report {
             from_domain => 'theartfarm.com',
             recipient   => 'google.com',
             recipient   => 'yahoo.com',
-            rcpt_domain => 'yahoo.com',
             );
 
     while ( my $key = shift @queries ) {
@@ -107,7 +106,6 @@ sub test_get_report {
 sub test_get_author_id {
     my $times = shift or return;
     my %meta = (
-        domain             => "test$times.com",
         org_name           => "Test $times Company",
         email              => 'dmarc-reporter@example.com',
         extra_contact_info => undef,
@@ -138,7 +136,6 @@ sub test_get_author_id {
 
 sub test_get_report_id {
     my %meta = (
-        domain    => 'test.com',
         org_name  => 'Test Company',
         email     => 'dmarc-reporter@example.com',
         begin     => time - 10000,
@@ -257,9 +254,12 @@ sub test_query {
 sub test_query_insert {
     my $start     = time;
     my $end       = time + 86400;
+    my $from_did  = $sql->query(
+        "INSERT INTO domain (domain) VALUES (?)", [ 'ignore.test.com' ]
+    );
     my $rid = $sql->query(
-        "INSERT INTO report (author_id,rcpt_domain_id,from_domain_id, begin, end) VALUES (??)",
-        [ 0, 0, 0, $start, $end ]
+        "INSERT INTO report (author_id, from_domain_id, begin, end) VALUES (??)",
+        [ 0, $from_did, $start, $end ]
     );
     ok( $rid, "query_insert, report, $rid" );
 

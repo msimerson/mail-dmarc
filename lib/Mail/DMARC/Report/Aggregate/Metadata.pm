@@ -47,12 +47,6 @@ sub error {
     return push @{ $_[0]->{error} }, $_[1];
 }
 
-sub domain {
-# this is where locally generated reports store the recipient domain
-    return $_[0]->{domain} if 1 == scalar @_;
-    return $_[0]->{domain} = $_[1];
-}
-
 sub uuid {
     return $_[0]->{uuid} if 1 == scalar @_;
     return $_[0]->{uuid} = $_[1];

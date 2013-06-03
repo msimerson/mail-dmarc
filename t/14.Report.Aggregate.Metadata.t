@@ -30,7 +30,6 @@ test_date_range();
 test_begin();
 test_end();
 test_error();
-test_domain();
 test_uuid();
 test_as_xml();
 
@@ -81,13 +80,6 @@ sub test_error {
         ok( $meta->error( $_ ), "error, $_");
     };
     is_deeply($meta->error, $test_errors, "error, deeply");
-};
-sub test_domain {
-    my @domains = qw/ 3.am a.very.long.domain.with.subdomains /;
-    foreach my $dom ( @domains ) {
-        ok( $meta->domain( $dom ), "domain, set, $dom");
-        cmp_ok( $meta->domain, 'eq', $dom, "domain, get, $dom" );
-    };
 };
 sub test_uuid  {
     my $uuid = '1234908748913u41u4-1203847308924-adskfjadslfj-13i41230984';

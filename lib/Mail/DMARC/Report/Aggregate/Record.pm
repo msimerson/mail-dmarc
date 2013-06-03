@@ -16,7 +16,9 @@ sub identifiers {
            : croak "identifiers is required!";
 
     croak "identifiers/header_from is required!" if ! $id{header_from};
-    carp "identifiers/envelope_from is missing!" if ! $id{envelope_from};
+    if ( ! $id{envelope_from} && $self->verbose ) {
+        warn "\tidentifiers/envelope_from is missing!\n"; ## no critic (Carp)
+    };
     return $self->{identifiers} = \%id;
 }
 
@@ -28,8 +30,9 @@ sub auth_results {
            : croak "auth_results is required!";
 
     croak "auth_results/spf is required!" if ! $auth{spf};
-    carp "auth_results/dkim is missing!" if ! $auth{dkim};
-
+    if ( ! $auth{dkim} && $self->verbose ) {
+        warn  "\tauth_results/dkim is missing\n"; ## no critic (Carp)
+    };
     return $self->{auth_results} = \%auth;
 }
 

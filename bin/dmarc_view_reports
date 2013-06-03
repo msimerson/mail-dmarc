@@ -43,7 +43,7 @@ my $reports = $cli->store->retrieve(
 print_header();
 
 foreach my $report ( reverse @$reports) {
-    my $rows = $cli->store->backend->get_row( rid => $report->{rid} )->{rows};
+    my $rows = $cli->store->backend->get_rr( rid => $report->{rid} )->{rows};
     next if $disposition && ! grep { $_->{disposition} eq $disposition } @$rows;
     next if $dkim && ! grep { $_->{dkim} eq $dkim } @$rows;
     next if $spf  && ! grep { $_->{spf } eq $spf } @$rows;
@@ -54,8 +54,7 @@ foreach my $report ( reverse @$reports) {
 
 sub print_record {
     my $rec = shift;
-    printf "%3s  %20s  %20s  %15s\n",
-        @$rec{qw/ rid rcpt_domain from_domain begin /}; # <-- array slice
+    printf "%3s  %26s  %15s\n", @$rec{qw/ rid author begin /};
     return;
 };
 
@@ -67,7 +66,7 @@ sub print_rows {
         next if $dkim && $dkim ne $row->{dkim};
         next if $spf  && $spf ne $row->{spf};
         my $dns_hostname = get_dns_hostname( $row->{source_ip} );
-        printf "  | -- %3s %39s %13s %7s %7s", @$row{qw/ count source_ip disposition dkim spf /};
+        printf "  | -- %3s %20s %39s %13s %7s %7s", @$row{qw/ count header_from source_ip disposition dkim spf /};
         foreach my $r ( @{ $row->{reasons} } ) {
             print '  ' . $r->{type};
             print "( $r->{comment} )" if $r->{comment};
@@ -79,8 +78,8 @@ sub print_rows {
 };
 
 sub print_header {
-    printf "%3s  %20s  %20s  %15s\n", qw[ ID Recipient From/Sender Report-Start ];
-    printf "  | -- %3s %39s %13s %7s %7s\n\n", 'Qty','Source IP','Disposition','DKIM','SPF';
+    printf "%3s  %26s  %15s\n", qw[ ID Author Report-Start ];
+    printf "  | -- %3s %20s %39s %13s %7s %7s\n", 'Qty','From','IP','Disposition','DKIM','SPF';
     return;
 };
 

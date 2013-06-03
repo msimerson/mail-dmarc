@@ -121,6 +121,8 @@ sub from_email_simple {
     my ( $self, $email ) = @_;
 
     $self->report->init();
+    $self->{_envelope_to} = undef;
+    $self->{_header_from} = undef;
     $self->get_submitter_from_subject( $email->header('Subject') );
 
     my $unzipper = {
@@ -146,16 +148,14 @@ sub from_email_simple {
         if (   $c_type eq 'application/zip'
             || $c_type eq 'application/x-zip-compressed' )
         {
-            $self->get_submitter_from_filename(
-                $part->{ct}{attributes}{name} );
+            $self->get_submitter_from_filename( $part->{ct}{attributes}{name} );
             $unzipper->{zip}->( \$part->body, \$bigger );
             $self->handle_body($bigger);
             $rep_type = 'aggregate';
             next;
         }
         if ( $c_type eq 'application/gzip' ) {
-            $self->get_submitter_from_filename(
-                $part->{ct}{attributes}{name} );
+            $self->get_submitter_from_filename( $part->{ct}{attributes}{name} );
             $unzipper->{gz}->( \$part->body, \$bigger );
             $self->handle_body($bigger);
             $rep_type = 'aggregate';
@@ -195,9 +195,10 @@ sub get_imap_port {
 
 sub get_submitter_from_filename {
     my ( $self, $filename ) = @_;
-    return if $self->report->aggregate->metadata->domain;
+    return if $self->{_envelope_to};  # already parsed from Subject:
     my ( $submitter_dom, $report_dom, $begin, $end ) = split /!/, $filename;
-    return $self->report->aggregate->metadata->domain($submitter_dom);
+    $self->{_header_from} ||= $report_dom;
+    return $self->{_envelope_to} = $submitter_dom;
 }
 
 sub get_submitter_from_subject {
@@ -208,10 +209,8 @@ sub get_submitter_from_subject {
   # more concerned with reliably extracting the submitter domain. Quickly.
     $subject = lc Encode::decode( 'MIME-Header', $subject );
     print $subject . "\n";
-    $subject = substr( $subject, 8 )
-        if 'subject:' eq substr( $subject, 0, 8 );
-    $subject
-        =~ s/(?:report\sdomain|submitter|report-id)//gx;    # remove keywords
+    $subject = substr( $subject, 8 ) if 'subject:' eq substr( $subject, 0, 8 );
+    $subject =~ s/(?:report\sdomain|submitter|report-id)//gx; # strip keywords
     $subject =~ s/\s+//g;    # remove white space
     my ( undef, $report_dom, $sub_dom, $report_id ) = split /:/, $subject;
     my $meta = $self->report->aggregate->metadata;
@@ -221,7 +220,8 @@ sub get_submitter_from_subject {
         chop $report_id if '>' eq substr($report_id,-1,1);
         $meta->uuid($report_id);
     };
-    return $meta->domain($sub_dom);
+    $self->{_header_from} ||= $report_dom;
+    return $self->{_envelope_to} = $sub_dom;
 }
 
 sub handle_body {
@@ -319,6 +319,10 @@ sub do_node_record {
         $rec->{identifiers}{header_from}
             = $node->findnodes("./identities/header_from")->string_value;
     };
+
+# last resort...
+    $rec->{identifiers}{envelope_to} ||= $self->{_envelope_to};
+    $rec->{identifiers}{header_from} ||= $self->{_header_from};
 
     $self->report->aggregate->record($rec);
     return $rec;

@@ -193,16 +193,14 @@ CREATE TABLE `report` (
   `begin` int(11) unsigned NOT NULL,
   `end` int(11) unsigned NOT NULL,
   `author_id` int(11) unsigned NOT NULL,
-  `rcpt_domain_id` int(11) unsigned NOT NULL,
+  `rcpt_domain_id` int(11) unsigned DEFAULT NULL,
   `from_domain_id` int(11) unsigned NOT NULL,
   `uuid` varchar(253) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `author_id` (`author_id`),
-  KEY `rcpt_domain_id` (`rcpt_domain_id`),
   KEY `from_domain_id` (`from_domain_id`),
   CONSTRAINT `report_ibfk_3` FOREIGN KEY (`from_domain_id`) REFERENCES `domain` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `report_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `author` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  CONSTRAINT `report_ibfk_2` FOREIGN KEY (`rcpt_domain_id`) REFERENCES `domain` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
 
 
