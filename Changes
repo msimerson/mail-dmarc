@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20130604 2013-06-04 America/Los_Angeles
+
  - main branches are master (devel) and releases (more obvious)
  - added mailing list impact FAQ
  - SQL: removed record.rcpt_dom
