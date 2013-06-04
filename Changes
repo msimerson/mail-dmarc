@@ -1,6 +1,16 @@
 
 {{$NEXT}}
 
+ - main branches are master (devel) and releases (more obvious)
+ - added mailing list impact FAQ
+ - SQL: removed record.rcpt_dom
+ - corrected a XML schema error
+ - index.html
+    - widened disposition column
+    - only show rcpt domain in record (subgrid)
+    - corrected subgrid row_id
+ - additional validation of aggregate reports
+
 1.20130601 2013-05-31 America/Los_Angeles
 
  - make sure a report record exists when fetching SMTP todo
