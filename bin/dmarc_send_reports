@@ -17,9 +17,9 @@ my $report = Mail::DMARC::Report->new();
 # 1. get reports, one at a time
 while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 
-    print "report ID: " . $aggregate->metadata->report_id . "\n";
-    print $aggregate->metadata->domain . "\n";
-    print "rua: " . $aggregate->policy_published->rua . "\n";
+    print "ID: " . $aggregate->metadata->report_id . "\n";
+    print $aggregate->policy_published->domain . "\n";
+    print "rua:\t" . $aggregate->policy_published->rua . "\n";
     my $xml = $aggregate->as_xml();
 #   warn $xml;  ## no critic (Carp)
 #    my $dom = XML::LibXML->load_xml( string => (\$xml) );
