@@ -3,11 +3,11 @@
 [The source code is hosted on GitHub](https://github.com/msimerson/mail-dmarc)
 
 
-# Beware of branches
+# About the branches
 
-The two branches of concern are master and devel. Devel is where the action is, but the rides on that playground require Dist::Zilla. Seriously, you can't even run 'make test' in the devel branch without the D.Z. If you fear/loathe/hate the D.Z, stick with the release branch.
+The two branches of concern are master and releases. Master is where the action is, but the rides on that playground require Dist::Zilla. Seriously, you can't even run 'make test' in the master branch without the D.Z. If you fear/loathe/hate the D.Z, stick with the release branch.
 
-The master branch is automatically updated when new releases are made in the devel branch. It contains all the automatically generated files that the devel branch doesn't, such as README, Makefile.PL, and Build.PL. It is identical to the distribution as you'd find it on CPAN, making it far easier for causual perl programmers to patch against.
+The releases branch is automatically updated when new releases are made. It contains all the automatically generated files that the master branch doesn't, such as README, Makefile.PL, and Build.PL. It is identical to the distribution as you'd find it on CPAN, making it far easier for causual perl programmers to patch against.
 
 
 # Download the source
@@ -37,9 +37,9 @@ If your changes are significant in any way, and/or might possibly involve more t
     ... make more related changes ...
     git commit
 
-When you are done with that branch, you can merge it back into the devel branch:
+When you are done with that branch, you can merge it back into the master branch:
 
-    git checkout devel
+    git checkout master
     git merge fix-knob-handle
 
 When the new feature branch is no longer useful, delete it:
