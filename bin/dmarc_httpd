@@ -1,0 +1,72 @@
+#!/usr/bin/perl
+our $VERSION = '1.20130604'; # VERSION
+use strict;
+use warnings;
+
+use lib 'lib';
+use Mail::DMARC::Report::View::HTTP;
+my $http = Mail::DMARC::Report::View::HTTP->new;
+$http->dmarc_httpd;
+exit;
+
+# ABSTRACT: a web server for viewing DMARC reports
+# PODNAME: dmarc_httpd
+
+__END__
+
+=pod
+
+=head1 NAME
+
+dmarc_httpd - a web server for viewing DMARC reports
+
+=head1 VERSION
+
+version 1.20130604
+
+=head1 SYNOPSIS
+
+A HTTP interface for the local DMARC report store.
+
+Start the HTTP server by running: dmarc_httpd
+
+Connect with a web browser to L<http://localhost:8080|http://localhost:8080/>.
+
+=head1 DESCRIPTION
+
+A L<Sample Report|http://search.cpan.org/dist/Mail-DMARC/example/report_cgi.png> is available which shows the web interface. It is implemented almost entirely in JavaScript, using jQuery, jQueryUI, and jgGrid.
+
+Web server settings are in the [http] and [https] sections of mail-dmarc.ini.
+
+=head1 THANKS
+
+jQuery - http://www.jquery.com/
+
+jqGrid - http://www.trirand.com/blog/
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=back
+
+=head1 CONTRIBUTOR
+
+ColocateUSA.net <company@colocateusa.net>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by ColocateUSA.com.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

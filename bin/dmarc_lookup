@@ -1,0 +1,103 @@
+#!/usr/bin/perl
+our $VERSION = '1.20130604'; # VERSION
+use strict;
+use warnings;
+
+use Data::Dumper;
+use Getopt::Long;
+use Pod::Usage;
+$Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Quotekeys = 0;
+
+use lib 'lib';
+use Mail::DMARC::PurePerl;
+
+my %command_line_options = (
+        'domain:s'  => \my $domain,
+        'verbose'   => \my $verbose,
+        );
+GetOptions (%command_line_options);
+$verbose = 1 if ! defined $verbose;
+
+$domain ||= $ARGV[0];
+$domain or pod2usage;
+
+my $dmarc = Mail::DMARC::PurePerl->new;
+$dmarc->verbose($verbose);
+$dmarc->header_from($domain);
+my $policy = $dmarc->discover_policy() or
+    die "no DMARC policy published for $domain\n";
+
+print Dumper( $policy );
+exit;
+
+# PODNAME: dmarc_lookup
+# ABSTRACT: look up DMARC policy for a domain
+
+__END__
+
+=pod
+
+=head1 NAME
+
+dmarc_lookup - look up DMARC policy for a domain
+
+=head1 VERSION
+
+version 1.20130604
+
+=head1 SYNOPSIS
+
+   dmarc_lookup example.com [ --verbose ]
+
+=head1 DESCRIPTION
+
+Query the DNS for a DMARC policy for a (sub)domain. Displays any found results as the DNS record as a perl object. In the simplest case, where the domain name in the email From header matches the I<Organizational Domain>, this is roughly equivalent to the following commands:
+
+    dig +short _dmarc.example.com TXT
+
+    print $_->txtdata."\n"
+      for Net::DNS::Resolver->new(dnsrch=>0)->send('_dmarc.example.com','TXT')->answer;
+
+When the domain name in the email From header (header_from) is not an Organizational Domain (ex: www.example.com), an attempt is made to determine the O.D. using the Mozilla Public Suffix List. When the O.D. differs from the header_from, a second DNS query is sent to _dmarc.[O.D.]. 
+
+=head1 EXAMPLES
+
+A DMARC record in DNS format looks like this:
+
+v=DMARC1; p=reject; adkim=s; aspf=s; rua=mailto:dmarc@example.com; pct=100;
+
+DMARC records are stored as TXT resource records in the DNS, at _dmarc.example.com.
+
+Other ways to retrieve a DMARC record for a domain are:
+
+=head1 SEE ALSO
+
+L<Mail::DMARC::Policy>
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=back
+
+=head1 CONTRIBUTOR
+
+ColocateUSA.net <company@colocateusa.net>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by ColocateUSA.com.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

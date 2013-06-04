@@ -1,0 +1,76 @@
+---
+abstract: 'Perl implementation of DMARC'
+author:
+  - 'Matt Simerson <msimerson@cpan.org>'
+  - 'Davide Migliavacca <shari@cpan.org>'
+build_requires:
+  Module::Build: 0.3601
+  Test::More: 0
+configure_requires:
+  ExtUtils::MakeMaker: 6.30
+  File::ShareDir::Install: 0.03
+  Module::Build: 0.3601
+dynamic_config: 0
+generated_by: 'Dist::Zilla version 4.300034, CPAN::Meta::Converter version 2.130880'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Mail-DMARC
+recommends:
+  CGI: 0
+  DBD::SQLite: 1.31
+  DBIx::Simple: 0
+  Email::MIME: 0
+  Email::Simple: 0
+  IO::Compress::Gzip: 0
+  IO::Compress::Zip: 0
+  IO::Uncompress::Gunzip: 0
+  IO::Uncompress::Unzip: 0
+  JSON: 0
+  Net::HTTP: 0
+  Net::IMAP::Simple: 0
+  Net::SMTPS: 0
+  XML::LibXML: 0
+requires:
+  CGI: 0
+  CPAN: 0
+  Carp: 0
+  Config::Tiny: 0
+  DBIx::Simple: 0
+  Data::Dumper: 0
+  Email::MIME: 0
+  Email::Simple: 0
+  Encode: 0
+  English: 0
+  File::ShareDir: 0
+  Getopt::Long: 0
+  IO::Compress::Gzip: 0
+  IO::Compress::Zip: 0
+  IO::File: 0
+  IO::Uncompress::Gunzip: 0
+  IO::Uncompress::Unzip: 0
+  JSON: 0
+  Net::DNS::Resolver: 0
+  Net::HTTP: 0
+  Net::IP: 0
+  Net::SMTPS: 0
+  POSIX: 0
+  Pod::Usage: 0
+  Regexp::Common: 2013031301
+  Socket: 0
+  Socket6: 0.23
+  Sys::Hostname: 0
+  URI: 0
+  XML::LibXML: 0
+  parent: 0
+  perl: 5.008
+  strict: 0
+  warnings: 0
+resources:
+  bugtracker: https://github.com/msimerson/mail-dmarc/issues
+  homepage: https://github.com/msimerson/mail-dmarc/wiki
+  repository: git://github.com/msimerson/mail-dmarc.git
+version: 1.20130604
+x_contributors:
+  - 'ColocateUSA.net <company@colocateusa.net>'

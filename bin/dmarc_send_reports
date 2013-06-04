@@ -1,0 +1,76 @@
+#!/usr/bin/perl
+our $VERSION = '1.20130604'; # VERSION
+use strict;
+use warnings;
+
+#use Data::Dumper;
+#use XML::LibXML;
+
+$|++;
+use lib 'lib';
+use Mail::DMARC::Report;
+my $report = Mail::DMARC::Report->new();
+
+#my $schema = 'http://dmarc.org/dmarc-xml/0.1/rua.xsd';
+#my $xmlschema = XML::LibXML::Schema->new( location => $schema );
+
+# 1. get reports, one at a time
+while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
+
+    print "report ID: " . $aggregate->metadata->report_id . "\n";
+    print $aggregate->metadata->domain . "\n";
+    print "rua: " . $aggregate->policy_published->rua . "\n";
+    my $xml = $aggregate->as_xml();
+#   warn $xml;  ## no critic (Carp)
+#    my $dom = XML::LibXML->load_xml( string => (\$xml) );
+#    eval { $xmlschema->validate( $dom ); };
+#    die "$@" if $@;
+    $report->sendit->send_rua(\$aggregate, \$xml) # deliver via SMTP/HTTP
+        and $report->store->delete_report($aggregate->metadata->report_id);
+    print "sleeping 5";
+    foreach ( 1 .. 5 ) { print '.'; sleep 1; };
+    print "done.\n";
+};
+
+exit;
+# PODNAME: dmarc_send_reports
+# ABSTRACT: send aggregate reports to requestors
+
+__END__
+
+=pod
+
+=head1 NAME
+
+dmarc_send_reports - send aggregate reports to requestors
+
+=head1 VERSION
+
+version 1.20130604
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=back
+
+=head1 CONTRIBUTOR
+
+ColocateUSA.net <company@colocateusa.net>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by ColocateUSA.com.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

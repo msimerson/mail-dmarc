@@ -1,0 +1,19 @@
+severity = harsh
+; gentle stern harsh cruel brutal
+
+verbose  = [%p] %m at line %l, column %c.  %e.  (Severity: %s)\n
+
+[-Documentation::RequirePodSections]
+
+; these interfere with Dist::Zilla::PkgVersion
+[-TestingAndDebugging::RequireUseStrict]
+[-TestingAndDebugging::RequireUseWarnings]
+
+; in general, I agree, but I disagree in mail::critic::result::evaluated
+[-Modules::ProhibitMultiplePackages]
+
+[Subroutines::RequireArgUnpacking]
+short_subroutine_statements = 5
+
+[RegularExpressions::RequireExtendedFormatting]
+minimum_regex_length_to_complain_about = 8

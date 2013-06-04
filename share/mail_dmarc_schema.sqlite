@@ -1,0 +1,175 @@
+
+DROP TABLE IF EXISTS `author`;
+
+CREATE TABLE `author` (
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+  `org_name` TEXT NOT NULL,
+  `email` TEXT DEFAULT NULL,
+  `extra_contact` TEXT DEFAULT NULL
+);
+
+CREATE UNIQUE INDEX "org_name_idx" ON "author" ("org_name");
+
+
+
+DROP TABLE IF EXISTS `domain`;
+
+CREATE TABLE `domain` (
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+  `domain` TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX "domain_idx" ON "domain" ("domain");
+
+
+DROP TABLE IF EXISTS `fk_disposition`;
+
+CREATE TABLE `fk_disposition` (
+  `disposition` TEXT NOT NULL,
+  PRIMARY KEY (`disposition`)
+);
+INSERT INTO "fk_disposition" VALUES ('none');
+INSERT INTO "fk_disposition" VALUES ('quarantine');
+INSERT INTO "fk_disposition" VALUES ('reject');
+
+
+DROP TABLE IF EXISTS `fk_disposition_reason`;
+
+CREATE TABLE `fk_disposition_reason` (
+  `type` TEXT NOT NULL,
+  PRIMARY KEY (`type`)
+);
+
+INSERT INTO "fk_disposition_reason" VALUES ('forwarded');
+INSERT INTO "fk_disposition_reason" VALUES ('local_policy');
+INSERT INTO "fk_disposition_reason" VALUES ('mailing_list');
+INSERT INTO "fk_disposition_reason" VALUES ('other');
+INSERT INTO "fk_disposition_reason" VALUES ('sampled_out');
+INSERT INTO "fk_disposition_reason" VALUES ('trusted_forwarder');
+
+
+DROP TABLE IF EXISTS `fk_dkim_result`;
+
+CREATE TABLE `fk_dkim_result` (
+  `result` TEXT NOT NULL,
+  PRIMARY KEY (`result`)
+);
+
+INSERT INTO "fk_dkim_result" VALUES ('fail');
+INSERT INTO "fk_dkim_result" VALUES ('neutral');
+INSERT INTO "fk_dkim_result" VALUES ('none');
+INSERT INTO "fk_dkim_result" VALUES ('pass');
+INSERT INTO "fk_dkim_result" VALUES ('permerror');
+INSERT INTO "fk_dkim_result" VALUES ('policy');
+INSERT INTO "fk_dkim_result" VALUES ('temperror');
+
+
+DROP TABLE IF EXISTS `fk_spf_result`;
+
+CREATE TABLE `fk_spf_result` (
+  `result` TEXT NOT NULL,
+  PRIMARY KEY (`result`)
+);
+
+INSERT INTO "fk_spf_result" VALUES ('fail');
+INSERT INTO "fk_spf_result" VALUES ('neutral');
+INSERT INTO "fk_spf_result" VALUES ('none');
+INSERT INTO "fk_spf_result" VALUES ('pass');
+INSERT INTO "fk_spf_result" VALUES ('permerror');
+INSERT INTO "fk_spf_result" VALUES ('softfail');
+INSERT INTO "fk_spf_result" VALUES ('temperror');
+
+
+
+DROP TABLE IF EXISTS `fk_spf_scope`;
+
+CREATE TABLE `fk_spf_scope` (
+  `scope` TEXT NOT NULL,
+  PRIMARY KEY (`scope`)
+);
+
+INSERT INTO "fk_spf_scope" VALUES ('helo');
+INSERT INTO "fk_spf_scope" VALUES ('mfrom');
+
+
+
+DROP TABLE IF EXISTS `report`;
+
+CREATE TABLE `report` (
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+  `begin` INTEGER NOT NULL,
+  `end` INTEGER NOT NULL,
+  `author_id` INTEGER NOT NULL REFERENCES `author`(`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  `rcpt_domain_id` INTEGER DEFAULT NULL,
+  `from_domain_id` INTEGER NOT NULL REFERENCES `domain`(`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  `uuid` TEXT DEFAULT NULL
+);
+
+
+
+DROP TABLE IF EXISTS `report_error`;
+
+CREATE TABLE "report_error" (
+  `report_id` INTEGER NOT NULL REFERENCES "report"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+  `error` TEXT NOT NULL,
+  `time` integer NOT NULL
+);
+
+
+DROP TABLE IF EXISTS `report_policy_published`;
+
+CREATE TABLE `report_policy_published` (
+  `report_id` INTEGER NOT NULL REFERENCES "report"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+  `adkim` TEXT DEFAULT NULL,
+  `aspf` TEXT DEFAULT NULL,
+  `p` TEXT DEFAULT NULL,
+  `sp` TEXT DEFAULT NULL,
+  `pct` INTEGER DEFAULT NULL,
+  `rua` TEXT DEFAULT NULL
+);
+
+
+DROP TABLE IF EXISTS `report_record`;
+
+CREATE TABLE `report_record` (
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+  `report_id` INTEGER NOT NULL REFERENCES "report"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+  `source_ip` varbinary(16) NOT NULL,
+  `count` INTEGER DEFAULT NULL,
+  `disposition` TEXT NOT NULL REFERENCES "fk_disposition"("disposition") ON UPDATE CASCADE ON DELETE NO ACTION,
+  `dkim` TEXT DEFAULT NULL,
+  `spf` TEXT DEFAULT NULL,
+  `envelope_to_did` INTEGER DEFAULT NULL,
+  `envelope_from_did` INTEGER DEFAULT NULL,
+  `header_from_did` INTEGER NOT NULL
+);
+
+
+DROP TABLE IF EXISTS `report_record_reason`;
+
+CREATE TABLE `report_record_reason` (
+  `report_record_id` INTEGER NOT NULL REFERENCES "report_record"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+  `type` TEXT NOT NULL REFERENCES "fk_disposition_reason"("type") ON UPDATE CASCADE ON DELETE CASCADE,
+  `comment` TEXT DEFAULT NULL
+);
+
+
+DROP TABLE IF EXISTS `report_record_dkim`;
+
+CREATE TABLE `report_record_dkim` (
+  `report_record_id` INTEGER NOT NULL REFERENCES "report_record"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+  `domain_id` INTEGER NOT NULL,
+  `selector` TEXT DEFAULT NULL,
+  `result` TEXT DEFAULT NULL REFERENCES "fk_dkim_result"("result") ON UPDATE CASCADE ON DELETE CASCADE,
+  `human_result` TEXT DEFAULT NULL
+);
+
+
+DROP TABLE IF EXISTS `report_record_spf`;
+
+CREATE TABLE `report_record_spf` (
+  `report_record_id` INTEGER NOT NULL REFERENCES "report_record"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+  `domain_id` INTEGER NOT NULL,
+  `scope` TEXT DEFAULT NULL REFERENCES "fk_spf_scope"("scope") ON UPDATE CASCADE ON DELETE RESTRICT,
+  `result` TEXT NOT NULL REFERENCES "fk_spf_result"("result") ON UPDATE CASCADE ON DELETE CASCADE
+);

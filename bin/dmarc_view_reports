@@ -1,0 +1,252 @@
+#!/usr/bin/perl
+our $VERSION = '1.20130604'; # VERSION
+use strict;
+use warnings;
+
+use Data::Dumper;
+use Getopt::Long;
+use Pod::Usage;
+$|++;
+
+my %command_line_options = (
+    'author:s'      => \my $author,
+    'rcpt_dom:s'    => \my $recipient,
+    'from_dom:s'    => \my $from,
+    'begin:s'       => \my $begin,
+    'end:s'         => \my $end,
+    'disposition:s' => \my $disposition,
+    'dkim:s'        => \my $dkim,
+    'spf:s'         => \my $spf,
+    'dns'           => \my $dns_opt,
+    'geoip'         => \my $geoip_opt,
+    'help'          => \my $help,
+    'verbose'       => \my $verbose,
+    );
+GetOptions (%command_line_options);
+
+use lib 'lib';
+use Mail::DMARC::Base;
+use Mail::DMARC::Report::View::CLI;
+my $cli = Mail::DMARC::Report::View::CLI->new;
+my $base = Mail::DMARC::Base->new;
+my $gip;
+pod2usage if $help;
+
+my $reports = $cli->store->retrieve(
+        (defined $recipient ? (rcpt_domain => $recipient) : () ),
+        (defined $from      ? (from_domain => $from     ) : () ),
+        (defined $author    ? (author      => $author   ) : () ),
+        (defined $begin     ? (begin       => $begin    ) : () ),
+        (defined $end       ? (end         => $end      ) : () ),
+        );
+
+print_header();
+
+foreach my $report ( reverse @$reports) {
+    my $rows = $cli->store->backend->get_rr( rid => $report->{rid} )->{rows};
+    next if $disposition && ! grep { $_->{disposition} eq $disposition } @$rows;
+    next if $dkim && ! grep { $_->{dkim} eq $dkim } @$rows;
+    next if $spf  && ! grep { $_->{spf } eq $spf } @$rows;
+    print_record($report);
+    print_rows( $rows );
+    print "\n";
+}
+
+sub print_record {
+    my $rec = shift;
+    printf "%3s  %26s  %15s\n", @$rec{qw/ rid author begin /};
+    return;
+};
+
+sub print_rows {
+    my $rows = shift;
+    foreach my $row ( @$rows ) {
+        no warnings;  ## no critic (NoWarn)
+        next if $disposition && $disposition ne $row->{disposition};
+        next if $dkim && $dkim ne $row->{dkim};
+        next if $spf  && $spf ne $row->{spf};
+        my $dns_hostname = get_dns_hostname( $row->{source_ip} );
+        printf "  | -- %3s %20s %39s %13s %7s %7s", @$row{qw/ count header_from source_ip disposition dkim spf /};
+        foreach my $r ( @{ $row->{reasons} } ) {
+            print '  ' . $r->{type};
+            print "( $r->{comment} )" if $r->{comment};
+        };
+        my $geoip = print_geoip( $row->{source_ip} );
+        print "  $dns_hostname\n";
+    }
+    return;
+};
+
+sub print_header {
+    printf "%3s  %26s  %15s\n", qw[ ID Author Report-Start ];
+    printf "  | -- %3s %20s %39s %13s %7s %7s\n", 'Qty','From','IP','Disposition','DKIM','SPF';
+    return;
+};
+
+sub print_geoip {
+    my $ip = shift;
+    return if ! $geoip_opt;
+    $gip ||= get_geoip_db();
+    return if ! $gip;
+
+    my $r = $gip->record_by_addr($ip) or return '';
+    my $country_code = $r->country_code();
+    my $country_name = $r->country_name();
+    my $continent = $r->continent_code();
+    my $city = $r->city;
+    print $city ?  " $city," : ' ';
+    print " $country_code, $continent";
+    return;
+}
+
+sub get_dns_hostname {
+    my $ip = shift;
+    return if ! $dns_opt;
+
+    my @answers = $base->has_dns_rr('PTR', $ip);
+    return '' if 0 == scalar @answers;
+    return $answers[0] if scalar @answers >= 1;
+    print Dumper(\@answers);
+    return;
+};
+
+sub get_geoip_db {
+
+    return $gip if $gip;
+    eval "require Geo::IP";  ## no critic (Eval)
+    if ($@) {
+        warn "unable to load Geo::IP\n";
+        return;
+    };
+
+    foreach my $local ( '/usr/local', '/opt/local' ) {
+        my $db_dir = "$local/share/GeoIP";
+
+        foreach my $db (qw/ GeoIPCity GeoLiteCity /) {
+            if (-f "$db_dir/$db.dat") {
+                print "using db $db" if $verbose;
+                $gip = Geo::IP->open("$db_dir/$db.dat");
+            }
+            last if $gip;
+        }
+        last if $gip;
+    };
+    return $gip;
+}
+
+exit;
+# PODNAME: dmarc_view_reports
+# ABSTRACT: view DMARC reports on the command line
+
+=pod
+
+=head1 NAME
+
+dmarc_view_reports - view DMARC reports on the command line
+
+=head1 VERSION
+
+version 1.20130604
+
+=head1 SYNOPSIS
+
+  dmarc_view_reports [ --option=value ]
+
+=head2 Search Options
+
+    author       - report author (Yahoo! Inc, google.com, etc..)
+    rcpt_dom     - message recipient domain
+    from_dom     - message sender domain
+    begin        - epoch start time to display messages after
+    end          - epoch end time to display messages before
+    disposition  - DMARC disposition (none,quarantine,reject)
+    dkim         - DKIM alignment result (pass/fail)
+    spf          - SPF alignment result  (pass/fail)
+
+=head2 Other Options
+
+  dmarc_view_reports [ --geoip --dns --help --verbose ]
+
+    geoip        - include GeoIP location (requires the free GeoCity Lite db)
+    dns          - do reverse DNS lookups and display hostnames
+    help         - print this syntax guide
+    verbose      - print additional debug info
+
+=head1 DESCRIPTION
+
+Dumps the contents of the DMARC data store to your terminal. The most recent records are show first.
+
+=head1 EXAMPLES
+
+To search for all reports from google.com that failed DMARC alignment:
+
+  dmarc_view_reports --author=google.com --dkim=fail --spf=fail
+
+Note that we don't use --disposition here. That would only tell us the result of applying DMARC policy, not necessarily if the messages failed DMARC alignment.
+
+=head1 SAMPLE OUTPUT
+
+ ID             Recipient           From/Sender     Report-Start
+  | -- Qty                        Source IP   Disposition    DKIM     SPF
+
+ 570        theartfarm.com          simerson.net  2013-05-20 09:40:50
+  | --   1                   75.126.200.152    quarantine    fail    fail
+
+ 568              yeah.net              tnpi.net  2013-05-21 09:00:00
+  | --   1                   111.176.77.138        reject    fail    fail
+
+ 567               126.com              tnpi.net  2013-05-21 09:00:00
+  | --   1                    49.73.135.125        reject    fail    fail
+
+ 565            google.com             mesick.us  2013-05-20 17:00:00
+  | --  88                   208.75.177.101          none    pass    pass
+
+ 564            google.com        theartfarm.com  2013-05-20 17:00:00
+  | --   3                   208.75.177.101          none    pass    pass
+
+ 563            google.com          lynboyer.com  2013-05-20 17:00:00
+  | --   1          2a00:1450:4010:c03::235          none    pass    fail  forwarded
+  | --  12                   208.75.177.101          none    pass    pass
+  | --   1                   209.85.217.174          none    pass    fail  forwarded
+
+ 561            google.com          simerson.net  2013-05-20 17:00:00
+  | --   1                   208.75.177.101          none    pass    pass
+
+ 560            google.com              tnpi.net  2013-05-20 17:00:00
+  | --   1                   208.75.177.101          none    pass    pass
+  | --   1                    27.20.110.240        reject    fail    fail
+
+ 559           hotmail.com          lynboyer.com  2013-05-20 20:00:00
+  | --   6                   208.75.177.101          none    pass    pass
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=back
+
+=head1 CONTRIBUTOR
+
+ColocateUSA.net <company@colocateusa.net>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by ColocateUSA.com.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
+
+__END__
+sub {}
+
+
