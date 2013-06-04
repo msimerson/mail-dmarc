@@ -45,8 +45,10 @@ sub row {
             : croak "row is required!";
 
     croak "row/source_ip is required!" if ! $row{source_ip};
-    croak "row/count is missing!" if ! $row{count};
     croak "row/policy_evaluated is missing!" if ! $row{policy_evaluated};
+    if ( ! $row{count} && $self->verbose ) {
+        warn "\trow/count is missing!";  ## no critic (Carp)
+    };
 
     return $self->{row} = \%row;
 }
