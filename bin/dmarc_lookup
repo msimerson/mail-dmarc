@@ -29,6 +29,12 @@ my $policy = $dmarc->discover_policy() or
     die "no DMARC policy published for $domain\n";
 
 print Dumper( $policy );
+if ( $policy->rua ) {
+    print "\n";
+    my $uri_count = $dmarc->has_valid_reporting_uri( $policy->rua );
+    print "valid report URI: ";
+    print $uri_count ? "yes\n" : "no\n";
+};
 exit;
 
 # PODNAME: dmarc_lookup

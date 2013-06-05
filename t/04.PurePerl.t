@@ -64,7 +64,7 @@ sub test_verify_external_reporting {
     $dmarc->result->published($policy);
 
     my $uri = URI->new("mailto:test\@$dest_dom");
-    cmp_ok( $outcome, 'eq', $dmarc->$ver( { uri => $uri } ), "$ver" );
+    cmp_ok( $outcome, 'eq', $dmarc->$ver( { uri => $uri } ), "$ver, $dmarc_dom, $dest_dom" );
 
     # a DMARC record with a RUA override
     return if $dmarc_dom ne 'mail-dmarc.tnpi.net';
@@ -134,6 +134,17 @@ sub test_has_valid_reporting_uri {
         ok( !$r, "has_valid_reporting_uri, neg, $v" )
             or diag Dumper($r);
     }
+
+# real life tests
+    my %real = (
+#           'email.wnd.com' => 'mailto:dmarc-722-08-92xze@emvdmarc.com'
+            );
+
+    foreach my $dom ( keys %real ) {
+        $dmarc->result->published->{domain} = $dom;
+        my $r_ref = $dmarc->has_valid_reporting_uri($real{$dom});
+        ok( $r_ref, "has_valid_reporting_uri, $dom" );
+    };
 }
 
 sub test_discover_policy {
