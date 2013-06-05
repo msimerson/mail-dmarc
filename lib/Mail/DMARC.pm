@@ -289,8 +289,13 @@ For aggregate reports that you have been sent, the L<dmarc_receive> program will
 
 The report store can use the same database to store reports you have received as well as reports you will send. There are several ways to identify the difference, including:
 
-  received reports will have a null value for report_policy_published.rua
-  outgoing reports will have null values for report.uuid and report_record.count
+=over 4
+
+received reports will have a null value for report_policy_published.rua
+
+outgoing reports will have null values for report.uuid and report_record.count
+
+=back
 
 =head1 CLASSES
 

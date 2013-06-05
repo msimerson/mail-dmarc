@@ -212,7 +212,7 @@ sub get_report {
         $_->{begin} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{begin} )));
         $_->{end} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{end} )));
     };
-# return in the format expected by jgGrid
+# return in the format expected by jqGrid
     return {
         cur_page    => $args{page},
         total_pages => $total_pages,

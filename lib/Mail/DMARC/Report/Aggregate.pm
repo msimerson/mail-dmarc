@@ -168,7 +168,7 @@ sub {}
 
 This class is used internally as the canonization of an aggregate report.
 
-When reports are received, the XML is parsed into a Report::Aggregate object, which then gets passed to the Report::Store to be file away. When sending DMARC reports, data is extracted from the Report::Store as an Aggregate object, assembled as XML, and sent.
+When reports are received, the XML is parsed into an L<Aggregate|Mail::DMARC::Report::Aggregate> object, which then gets passed to the Report::Store and saved. When sending DMARC reports, data is extracted from the L<Store|Mail::DMARC::Report::Store> as an Aggregate object, assembled as XML, and sent.
 
 =head1 2013 Draft Description
 

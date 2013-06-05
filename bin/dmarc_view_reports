@@ -10,7 +10,6 @@ $|++;
 
 my %command_line_options = (
     'author:s'      => \my $author,
-    'rcpt_dom:s'    => \my $recipient,
     'from_dom:s'    => \my $from,
     'begin:s'       => \my $begin,
     'end:s'         => \my $end,
@@ -33,7 +32,6 @@ my $gip;
 pod2usage if $help;
 
 my $reports = $cli->store->retrieve(
-        (defined $recipient ? (rcpt_domain => $recipient) : () ),
         (defined $from      ? (from_domain => $from     ) : () ),
         (defined $author    ? (author      => $author   ) : () ),
         (defined $begin     ? (begin       => $begin    ) : () ),
@@ -147,7 +145,6 @@ sub {}
 =head2 Search Options
 
     author       - report author (Yahoo! Inc, google.com, etc..)
-    rcpt_dom     - message recipient domain
     from_dom     - message sender domain
     begin        - epoch start time to display messages after
     end          - epoch end time to display messages before
@@ -170,7 +167,7 @@ To search for all reports from google.com that failed DMARC alignment:
 
   dmarc_view_reports --author=google.com --dkim=fail --spf=fail
 
-Note that we don't use --disposition here. That would only tell us the result of applying DMARC policy, not necessarily if the messages failed DMARC alignment.
+Note that we don't use --disposition. That would only tell us the result of applying DMARC policy, not necessarily if the messages failed DMARC alignment.
 
 
 =head1 DESCRIPTION
