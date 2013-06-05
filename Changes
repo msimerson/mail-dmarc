@@ -2,7 +2,7 @@
 {{$NEXT}}
 
  - in aggregate reports, group by IP and auth results (was only IP)
- - refactored SQL::retrieve_todo
+ - refactored SQL::retrieve_todo into 3 mothods, added tests
  - SQL: added unique constraint on domain.domain
 
 1.20130604 2013-06-04 America/Los_Angeles
