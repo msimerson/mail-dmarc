@@ -43,7 +43,8 @@ DROP TABLE IF EXISTS `domain`;
 CREATE TABLE `domain` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `domain` varchar(253) CHARACTER SET ascii NOT NULL DEFAULT '',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `domain` (`domain`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 

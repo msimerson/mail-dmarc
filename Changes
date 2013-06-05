@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+ - SQL: added unique constraint on domain.domain
+
 1.20130604 2013-06-04 America/Los_Angeles
 
  - main branches are master (devel) and releases (more obvious)
