@@ -3,6 +3,7 @@ use warnings;
 
 use Data::Dumper;
 use Test::More;
+$Data::Dumper::Sortkeys = 1;
 
 use lib 'lib';
 require Mail::DMARC::Report;
@@ -15,7 +16,9 @@ if ($@) {
 }
 
 my $test_domain = 'example.com';
-my ($report_id, $rr_id);
+my ($report_id, $rr_id, $policy, $dkim, $spf, $reasons, $identifiers, $policy_evaluated);
+my $begin = time - 1000;
+my $end = time - 100;
 
 my $mod = 'Mail::DMARC::Report::Store::SQL';
 use_ok($mod);
@@ -28,6 +31,7 @@ $sql->config('t/mail-dmarc.ini');
 #  test query mechanisms
 #  build and store an aggregate report, as it would happen In Real Life
 #  retrieve an aggregate report, as if reporting it
+#  validate the consistency of what was stored and retrieved
 test_db_connect();
 test_query_insert();
 test_query_replace();
@@ -38,7 +42,8 @@ test_query_any();
 test_ip_store_and_fetch();
 
 test_get_report_id();   # creates a test report
-test_insert_published_policy();
+test_insert_policy_published();
+test_get_report_policy_published();
 test_insert_rr();
 test_insert_rr_spf();
 test_insert_rr_dkim();
@@ -50,9 +55,72 @@ test_get_report();
 test_get_row_reason();
 test_get_row_spf();
 test_get_row_dkim();
+test_populate_agg_metadata();
+test_populate_agg_records();
 
 done_testing();
 exit;
+
+sub test_populate_agg_records {
+    my $agg = Mail::DMARC::Report::Aggregate->new();
+
+    my $r = $sql->populate_agg_records( \$agg, $report_id );
+    ok( $r, "populate_agg_records");
+# human result is returned undef from SQL, but absent during insertion
+    delete $r->[0]{auth_results}{dkim}[2]{human_result};
+    my $expected = [{
+            'auth_results' => {
+                                'dkim' => $dkim,
+                                'spf'  => $spf,
+                                },
+            'config_file' => 'mail-dmarc.ini',
+            'identifiers' => $identifiers,
+            'row' => {
+                        'count' => 1,
+                        'policy_evaluated' => { %$policy_evaluated,
+                                                'reason' => $reasons,
+                                            },
+                        'source_ip' => '192.1.1.1'
+                    }
+            }];
+    is_deeply( $r, $expected, "populate_agg_records, deeply");
+};
+
+sub test_populate_agg_metadata {
+
+    my $query = 'SELECT id AS rid,begin,end FROM report WHERE id=?';
+    my $report = $sql->query( $query, [ $report_id ] )->[0];
+
+    my $agg = Mail::DMARC::Report::Aggregate->new();
+    ok( $sql->populate_agg_metadata( \$agg, \$report ), "populate_agg_metadata");
+    is_deeply( $agg->metadata,
+            {
+            'config_file' => 'mail-dmarc.ini',
+            'date_range' => {
+                                'begin' => $report->{begin},
+                                'end'   => $report->{end},
+                            },
+            'email' => 'noreply@example.com',
+            'extra_contact_info' => 'http://www.example.com/dmarc-policy/',
+            'org_name' => 'My Great Company',
+            'report_id' => 2
+            },
+            "populate_agg_metadata, deeply" ) or diag Dumper($agg);
+};
+
+sub test_get_report_policy_published {
+    my $pp = $sql->get_report_policy_published( $report_id );
+    $pp->apply_defaults;
+    $pp->domain('recip.example.com');
+    foreach ( qw/ sp pct / ) {
+        delete $pp->{$_} if ! defined $pp->$_;
+    };
+    delete $pp->{report_id};
+    delete $policy->{uri};
+    ok( $pp, "get_report_policy_published");
+    is_deeply( $pp, $policy, "get_report_policy_published, deeply" )
+        or diag Dumper( $pp, $policy );
+};
 
 sub test_retrieve_todo {
     my $r = $sql->retrieve_todo();
@@ -64,9 +132,11 @@ sub test_retrieve_todo {
 sub test_get_row_reason {
     ok( $sql->get_row_reason( $rr_id ), 'get_row_reason');
 };
+
 sub test_get_row_spf {
     ok( $sql->get_row_spf( $rr_id ), 'get_row_spf');
 };
+
 sub test_get_row_dkim {
     ok( $sql->get_row_dkim( $rr_id ), 'get_row_dkim');
 };
@@ -145,7 +215,8 @@ sub test_get_report_id {
     foreach ( keys %meta ) {
         ok( $report->aggregate->metadata->$_( $meta{$_} ), "meta, $_, set" );
     }
-    my $policy = Mail::DMARC::Policy->new("v=DMARC1; p=reject");
+    $policy = Mail::DMARC::Policy->new("v=DMARC1; p=reject");
+    $policy->apply_defaults;
     ok( $policy->rua( 'mailto:' . $sql->config->{organization}{email} ), "policy, rua, set");
     ok( $policy->domain( 'recip.example.com'), "policy, domain, set");
     ok( $report->aggregate->policy_published( $policy ), "policy published, set");
@@ -156,64 +227,82 @@ sub test_get_report_id {
 }
 
 sub test_insert_rr_reason {
-    my @reasons = qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /;
-    foreach my $r (@reasons) {
-        ok( $sql->insert_rr_reason( $rr_id, $r, 'test comment' ), "insert_rr_reason, $r" );
+    my @reasons = qw/ forwarded local_policy mailing_list other sampled_out trusted_forwarder /;
+    foreach my $r ( @reasons) {
+        push @$reasons, { type => $r, comment => "test $r comment" };
+        ok( $sql->insert_rr_reason( $rr_id, $r, "test $r comment" ), "insert_rr_reason, $r" );
     }
 }
 
 sub test_insert_rr_dkim {
-    my $dkim = {
-        domain       => 'example.com',
-        selector     => 'blah',
-        result       => 'pass',
-        human_result => 'yay'
-    };
 
-    ok( $sql->insert_rr_dkim( $rr_id, $dkim ), 'insert_rr_dkim' );
+    $dkim = [             # populates global $dkim
+        {
+            domain       => 'example.com',
+            selector     => 'blah',
+            result       => 'pass',
+            human_result => 'yay'
+        },
+        {
+            domain       => 'example.com',
+            selector     => 'blah',
+            result       => 'pass',
+            human_result => undef,
+        },
+        {
+            domain       => 'example.com',
+            selector     => 'blah',
+            result       => 'pass',
+        },
+    ];
 
-    $dkim->{human_result} = undef;
-    ok( $sql->insert_rr_dkim( $rr_id, $dkim ), 'insert_rr_dkim' );
-
-    delete $dkim->{human_result};
-    ok( $sql->insert_rr_dkim( $rr_id, $dkim ), 'insert_rr_dkim' );
+    ok( $sql->insert_rr_dkim( $rr_id, $dkim->[0] ), 'insert_rr_dkim' );
+    ok( $sql->insert_rr_dkim( $rr_id, $dkim->[1] ), 'insert_rr_dkim' );
+    ok( $sql->insert_rr_dkim( $rr_id, $dkim->[2] ), 'insert_rr_dkim' );
 }
 
 sub test_insert_rr_spf {
-    my $spf = { domain => 'example.com', scope => 'helo', result => 'pass' };
-    ok( $sql->insert_rr_spf( $rr_id, $spf ), 'insert_rr_spf' );
-    $spf->{scope} = 'mfrom';
-    ok( $sql->insert_rr_spf( $rr_id, $spf ), 'insert_rr_spf' );
-    $spf->{result} = 'fail';
-    ok( $sql->insert_rr_spf( $rr_id, $spf ), 'insert_rr_spf' );
+
+    $spf = [
+            { 'domain' => 'example.com', 'result' => 'pass', 'scope' => 'helo' },
+            { 'domain' => 'example.com', 'result' => 'pass', 'scope' => 'mfrom' },
+            { 'domain' => 'example.com', 'result' => 'fail', 'scope' => 'mfrom' }
+        ];
+
+    foreach ( @$spf ) {
+        ok( $sql->insert_rr_spf( $rr_id, $_ ), 'insert_rr_spf' );
+    };
 }
 
 sub test_insert_rr {
-    my $record = {
-        row => {
-            source_ip        => '192.1.1.1',
-            policy_evaluated => {
-                disposition => 'none',
-                dkim        => 'fail',
-                spf         => 'pass',
-            },
-        },
-        identifiers => {
+    $identifiers = {
             header_from   => 'from.com',
             envelope_to   => 'to.com',
             envelope_from => 'from.com',
+        };
+    $policy_evaluated = {
+            disposition => 'none',
+            dkim        => 'fail',
+            spf         => 'pass',
+        };
+    my $record = {
+        row => {
+            source_ip        => '192.1.1.1',
+            policy_evaluated => $policy_evaluated,
         },
+        identifiers => $identifiers,
     };
     $rr_id = $sql->insert_rr( $report_id, $record );
     ok( $rr_id, "insert_rr, $rr_id" );
 }
 
-sub test_insert_published_policy {
-    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=none;');
+sub test_insert_policy_published {
+    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=none');
     $pol->apply_defaults;
     $pol->rua( 'mailto:' . $sql->config->{organization}{email} );
-    my $r = $sql->insert_published_policy( $report_id, $pol );
-    ok( $r, 'insert_published_policy' );
+#   warn Dumper($policy);
+    my $r = $sql->insert_policy_published( $report_id, $pol );
+    ok( $r, 'insert_policy_published' );
 }
 
 sub test_ip_store_and_fetch {
@@ -252,14 +341,13 @@ sub test_query {
 }
 
 sub test_query_insert {
-    my $start     = time;
     my $end       = time + 86400;
     my $from_did  = $sql->query(
         "INSERT INTO domain (domain) VALUES (?)", [ 'ignore.test.com' ]
     );
     my $rid = $sql->query(
         "INSERT INTO report (author_id, from_domain_id, begin, end) VALUES (??)",
-        [ 0, $from_did, $start, $end ]
+        [ 0, $from_did, $begin, $end ]
     );
     ok( $rid, "query_insert, report, $rid" );
 
@@ -269,7 +357,7 @@ sub test_query_insert {
     eval {
         $rid = $sql->query(
             "INSERT INTO reporting (domain, begin, end) VALUES (?,?,?)",
-            [ $test_domain, $start, $end ] );
+            [ $test_domain, $begin, $end ] );
     };
     chomp $@;
     ok( $@, "query_insert, report, neg: $@" );
@@ -284,14 +372,13 @@ sub test_query_insert {
 }
 
 sub test_query_replace {
-    my $start = time;
     my $end   = time + 86400;
 
     my $snafus = $sql->query("SELECT id FROM report WHERE begin='yellow'");
     foreach my $s (@$snafus) {
         ok( $sql->query(
                 "REPLACE INTO report (id,domain, begin, end) VALUES (?,?,?,?)",
-                [ $s->{id}, $test_domain, $start, $end ]
+                [ $s->{id}, $test_domain, $begin, $end ]
             ),
             "query_replace"
         );

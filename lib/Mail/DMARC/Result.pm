@@ -1,5 +1,5 @@
 package Mail::DMARC::Result;
-our $VERSION = '1.20130604'; # VERSION
+our $VERSION = '1.20130605'; # VERSION
 use strict;
 use warnings;
 
@@ -130,11 +130,11 @@ Mail::DMARC::Result - DMARC processing results
 
 =head1 VERSION
 
-version 1.20130604
+version 1.20130605
 
 =head1 OVERVIEW
 
-An DMARC result looks like the following data structure:
+A L<Result|Mail::DMARC::Result> object is the product of instantiating a L<DMARC::PurePerl|Mail::DMARC::PurePerl> object, populating the variables, and running $dmarc->validate. The results object looks like this:
 
     result       => 'pass',   # pass, fail
     disposition  => 'none',   # reject, quarantine, none
@@ -152,19 +152,19 @@ An DMARC result looks like the following data structure:
 
 Reasons are optional and may not be present.
 
-The dkim_align and spf_align fields will only be present if the corresponding test value equals pass. The are "extra" info, not specified in the DMARC spec.
+The dkim_align and spf_align fields will only be present if the corresponding test value equals pass. They are additional info not specified by the DMARC spec.
 
 =head1 METHODS
 
 =head2 published
 
-Published is a L<Mail::DMARC::Policy> tagged with a domain. The domain attribute is the DNS domain name where the DMARC record was found.
+Published is a L<Mail::DMARC::Policy> tagged with a domain. The domain attribute is the DNS domain name where the DMARC record was found. This may not be the same as the header_from domain (ex: bounces.amazon.com -vs- amazon.com).
 
 =head2 result
 
 Whether the message passed the DMARC test. Possible values are: pass, fail.
 
-In order to pass, at least one authentication alignment must pass. The 2013 draft defines just two authentication methods: DKIM and SPF. The list is expected to grow.
+In order to pass, at least one authentication alignment must pass. The 2013 draft defines two authentication methods: DKIM and SPF. The list is expected to grow.
 
 =head2 disposition
 

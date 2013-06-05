@@ -2,7 +2,7 @@ NAME
     Mail::DMARC - Perl implementation of DMARC
 
 VERSION
-    version 1.20130604
+    version 1.20130605
 
 SYNOPSIS
     DMARC: Domain-based Message Authentication, Reporting and Conformance
@@ -76,8 +76,11 @@ DESCRIPTION
     received as well as reports you will send. There are several ways to
     identify the difference, including:
 
-      received reports will have a null value for report_policy_published.rua
-      outgoing reports will have null values for report.uuid and report_record.count
+        received reports will have a null value for
+        report_policy_published.rua
+
+        outgoing reports will have null values for report.uuid and
+        report_record.count
 
 CLASSES
     Mail::DMARC - the perl interface for DMARC

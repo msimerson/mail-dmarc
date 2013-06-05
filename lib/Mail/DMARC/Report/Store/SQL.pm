@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-our $VERSION = '1.20130604'; # VERSION
+our $VERSION = '1.20130605'; # VERSION
 use strict;
 use warnings;
 
@@ -56,75 +56,22 @@ sub retrieve {
 sub retrieve_todo {
     my ( $self, @args ) = @_;
 
+# this method extracts the data from the SQL tables and populates an
+# Aggregate report object with it.
     my $reports = $self->query( $self->get_todo_query, [ time ] );
     return if ! @$reports;
     my $report = $reports->[0];
 
     my $agg = Mail::DMARC::Report::Aggregate->new();
-    $agg->metadata->report_id( $report->{rid} );
+    $self->populate_agg_metadata( \$agg, \$report );
 
-    foreach my $f ( qw/ org_name email extra_contact_info / ) {
-        $agg->metadata->$f( $self->config->{organization}{$f} );
-    };
-    foreach my $f ( qw/ begin end / ) {
-        $agg->metadata->$f( $report->{$f} );
-    };
-
-    my $errors = $self->query('SELECT error FROM report_error WHERE report_id=?', [ $report->{rid} ] );
-    foreach ( @$errors ) {
-        $agg->metadata->error( $_->{error} );
-    };
-
-    my $pp = $self->query(
-            'SELECT * from report_policy_published WHERE report_id=?',
-            [ $report->{rid} ]
-            )->[0];
-    $pp->{v} = 'DMARC1';
-    $pp->{p} ||= 'none';
+    my $pp = $self->get_report_policy_published( $report->{rid} );
     $pp->{domain} = $report->{from_domain};
     $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
 
-    my $recs = $self->query( $self->get_rr_query, [ $report->{rid} ] );
-
-    # aggregate the connections per IP
-    my (%ips, %pe, %auth, %ident, %reasons);
-    foreach my $rec ( @$recs ) {
-        my $ip = $rec->{source_ip};
-        $ips{ $ip }++;
-        $ident{$ip}{header_from}   ||= $rec->{header_from};
-        $ident{$ip}{envelope_from} ||= $rec->{envelope_from};
-        $ident{$ip}{envelope_to}   ||= $rec->{envelope_to};
-
-        $pe{$ip}{disposition} ||= $rec->{disposition};
-        $pe{$ip}{dkim} ||= $rec->{dkim};
-        $pe{$ip}{spf} ||= $rec->{spf};
-
-        $auth{ $ip }{spf } ||= $self->get_row_spf($rec->{id});
-        $auth{ $ip }{dkim} ||= $self->get_row_dkim($rec->{id});
-
-        my $reasons = $self->get_row_reason( $rec->{id} );
-        foreach my $reason ( @$reasons ) {
-            my $type = $reason->{type} or next;
-            $reasons{$ip}{$type} = $reason->{comment};   # flatten reasons
-        }
-    }
-
-    foreach my $ip ( keys %ips ) {
-        $agg->record( {
-            identifiers  => $ident{$ip},
-            auth_results => $auth{$ip},
-            row => {
-                source_ip => $self->any_inet_ntop( $ip ),
-                count     => $ips{ $ip },
-                policy_evaluated => {
-                    %{ $pe{$ip} },
-                    $reasons{$ip} ? ( reason => [ map { { type => $_, comment => $reasons{$ip}{$_} } } keys %{ $reasons{$ip} } ] ) : (),
-                },
-            },
-        } );
-    }
+    $self->populate_agg_records( \$agg, $report->{rid} );
     return $agg;
-}
+};
 
 sub delete_report {
     my $self = shift;
@@ -212,7 +159,7 @@ sub get_report_id {
         [ $from_dom_id, $meta->begin, $meta->end, $author_id, $meta->uuid ]
     ) or return;
 
-    $self->insert_published_policy( $rid, $pol );
+    $self->insert_policy_published( $rid, $pol );
     return $rid;
 }
 
@@ -265,13 +212,22 @@ sub get_report {
         $_->{begin} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{begin} )));
         $_->{end} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{end} )));
     };
-# return in the format expected by jgGrid
+# return in the format expected by jqGrid
     return {
         cur_page    => $args{page},
         total_pages => $total_pages,
         total_rows  => $total_recs,
         rows        => $reports,
     };
+};
+
+sub get_report_policy_published {
+    my ($self, $rid) = @_;
+    my $pp_query = 'SELECT * from report_policy_published WHERE report_id=?';
+    my $pp = $self->query($pp_query, [ $rid ] )->[0];
+    $pp->{p} ||= 'none';
+    $pp = Mail::DMARC::Policy->new( v=>'DMARC1', %$pp );
+    return $pp;
 };
 
 sub get_report_query {
@@ -365,10 +321,13 @@ EO_DKIM_ROW
 
 sub get_row_reason {
     my ($self, $rowid) = @_;
-    return $self->query(
-        'SELECT type,comment from report_record_reason WHERE report_record_id=?',
-        [ $rowid ]
-    );
+    my $row_query = <<"EO_ROW_QUERY"
+SELECT type,comment
+FROM report_record_reason
+WHERE report_record_id=?
+EO_ROW_QUERY
+    ;
+    return $self->query( $row_query, [ $rowid ] );
 };
 
 sub get_rr_query {
@@ -382,9 +341,78 @@ LEFT JOIN domain etd ON etd.id=rr.envelope_to_did
 LEFT JOIN domain efd ON efd.id=rr.envelope_from_did
 LEFT JOIN domain hfd ON hfd.id=rr.header_from_did
 WHERE report_id = ?
+ORDER BY id
 EO_ROW_QUERY
         ;
 };
+
+sub populate_agg_metadata {
+    my ($self, $agg_ref, $report_ref) = @_;
+
+    $$agg_ref->metadata->report_id( $$report_ref->{rid} );
+
+    foreach my $f ( qw/ org_name email extra_contact_info / ) {
+        $$agg_ref->metadata->$f( $self->config->{organization}{$f} );
+    };
+    foreach my $f ( qw/ begin end / ) {
+        $$agg_ref->metadata->$f( $$report_ref->{$f} );
+    };
+
+    my $errors = $self->query('SELECT error FROM report_error WHERE report_id=?',
+            [ $$report_ref->{rid} ]
+        );
+    foreach ( @$errors ) {
+        $agg_ref->metadata->error( $_->{error} );
+    };
+    return 1;
+};
+
+sub populate_agg_records {
+    my ($self, $agg_ref, $rid) = @_;
+
+    my $recs = $self->query( $self->get_rr_query, [ $rid ] );
+
+    # aggregate the connections per IP-Disposition-DKIM-SPF uniqueness
+    my (%uniq, %pe, %auth, %ident, %reasons);
+    foreach my $rec ( @$recs ) {
+        my $ip = $rec->{source_ip};
+        my $key = join('-', $ip, @$rec{ qw/ disposition dkim spf / }); # hash slice
+        $uniq{ $key }++;
+        $ident{$key}{header_from}   ||= $rec->{header_from};
+        $ident{$key}{envelope_from} ||= $rec->{envelope_from};
+        $ident{$key}{envelope_to}   ||= $rec->{envelope_to};
+
+        $pe{$key}{disposition} ||= $rec->{disposition};
+        $pe{$key}{dkim}   ||= $rec->{dkim};
+        $pe{$key}{spf}    ||= $rec->{spf};
+
+        $auth{$key}{spf } ||= $self->get_row_spf($rec->{id});
+        $auth{$key}{dkim} ||= $self->get_row_dkim($rec->{id});
+
+        my $reasons = $self->get_row_reason( $rec->{id} );
+        foreach my $reason ( @$reasons ) {
+            my $type = $reason->{type} or next;
+            $reasons{$key}{$type} = $reason->{comment};   # flatten reasons
+        }
+    }
+
+    foreach my $u ( keys %uniq ) {
+        my ($ip, $disp, $dkim, $spf ) = split /-/, $u;
+        $$agg_ref->record( {
+            identifiers  => $ident{$u},
+            auth_results => $auth{$u},
+            row => {
+                source_ip => $self->any_inet_ntop( $ip ),
+                count     => $uniq{ $u },
+                policy_evaluated => {
+                    %{ $pe{$u} },
+                    $reasons{$u} ? ( reason => [ map { { type => $_, comment => $reasons{$u}{$_} } } sort keys %{ $reasons{$u} } ] ) : (),
+                },
+            },
+        } );
+    }
+    return $$agg_ref->record;
+}
 
 sub row_exists {
     my ($self, $rid, $rec ) = @_;
@@ -511,16 +539,18 @@ EO_ROW_INSERT
     return $self->{report_row_id} = $rr_id;
 }
 
-sub insert_published_policy {
+sub insert_policy_published {
     my ( $self, $id, $pub ) = @_;
-    my $query
-        = 'INSERT INTO report_policy_published (report_id, adkim, aspf, p, sp, pct, rua) VALUES (??)';
-    return $self->query(
-        $query,
-        [   $id,        $pub->{adkim}, $pub->{aspf}, $pub->{p},
-            $pub->{sp}, $pub->{pct},   $pub->{rua},
-        ]
-    ) or croak "failed to insert published policy";
+    my $query = <<"EO_RPP"
+INSERT INTO report_policy_published
+  (report_id, adkim, aspf, p, sp, pct, rua)
+VALUES (??)
+EO_RPP
+    ;
+    return $self->query( $query,
+        [ $id, @$pub{ qw/ adkim aspf p sp pct rua /} ]
+    )
+    or croak "failed to insert published policy";
 }
 
 sub db_connect {
@@ -666,7 +696,7 @@ Mail::DMARC::Report::Store::SQL - SQL storage for DMARC reports
 
 =head1 VERSION
 
-version 1.20130604
+version 1.20130605
 
 =head1 DESCRIPTION
 
