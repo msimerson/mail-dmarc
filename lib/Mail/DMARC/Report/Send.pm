@@ -50,7 +50,7 @@ sub human_summary {
         @{ $$agg_ref->{record} };
     my $fail = grep { 'pass' ne $_->{row}{policy_evaluated}{dkim} && 'pass' ne $_->{row}{policy_evaluated}{spf} }
         @{ $$agg_ref->{record} };
-    my $ver = $Mail::DMARC::VERSION || '';    # undef in author environ
+    my $ver = $Mail::DMARC::Base::VERSION || '';    # undef in author environ
     my $from = $$agg_ref->{policy_published}{domain} or croak;
 
     return <<"EO_REPORT"
