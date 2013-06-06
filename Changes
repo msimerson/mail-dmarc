@@ -1,6 +1,9 @@
 
 {{$NEXT}}
 
+ - replace carp with warn (more legible warning)
+ - added RUA valididy checks to dmarc_lookup
+
 1.20130605 2013-06-05 America/Los_Angeles
 
  - in aggregate reports, group by IP and auth results (was only IP)
