@@ -6,6 +6,7 @@ use warnings;
 use Carp;
 
 #use Data::Dumper;
+#use HTTP::Tiny;     # a possibility
 use Net::HTTP;
 
 use parent 'Mail::DMARC::Base';
