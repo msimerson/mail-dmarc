@@ -61,21 +61,21 @@ sub via_net_smtp {
         return;
     };
 
-    carp "deliving message to $args->{to}\n";
+    print "delivering message to $args->{to}\n";
 
     my $from = $self->config->{organization}{email};
     $smtp->mail($from) or do {
-        carp "MAIL FROM $from rejected\n";
+        print "MAIL FROM $from rejected\n";
         $smtp->quit;
         return;
     };
     $smtp->recipient( $args->{to} ) or do {
-        carp "RCPT TO $args->{to} rejected\n";
+        print "RCPT TO $args->{to} rejected\n";
         $smtp->quit;
         return;
     };
     $smtp->data($body) or do {
-        carp "DATA for $args->{domain} rejected\n";
+        print "DATA for $args->{domain} rejected\n";
         return;
     };
     $smtp->quit;
