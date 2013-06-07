@@ -1,7 +1,8 @@
 
 {{$NEXT}}
 
- - replace carp with warn (more legible warning)
+ - avoid the join/split of binip in SQL::populate_agg_records
+ - replace carp with warn in several places (more legible warning)
  - added RUA valididy checks to dmarc_lookup
 
 1.20130605 2013-06-05 America/Los_Angeles
