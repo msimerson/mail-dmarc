@@ -7,80 +7,11 @@ use Carp;
 use English '-no_match_vars';
 use Email::MIME;
 use Net::SMTPS;
+#use Mail::Sender;  # something to consider
 use Sys::Hostname;
 use POSIX;
 
 use parent 'Mail::DMARC::Base';
-
-sub email {
-    my ( $self, @args ) = @_;
-    croak "invalid args to email" if @args % 2;
-    my %args = @args;
-
-    my @required = qw/ to subject body report policy_domain begin end /;
-    my @optional = qw/ report_id /;
-    my %all      = map { $_ => 1 } ( @required, @optional );
-    foreach ( keys %args ) { croak "unknown arg $_" if !$all{$_} }
-
-    foreach my $req (@required) {
-        croak "missing required header: $req" if !$args{$req};
-    }
-
-    my $cc = $self->config->{smtp}{cc};
-    if ( $cc && $cc ne 'set.this@for.a.while.example.com' ) {
-        my $original_to = $args{to};
-        $args{to} = $cc;
-        $self->via_net_smtp( \%args );
-        $args{to} = $original_to;
-    }
-    return $self->via_net_smtp( \%args );
-}
-
-sub via_net_smtp {
-    my ( $self, $args ) = @_;
-
-    my $to_domain = $args->{domain} = $self->get_to_dom($args);
-    my $hosts = $self->get_smtp_hosts($to_domain);
-    my @try_mx = map { $_->{addr} }
-        sort { $a->{pref} <=> $b->{pref} } @$hosts;
-    push @try_mx, $to_domain;    # might be 0 MX records
-
-    my $c        = $self->config->{smtp};
-    my $hostname = $c->{hostname};
-    if ( !$hostname || $hostname eq 'mail.example.com' ) {
-        $hostname = Sys::Hostname::hostname;
-    }
-    my $body = $self->_assemble_message($args);
-
-    my $err  = "found " . scalar @try_mx . " MX";
-    my $smtp = $self->connect_smtp_tls($hostname, @try_mx)
-            || $self->connect_smtp($hostname, @try_mx);
-
-    if ( ! $smtp ) {
-        carp "$err but 0 available for $to_domain\n";
-        return;
-    };
-
-    print "delivering message to $args->{to}\n";
-
-    my $from = $self->config->{organization}{email};
-    $smtp->mail($from) or do {
-        print "MAIL FROM $from rejected\n";
-        $smtp->quit;
-        return;
-    };
-    $smtp->recipient( $args->{to} ) or do {
-        print "RCPT TO $args->{to} rejected\n";
-        $smtp->quit;
-        return;
-    };
-    $smtp->data($body) or do {
-        print "DATA for $args->{domain} rejected\n";
-        return;
-    };
-    $smtp->quit;
-    return 1;
-}
 
 sub get_domain_mx {
     my ( $self, $domain ) = @_;
@@ -93,21 +24,14 @@ sub get_domain_mx {
     return \@mx;
 }
 
-sub get_to_dom {
-    my ( $self, $args ) = @_;
-    croak "invalid args" if 'HASH' ne ref $args;
-    my ($to_dom) = ( split /@/, $args->{to} )[-1];
-    return $to_dom;
-}
-
 sub connect_smtp {
-    my ($self, $hostname, @try_mx) = @_;
+    my ( $self, $to ) = @_;
 
     my $smtp = Net::SMTP->new(
-        [@try_mx],
+        [ $self->get_smtp_hosts($to) ],
         Timeout         => 10,
         Port            => 25,
-        Hello           => $hostname,
+        Hello           => $self->get_helo_hostname,
         )
         or do {
             carp "SMTP connection failed\n";
@@ -118,18 +42,18 @@ sub connect_smtp {
 };
 
 sub connect_smtp_tls {
-    my ($self, $hostname, @try_mx) = @_;
+    my ($self, $to) = @_;
 
     my $smtp = Net::SMTPS->new(
-        [@try_mx],
-        Timeout         => 10,
+        [ $self->get_smtp_hosts($to) ],
+        Timeout         => 12,
         Port            => $self->config->{smtp}{smarthost} ? 587 : 25,
-        Hello           => $hostname,
+        Hello           => $self->get_helo_hostname,
         doSSL           => 'starttls',
         SSL_verify_mode => 'SSL_VERIFY_NONE',
         )
         or do {
-            carp "SSL connection failed\n";
+            warn "SSL connection failed\n"; ## no critic (Carp)
             return;
         };
 
@@ -145,13 +69,20 @@ sub connect_smtp_tls {
 
 sub get_smtp_hosts {
     my $self = shift;
-    my $domain = shift or croak "missing domain!";
+    my $email = shift or croak "missing email!";
 
     if ( $self->config->{smtp}{smarthost} ) {
-        return [ { addr => $self->config->{smtp}{smarthost} } ];
+        return $self->config->{smtp}{smarthost};
     }
 
-    return $self->get_domain_mx($domain);
+    my ($domain) = ( split /@/, $email )[-1];
+    my @mx = map  { $_->{addr} }
+             sort { $a->{pref} <=> $b->{pref} }
+             @{ $self->get_domain_mx($domain) };
+
+    push @mx, $domain;
+    print "\tfound " . scalar @mx . " MX for $email\n" if $self->verbose;
+    return @mx;
 }
 
 sub get_subject {
@@ -185,8 +116,37 @@ sent by a Mail Receiver.
     return "Report Domain: $pol_dom Submitter: $us Report-ID: <$id>";
 }
 
+sub human_summary {
+    my ( $self, $agg_ref ) = @_;
+
+    my $records = scalar @{ $$agg_ref->{record} };
+    my $OrgName = $self->config->{organization}{org_name};
+    my $pass = grep { 'pass' eq $_->{row}{policy_evaluated}{dkim}
+                   || 'pass' eq $_->{row}{policy_evaluated}{spf}  }
+                   @{ $$agg_ref->{record} };
+    my $fail = grep { 'pass' ne $_->{row}{policy_evaluated}{dkim}
+                   && 'pass' ne $_->{row}{policy_evaluated}{spf} }
+                   @{ $$agg_ref->{record} };
+    my $ver  = $Mail::DMARC::Base::VERSION || ''; # undef in author environ
+    my $from = $$agg_ref->{policy_published}{domain} or croak;
+
+    return <<"EO_REPORT"
+
+This is a DMARC aggregate report for $from
+
+$records records.
+$pass passed.
+$fail failed.
+
+Submitted by $OrgName
+Generated with Mail::DMARC $ver
+
+EO_REPORT
+        ;
+}
+
 sub get_filename {
-    my ( $self, $args ) = @_;
+    my ( $self, $agg_ref ) = @_;
 
     #  2013 DMARC Draft, 12.2.1 Email
     #
@@ -195,15 +155,17 @@ sub get_filename {
     #   filename="mail.receiver.example!example.com!1013662812!1013749130.gz"
     return join( '!',
         $self->config->{organization}{domain},
-        $args->{policy_domain},
-        $args->{begin}, $args->{end}, $args->{report_id} || time,
+        $$agg_ref->policy_published->domain,
+        $$agg_ref->metadata->begin,
+        $$agg_ref->metadata->end,
+        $$agg_ref->metadata->report_id || time,
     ) . '.xml';
 }
 
-sub _assemble_message {
-    my ( $self, $args ) = @_;
+sub assemble_message {
+    my ( $self, $agg_ref, $to, $shrunk ) = @_;
 
-    my $filename = $self->get_filename($args);
+    my $filename = $self->get_filename($agg_ref);
 # WARNING: changes made here MAY affect Send::compress. Check it!
 #   my $cf       = ( time > 1372662000 ) ? 'gzip' : 'zip';   # gz after 7/1/13
     my $cf       = 'gzip';
@@ -215,7 +177,7 @@ sub _assemble_message {
             disposition  => "inline",
             charset      => "US-ASCII",
         },
-        body => $args->{body},
+        body => $self->human_summary( $agg_ref ),
     ) or croak "unable to add body!";
 
     push @parts,
@@ -226,16 +188,15 @@ sub _assemble_message {
             encoding     => "base64",
             name         => $filename,
         },
-        body => $args->{report},
+        body => $shrunk,
         ) or croak "unable to add report!";
 
     my $email = Email::MIME->create(
         header_str => [
             From => $self->config->{organization}{email},
-            To   => $args->{to},
-            Date => strftime( '%a, %d %b %Y %H:%M:%S %z', localtime )
-            ,    # RFC 2822 format
-            Subject => $args->{subject},
+            To   => $to,
+            Date => $self->get_timestamp_rfc2822,
+            Subject => $self->get_subject( $agg_ref ),
         ],
         parts => [@parts],
     ) or croak "unable to assemble message\n";
@@ -243,10 +204,18 @@ sub _assemble_message {
     return $email->as_string;
 }
 
-sub via_mail_sender {
-    return;
-}
+sub get_timestamp_rfc2822 {
+    my ($self, @args) = @_;
+    my @ts = scalar @args ? @args : localtime;
+    return POSIX::strftime( '%a, %d %b %Y %H:%M:%S %z', @ts );
+};
 
+sub get_helo_hostname {
+    my $self = shift;
+    my $host = $self->config->{smtp}{hostname};
+    return $host if $host && $host ne 'mail.example.com';
+    return Sys::Hostname::hostname;
+};
 
 1;
 

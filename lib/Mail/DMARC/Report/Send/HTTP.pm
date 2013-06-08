@@ -14,12 +14,12 @@ use parent 'Mail::DMARC::Base';
 sub post {
     my ( $self, $uri, $report, $gz ) = @_;
 
-    carp "http send incomplete!";
+    carp "http send feature not complete!";
     return;
 
     # TODO: test
 ## no critic (Unreachable)
-    my $ver = $Mail::DMARC::VERSION;
+    my $ver = $Mail::DMARC::Base::VERSION;
     my $s = Net::HTTP->new( Host => $uri->host ) or croak $@;
     $s->write_request(
         POST         => $uri->path,

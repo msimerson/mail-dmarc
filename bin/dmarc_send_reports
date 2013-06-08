@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 #use Data::Dumper;
+use Encode;
 #use XML::LibXML;
 
 $|++;
@@ -20,13 +21,44 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
     print "ID: " . $aggregate->metadata->report_id . "\n";
     print $aggregate->policy_published->domain . "\n";
     print "rua:\t" . $aggregate->policy_published->rua . "\n";
+
     my $xml = $aggregate->as_xml();
 #   warn $xml;  ## no critic (Carp)
-#    my $dom = XML::LibXML->load_xml( string => (\$xml) );
-#    eval { $xmlschema->validate( $dom ); };
-#    die "$@" if $@;
-    $report->sendit->send_rua(\$aggregate, \$xml) # deliver via SMTP/HTTP
-        and $report->store->delete_report($aggregate->metadata->report_id);
+#   my $dom = XML::LibXML->load_xml( string => (\$xml) );
+#   eval { $xmlschema->validate( $dom ); };
+#   die "$@" if $@;
+
+    my $shrunk = $report->compress(\$xml);
+    my $bytes  = length Encode::encode_utf8($shrunk);
+
+    my $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
+    my $sent    = 0;
+    foreach my $u_ref (@$uri_ref) {
+        my $method = $u_ref->{uri};
+        my $max    = $u_ref->{max_bytes};
+
+        if ( $max && $bytes > $max ) {
+            print "skipping $method: report size ($bytes) larger than $max\n";
+            next;
+        }
+
+        if ( 'mailto:' eq substr( $method, 0, 7 ) ) {
+            my ($to) = ( split /:/, $method )[-1];
+            my $cc = $report->config->{smtp}{cc};
+            if ( $cc && $cc ne 'set.this@for.a.while.example.com' ) {
+                email( $cc, $shrunk, \$aggregate );
+            };
+            email( $to, $shrunk, \$aggregate ) and $sent++;
+        }
+        if ( 'http:' eq substr( $method, 0, 5 ) ) {
+            $report->sendit->http->post( $method, \$aggregate, $shrunk ) and $sent++;
+        }
+    }
+
+    if ( $sent ) {
+        $report->store->delete_report($aggregate->metadata->report_id);
+    };
+
     print "sleeping 5";
     foreach ( 1 .. 5 ) { print '.'; sleep 1; };
     print "done.\n";
@@ -35,3 +67,50 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 exit;
 # PODNAME: dmarc_send_reports
 # ABSTRACT: send aggregate reports to requestors
+
+sub email {
+    my ($to, $shrunk, $agg_ref) = @_;
+
+    my $smtp = $report->sendit->smtp->connect_smtp_tls( $to ) or do {
+        warn "\tSSL connection failed\n";  ## no critic (Carp)
+        $$agg_ref->metadata->error("SSL connection failed");
+        my $xml = $$agg_ref->as_xml();   # re-export XML, with error
+        $shrunk = $report->compress(\$xml);
+    };
+
+    if ( ! $smtp ) {
+        $smtp = $report->sendit->smtp->connect_smtp( $to ) or do {
+            warn "\tSMTP connection failed\n";  ## no critic (Carp)
+            return;
+        };
+    };
+
+    if ( ! $smtp ) {
+        warn "\t0 MX available\n";
+        return;
+    };
+
+    print "delivering message to $to, via ".$smtp->host."\n";
+
+    my $from = $report->config->{organization}{email};
+    $smtp->mail($from) or do {
+        print "MAIL FROM $from rejected\n";
+        $smtp->quit;
+        return;
+    };
+    $smtp->recipient( $to ) or do {
+        print "RCPT TO $to rejected\n";
+        $smtp->quit;
+        return;
+    };
+
+    my $body = $report->sendit->smtp->assemble_message($agg_ref, $to, $shrunk);
+    my $to_domain = $agg_ref->policy_published->domain;
+
+    $smtp->data($body) or do {
+        print "DATA for domain $to_domain report rejected\n";
+        return;
+    };
+    $smtp->quit;
+    return 1;
+}

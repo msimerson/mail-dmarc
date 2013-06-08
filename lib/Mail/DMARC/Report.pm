@@ -4,6 +4,8 @@ use strict;
 use warnings;
 
 use Carp;
+use IO::Compress::Gzip;
+use IO::Compress::Zip;
 
 use parent 'Mail::DMARC::Base';
 
@@ -13,6 +15,21 @@ require Mail::DMARC::Report::Store;
 require Mail::DMARC::Report::Receive;
 require Mail::DMARC::Report::URI;
 require Mail::DMARC::Report::View;
+
+sub compress {
+    my ( $self, $xml_ref ) = @_;
+    croak "xml is not a reference!" if 'SCALAR' ne ref $xml_ref;
+    my $shrunk;
+    my $zipper = {
+        gz  => \&IO::Compress::Gzip::gzip,    # 2013 draft
+        zip => \&IO::Compress::Zip::zip,      # legacy format
+    };
+# WARNING: changes here MAY require updates in SMTP::assemble_message
+#   my $cf = ( time > 1372662000 ) ? 'gz' : 'zip';    # gz after 7/1/13
+    my $cf = 'gz';
+    $zipper->{$cf}->( $xml_ref, \$shrunk ) or croak "unable to compress: $!";
+    return $shrunk;
+}
 
 sub init {
     my $self = shift;
