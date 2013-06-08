@@ -105,7 +105,7 @@ sub email {
     };
 
     my $body = $report->sendit->smtp->assemble_message($agg_ref, $to, $shrunk);
-    my $to_domain = $agg_ref->policy_published->domain;
+    my $to_domain = $$agg_ref->policy_published->domain;
 
     $smtp->data($body) or do {
         print "DATA for domain $to_domain report rejected\n";
