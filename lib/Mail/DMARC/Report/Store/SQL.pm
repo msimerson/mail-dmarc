@@ -25,8 +25,11 @@ sub save_aggregate {
     my $rid = $self->get_report_id( $agg )
         or croak "failed to create report!";
 
-    foreach my $rec ( @{ $agg->record } ) {
-        $self->insert_agg_record($rid, $rec);
+# on 6/8/2013, Microsoft spat out a bunch of reports with zero records.
+    if ( $agg->record ) {
+        foreach my $rec ( @{ $agg->record } ) {
+            $self->insert_agg_record($rid, $rec);
+        };
     };
 
     return $rid;
