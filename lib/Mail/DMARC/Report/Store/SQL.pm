@@ -26,10 +26,13 @@ sub save_aggregate {
         or croak "failed to create report!";
 
 # on 6/8/2013, Microsoft spat out a bunch of reports with zero records.
-    if ( $agg->record ) {
-        foreach my $rec ( @{ $agg->record } ) {
-            $self->insert_agg_record($rid, $rec);
-        };
+    if ( ! $agg->record ) {
+        carp "A report with ZERO records! Illegal.";
+        return $rid;
+    };
+
+    foreach my $rec ( @{ $agg->record } ) {
+        $self->insert_agg_record($rid, $rec);
     };
 
     return $rid;
