@@ -2,7 +2,7 @@
 {{$NEXT}}
 
  - tolerate receiving reports with no records (ahem, hotmail.com)
- - simplify SMTP flow-of-control
+ - simplify SMTP flow-of-control, additional SMTP tests
  - avoid the join/split of binip in SQL::populate_agg_records
  - replace carp with warn in several places (more legible warning)
  - added RUA valididy checks to dmarc_lookup
@@ -10,7 +10,7 @@
 1.20130605 2013-06-05 America/Los_Angeles
 
  - in aggregate reports, group by IP and auth results (was only IP)
- - refactored SQL::retrieve_todo into 3 mothods, added tests
+ - refactored SQL::retrieve_todo into 3 methods, added tests
  - SQL: added unique constraint on domain.domain
 
 1.20130604 2013-06-04 America/Los_Angeles
