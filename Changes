@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+ - tolerate receiving reports with no records (ahem, hotmail.com)
+ - simplify SMTP flow-of-control
  - avoid the join/split of binip in SQL::populate_agg_records
  - replace carp with warn in several places (more legible warning)
  - added RUA valididy checks to dmarc_lookup
