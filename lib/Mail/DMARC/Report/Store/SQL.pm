@@ -27,7 +27,7 @@ sub save_aggregate {
 
 # on 6/8/2013, Microsoft spat out a bunch of reports with zero records.
     if ( ! $agg->record ) {
-        carp "A report with ZERO records! Illegal.";
+        warn "\ta report with ZERO records! Illegal.\n"; ## no critic (Carp)
         return $rid;
     };
 
