@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Receive;
-our $VERSION = '1.20130605'; # VERSION
+our $VERSION = '1.20130610'; # VERSION
 use strict;
 use warnings;
 
@@ -135,12 +135,12 @@ sub from_email_simple {
         my ($c_type) = split /;/, $part->content_type;
         next if $c_type eq 'text/plain';
         if ( $c_type eq 'text/rfc822-headers' ) {
-            carp "TODO: handle forensic reports\n";
+            warn "TODO: handle forensic reports\n";  ## no critic (Carp)
             $rep_type = 'forensic';
             next;
         }
         if ( $c_type eq 'message/feedback-report' ) {
-            carp "TODO: handle forensic reports\n";
+            warn "TODO: handle forensic reports\n";  ## no critic (Carp)
             $rep_type = 'forensic';
             next;
         }
@@ -161,7 +161,7 @@ sub from_email_simple {
             $rep_type = 'aggregate';
             next;
         }
-        carp "What is type $c_type doing in here?\n";
+        warn "Unknown message part $c_type\n";  ## no critic (Carp)
     }
     return $rep_type;
 }
@@ -386,7 +386,7 @@ Mail::DMARC::Report::Receive - process incoming DMARC reports
 
 =head1 VERSION
 
-version 1.20130605
+version 1.20130610
 
 =head1 DESCRIPTION
 

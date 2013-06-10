@@ -1,5 +1,5 @@
 package Mail::DMARC::PurePerl;
-our $VERSION = '1.20130605'; # VERSION
+our $VERSION = '1.20130610'; # VERSION
 use strict;
 use warnings;
 
@@ -428,11 +428,19 @@ sub external_report {
     if ( 'mailto' eq $uri->scheme ) {
         my $dest_email = $uri->path;
         my ($dest_host) = ( split /@/, $dest_email )[-1];
-        return 0 if $dest_host eq $dmarc_dom;
+        if ($dest_host eq $dmarc_dom ) {
+            print "$dest_host not external for $dmarc_dom\n" if $self->verbose;
+            return 0;
+        };
+        print "$dest_host is external for $dmarc_dom\n" if $self->verbose;
     }
 
     if ( 'http' eq $uri->scheme ) {
-        return 0 if $uri->host eq $dmarc_dom;
+        if ($uri->host eq $dmarc_dom ) {
+            print $uri->host ." not external for $dmarc_dom\n" if $self->verbose;
+            return 0;
+        };
+        print $uri->host ." is external for $dmarc_dom\n" if $self->verbose;
     }
 
     return 1;
@@ -456,7 +464,10 @@ sub verify_external_reporting {
     my $dest = join '.', $dmarc_dom, '_report._dmarc', $dest_host;
 
     #  4.  Query the DNS for a TXT record at the constructed name.
-    my $query = $self->get_resolver->send( $dest, 'TXT' ) or return;
+    my $query = $self->get_resolver->send( $dest, 'TXT' ) or do {
+        print "\tquery for $dest failed\n" if $self->verbose;
+        return;
+    };
 
     #  5.  For each record, parse the result...same overall format:
     #      "v=DMARC1" tag is mandatory and MUST appear first in the list.
@@ -472,7 +483,10 @@ sub verify_external_reporting {
     }
 
     #  6.  If the result includes no TXT resource records...stop
-    return if !scalar @matches;
+    if ( !scalar @matches ) {
+        print "\tno TXT match for $dest\n" if $self->verbose;
+        return;
+    };
 
     #  7.  If > 1 TXT resource record remains, external reporting authorized
     #  8.  If a "rua" or "ruf" tag is discovered, replace the
@@ -484,6 +498,7 @@ sub verify_external_reporting {
             ( split /@/, $uri_ref->{uri} )[-1] )
         {
   # the overriding URI MUST use the same destination host from the first step.
+            print "found override RUA: $or->{rua}\n" if $self->verbose;
             $self->result->published->rua( $or->{rua} );
         }
     }
@@ -503,7 +518,7 @@ Mail::DMARC::PurePerl - Pure Perl implementation of DMARC
 
 =head1 VERSION
 
-version 1.20130605
+version 1.20130610
 
 =head1 METHODS
 

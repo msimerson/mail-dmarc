@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-our $VERSION = '1.20130605'; # VERSION
+our $VERSION = '1.20130610'; # VERSION
 use strict;
 use warnings;
 
@@ -24,6 +24,12 @@ sub save_aggregate {
 
     my $rid = $self->get_report_id( $agg )
         or croak "failed to create report!";
+
+# on 6/8/2013, Microsoft spat out a bunch of reports with zero records.
+    if ( ! $agg->record ) {
+        warn "\ta report with ZERO records! Illegal.\n"; ## no critic (Carp)
+        return $rid;
+    };
 
     foreach my $rec ( @{ $agg->record } ) {
         $self->insert_agg_record($rid, $rec);
@@ -373,11 +379,12 @@ sub populate_agg_records {
     my $recs = $self->query( $self->get_rr_query, [ $rid ] );
 
     # aggregate the connections per IP-Disposition-DKIM-SPF uniqueness
-    my (%uniq, %pe, %auth, %ident, %reasons);
+    my (%ips, %uniq, %pe, %auth, %ident, %reasons);
     foreach my $rec ( @$recs ) {
-        my $ip = $rec->{source_ip};
-        my $key = join('-', $ip, @$rec{ qw/ disposition dkim spf / }); # hash slice
+        my $key = join('-', $rec->{source_ip},
+                @$rec{ qw/ disposition dkim spf / }); # hash slice
         $uniq{ $key }++;
+        $ips{$key} = $rec->{source_ip};
         $ident{$key}{header_from}   ||= $rec->{header_from};
         $ident{$key}{envelope_from} ||= $rec->{envelope_from};
         $ident{$key}{envelope_to}   ||= $rec->{envelope_to};
@@ -397,12 +404,11 @@ sub populate_agg_records {
     }
 
     foreach my $u ( keys %uniq ) {
-        my ($ip, $disp, $dkim, $spf ) = split /-/, $u;
         $$agg_ref->record( {
             identifiers  => $ident{$u},
             auth_results => $auth{$u},
             row => {
-                source_ip => $self->any_inet_ntop( $ip ),
+                source_ip => $self->any_inet_ntop( $ips{$u} ),
                 count     => $uniq{ $u },
                 policy_evaluated => {
                     %{ $pe{$u} },
@@ -696,7 +702,7 @@ Mail::DMARC::Report::Store::SQL - SQL storage for DMARC reports
 
 =head1 VERSION
 
-version 1.20130605
+version 1.20130610
 
 =head1 DESCRIPTION
 

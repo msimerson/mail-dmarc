@@ -9,6 +9,7 @@ META.yml
 Makefile.PL
 README
 README.mkdn
+TODO.md
 bin/dmarc_httpd
 bin/dmarc_lookup
 bin/dmarc_receive

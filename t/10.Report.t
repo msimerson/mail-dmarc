@@ -4,6 +4,11 @@ use warnings;
 use Data::Dumper;
 use Test::More;
 
+use IO::Compress::Gzip;
+use IO::Uncompress::Gunzip qw($GunzipError);
+#use IO::Compress::Zip;    # legacy format
+#use IO::Uncompress::Unzip qw($UnzipError);
+
 use lib 'lib';
 
 eval "use DBD::SQLite 1.31";
@@ -28,6 +33,8 @@ isa_ok( $report->receive, 'Mail::DMARC::Report::Receive' );
 isa_ok( $report->view,    'Mail::DMARC::Report::View' );
 
 my $test_dom = 'tnpi.net';
+
+test_compress();
 
 #setup_dmarc_result() or die "failed setup\n";
 #$dmarc->report->store() or diag Dumper( $dmarc->report );
@@ -66,3 +73,15 @@ sub setup_dmarc_result {
     ) or diag Dumper( $dmarc->result );
 }
 
+sub test_compress {
+
+    # has to be moderately large to overcome zip format overhead
+    my $xml        = '<xml></xml>' x 200;
+    my $compressed = $report->compress( \$xml );
+    ok( length $xml > length $compressed, 'compress_report' );
+
+    my $decompressed;
+    IO::Uncompress::Gunzip::gunzip( \$compressed => \$decompressed )
+        or die "unzip failed: $GunzipError\n";
+    cmp_ok( $decompressed, 'eq', $xml, "compress_report, extracts" );
+}

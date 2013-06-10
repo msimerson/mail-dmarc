@@ -71,6 +71,6 @@ resources:
   bugtracker: https://github.com/msimerson/mail-dmarc/issues
   homepage: https://github.com/msimerson/mail-dmarc/wiki
   repository: git://github.com/msimerson/mail-dmarc.git
-version: 1.20130605
+version: 1.20130610
 x_contributors:
   - 'ColocateUSA.net <company@colocateusa.net>'

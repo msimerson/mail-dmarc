@@ -1,11 +1,12 @@
 package Mail::DMARC::Report::Send::HTTP;
-our $VERSION = '1.20130605'; # VERSION
+our $VERSION = '1.20130610'; # VERSION
 use strict;
 use warnings;
 
 use Carp;
 
 #use Data::Dumper;
+#use HTTP::Tiny;     # a possibility
 use Net::HTTP;
 
 use parent 'Mail::DMARC::Base';
@@ -13,12 +14,12 @@ use parent 'Mail::DMARC::Base';
 sub post {
     my ( $self, $uri, $report, $gz ) = @_;
 
-    carp "http send incomplete!";
+    carp "http send feature not complete!";
     return;
 
     # TODO: test
 ## no critic (Unreachable)
-    my $ver = $Mail::DMARC::VERSION;
+    my $ver = $Mail::DMARC::Base::VERSION;
     my $s = Net::HTTP->new( Host => $uri->host ) or croak $@;
     $s->write_request(
         POST         => $uri->path,
@@ -49,7 +50,7 @@ Mail::DMARC::Report::Send::HTTP - send DMARC reports via HTTP
 
 =head1 VERSION
 
-version 1.20130605
+version 1.20130610
 
 =head1 12.2.2. HTTP
 

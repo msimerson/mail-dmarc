@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::View;
-our $VERSION = '1.20130605'; # VERSION
+our $VERSION = '1.20130610'; # VERSION
 use strict;
 use warnings;
 
@@ -19,7 +19,7 @@ Mail::DMARC::Report::View - view DMARC report(s)
 
 =head1 VERSION
 
-version 1.20130605
+version 1.20130610
 
 =head1 DESCRIPTION
 

@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::URI;
-our $VERSION = '1.20130605'; # VERSION
+our $VERSION = '1.20130610'; # VERSION
 use strict;
 use warnings;
 
@@ -17,20 +17,24 @@ sub parse {
 
     my @valids = ();
     foreach my $raw ( split /,/, $str ) {
+#       warn "raw: $raw\n" if $self->verbose;
         my ( $u, $size_f ) = split /!/, $raw;
         my $bytes = $self->get_size_limit($size_f);
-        my $uri = URI->new($u) or carp "can't parse URI from $u";
-        if ( $uri->scheme eq 'mailto' && lc substr( $u, 0, 7 ) eq 'mailto:' )
-        {
+        my $uri = URI->new($u) or do {
+            carp "can't parse URI from $u";
+            next;
+        };
+        my $scheme = $uri->scheme;
+        if ( $scheme eq 'mailto' && lc substr( $u, 0, 7 ) eq 'mailto:' ) {
             push @valids, { max_bytes => $bytes, uri => $uri };
             next;
         }
-        if ( $uri->scheme =~ /^http(s)?/x && lc substr( $u, 0, 4 ) eq 'http' )
-        {
+        if ( $scheme =~ /^http(s)?/x && lc substr( $u, 0, 4 ) eq 'http' ) {
             push @valids, { max_bytes => $bytes, uri => $uri };
             next;
         }
 
+#       print "invalid URI scheme: $scheme in $u\n";
  # 12.1 Discovery - URI schemes found in "rua" tag that are not implemented by
  #                  a Mail Receiver MUST be ignored.
     }
@@ -64,7 +68,7 @@ Mail::DMARC::Report::URI - a DMARC reporting URI
 
 =head1 VERSION
 
-version 1.20130605
+version 1.20130610
 
 =head1 DESCRIPTION
 
