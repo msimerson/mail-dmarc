@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20130610 2013-06-10 America/Los_Angeles
+
  - tolerate receiving reports with no records (ahem, hotmail.com)
  - simplify SMTP flow-of-control, additional SMTP tests
  - avoid the join/split of binip in SQL::populate_agg_records
