@@ -1,6 +1,9 @@
 
 {{$NEXT}}
 
+ -  dmarc_view_reports: improve gentoo support by adding /usr
+    to search path for GeoIP DBs on gentoo - Benny Pedersen
+
 1.20130610 2013-06-10 America/Los_Angeles
 
  - tolerate receiving reports with no records (ahem, hotmail.com)
