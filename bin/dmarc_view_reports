@@ -117,7 +117,7 @@ sub get_geoip_db {
         return;
     };
 
-    foreach my $local ( '/usr/local', '/opt/local' ) {
+    foreach my $local ( '/usr/local', '/opt/local', '/usr' ) {
         my $db_dir = "$local/share/GeoIP";
 
         foreach my $db (qw/ GeoIPCity GeoLiteCity /) {
