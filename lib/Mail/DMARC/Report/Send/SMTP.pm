@@ -32,6 +32,7 @@ sub connect_smtp {
         Timeout         => 10,
         Port            => 25,
         Hello           => $self->get_helo_hostname,
+        Debug           => $self->verbose ? 1 : 0,
         )
         or do {
             carp "SMTP connection failed\n";
@@ -51,6 +52,7 @@ sub connect_smtp_tls {
         Hello           => $self->get_helo_hostname,
         doSSL           => 'starttls',
         SSL_verify_mode => 'SSL_VERIFY_NONE',
+        Debug           => $self->verbose ? 1 : 0,
         )
         or do {
             warn "SSL connection failed\n"; ## no critic (Carp)

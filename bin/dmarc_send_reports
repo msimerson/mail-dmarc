@@ -5,12 +5,18 @@ use warnings;
 
 #use Data::Dumper;
 use Encode;
+use Getopt::Long;
 #use XML::LibXML;
+
+GetOptions (
+    'verbose+'   => \my $verbose,
+);
 
 $|++;
 use lib 'lib';
 use Mail::DMARC::Report;
 my $report = Mail::DMARC::Report->new();
+$report->verbose($verbose) if defined $verbose;
 
 #my $schema = 'http://dmarc.org/dmarc-xml/0.1/rua.xsd';
 #my $xmlschema = XML::LibXML::Schema->new( location => $schema );
