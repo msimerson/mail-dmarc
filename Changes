@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+ - dmarc_view_reports: fix for search queries with MySQL backend
+
 1.20130612 2013-06-11 America/Los_Angeles
 
  -  dmarc_view_reports: improve gentoo support by adding /usr

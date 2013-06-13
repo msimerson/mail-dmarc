@@ -43,14 +43,28 @@ sub retrieve {
 
     my $query = $self->get_report_query;
     my @params;
-    my @known = qw/ rid author from_domain begin end /;
 
-    foreach my $known ( @known ) {
-        next if ! defined $args{$known};
-        $query .= " AND $known=?";
-        push @params, $args{$known};
+    if ( $args{rid} ) {
+        $query .= " AND r.id=?";
+        push @params, $args{rid};
     };
-    my $reports = $self->query( $query );
+    if ( $args{begin} ) {
+        $query .= " AND r.begin>=?";
+        push @params, $args{begin};
+    };
+    if ( $args{end} ) {
+        $query .= " AND r.end<=?";
+        push @params, $args{end};
+    };
+    if ( $args{author} ) {
+        $query .= " AND a.org_name=?";
+        push @params, $args{author};
+    };
+    if ( $args{from_domain} ) {
+        $query .= " AND fd.domain=?";
+        push @params, $args{from_domain};
+    };
+    my $reports = $self->query( $query, \@params );
 
     foreach (@$reports ) {
         $_->{begin} = join(" ", split(/T/, $self->epoch_to_iso( $_->{begin} )));
@@ -647,8 +661,10 @@ sub query {
 sub query_any {
     my ( $self, $query, $err, @params ) = @_;
 #warn "query: $query\n" . join(", ", @params) . "\n";
-    my $r = $self->dbix->query( $query, @params )->hashes or croak $err;
+    my $r;
+    eval { $r = $self->dbix->query( $query, @params )->hashes; } or print '';
     $self->db_check_err($err);
+    die "something went wrong with: $err\n" if ! $r; ## no critic (Carp)
     return $r;
 }
 
