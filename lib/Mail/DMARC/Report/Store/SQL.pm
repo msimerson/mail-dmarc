@@ -484,6 +484,17 @@ sub insert_agg_record {
     return 1;
 }
 
+sub insert_error {
+    my ( $self, $rid, $error ) = @_;
+# wait >5m before trying to deliver this report again
+    $self->query('UPDATE report SET end=?', time + (5*60));
+
+    return $self->query(
+        'INSERT INTO report_error (report_id, error ) VALUES (??)',
+        [ $rid, $error ]
+    );
+}
+
 sub insert_rr_reason {
     my ( $self, $row_id, $type, $comment ) = @_;
     return $self->query(
