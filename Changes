@@ -6,26 +6,26 @@
  - dmarc_send_reports: added verbose option
  - dmarc_view_reports: fix for searches with MySQL backend
 
-1.20130612 2013-06-11 America/Los_Angeles
+1.20130612 2013-06-11
 
  -  dmarc_view_reports: improve gentoo support by adding /usr
     to search path for GeoIP DBs on gentoo - Benny Pedersen
 
-1.20130610 2013-06-10 America/Los_Angeles
+1.20130610 2013-06-10
 
  - tolerate receiving reports with no records (ahem, hotmail.com)
  - simplify SMTP flow-of-control, additional SMTP tests
  - avoid the join/split of binip in SQL::populate_agg_records
  - replace carp with warn in several places (more legible warning)
- - added RUA valididy checks to dmarc_lookup
+ - added RUA validity checks to dmarc_lookup
 
-1.20130605 2013-06-05 America/Los_Angeles
+1.20130605 2013-06-05
 
  - in aggregate reports, group by IP and auth results (was only IP)
  - refactored SQL::retrieve_todo into 3 methods, added tests
  - SQL: added unique constraint on domain.domain
 
-1.20130604 2013-06-04 America/Los_Angeles
+1.20130604 2013-06-04
 
  - main branches are master (devel) and releases (more obvious)
  - added mailing list impact FAQ
@@ -37,13 +37,13 @@
     - corrected subgrid row_id
  - additional validation of aggregate reports
 
-1.20130601 2013-05-31 America/Los_Angeles
+1.20130601 2013-05-31
 
  - make sure a report record exists when fetching SMTP todo
  - added insecure SMTP fallback if STARTTLS fails
  - added color coded results to HTTP grid
 
-1.20130531 2013-05-30 America/Los_Angeles
+1.20130531 2013-05-30
 
  - added gzip support to HTTP server, compressed JS files
  - reason is internally an arrayref of hashrefs (was a single hashref)
@@ -52,7 +52,7 @@
  - add validation and fixup of SPF result for incoming reports
  - normalized domain columns in spf & dkim tables
 
-1.20130528 2013-05-28 America/Los_Angeles
+1.20130528 2013-05-28
 
  - bump major version to 1
  - normalized domain columns in report_record
@@ -61,19 +61,19 @@
  - made internal represention of Mail::DMARC::dkim & spf consistent
    with their aggregate report representation
 
-0.20130528 2013-05-27 America/Los_Angeles
+0.20130528 2013-05-27
 
  - updated Send/SMTP to use report::aggregate
  - switched back to gzip reports (instead of zip)
  - dmarc_view_reports, added filtering ability, GeoIP location
 
-0.20130524 2013-05-23 America/Los_Angeles
+0.20130524 2013-05-23
 
  - added bin/dmarc_httpd
  - added bin/dmarc_view_reports
  - renamed: dmarc_report -> dmarc_send_reports
 
-0.20130521 2013-05-21 America/Los_Angeles
+0.20130521 2013-05-21
 
  - check for report_record existence before insertion
  - SQL: added report_record.count column
@@ -82,7 +82,7 @@
  - SQL: added table report_error
  - updated SQLite schema with native column types
 
-0.20130520 2013-05-19 America/Los_Angeles
+0.20130520 2013-05-19
 
  - added bin/dmarc_receive (via IMAP, mbox, or message file)
  - added report retrieval via IMAP
@@ -91,7 +91,7 @@
  - SQL: removed 'NOT NULL' requirements for values often missing from incoming
         reports.
 
-0.20130517 2013-05-17 America/Los_Angeles
+0.20130517 2013-05-17
 
  - send reports with zip until 7/1, gzip after
  - replace Socket 2 with Socket6 (better Windows compatibility)
@@ -101,12 +101,12 @@
  - add email hostname to MX list when attempting SMTP delivery
  - during report delivery, check report URI max size
 
-0.20130515 2013-05-15 America/Los_Angeles
+0.20130515 2013-05-15
 
  - use File::ShareDir to access share/*
  - added external reporting verification
 
-0.20130514 2013-05-14 America/Los_Angeles
+0.20130514 2013-05-14
 
  - moved DNS settings into config file
  - fixed a case where disposition was not set
@@ -117,9 +117,9 @@
  - several SQL schema changes
  - has_valid_reporting_uri does validation now
 
-0.20130510 2013-05-09 America/Los_Angeles
+0.20130510 2013-05-09
 
-0.20130507 2013-05-07 America/Los_Angeles
+0.20130507 2013-05-07
 
  - added sql and MySQL schema
  - added bin/dmarc_lookup
@@ -127,10 +127,11 @@
  - added Results.pm tests
  - added full section numbers to Draft quotes
 
-0.20130506 2013-05-06 America/Los_Angeles
+0.20130506 2013-05-06
 
  - added Result and Result/Evaluated.pm
  - consolidated DNS functions into DNS.pm
    - uses Regexp::Common, requiring perl 5.10.
  - Mail::DMARC::Policy is well defined and tested
  - setting up package
+
