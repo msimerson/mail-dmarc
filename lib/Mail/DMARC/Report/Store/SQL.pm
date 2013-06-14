@@ -384,7 +384,7 @@ sub populate_agg_metadata {
             [ $$report_ref->{rid} ]
         );
     foreach ( @$errors ) {
-        $agg_ref->metadata->error( $_->{error} );
+        $$agg_ref->metadata->error( $_->{error} );
     };
     return 1;
 };
