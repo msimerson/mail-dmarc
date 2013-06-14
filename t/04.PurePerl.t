@@ -20,14 +20,11 @@ my %test_policy = @test_policy;
 my $n;
 my $test_rec = join( '; ',
     map  { $_ . '=' . $test_policy{$_} }
-    grep { !( $n++ % 2 ) } @test_policy )
-    ;                 # extract keys from the ordered array
-
-#die "$test_rec\n";
+    grep { !( $n++ % 2 ) } @test_policy );  # extract keys
 
 my $dmarc = Mail::DMARC::PurePerl->new;
+$dmarc->config('t/mail-dmarc.ini');
 
-#$dmarc->header_from('example.com');
 isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 
 #done_testing(); exit;
@@ -39,6 +36,7 @@ test_exists_in_dns();
 test_is_spf_aligned();
 test_is_dkim_aligned();
 test_is_aligned();
+test_is_whitelisted();
 test_discover_policy();
 test_validate();
 test_has_valid_reporting_uri();
@@ -271,6 +269,21 @@ sub test_is_aligned {
     ok( !$dmarc->is_aligned(), "is_aligned, none" )
         or diag Data::Dumper::Dumper( $dmarc->is_aligned() );
 }
+
+sub test_is_whitelisted {
+    my %good = (
+            '127.0.0.1' => 'local_policy',
+            '127.0.0.3' => 'trusted_forwarder',
+        );
+    foreach ( keys %good ) {
+        cmp_ok( $dmarc->is_whitelisted($_), 'eq', $good{$_}, "is_whitelisted, $_, $good{$_}");
+    };
+
+    my @bad = qw/ 127.0.0.2 10.0.0.0 /;
+    foreach ( @bad ) {
+        ok( ! $dmarc->is_whitelisted($_), "is_whitelisted, neg, $_");
+    };
+};
 
 sub test_validate {
 

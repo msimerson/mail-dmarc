@@ -1,6 +1,7 @@
 
 {{$NEXT}}
 
+ - Added whitelist feature
  - SMTP: remove Subject: Report-ID <braces>
  - SMTP: more types of SMTP errors are stored and reported
  - dmarc_send_reports: added verbose option

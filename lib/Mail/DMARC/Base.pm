@@ -32,6 +32,7 @@ sub config {
 sub get_config {
     my $self = shift;
     my $file = shift || $self->{config_file} or croak;
+    return Config::Tiny->read($file) if -r $file;  # fully qualified
     my @dirs = qw[ /usr/local/etc /opt/local/etc /etc ./ ];
     foreach my $d (@dirs) {
         next                              if !-d $d;
