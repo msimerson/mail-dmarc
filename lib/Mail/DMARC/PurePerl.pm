@@ -258,23 +258,23 @@ sub is_spf_aligned {
 
 sub is_whitelisted {
     my $self = shift;
-    my $ip = shift || $self->source_ip;
+    my $s_ip = shift || $self->source_ip;
     if ( ! $self->{_whitelist} ) {
         my $white_file = $self->config->{smtp}{whitelist} or return;
-        return if ! -f $white_file or ! -r $white_file;
+        return if ! -f $white_file || ! -r $white_file;
         foreach my $line ( split /\n/, $self->slurp($white_file) ) {
             next if $line =~ /^#/; # ignore comments
-            my ($ip,$reason) = split /\s+/, $line, 2;
-            $self->{_whitelist}{$ip} = $reason;
+            my ($lip,$reason) = split /\s+/, $line, 2;
+            $self->{_whitelist}{$lip} = $reason;
         };
     };
-    return if ! $self->{_whitelist}{$ip};
+    return if ! $self->{_whitelist}{$s_ip};
 
-    my ($type, $comment) = split /\s+/, $self->{_whitelist}{$ip}, 2;
+    my ($type, $comment) = split /\s+/, $self->{_whitelist}{$s_ip}, 2;
     $self->result->disposition('none');
     $self->result->reason(
             type => $type,
-            ($comment =~ /\S/ ? ('comment' => $comment) : () ),
+            ($comment && $comment =~ /\S/ ? ('comment' => $comment) : () ),
             );
     return $type;
 };
