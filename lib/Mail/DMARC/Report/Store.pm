@@ -12,6 +12,11 @@ sub delete_report {
     return $self->backend->delete_report(@_);
 }
 
+sub error {
+    my $self = shift;
+    return $self->backend->insert_error(@_);
+}
+
 sub retrieve {
     my $self = shift;
     return $self->backend->retrieve(@_);

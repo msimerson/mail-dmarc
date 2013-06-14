@@ -115,7 +115,7 @@ sent by a Mail Receiver.
     my $id = POSIX::strftime( "%Y.%m.%d.", localtime ) . $rid;
     my $us = $self->config->{organization}{domain};
     my $pol_dom = $$agg_ref->policy_published->domain;
-    return "Report Domain: $pol_dom Submitter: $us Report-ID: $id";
+    return "Report Domain: $pol_dom Submitter: $us Report-ID:$id";
 }
 
 sub human_summary {

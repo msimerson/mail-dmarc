@@ -113,6 +113,8 @@ sub delete_report {
         $self->query( "DELETE FROM $table WHERE report_id=?", [$report_id] );
     }
 
+    $self->query( "DELETE FROM report_error WHERE report_id=?", [$report_id] );
+
     # In MySQL, where FK constraints DO cascade, this is the only query needed
     $self->query( "DELETE FROM report WHERE id=?", [$report_id] );
     return 1;

@@ -88,8 +88,8 @@ sub email {
     if ( ! $smtp ) {
         $smtp = $report->sendit->smtp->connect_smtp( $to ) or do {
             warn "\tSMTP connection failed\n";  ## no critic (Carp)
-            $report->store->insert_error($rid, "SSL connection failed");
-            $report->store->insert_error($rid, "SMTP connection failed");
+            $report->store->error($rid, "SSL connection for $to failed");
+            $report->store->error($rid, "SMTP connection for $to failed");
             return;
         };
     };
@@ -105,14 +105,14 @@ sub email {
     $smtp->mail($from) or do {
         my $err = $smtp->code ." ". $smtp->message;
         print "MAIL FROM $from rejected\n\t$err\n";
-        $report->store->insert_error($rid, $err);
+        $report->store->error($rid, $err);
         $smtp->quit;
         return;
     };
     $smtp->recipient( $to ) or do {
         my $err = $smtp->code ." ". $smtp->message;
         print "RCPT TO $to rejected\n\t$err\n";
-        $report->store->insert_error($rid, $err);
+        $report->store->error($rid, $err);
         $smtp->quit;
         return;
     };
@@ -123,7 +123,7 @@ sub email {
     $smtp->data($body) or do {
         my $err = $smtp->code ." ". $smtp->message;
         print "DATA for domain $to_domain report rejected\n\t$err\n";
-        $report->store->insert_error($rid, $err);
+        $report->store->error($rid, $err);
         return;
     };
     $smtp->quit;

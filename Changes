@@ -1,9 +1,9 @@
 
 {{$NEXT}}
 
- - SMTP: remove Subject->Report-ID <brackets>
+ - SMTP: remove Subject: Report-ID <braces>
+ - SMTP: more types of SMTP errors are stored and reported
  - dmarc_send_reports: added verbose option
-    - insert more SMTP errors to SQL store
  - dmarc_view_reports: fix for searches with MySQL backend
 
 1.20130612 2013-06-11 America/Los_Angeles

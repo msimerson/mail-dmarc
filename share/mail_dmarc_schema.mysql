@@ -55,7 +55,7 @@ CREATE TABLE `report_error` (
   `error` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '',
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY `report_id` (`report_id`),
-  CONSTRAINT `report_error_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `report` (`id`) ON UPDATE CASCADE
+  CONSTRAINT `report_error_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `report` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
