@@ -14,7 +14,6 @@ require Mail::DMARC::Report::Send;
 require Mail::DMARC::Report::Store;
 require Mail::DMARC::Report::Receive;
 require Mail::DMARC::Report::URI;
-require Mail::DMARC::Report::View;
 
 sub compress {
     my ( $self, $xml_ref ) = @_;
@@ -71,12 +70,6 @@ sub uri {
     my $self = shift;
     return $self->{uri} if ref $self->{uri};
     return $self->{uri} = Mail::DMARC::Report::URI->new();
-}
-
-sub view {
-    my $self = shift;
-    return $self->{view} if ref $self->{view};
-    return $self->{view} = Mail::DMARC::Report::View->new;
 }
 
 sub save_aggregate {

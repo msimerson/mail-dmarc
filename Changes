@@ -1,6 +1,9 @@
 
 {{$NEXT}}
 
+ - removed Report::View class, unused
+ - removed Report::View::CLI class, barely used
+
 1.20130614 2013-06-13 America/Los_Angeles
 
  - Added whitelist feature

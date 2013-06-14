@@ -22,7 +22,7 @@ sub smtp {
 
 1;
 
-# ABSTRACT: send a DMARC report object
+# ABSTRACT: report sending dispatch class
 __END__
 sub {}
 
@@ -39,6 +39,8 @@ A report sender needs to:
   3. format report in XML
   4. gzip the XML
   5. deliver report to Author Domain
+
+This class and subclasses provide methods used by L<dmarc_send_reports>.
 
 =head1 12.2.1 Email
 

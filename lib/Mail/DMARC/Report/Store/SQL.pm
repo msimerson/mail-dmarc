@@ -719,7 +719,7 @@ sub query_delete {
 
 1;
 
-# ABSTRACT: SQL storage for DMARC reports
+# ABSTRACT: store and retrieve reports from a SQL RDBMS
 __END__
 
 =head1 SYPNOSIS

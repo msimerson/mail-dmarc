@@ -30,7 +30,6 @@ isa_ok( $report, 'Mail::DMARC::Report' );
 isa_ok( $report->sendit,  'Mail::DMARC::Report::Send' );
 isa_ok( $report->store,   'Mail::DMARC::Report::Store' );
 isa_ok( $report->receive, 'Mail::DMARC::Report::Receive' );
-isa_ok( $report->view,    'Mail::DMARC::Report::View' );
 
 my $test_dom = 'tnpi.net';
 

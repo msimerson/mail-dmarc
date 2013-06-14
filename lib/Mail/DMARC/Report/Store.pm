@@ -45,7 +45,7 @@ sub backend {
 
 1;
 
-# ABSTRACT: persistent storage broker for DMARC reports
+# ABSTRACT: persistent storage broker for reports
 __END__
 
 =head1 SYNOPSIS

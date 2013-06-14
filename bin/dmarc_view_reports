@@ -24,14 +24,12 @@ my %command_line_options = (
 GetOptions (%command_line_options);
 
 use lib 'lib';
-use Mail::DMARC::Base;
-use Mail::DMARC::Report::View::CLI;
-my $cli = Mail::DMARC::Report::View::CLI->new;
-my $base = Mail::DMARC::Base->new;
+use Mail::DMARC::Report;
+my $report = Mail::DMARC::Report->new;
 my $gip;
 pod2usage if $help;
 
-my $reports = $cli->store->retrieve(
+my $reports = $report->store->retrieve(
         (defined $from      ? (from_domain => $from     ) : () ),
         (defined $author    ? (author      => $author   ) : () ),
         (defined $begin     ? (begin       => $begin    ) : () ),
@@ -41,7 +39,7 @@ my $reports = $cli->store->retrieve(
 print_header();
 
 foreach my $report ( reverse @$reports) {
-    my $rows = $cli->store->backend->get_rr( rid => $report->{rid} )->{rows};
+    my $rows = $report->store->backend->get_rr( rid => $report->{rid} )->{rows};
     next if $disposition && ! grep { $_->{disposition} eq $disposition } @$rows;
     next if $dkim && ! grep { $_->{dkim} eq $dkim } @$rows;
     next if $spf  && ! grep { $_->{spf } eq $spf } @$rows;
@@ -101,7 +99,7 @@ sub get_dns_hostname {
     my $ip = shift;
     return if ! $dns_opt;
 
-    my @answers = $base->has_dns_rr('PTR', $ip);
+    my @answers = $report->has_dns_rr('PTR', $ip);
     return '' if 0 == scalar @answers;
     return $answers[0] if scalar @answers >= 1;
     print Dumper(\@answers);
@@ -134,7 +132,7 @@ sub get_geoip_db {
 
 exit;
 # PODNAME: dmarc_view_reports
-# ABSTRACT: view DMARC reports on the command line
+# ABSTRACT: command line report viewer
 __END__
 sub {}
 

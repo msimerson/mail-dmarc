@@ -40,7 +40,7 @@ sub post {
 
 1;
 
-# ABSTRACT: send DMARC reports via HTTP
+# ABSTRACT: utility methods to send reports by HTTP
 __END__
 sub {}
 

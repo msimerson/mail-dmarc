@@ -72,7 +72,7 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 
 exit;
 # PODNAME: dmarc_send_reports
-# ABSTRACT: send aggregate reports to requestors
+# ABSTRACT: send aggregate reports
 
 sub email {
     my ($to, $shrunk, $agg_ref) = @_;

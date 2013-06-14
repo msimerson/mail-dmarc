@@ -32,7 +32,7 @@ $recv->from_file($file)  if $file;
 exit;
 
 # PODNAME: dmarc_receive
-# ABSTRACT: process received DMARC reports
+# ABSTRACT: receive aggregate reports via IMAP, mbox, or message file(s)
 __END__
 
 =head1 USAGE

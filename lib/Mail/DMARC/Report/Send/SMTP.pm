@@ -221,7 +221,7 @@ sub get_helo_hostname {
 
 1;
 
-# ABSTRACT: send DMARC reports via SMTP
+# ABSTRACT: utility methods for sending reports via SMTP
 __END__
 sub {}
 
