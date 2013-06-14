@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-our $VERSION = '1.20130612'; # VERSION
+our $VERSION = '1.20130614'; # VERSION
 use strict;
 use warnings;
 
@@ -43,14 +43,28 @@ sub retrieve {
 
     my $query = $self->get_report_query;
     my @params;
-    my @known = qw/ rid author from_domain begin end /;
 
-    foreach my $known ( @known ) {
-        next if ! defined $args{$known};
-        $query .= " AND $known=?";
-        push @params, $args{$known};
+    if ( $args{rid} ) {
+        $query .= " AND r.id=?";
+        push @params, $args{rid};
     };
-    my $reports = $self->query( $query );
+    if ( $args{begin} ) {
+        $query .= " AND r.begin>=?";
+        push @params, $args{begin};
+    };
+    if ( $args{end} ) {
+        $query .= " AND r.end<=?";
+        push @params, $args{end};
+    };
+    if ( $args{author} ) {
+        $query .= " AND a.org_name=?";
+        push @params, $args{author};
+    };
+    if ( $args{from_domain} ) {
+        $query .= " AND fd.domain=?";
+        push @params, $args{from_domain};
+    };
+    my $reports = $self->query( $query, \@params );
 
     foreach (@$reports ) {
         $_->{begin} = join(" ", split(/T/, $self->epoch_to_iso( $_->{begin} )));
@@ -98,6 +112,8 @@ sub delete_report {
     foreach my $table (qw/ report_policy_published report_record /) {
         $self->query( "DELETE FROM $table WHERE report_id=?", [$report_id] );
     }
+
+    $self->query( "DELETE FROM report_error WHERE report_id=?", [$report_id] );
 
     # In MySQL, where FK constraints DO cascade, this is the only query needed
     $self->query( "DELETE FROM report WHERE id=?", [$report_id] );
@@ -470,6 +486,17 @@ sub insert_agg_record {
     return 1;
 }
 
+sub insert_error {
+    my ( $self, $rid, $error ) = @_;
+# wait >5m before trying to deliver this report again
+    $self->query('UPDATE report SET end=?', time + (5*60));
+
+    return $self->query(
+        'INSERT INTO report_error (report_id, error ) VALUES (??)',
+        [ $rid, $error ]
+    );
+}
+
 sub insert_rr_reason {
     my ( $self, $row_id, $type, $comment ) = @_;
     return $self->query(
@@ -647,8 +674,10 @@ sub query {
 sub query_any {
     my ( $self, $query, $err, @params ) = @_;
 #warn "query: $query\n" . join(", ", @params) . "\n";
-    my $r = $self->dbix->query( $query, @params )->hashes or croak $err;
+    my $r;
+    eval { $r = $self->dbix->query( $query, @params )->hashes; } or print '';
     $self->db_check_err($err);
+    die "something went wrong with: $err\n" if ! $r; ## no critic (Carp)
     return $r;
 }
 
@@ -702,7 +731,7 @@ Mail::DMARC::Report::Store::SQL - SQL storage for DMARC reports
 
 =head1 VERSION
 
-version 1.20130612
+version 1.20130614
 
 =head1 DESCRIPTION
 
@@ -730,9 +759,19 @@ Davide Migliavacca <shari@cpan.org>
 
 =back
 
-=head1 CONTRIBUTOR
+=head1 CONTRIBUTORS
+
+=over 4
+
+=item *
+
+Benny Pedersen <me@junc.eu>
+
+=item *
 
 ColocateUSA.net <company@colocateusa.net>
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 

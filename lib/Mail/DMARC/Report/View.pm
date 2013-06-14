@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::View;
-our $VERSION = '1.20130612'; # VERSION
+our $VERSION = '1.20130614'; # VERSION
 use strict;
 use warnings;
 
@@ -19,7 +19,7 @@ Mail::DMARC::Report::View - view DMARC report(s)
 
 =head1 VERSION
 
-version 1.20130612
+version 1.20130614
 
 =head1 DESCRIPTION
 
@@ -39,9 +39,19 @@ Davide Migliavacca <shari@cpan.org>
 
 =back
 
-=head1 CONTRIBUTOR
+=head1 CONTRIBUTORS
+
+=over 4
+
+=item *
+
+Benny Pedersen <me@junc.eu>
+
+=item *
 
 ColocateUSA.net <company@colocateusa.net>
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 

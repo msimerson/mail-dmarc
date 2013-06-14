@@ -39,6 +39,7 @@ lib/Mail/DMARC/Report/View/HTTP.pm
 lib/Mail/DMARC/Result.pm
 mail-dmarc.ini
 share/dmarc-report-2013-draft.xsd
+share/dmarc_whitelist
 share/html/css/ellipsis-xbl.xml
 share/html/css/ui.jqgrid.css
 share/html/css/ui.multiselect.css
@@ -122,3 +123,4 @@ t/mail-dmarc.ini
 t/perlcritic.rc
 t/release-pod-coverage.t
 t/release-pod-syntax.t
+t/whitelist

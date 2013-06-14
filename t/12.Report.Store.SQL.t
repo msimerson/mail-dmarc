@@ -17,7 +17,7 @@ if ($@) {
 
 my $test_domain = 'example.com';
 my ($report_id, $rr_id, $policy, $dkim, $spf, $reasons, $identifiers, $policy_evaluated);
-my $begin = time - 1000;
+my $begin = time - 10000;
 my $end = time - 100;
 
 my $mod = 'Mail::DMARC::Report::Store::SQL';
@@ -49,6 +49,7 @@ test_insert_rr_spf();
 test_insert_rr_dkim();
 test_insert_rr_reason();
 
+test_retrieve();
 test_retrieve_todo();
 test_get_author_id(3);
 test_get_report();
@@ -120,6 +121,24 @@ sub test_get_report_policy_published {
     ok( $pp, "get_report_policy_published");
     is_deeply( $pp, $policy, "get_report_policy_published, deeply" )
         or diag Dumper( $pp, $policy );
+};
+
+sub test_retrieve {
+    my $r = $sql->retrieve;
+    ok( scalar @$r, "retrieve, " . scalar @$r );
+
+    my %tests = (
+        rid         => 2,
+        author      => 'Test Company',
+        from_domain => 'recip.example.com',
+        begin       => $begin,
+        end         => $end,
+    );
+
+    foreach ( keys %tests ) {
+        my $r = $sql->retrieve( $_ => $tests{$_} );
+        ok( @$r, "retrieve, $_, " . scalar @$r );
+    };
 };
 
 sub test_retrieve_todo {
@@ -208,8 +227,8 @@ sub test_get_report_id {
     my %meta = (
         org_name  => 'Test Company',
         email     => 'dmarc-reporter@example.com',
-        begin     => time - 10000,
-        end       => time - 100,
+        begin     => $begin,
+        end       => $end,
     );
     my $report = Mail::DMARC::Report->new();
     foreach ( keys %meta ) {

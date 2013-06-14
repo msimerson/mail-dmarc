@@ -4,7 +4,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 # VERSION
 
-version 1.20130612
+version 1.20130614
 
 # SYNOPSIS
 
@@ -265,9 +265,10 @@ Qpsmtpd plugin: https://github.com/qpsmtpd-dev/qpsmtpd-dev/blob/master/plugins/d
 - Matt Simerson <msimerson@cpan.org>
 - Davide Migliavacca <shari@cpan.org>
 
-# CONTRIBUTOR
+# CONTRIBUTORS
 
-ColocateUSA.net <company@colocateusa.net>
+- Benny Pedersen <me@junc.eu>
+- ColocateUSA.net <company@colocateusa.net>
 
 # COPYRIGHT AND LICENSE
 

@@ -2,7 +2,7 @@ NAME
     Mail::DMARC - Perl implementation of DMARC
 
 VERSION
-    version 1.20130612
+    version 1.20130614
 
 SYNOPSIS
     DMARC: Domain-based Message Authentication, Reporting and Conformance
@@ -294,8 +294,10 @@ AUTHORS
 
     *   Davide Migliavacca <shari@cpan.org>
 
-CONTRIBUTOR
-    ColocateUSA.net <company@colocateusa.net>
+CONTRIBUTORS
+    *   Benny Pedersen <me@junc.eu>
+
+    *   ColocateUSA.net <company@colocateusa.net>
 
 COPYRIGHT AND LICENSE
     This software is copyright (c) 2013 by ColocateUSA.com.

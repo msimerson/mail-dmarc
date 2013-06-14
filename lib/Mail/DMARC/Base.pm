@@ -1,5 +1,5 @@
 package Mail::DMARC::Base;
-our $VERSION = '1.20130612'; # VERSION
+our $VERSION = '1.20130614'; # VERSION
 use strict;
 use warnings;
 
@@ -32,6 +32,7 @@ sub config {
 sub get_config {
     my $self = shift;
     my $file = shift || $self->{config_file} or croak;
+    return Config::Tiny->read($file) if -r $file;  # fully qualified
     my @dirs = qw[ /usr/local/etc /opt/local/etc /etc ./ ];
     foreach my $d (@dirs) {
         next                              if !-d $d;
@@ -217,7 +218,7 @@ Mail::DMARC::Base - DMARC utility functions
 
 =head1 VERSION
 
-version 1.20130612
+version 1.20130614
 
 =head1 METHODS
 
@@ -265,9 +266,19 @@ Davide Migliavacca <shari@cpan.org>
 
 =back
 
-=head1 CONTRIBUTOR
+=head1 CONTRIBUTORS
+
+=over 4
+
+=item *
+
+Benny Pedersen <me@junc.eu>
+
+=item *
 
 ColocateUSA.net <company@colocateusa.net>
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 

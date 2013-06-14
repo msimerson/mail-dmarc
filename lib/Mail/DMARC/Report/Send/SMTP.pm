@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Send::SMTP;
-our $VERSION = '1.20130612'; # VERSION
+our $VERSION = '1.20130614'; # VERSION
 use strict;
 use warnings;
 
@@ -32,6 +32,7 @@ sub connect_smtp {
         Timeout         => 10,
         Port            => 25,
         Hello           => $self->get_helo_hostname,
+        Debug           => $self->verbose ? 1 : 0,
         )
         or do {
             carp "SMTP connection failed\n";
@@ -51,6 +52,7 @@ sub connect_smtp_tls {
         Hello           => $self->get_helo_hostname,
         doSSL           => 'starttls',
         SSL_verify_mode => 'SSL_VERIFY_NONE',
+        Debug           => $self->verbose ? 1 : 0,
         )
         or do {
             warn "SSL connection failed\n"; ## no critic (Carp)
@@ -89,11 +91,11 @@ sub get_subject {
     my ( $self, $agg_ref ) = @_;
 
 
-    my $rid = $$agg_ref->{metadata}{report_id} || time;
+    my $rid = $$agg_ref->metadata->report_id || time;
     my $id = POSIX::strftime( "%Y.%m.%d.", localtime ) . $rid;
     my $us = $self->config->{organization}{domain};
-    my $pol_dom = $$agg_ref->{policy_published}{domain};
-    return "Report Domain: $pol_dom Submitter: $us Report-ID: <$id>";
+    my $pol_dom = $$agg_ref->policy_published->domain;
+    return "Report Domain: $pol_dom Submitter: $us Report-ID:$id";
 }
 
 sub human_summary {
@@ -209,7 +211,7 @@ Mail::DMARC::Report::Send::SMTP - send DMARC reports via SMTP
 
 =head1 VERSION
 
-version 1.20130612
+version 1.20130614
 
 =head2 SUBJECT FIELD
 
@@ -285,9 +287,19 @@ Davide Migliavacca <shari@cpan.org>
 
 =back
 
-=head1 CONTRIBUTOR
+=head1 CONTRIBUTORS
+
+=over 4
+
+=item *
+
+Benny Pedersen <me@junc.eu>
+
+=item *
 
 ColocateUSA.net <company@colocateusa.net>
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 

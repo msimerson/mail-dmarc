@@ -1,16 +1,22 @@
 #!/usr/bin/perl
-our $VERSION = '1.20130612'; # VERSION
+our $VERSION = '1.20130614'; # VERSION
 use strict;
 use warnings;
 
 #use Data::Dumper;
 use Encode;
+use Getopt::Long;
 #use XML::LibXML;
+
+GetOptions (
+    'verbose+'   => \my $verbose,
+);
 
 $|++;
 use lib 'lib';
 use Mail::DMARC::Report;
 my $report = Mail::DMARC::Report->new();
+$report->verbose($verbose) if defined $verbose;
 
 #my $schema = 'http://dmarc.org/dmarc-xml/0.1/rua.xsd';
 #my $xmlschema = XML::LibXML::Schema->new( location => $schema );
@@ -78,9 +84,12 @@ sub email {
         $shrunk = $report->compress(\$xml);
     };
 
+    my $rid = $$agg_ref->metadata->report_id;
     if ( ! $smtp ) {
         $smtp = $report->sendit->smtp->connect_smtp( $to ) or do {
             warn "\tSMTP connection failed\n";  ## no critic (Carp)
+            $report->store->error($rid, "SSL connection for $to failed");
+            $report->store->error($rid, "SMTP connection for $to failed");
             return;
         };
     };
@@ -94,12 +103,16 @@ sub email {
 
     my $from = $report->config->{organization}{email};
     $smtp->mail($from) or do {
-        print "MAIL FROM $from rejected\n";
+        my $err = $smtp->code ." ". $smtp->message;
+        print "MAIL FROM $from rejected\n\t$err\n";
+        $report->store->error($rid, $err);
         $smtp->quit;
         return;
     };
     $smtp->recipient( $to ) or do {
-        print "RCPT TO $to rejected\n";
+        my $err = $smtp->code ." ". $smtp->message;
+        print "RCPT TO $to rejected\n\t$err\n";
+        $report->store->error($rid, $err);
         $smtp->quit;
         return;
     };
@@ -108,7 +121,9 @@ sub email {
     my $to_domain = $$agg_ref->policy_published->domain;
 
     $smtp->data($body) or do {
-        print "DATA for domain $to_domain report rejected\n";
+        my $err = $smtp->code ." ". $smtp->message;
+        print "DATA for domain $to_domain report rejected\n\t$err\n";
+        $report->store->error($rid, $err);
         return;
     };
     $smtp->quit;
@@ -125,7 +140,7 @@ dmarc_send_reports - send aggregate reports to requestors
 
 =head1 VERSION
 
-version 1.20130612
+version 1.20130614
 
 =head1 AUTHORS
 
@@ -141,9 +156,19 @@ Davide Migliavacca <shari@cpan.org>
 
 =back
 
-=head1 CONTRIBUTOR
+=head1 CONTRIBUTORS
+
+=over 4
+
+=item *
+
+Benny Pedersen <me@junc.eu>
+
+=item *
 
 ColocateUSA.net <company@colocateusa.net>
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 

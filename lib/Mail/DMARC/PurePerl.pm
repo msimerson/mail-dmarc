@@ -1,5 +1,5 @@
 package Mail::DMARC::PurePerl;
-our $VERSION = '1.20130612'; # VERSION
+our $VERSION = '1.20130614'; # VERSION
 use strict;
 use warnings;
 
@@ -53,6 +53,8 @@ sub validate {
         return;
     }
 
+    return if $self->is_whitelisted;
+
     # 7.1.  Policy Fallback Mechanism
     # If the "pct" tag is present in a policy record, application of policy
     # is done on a selective basis.
@@ -68,16 +70,9 @@ sub validate {
         return;
     }
 
-    # Those that are not thus
-    # selected MUST instead be subjected to the next policy lower in terms
-    # of severity.  In decreasing order of severity, the policies are
-    # "reject", "quarantine", and "none".
-    #
-    # For example, in the presence of "pct=50" in the DMARC policy record
-    # for "example.com", half of the mesages with "example.com" in the
-    # RFC5322.From field which fail the DMARC test would be subjected to
-    # "reject" action, and the remainder subjected to "quarantine" action.
-
+    # Those that are not thus selected MUST instead be subjected to the next
+    # policy lower in terms of severity.  In decreasing order of severity,
+    # the policies are "reject", "quarantine", and "none".
     $self->result->disposition(
         ( $effective_p eq 'reject' ) ? 'quarantine' : 'none' );
     return;
@@ -260,6 +255,29 @@ sub is_spf_aligned {
     $self->result->spf('fail');
     return 0;
 }
+
+sub is_whitelisted {
+    my $self = shift;
+    my $s_ip = shift || $self->source_ip;
+    if ( ! $self->{_whitelist} ) {
+        my $white_file = $self->config->{smtp}{whitelist} or return;
+        return if ! -f $white_file || ! -r $white_file;
+        foreach my $line ( split /\n/, $self->slurp($white_file) ) {
+            next if $line =~ /^#/; # ignore comments
+            my ($lip,$reason) = split /\s+/, $line, 2;
+            $self->{_whitelist}{$lip} = $reason;
+        };
+    };
+    return if ! $self->{_whitelist}{$s_ip};
+
+    my ($type, $comment) = split /\s+/, $self->{_whitelist}{$s_ip}, 2;
+    $self->result->disposition('none');
+    $self->result->reason(
+            type => $type,
+            ($comment && $comment =~ /\S/ ? ('comment' => $comment) : () ),
+            );
+    return $type;
+};
 
 sub has_valid_reporting_uri {
     my ( $self, $rua ) = @_;
@@ -518,7 +536,7 @@ Mail::DMARC::PurePerl - Pure Perl implementation of DMARC
 
 =head1 VERSION
 
-version 1.20130612
+version 1.20130614
 
 =head1 METHODS
 
@@ -677,9 +695,19 @@ Davide Migliavacca <shari@cpan.org>
 
 =back
 
-=head1 CONTRIBUTOR
+=head1 CONTRIBUTORS
+
+=over 4
+
+=item *
+
+Benny Pedersen <me@junc.eu>
+
+=item *
 
 ColocateUSA.net <company@colocateusa.net>
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 
