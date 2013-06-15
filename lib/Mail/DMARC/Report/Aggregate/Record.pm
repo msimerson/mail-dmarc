@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate::Record;
-our $VERSION = '1.20130614'; # VERSION
+our $VERSION = '1.20130615'; # VERSION
 use strict;
 use warnings;
 
@@ -64,7 +64,11 @@ Mail::DMARC::Report::Aggregate::Record - record section of aggregate report
 
 =head1 VERSION
 
-version 1.20130614
+version 1.20130615
+
+=head1 DESCRIPTION
+
+An aggregate report record, with object methods for identifiers, auth_results, and each row.
 
 =head1 AUTHORS
 
@@ -105,6 +109,4 @@ the same terms as the Perl 5 programming language system itself.
 
 __END__
 sub {}
-
-
 

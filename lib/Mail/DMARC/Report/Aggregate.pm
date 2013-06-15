@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate;
-our $VERSION = '1.20130614'; # VERSION
+our $VERSION = '1.20130615'; # VERSION
 use strict;
 use warnings;
 
@@ -160,23 +160,23 @@ sub get_policy_evaluated_as_xml {
 }
 
 1;
-# ABSTRACT: DMARC aggregate report
+# ABSTRACT: aggregate report object
 
 =pod
 
 =head1 NAME
 
-Mail::DMARC::Report::Aggregate - DMARC aggregate report
+Mail::DMARC::Report::Aggregate - aggregate report object
 
 =head1 VERSION
 
-version 1.20130614
+version 1.20130615
 
 =head1 DESCRIPTION
 
-This class is used internally as the canonization of an aggregate report.
+This class is used as the canonization of an aggregate report.
 
-When reports are received, the XML is parsed into an L<Aggregate|Mail::DMARC::Report::Aggregate> object, which then gets passed to the Report::Store and saved. When sending DMARC reports, data is extracted from the L<Store|Mail::DMARC::Report::Store> as an Aggregate object, assembled as XML, and sent.
+When reports are received, the XML is parsed into an L<Aggregate|Mail::DMARC::Report::Aggregate> object, which then gets passed to the Report::Store and saved. When sending DMARC reports, data is extracted from the L<Store|Mail::DMARC::Report::Store> as an Aggregate object, exported as XML, and sent.
 
 =head1 2013 Draft Description
 

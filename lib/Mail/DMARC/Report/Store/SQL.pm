@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-our $VERSION = '1.20130614'; # VERSION
+our $VERSION = '1.20130615'; # VERSION
 use strict;
 use warnings;
 
@@ -384,7 +384,7 @@ sub populate_agg_metadata {
             [ $$report_ref->{rid} ]
         );
     foreach ( @$errors ) {
-        $agg_ref->metadata->error( $_->{error} );
+        $$agg_ref->metadata->error( $_->{error} );
     };
     return 1;
 };
@@ -489,7 +489,7 @@ sub insert_agg_record {
 sub insert_error {
     my ( $self, $rid, $error ) = @_;
 # wait >5m before trying to deliver this report again
-    $self->query('UPDATE report SET end=?', time + (5*60));
+    $self->query('UPDATE report SET end=? WHERE id=?', [time + (5*60), $rid]);
 
     return $self->query(
         'INSERT INTO report_error (report_id, error ) VALUES (??)',
@@ -719,7 +719,7 @@ sub query_delete {
 
 1;
 
-# ABSTRACT: SQL storage for DMARC reports
+# ABSTRACT: store and retrieve reports from a SQL RDBMS
 
 __END__
 
@@ -727,11 +727,11 @@ __END__
 
 =head1 NAME
 
-Mail::DMARC::Report::Store::SQL - SQL storage for DMARC reports
+Mail::DMARC::Report::Store::SQL - store and retrieve reports from a SQL RDBMS
 
 =head1 VERSION
 
-version 1.20130614
+version 1.20130615
 
 =head1 DESCRIPTION
 

@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store;
-our $VERSION = '1.20130614'; # VERSION
+our $VERSION = '1.20130615'; # VERSION
 use strict;
 use warnings;
 
@@ -45,7 +45,7 @@ sub backend {
 
 1;
 
-# ABSTRACT: persistent storage broker for DMARC reports
+# ABSTRACT: persistent storage broker for reports
 
 __END__
 
@@ -53,11 +53,11 @@ __END__
 
 =head1 NAME
 
-Mail::DMARC::Report::Store - persistent storage broker for DMARC reports
+Mail::DMARC::Report::Store - persistent storage broker for reports
 
 =head1 VERSION
 
-version 1.20130614
+version 1.20130615
 
 =head1 SYNOPSIS
 

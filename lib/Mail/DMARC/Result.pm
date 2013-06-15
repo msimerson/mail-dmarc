@@ -1,5 +1,5 @@
 package Mail::DMARC::Result;
-our $VERSION = '1.20130614'; # VERSION
+our $VERSION = '1.20130615'; # VERSION
 use strict;
 use warnings;
 
@@ -83,7 +83,7 @@ sub reason {
 
 1;
 
-# ABSTRACT: DMARC processing results
+# ABSTRACT: processing result object
 
 package Mail::DMARC::Result::Reason;    ## no critic (MultiplePackages)
 use strict;
@@ -120,17 +120,17 @@ sub comment {
 
 1;
 
-# ABSTRACT: the results of applying a policy
+# ABSTRACT: policy override reason
 
 =pod
 
 =head1 NAME
 
-Mail::DMARC::Result - DMARC processing results
+Mail::DMARC::Result - processing result object
 
 =head1 VERSION
 
-version 1.20130614
+version 1.20130615
 
 =head1 OVERVIEW
 

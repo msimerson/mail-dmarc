@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Send::SMTP;
-our $VERSION = '1.20130614'; # VERSION
+our $VERSION = '1.20130615'; # VERSION
 use strict;
 use warnings;
 
@@ -201,17 +201,17 @@ sub get_helo_hostname {
 
 1;
 
-# ABSTRACT: send DMARC reports via SMTP
+# ABSTRACT: utility methods for sending reports via SMTP
 
 =pod
 
 =head1 NAME
 
-Mail::DMARC::Report::Send::SMTP - send DMARC reports via SMTP
+Mail::DMARC::Report::Send::SMTP - utility methods for sending reports via SMTP
 
 =head1 VERSION
 
-version 1.20130614
+version 1.20130615
 
 =head2 SUBJECT FIELD
 

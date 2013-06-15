@@ -1,5 +1,5 @@
 package Mail::DMARC::Report;
-our $VERSION = '1.20130614'; # VERSION
+our $VERSION = '1.20130615'; # VERSION
 use strict;
 use warnings;
 
@@ -14,7 +14,6 @@ require Mail::DMARC::Report::Send;
 require Mail::DMARC::Report::Store;
 require Mail::DMARC::Report::Receive;
 require Mail::DMARC::Report::URI;
-require Mail::DMARC::Report::View;
 
 sub compress {
     my ( $self, $xml_ref ) = @_;
@@ -73,12 +72,6 @@ sub uri {
     return $self->{uri} = Mail::DMARC::Report::URI->new();
 }
 
-sub view {
-    my $self = shift;
-    return $self->{view} if ref $self->{view};
-    return $self->{view} = Mail::DMARC::Report::View->new;
-}
-
 sub save_aggregate {
     my $self = shift;
     return $self->store->backend->save_aggregate( $self->aggregate );
@@ -96,7 +89,7 @@ Mail::DMARC::Report - A DMARC report interface
 
 =head1 VERSION
 
-version 1.20130614
+version 1.20130615
 
 =head1 DESCRIPTION
 

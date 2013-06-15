@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Send;
-our $VERSION = '1.20130614'; # VERSION
+our $VERSION = '1.20130615'; # VERSION
 use strict;
 use warnings;
 
@@ -22,17 +22,17 @@ sub smtp {
 
 1;
 
-# ABSTRACT: send a DMARC report object
+# ABSTRACT: report sending dispatch class
 
 =pod
 
 =head1 NAME
 
-Mail::DMARC::Report::Send - send a DMARC report object
+Mail::DMARC::Report::Send - report sending dispatch class
 
 =head1 VERSION
 
-version 1.20130614
+version 1.20130615
 
 =head1 DESCRIPTION
 
@@ -47,6 +47,8 @@ A report sender needs to:
   3. format report in XML
   4. gzip the XML
   5. deliver report to Author Domain
+
+This class and subclasses provide methods used by L<dmarc_send_reports>.
 
 =head1 12.2.1 Email
 

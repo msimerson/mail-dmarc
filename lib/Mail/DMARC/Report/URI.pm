@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::URI;
-our $VERSION = '1.20130614'; # VERSION
+our $VERSION = '1.20130615'; # VERSION
 use strict;
 use warnings;
 
@@ -58,17 +58,28 @@ sub get_size_limit {
 
 1;
 
-# ABSTRACT: a DMARC reporting URI
+# ABSTRACT: a DMARC report URI
 
 =pod
 
 =head1 NAME
 
-Mail::DMARC::Report::URI - a DMARC reporting URI
+Mail::DMARC::Report::URI - a DMARC report URI
 
 =head1 VERSION
 
-version 1.20130614
+version 1.20130615
+
+=head1 SYNOPSIS
+
+  use Mail::DMARC::URI;
+  my $duri = Mail::DMARC::URI->new;
+  my $uri_ref = $duri->parse('mailto:rua@example.com,mailto:rua@external.otherdomain.com');
+  foreach my $u ( @$uri_ref ) {
+      my $method = $u->{uri};
+      my $max    = $u->{max_bytes};
+      ... do some URI stuff ...
+  };
 
 =head1 DESCRIPTION
 
