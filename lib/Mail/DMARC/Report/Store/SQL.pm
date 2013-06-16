@@ -663,9 +663,7 @@ sub query {
     return $self->query_insert( $query, $err, @params )
         if $query =~ /^INSERT/ix;
     return $self->query_replace( $query, $err, @params )
-        if $query =~ /^REPLACE/ix;
-    return $self->query_update( $query, $err, @params )
-        if $query =~ /^UPDATE/ix;
+        if $query =~ /^(?:REPLACE|UPDATE)/ix;
     return $self->query_delete( $query, $err, @params )
         if $query =~ /^DELETE/ix;
     return $self->query_any( $query, $err, @params );
@@ -698,13 +696,6 @@ sub query_replace {
     $self->dbix->query( $query, @params ) or croak $err;
     $self->db_check_err($err);
     return 1;    # sorry, no indication of success
-}
-
-sub query_update {
-    my ( $self, $query, $err, @params ) = @_;
-    $self->dbix->query( $query, @params ) or croak $err;
-    $self->db_check_err($err);
-    return 1;
 }
 
 sub query_delete {
