@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20130616 2013-06-16 America/Los_Angeles
+
  - combined update/replace SQL methods
  - dmarc_view_reports: fix duplicated variable name
 
