@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-our $VERSION = '1.20130615'; # VERSION
+our $VERSION = '1.20130616'; # VERSION
 use strict;
 use warnings;
 
@@ -663,9 +663,7 @@ sub query {
     return $self->query_insert( $query, $err, @params )
         if $query =~ /^INSERT/ix;
     return $self->query_replace( $query, $err, @params )
-        if $query =~ /^REPLACE/ix;
-    return $self->query_update( $query, $err, @params )
-        if $query =~ /^UPDATE/ix;
+        if $query =~ /^(?:REPLACE|UPDATE)/ix;
     return $self->query_delete( $query, $err, @params )
         if $query =~ /^DELETE/ix;
     return $self->query_any( $query, $err, @params );
@@ -700,13 +698,6 @@ sub query_replace {
     return 1;    # sorry, no indication of success
 }
 
-sub query_update {
-    my ( $self, $query, $err, @params ) = @_;
-    $self->dbix->query( $query, @params ) or croak $err;
-    $self->db_check_err($err);
-    return 1;
-}
-
 sub query_delete {
     my ( $self, $query, $err, @params ) = @_;
     $self->dbix->query( $query, @params ) or croak $err;
@@ -731,7 +722,7 @@ Mail::DMARC::Report::Store::SQL - store and retrieve reports from a SQL RDBMS
 
 =head1 VERSION
 
-version 1.20130615
+version 1.20130616
 
 =head1 DESCRIPTION
 
