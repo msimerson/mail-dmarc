@@ -38,12 +38,12 @@ my $reports = $report->store->retrieve(
 
 print_header();
 
-foreach my $report ( reverse @$reports) {
-    my $rows = $report->store->backend->get_rr( rid => $report->{rid} )->{rows};
+foreach my $report_ref ( reverse @$reports ) {
+    my $rows = $report->store->backend->get_rr( rid => $report_ref->{rid} )->{rows};
     next if $disposition && ! grep { $_->{disposition} eq $disposition } @$rows;
     next if $dkim && ! grep { $_->{dkim} eq $dkim } @$rows;
     next if $spf  && ! grep { $_->{spf } eq $spf } @$rows;
-    print_record($report);
+    print_record($report_ref);
     print_rows( $rows );
     print "\n";
 }
