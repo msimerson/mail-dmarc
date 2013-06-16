@@ -1,6 +1,9 @@
 
 {{$NEXT}}
 
+ - combined update/replace SQL methods
+ - dmarc_view_reports: fix duplicated variable name
+
 1.20130615 2013-06-15 America/Los_Angeles
 
  - bug fixes and purge unused classes
