@@ -446,7 +446,10 @@ sub external_report {
     if ( 'mailto' eq $uri->scheme ) {
         my $dest_email = $uri->path;
         my ($dest_host) = ( split /@/, $dest_email )[-1];
-        if ($dest_host eq $dmarc_dom ) {
+        if ( $self->get_organizational_domain( $dest_host )
+                eq
+             $self->get_organizational_domain( $dmarc_dom )
+             ) {
             print "$dest_host not external for $dmarc_dom\n" if $self->verbose;
             return 0;
         };
