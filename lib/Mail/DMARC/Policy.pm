@@ -1,5 +1,5 @@
 package Mail::DMARC::Policy;
-our $VERSION = '1.20130616'; # VERSION
+our $VERSION = '1.20130625'; # VERSION
 use strict;
 use warnings;
 
@@ -23,10 +23,11 @@ sub new {
 }
 
 sub parse {
-    my ( $self, $str, @fluff ) = @_;
-    croak "invalid parse request" if 0 != scalar @fluff;
+    my ( $self, $str, @junk ) = @_;
+    croak "invalid parse request" if 0 != scalar @junk;
     $str =~ s/\s//g;                                  # remove all whitespace
     $str =~ s/\\;/;/;                                 # replace \; with ;
+    chop $str if ';' eq substr $str, -1, 1;           # remove a trailing ;
     my $policy = { map { split /=/, $_ } split /;/, $str };
     croak "invalid policy" if !$self->is_valid($policy);
     return bless $policy, ref $self;    # inherited defaults + overrides
@@ -171,7 +172,7 @@ Mail::DMARC::Policy - a DMARC policy in object format
 
 =head1 VERSION
 
-version 1.20130616
+version 1.20130625
 
 =head1 SYNOPSIS
 

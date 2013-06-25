@@ -1,5 +1,5 @@
 package Mail::DMARC::PurePerl;
-our $VERSION = '1.20130616'; # VERSION
+our $VERSION = '1.20130625'; # VERSION
 use strict;
 use warnings;
 
@@ -291,6 +291,7 @@ sub has_valid_reporting_uri {
         my $ext = $self->verify_external_reporting($uri_ref);
         push @has_permission, $ext if $ext;
     }
+    return @has_permission if wantarray;
     return scalar @has_permission;
 }
 
@@ -446,7 +447,10 @@ sub external_report {
     if ( 'mailto' eq $uri->scheme ) {
         my $dest_email = $uri->path;
         my ($dest_host) = ( split /@/, $dest_email )[-1];
-        if ($dest_host eq $dmarc_dom ) {
+        if ( $self->get_organizational_domain( $dest_host )
+                eq
+             $self->get_organizational_domain( $dmarc_dom )
+             ) {
             print "$dest_host not external for $dmarc_dom\n" if $self->verbose;
             return 0;
         };
@@ -536,7 +540,7 @@ Mail::DMARC::PurePerl - Pure Perl implementation of DMARC
 
 =head1 VERSION
 
-version 1.20130616
+version 1.20130625
 
 =head1 METHODS
 

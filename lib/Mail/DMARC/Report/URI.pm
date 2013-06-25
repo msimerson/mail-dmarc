@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::URI;
-our $VERSION = '1.20130616'; # VERSION
+our $VERSION = '1.20130625'; # VERSION
 use strict;
 use warnings;
 
@@ -17,14 +17,14 @@ sub parse {
 
     my @valids = ();
     foreach my $raw ( split /,/, $str ) {
-#       warn "raw: $raw\n" if $self->verbose;
+#       warn "raw: $raw\n";
         my ( $u, $size_f ) = split /!/, $raw;
         my $bytes = $self->get_size_limit($size_f);
         my $uri = URI->new($u) or do {
             carp "can't parse URI from $u";
             next;
         };
-        my $scheme = $uri->scheme;
+        my $scheme = $uri->scheme or next;
         if ( $scheme eq 'mailto' && lc substr( $u, 0, 7 ) eq 'mailto:' ) {
             push @valids, { max_bytes => $bytes, uri => $uri };
             next;
@@ -68,7 +68,7 @@ Mail::DMARC::Report::URI - a DMARC report URI
 
 =head1 VERSION
 
-version 1.20130616
+version 1.20130625
 
 =head1 SYNOPSIS
 

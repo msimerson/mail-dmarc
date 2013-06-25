@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Send::SMTP;
-our $VERSION = '1.20130616'; # VERSION
+our $VERSION = '1.20130625'; # VERSION
 use strict;
 use warnings;
 
@@ -211,7 +211,7 @@ Mail::DMARC::Report::Send::SMTP - utility methods for sending reports via SMTP
 
 =head1 VERSION
 
-version 1.20130616
+version 1.20130625
 
 =head2 SUBJECT FIELD
 
