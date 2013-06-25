@@ -24,7 +24,7 @@ sub parse {
             carp "can't parse URI from $u";
             next;
         };
-        my $scheme = $uri->scheme;
+        my $scheme = $uri->scheme or next;
         if ( $scheme eq 'mailto' && lc substr( $u, 0, 7 ) eq 'mailto:' ) {
             push @valids, { max_bytes => $bytes, uri => $uri };
             next;
