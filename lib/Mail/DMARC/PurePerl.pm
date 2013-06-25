@@ -291,6 +291,7 @@ sub has_valid_reporting_uri {
         my $ext = $self->verify_external_reporting($uri_ref);
         push @has_permission, $ext if $ext;
     }
+    return @has_permission if wantarray;
     return scalar @has_permission;
 }
 

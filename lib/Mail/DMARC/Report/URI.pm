@@ -17,7 +17,7 @@ sub parse {
 
     my @valids = ();
     foreach my $raw ( split /,/, $str ) {
-#       warn "raw: $raw\n" if $self->verbose;
+#       warn "raw: $raw\n";
         my ( $u, $size_f ) = split /!/, $raw;
         my $bytes = $self->get_size_limit($size_f);
         my $uri = URI->new($u) or do {

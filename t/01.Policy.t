@@ -173,9 +173,26 @@ sub test_is_valid {
     chomp $@;
     ok( $@, "is_valid, $@" );
 
+    eval { $pol = Mail::DMARC::Policy->new('v=DMARC1') };
+    chomp $@;
+    ok( $@, "is_valid, 1.4.1 meaningless, $@" );
+
+    eval { $pol = Mail::DMARC::Policy->new('v=DMARC1\; p=reject\;') };
+    ok( $pol, "is_valid, 1.4.3 extra backslashes" );
+
+    eval { $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject; newtag=unknown') };
+    ok( $pol, "is_valid, 1.4.4 unknown tag" );
+
+    eval { $pol = Mail::DMARC::Policy->new('v=DMARC1; p=bogus') };
+    chomp $@;
+    ok( $@, "is_valid, 1.4.5 bogus p value, $@" );
+
+    eval { $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject; rua=a@dmarc-qa.com;') };
+    ok( $pol, "is_valid, 1.4.6 missing mailto" );
+
     # policy, minimum
-    $pol = Mail::DMARC::Policy->new( v => 'DMARC1', p => 'reject' );
-    ok( $pol->is_valid, "is_valid, pos" );
+    $pol = Mail::DMARC::Policy->new( 'v=DMARC1; p=reject' );
+    ok( $pol->is_valid, "is_valid, 1.4.2 smallest record" );
 
     # policy, min + defaults
     $pol->apply_defaults();

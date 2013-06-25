@@ -1,6 +1,11 @@
 
 {{$NEXT}}
 
+ - added a bunch of tests from http://dmarc-qa.com
+ - URI: supress undef error if URI scheme not defined
+ - policy->parse: properly parse records with unnecessary trailing ;
+ - reporting is 'external' based on Org Domain (was email domain)
+
 1.20130616 2013-06-16 America/Los_Angeles
 
  - combined update/replace SQL methods
