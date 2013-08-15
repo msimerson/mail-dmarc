@@ -38,13 +38,15 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
     my $bytes  = length Encode::encode_utf8($shrunk);
 
     my $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
-    my $sent    = 0;
+    my $sent    = my $too_big = 0;
     foreach my $u_ref (@$uri_ref) {
         my $method = $u_ref->{uri};
         my $max    = $u_ref->{max_bytes};
 
         if ( $max && $bytes > $max ) {
+# TODO: try compressing the report with gzip -9 ?
             print "skipping $method: report size ($bytes) larger than $max\n";
+            $too_big++;
             next;
         }
 
@@ -63,6 +65,11 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 
     if ( $sent ) {
         $report->store->delete_report($aggregate->metadata->report_id);
+    }
+    else {
+        if ( $too_big ) {
+# TODO: send a 'too big' notice (see 11.2.4)
+        };
     };
 
     print "sleeping 5";
