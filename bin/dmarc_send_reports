@@ -115,8 +115,15 @@ sub email {
         $smtp = $report->sendit->smtp->connect_smtp( $to ) or do {
             warn "\tSMTP connection failed\n";  ## no critic (Carp)
             if ( $rid ) {
-                $report->store->error($rid, "SSL connection for $to failed");
-                $report->store->error($rid, "SMTP connection for $to failed");
+                my $errors = scalar $$agg_ref->metadata->error;
+                if ( $errors >= 12 ) {
+                    print "Report $rid deleted (too many errors)\n";
+                    $report->store->delete_report($rid);
+                }
+                else {
+                    $report->store->error($rid, "SSL connection for $to failed");
+                    $report->store->error($rid, "SMTP connection for $to failed");
+                };
             };
             return;
         };
