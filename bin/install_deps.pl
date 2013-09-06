@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# VERSION 1.7
 
 # v1.7 - 2013-04-20  - Matt
 #      - get list of modules from Makefile.PL or dist.ini
