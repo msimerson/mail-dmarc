@@ -142,6 +142,7 @@ sub email {
         print "RCPT TO $to rejected\n\t$err\n";
         if ( $rid ) {
             if ( $smtp->code =~ /^5/ ) {  # SMTP 5XX error
+                print "Report $rid deleted \n";
                 $report->store->delete_report($rid);
             }
             else {
