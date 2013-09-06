@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Send;
-our $VERSION = '1.20130625'; # VERSION
+our $VERSION = '1.20130906'; # VERSION
 use strict;
 use warnings;
 
@@ -20,6 +20,36 @@ sub smtp {
     return $self->{smtp} = Mail::DMARC::Report::Send::SMTP->new();
 }
 
+sub too_big_report {
+    my ( $self, $arg_ref ) = @_;
+
+    my $OrgName   = $self->config->{organization}{org_name};
+    my $Domain    = $self->config->{organization}{domain};
+    my $ver       = $Mail::DMARC::Base::VERSION || ''; # undef in author environ
+    my $uri       = $arg_ref->{uri};
+    my $bytes     = $arg_ref->{report_bytes};
+    my $report_id = $arg_ref->{report_id};
+    my $rep_domain= $arg_ref->{report_domain};
+    my $date      = $self->smtp->get_timestamp_rfc2822;
+
+    return <<"EO_TOO_BIG"
+
+This is a 'too big' DMARC notice. The aggregate report was NOT delivered.
+
+Report-Date: $date
+Report-Domain: $rep_domain
+Report-ID: $report_id
+Report-Size: $bytes
+Submitter: $Domain
+Submitting-URI: $uri
+
+Submitted by $OrgName
+Generated with Mail::DMARC $ver
+
+EO_TOO_BIG
+        ;
+}
+
 1;
 
 # ABSTRACT: report sending dispatch class
@@ -32,7 +62,7 @@ Mail::DMARC::Report::Send - report sending dispatch class
 
 =head1 VERSION
 
-version 1.20130625
+version 1.20130906
 
 =head1 DESCRIPTION
 

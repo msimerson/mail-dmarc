@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Send::SMTP;
-our $VERSION = '1.20130625'; # VERSION
+our $VERSION = '1.20130906'; # VERSION
 use strict;
 use warnings;
 
@@ -15,12 +15,26 @@ use parent 'Mail::DMARC::Base';
 
 sub get_domain_mx {
     my ( $self, $domain ) = @_;
-    my $query = $self->get_resolver->send( $domain, 'MX' ) or return [];
+    print "getting MX for $domain\n";
+    my $query;
+    eval {
+        $query = $self->get_resolver->send( $domain, 'MX' ) or return [];
+    } or print $@;
+
+    if ( ! $query ) {
+        print "\terror:\n\t$@";
+        return [];
+    };
+
     my @mx;
     for my $rr ( $query->answer ) {
         next if $rr->type ne 'MX';
         push @mx, { pref => $rr->preference, addr => $rr->exchange };
+        print $rr->exchange if $self->verbose;
     }
+    if ( $self->verbose ) {
+        print "found " . scalar @mx . "MX exchanges\n";
+    };
     return \@mx;
 }
 
@@ -211,7 +225,7 @@ Mail::DMARC::Report::Send::SMTP - utility methods for sending reports via SMTP
 
 =head1 VERSION
 
-version 1.20130625
+version 1.20130906
 
 =head2 SUBJECT FIELD
 
