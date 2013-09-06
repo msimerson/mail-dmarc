@@ -95,9 +95,10 @@ sub send_too_big_email {
         );
         email( $to, $body );
     };
+    return;
 };
 
-sub email {
+sub get_smtp_connection {
     my ($to, $shrunk, $agg_ref) = @_;
 
     my $smtp = $report->sendit->smtp->connect_smtp_tls( $to ) or do {
@@ -134,7 +135,17 @@ sub email {
         return;
     };
 
+    return $smtp;
+};
+
+sub email {
+    my ($to, $shrunk, $agg_ref) = @_;
+
+    my $smtp = get_smtp_connection($to,$shrunk,$agg_ref) or return;
     print "delivering message to $to, via ".$smtp->host."\n";
+
+    my $rid;
+    $rid = $$agg_ref->metadata->report_id if $agg_ref;
 
     my $from = $report->config->{organization}{email};
     $smtp->mail($from) or do {
@@ -144,6 +155,7 @@ sub email {
         $smtp->quit;
         return;
     };
+
     $smtp->recipient( $to ) or do {
         my $err = $smtp->code ." ". $smtp->message;
         print "RCPT TO $to rejected\n\t$err\n";
@@ -177,6 +189,7 @@ sub email {
         $report->store->error($rid, $err) if $rid;
         return;
     };
+
     $smtp->quit;
     return 1;
 }
