@@ -15,19 +15,26 @@ use parent 'Mail::DMARC::Base';
 
 sub get_domain_mx {
     my ( $self, $domain ) = @_;
+    print "getting MX for $domain\n";
     my $query;
     eval {
         $query = $self->get_resolver->send( $domain, 'MX' ) or return [];
-    };
+    } or print $@;
+
     if ( ! $query ) {
-        print "getting MX for $domain error:\n\t$@";
+        print "\terror:\n\t$@";
         return [];
     };
+
     my @mx;
     for my $rr ( $query->answer ) {
         next if $rr->type ne 'MX';
         push @mx, { pref => $rr->preference, addr => $rr->exchange };
+        print $rr->exchange if $self->verbose;
     }
+    if ( $self->verbose ) {
+        print "found " . scalar @mx . "MX exchanges\n";
+    };
     return \@mx;
 }
 
