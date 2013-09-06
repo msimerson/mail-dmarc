@@ -1,7 +1,10 @@
 
 {{$NEXT}}
 
- - added 'too big' TODO
+ - handle errors encountered when reporting address is illegal
+ - delete reports that return a SMTP 5XX code for the recipient
+ - delete reports after encountering 12 errors
+ - added 'too big' notices when report size exceeds limit
  - updated install_deps.pl
 
 1.20130625 2013-06-24 America/Los_Angeles
