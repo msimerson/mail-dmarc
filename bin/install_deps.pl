@@ -1,6 +1,9 @@
 #!/usr/bin/perl
-# VERSION 1.7
+# VERSION 1.8
 
+# v1.8 - 2013-09-06  - Matt
+#      - applied PBP
+#
 # v1.7 - 2013-04-20  - Matt
 #      - get list of modules from Makefile.PL or dist.ini
 #      - abstracted yum and apt into subs
@@ -32,29 +35,28 @@ my $apps = [
 #   { app => 'apache22'      , info => { port => 'apache22',       dport=>'',     yum => 'httpd' } },
 ];
 
-$EUID == 0 or die "You will have better luck if you run me as root.\n";
+$EUID == 0 or die "You will have better luck if you run me as root.\n"; ## no critic (Carp)
 
 my @failed;
 foreach ( @$apps ) {
-    my $name = $_->{app} or die 'missing app name';
+    my $name = $_->{app} or die 'missing app name'; ## no critic (Carp)
     install_app( $name, $_->{info} );
 };
 
 foreach ( get_perl_modules() ) {
 #print Dumper($_);
-    my $module = $_->{module} or die 'missing module name';
+    my $module = $_->{module} or die 'missing module name'; ## no critic (Carp)
+    next if $module eq 'perl';
     my $info   = $_->{info};
     my $version = $info->{version} || '';
     print "checking for $module $version\n";
 
-## no critic
-    eval "use $module $version";
+    eval "use $module $version"; ## no critic (Eval)
     next if ! $EVAL_ERROR;
     next if $info->{ships_with} && $info->{ships_with} eq 'perl';
 
     install_module( $module, $info, $version );
-    eval "use $module $version";
-## use critic
+    eval "use $module $version"; ## no critic (Eval)
     if ($EVAL_ERROR) {
         push @failed, $module;
     }
@@ -75,16 +77,16 @@ sub get_perl_modules {
     if ( -f 'Makefile.PL' ) {
         return get_perl_modules_from_Makefile_PL();
     };
-    die "unable to find module list. Run this script in the dist dir\n";
+    die "unable to find module list. Run this script in the dist dir\n"; ## no critic (Carp)
 };
 
 sub get_perl_modules_from_Makefile_PL {
-    my $fh = new IO::File 'Makefile.PL', 'r'
-        or die "unable to read Makefile.PL\n";
+    my $fh = IO::File->new( 'Makefile.PL', 'r' )
+        or die "unable to read Makefile.PL\n"; ## no critic (Carp)
 
     my $in = 0;
     my @modules;
-    foreach my $line ( <$fh> ) {
+    while ( my $line = <$fh> ) {
         if ( $line =~ /PREREQ_PM/ ) {
             $in++;
             next;
@@ -93,7 +95,7 @@ sub get_perl_modules_from_Makefile_PL {
         last if $line =~ /}/;
         next if $line !~ /=/;  # no = char means not a module
         my ($mod,$ver) = split /\s*=\s*/, $line;
-        $mod =~ s/[\s'"\#]*//g;   # remove whitespace and quotes
+        $mod =~ s/[\s'"\#]*//xg; # strip whitespace & quotes ## no critic (Regex)
         next if ! $mod;
         push @modules, name_overrides($mod);
 #print "module: .$mod.\n";
@@ -103,12 +105,12 @@ sub get_perl_modules_from_Makefile_PL {
 };
 
 sub get_perl_modules_from_ini {
-    my $fh = new IO::File 'dist.ini', 'r'
-        or die "unable to read dist.ini\n";
+    my $fh = IO::File->new( 'dist.ini', 'r' )
+        or die "unable to read dist.ini\n"; ## no critic (Carp)
 
     my $in = 0;
     my @modules;
-    foreach my $line ( <$fh> ) {
+    while ( my $line = <$fh> ) {
         if ( '[Prereqs]' eq substr($line,0,9) ) {
             $in++;
             next;
@@ -140,7 +142,7 @@ sub install_app {
     elsif ( lc($OSNAME) eq 'linux' ) {
         install_app_linux( $app, $info );
     };
-
+    return;
 };
 
 sub install_app_darwin {
@@ -154,7 +156,8 @@ sub install_app_darwin {
     }
 
     system "/opt/local/bin/port install $port"
-        and warn "install failed for Darwin port $port";
+        and warn "install failed for Darwin port $port"; ## no critic (Carp)
+    return;
 }
 
 sub install_app_freebsd {
@@ -163,23 +166,25 @@ sub install_app_freebsd {
     print " from ports...";
     my $name = $info->{port} || $app;
 
-    if ( `/usr/sbin/pkg_info | /usr/bin/grep $name` ) {
+    if ( `/usr/sbin/pkg_info | /usr/bin/grep $name` ) { ## no critic (Backtick)
         return print "$app is installed.\n";
-    }
-    elsif( `/usr/sbin/pkg info | /usr/bin/grep $name` ) {
+    };
+    if ( `/usr/sbin/pkg info -x $name` ) {  ## no critic (Backtick)
         return print "$app is installed.\n";
     }
 
     print "installing $app";
 
     my $category = $info->{category} || '*';
-    my ($portdir) = glob "/usr/ports/$category/$name";
+    my ($portdir) = glob "/usr/ports/$category/$name"; ## no critic (Backtick)
 
-    if ( $portdir && -d $portdir && chdir $portdir ) {
+    if ( $portdir && -d $portdir ) {
         print " from ports ($portdir)\n";
-        system "make install clean"
-            and warn "'make install clean' failed for port $app\n";
+        system "make -C $portdir install clean" and do {
+            warn "'make install clean' failed for port $app\n"; ## no critic (Carp)
+        };
     };
+    return;
 };
 
 sub install_app_linux {
@@ -194,8 +199,9 @@ sub install_app_linux {
         system "/usr/bin/apt-get -y install $package";
     }
     else {
-        warn "no Linux package manager detected\n";
+        warn "no Linux package manager detected\n"; ## no critic (Carp)
     };
+    return;
 };
 
 
@@ -213,12 +219,11 @@ sub install_module {
         install_module_linux( $module, $info, $version);
     };
 
-## no critic
-    eval "require $module";
-## use critic
+    eval "require $module" or print ''; ## no critic (Stringy)
     return 1 if ! $EVAL_ERROR;
 
     install_module_cpan($module, $version);
+    return;
 };
 
 sub install_module_cpan {
@@ -229,22 +234,21 @@ sub install_module_cpan {
     sleep 1;
 
     # this causes problems when CPAN is not configured.
-    #$ENV{PERL_MM_USE_DEFAULT} = 1;       # supress CPAN prompts
+    #local $ENV{PERL_MM_USE_DEFAULT} = 1; # supress CPAN prompts
 
-    $ENV{FTP_PASSIVE} = 1;        # for FTP behind NAT/firewalls
+    local $ENV{FTP_PASSIVE} = 1;          # for FTP behind NAT/firewalls
 
     # some Linux distros break CPAN by auto/preconfiguring it with no URL mirrors.
     # this works around that annoying little habit
-    no warnings;
-    $CPAN::Config = get_cpan_config();
-    use warnings;
+    $CPAN::Config = get_cpan_config(); ## no critic (PackageVars)
 
     # a hack to grab the latest version on CPAN before its hits the mirrors
     if ( $module eq 'Provision::Unix' && $version ) {
         $module =~ s/\:\:/\-/g;
         $module = "M/MS/MSIMERSON/$module-$version.tar.gz";
     }
-    CPAN::Shell->install($module);
+    CPAN::Shell->install($module);  ## no critic (PackageVars)
+    return;
 }
 
 sub install_module_darwin {
@@ -259,7 +263,8 @@ sub install_module_darwin {
     my $port = "p5-$module";
     $port =~ s/::/-/g;
     system "$dport install $port"
-        and warn "install failed for Darwin port $module";
+        and warn "install failed for Darwin port $module"; ## no critic (Carp)
+    return;
 }
 
 sub install_module_freebsd {
@@ -271,10 +276,10 @@ sub install_module_freebsd {
 
     print " from ports...$portname...";
 
-    if ( `/usr/sbin/pkg_info | /usr/bin/grep $portname` ) {
+    if ( `/usr/sbin/pkg_info | /usr/bin/grep $portname` ) { ## no critic (Backtick)
         return print "$module is installed.\n";
     }
-    elsif( `/usr/sbin/pkg info | /usr/bin/grep $portname` ) {
+    if ( `/usr/sbin/pkg info -x $portname` ) { ## no critic (Backtick)
         return print "$module is installed.\n";
     }
 
@@ -288,26 +293,24 @@ sub install_module_freebsd {
         return;
     };
 
-    if ( ! chdir $portdir ) {
-        print "unable to cd to /usr/ports/$category/$portname\n";
-    };
-
     print " from ports ($portdir)\n";
-    system "make install clean"
-        and warn "'make install clean' failed for port $module\n";
+    system "make -C $portdir install clean"
+        and warn "'make install clean' failed for port $module\n"; ## no critic (Carp)
+    return;
 }
 
 sub install_module_linux {
     my ($module, $info, $version) = @_;
 
     my $package;
-    if ( -x '/usr/bin/yum' ) {
+    if ( -x '/usr/bin/yum' ) { ## no critic (Backtick)
         return install_module_linux_yum($module, $info);
     }
-    elsif ( -x '/usr/bin/apt-get' ) {
+    elsif ( -x '/usr/bin/apt-get' ) { ## no critic (Backtick)
         return install_module_linux_apt($module, $info);
     }
-    warn "no Linux package manager detected\n";
+    warn "no Linux package manager detected\n"; ## no critic (Carp)
+    return;
 };
 
 sub install_module_linux_yum {
@@ -321,6 +324,7 @@ sub install_module_linux_yum {
         $package =~ s/::/-/g;
     };
     system "/usr/bin/yum -y install $package";
+    return;
 };
 
 sub install_module_linux_apt {
@@ -334,16 +338,17 @@ sub install_module_linux_apt {
         $package =~ s/::/-/g;
     };
     system "/usr/bin/apt-get -y install $package";
+    return;
 };
 
 sub get_cpan_config {
 
-    my $ftp = `which ftp`; chomp $ftp;
-    my $gzip = `which gzip`; chomp $gzip;
-    my $unzip = `which unzip`; chomp $unzip;
-    my $tar  = `which tar`; chomp $tar;
-    my $make = `which make`; chomp $make;
-    my $wget = `which wget`; chomp $wget;
+    my $ftp = `which ftp`; chomp $ftp;  ## no critic (Backtick)
+    my $gzip = `which gzip`; chomp $gzip; ## no critic (Backtick)
+    my $unzip = `which unzip`; chomp $unzip; ## no critic (Backtick)
+    my $tar  = `which tar`; chomp $tar; ## no critic (Backtick)
+    my $make = `which make`; chomp $make; ## no critic (Backtick)
+    my $wget = `which wget`; chomp $wget; ## no critic (Backtick)
 
     return
 {
