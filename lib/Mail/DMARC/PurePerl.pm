@@ -421,11 +421,14 @@ sub get_from_dom {
         return;
     };
 
-    # Should I do something special with a From field with multiple addresses?
-    # Do what if the domains differ? This returns only the last.
+# TODO: the From header can contain multiple addresses and should be
+# parsed as described in RFC 2822. If From has multiple-addresses,
+# then parse and use the domain in the Sender header.
+
+    # This returns only the domain in the last email address.
     # Caller can pass in pre-parsed from_dom if this doesn't suit them.
     #
-    # I care only about the domain. This is way faster than RFC822 parsing
+    # I care only about the domain. This is way faster than RFC2822 parsing
 
     my ($from_dom) = ( split /@/, $header )[-1]; # grab everything after the @
     ($from_dom) = split /(\s+|>)/, $from_dom;    # remove trailing cruft
