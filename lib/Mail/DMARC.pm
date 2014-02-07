@@ -261,9 +261,15 @@ This module can be used...
 
 =over 4
 
+=item *
+
 by MTAs and filtering tools like SpamAssassin to validate that incoming messages are aligned with the purported sender's policy.
 
+=item *
+
 by email senders, to receive DMARC reports from other mail servers and display them via CLI and web interfaces.
+
+=item *
 
 by MTA operators to send DMARC reports to DMARC author domains.
 
@@ -291,7 +297,11 @@ The report store can use the same database to store reports you have received as
 
 =over 4
 
+=item *
+
 received reports will have a null value for report_policy_published.rua
+
+=item *
 
 outgoing reports will have null values for report.uuid and report_record.count
 
