@@ -111,7 +111,7 @@ sub get_perl_modules_from_ini {
     my $in = 0;
     my @modules;
     while ( my $line = <$fh> ) {
-        if ( '[Prereqs]' eq substr($line,0,9) ) {
+        if ( '[Prereqs' eq substr($line,0,8) ) {
             $in++;
             next;
         };
