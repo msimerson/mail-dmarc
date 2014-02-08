@@ -1,5 +1,5 @@
 package Mail::DMARC::Report;
-our $VERSION = '1.20130906'; # VERSION
+our $VERSION = '1.20140208'; # VERSION
 use strict;
 use warnings;
 
@@ -89,7 +89,7 @@ Mail::DMARC::Report - A DMARC report interface
 
 =head1 VERSION
 
-version 1.20130906
+version 1.20140208
 
 =head1 DESCRIPTION
 
@@ -223,23 +223,9 @@ Davide Migliavacca <shari@cpan.org>
 
 =back
 
-=head1 CONTRIBUTORS
-
-=over 4
-
-=item *
-
-Benny Pedersen <me@junc.eu>
-
-=item *
-
-ColocateUSA.net <company@colocateusa.net>
-
-=back
-
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2013 by ColocateUSA.com.
+This software is copyright (c) 2014 by ColocateUSA.com.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

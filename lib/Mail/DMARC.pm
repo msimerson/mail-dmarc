@@ -1,5 +1,5 @@
 package Mail::DMARC;
-our $VERSION = '1.20130906'; # VERSION
+our $VERSION = '1.20140208'; # VERSION
 use strict;
 use warnings;
 
@@ -234,15 +234,15 @@ Mail::DMARC - Perl implementation of DMARC
 
 =head1 VERSION
 
-version 1.20130906
+version 1.20140208
 
 =head1 SYNOPSIS
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
 
-my $dmarc = Mail::DMARC->new( see L<new|#new> for required args );
+  my $dmarc = Mail::DMARC->new( see L<new|#new> for required args );
 
-my $result = $dmarc->validate();
+  my $result = $dmarc->validate();
 
  if ( $result->result eq 'pass' ) {
      ...continue normal processing...
@@ -269,9 +269,15 @@ This module can be used...
 
 =over 4
 
+=item *
+
 by MTAs and filtering tools like SpamAssassin to validate that incoming messages are aligned with the purported sender's policy.
 
+=item *
+
 by email senders, to receive DMARC reports from other mail servers and display them via CLI and web interfaces.
+
+=item *
 
 by MTA operators to send DMARC reports to DMARC author domains.
 
@@ -299,7 +305,11 @@ The report store can use the same database to store reports you have received as
 
 =over 4
 
+=item *
+
 received reports will have a null value for report_policy_published.rua
+
+=item *
 
 outgoing reports will have null values for report.uuid and report_record.count
 
@@ -508,6 +518,8 @@ Mar 13, 2013 Draft: http://tools.ietf.org/html/draft-kucherawy-dmarc-base-00
 
 Mar 30, 2012 Draft: http://www.dmarc.org/draft-dmarc-base-00-02.txt
 
+Best Current Practices: http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03
+
 =head1 HISTORY
 
 The daddy of this perl module was a DMARC module for the qpsmtpd MTA.
@@ -540,11 +552,15 @@ Benny Pedersen <me@junc.eu>
 
 ColocateUSA.net <company@colocateusa.net>
 
+=item *
+
+Ricardo Signes <rjbs@cpan.org>
+
 =back
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2013 by ColocateUSA.com.
+This software is copyright (c) 2014 by ColocateUSA.com.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

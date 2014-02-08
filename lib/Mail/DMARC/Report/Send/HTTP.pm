@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Send::HTTP;
-our $VERSION = '1.20130906'; # VERSION
+our $VERSION = '1.20140208'; # VERSION
 use strict;
 use warnings;
 
@@ -50,7 +50,7 @@ Mail::DMARC::Report::Send::HTTP - utility methods to send reports by HTTP
 
 =head1 VERSION
 
-version 1.20130906
+version 1.20140208
 
 =head1 12.2.2. HTTP
 
@@ -80,23 +80,9 @@ Davide Migliavacca <shari@cpan.org>
 
 =back
 
-=head1 CONTRIBUTORS
-
-=over 4
-
-=item *
-
-Benny Pedersen <me@junc.eu>
-
-=item *
-
-ColocateUSA.net <company@colocateusa.net>
-
-=back
-
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2013 by ColocateUSA.com.
+This software is copyright (c) 2014 by ColocateUSA.com.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

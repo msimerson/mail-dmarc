@@ -1,5 +1,5 @@
 package Mail::DMARC::Base;
-our $VERSION = '1.20130906'; # VERSION
+our $VERSION = '1.20140208'; # VERSION
 use strict;
 use warnings;
 
@@ -169,12 +169,11 @@ sub is_valid_ip {
 
 sub is_valid_domain {
     my ( $self, $domain ) = @_;
-    if ( $domain =~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x ) {
-        my $tld = ( split /\./, $domain )[-1];
-        return 1 if $self->is_public_suffix($tld);
-        $tld = join( '.', ( split /\./, $domain )[ -2, -1 ] );
-        return 1 if $self->is_public_suffix($tld);
-    }
+    return 0 if $domain !~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x;
+    my $tld = ( split /\./, $domain )[-1];
+    return 1 if $self->is_public_suffix($tld);
+    $tld = join( '.', ( split /\./, $domain )[ -2, -1 ] );
+    return 1 if $self->is_public_suffix($tld);
     return 0;
 }
 
@@ -218,7 +217,7 @@ Mail::DMARC::Base - DMARC utility functions
 
 =head1 VERSION
 
-version 1.20130906
+version 1.20140208
 
 =head1 METHODS
 
@@ -266,23 +265,9 @@ Davide Migliavacca <shari@cpan.org>
 
 =back
 
-=head1 CONTRIBUTORS
-
-=over 4
-
-=item *
-
-Benny Pedersen <me@junc.eu>
-
-=item *
-
-ColocateUSA.net <company@colocateusa.net>
-
-=back
-
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2013 by ColocateUSA.com.
+This software is copyright (c) 2014 by ColocateUSA.com.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

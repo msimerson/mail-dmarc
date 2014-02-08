@@ -11,7 +11,7 @@ configure_requires:
   File::ShareDir::Install: 0.03
   Module::Build: 0.3601
 dynamic_config: 0
-generated_by: 'Dist::Zilla version 4.300034, CPAN::Meta::Converter version 2.130880'
+generated_by: 'Dist::Zilla version 5.006, CPAN::Meta::Converter version 2.132830'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -63,6 +63,7 @@ requires:
   Sys::Hostname: 0
   URI: 0
   XML::LibXML: 0
+  lib: 0
   parent: 0
   perl: 5.008
   strict: 0
@@ -71,7 +72,8 @@ resources:
   bugtracker: https://github.com/msimerson/mail-dmarc/issues
   homepage: https://github.com/msimerson/mail-dmarc/wiki
   repository: git://github.com/msimerson/mail-dmarc.git
-version: 1.20130906
+version: 1.20140208
 x_contributors:
   - 'Benny Pedersen <me@junc.eu>'
   - 'ColocateUSA.net <company@colocateusa.net>'
+  - 'Ricardo Signes <rjbs@cpan.org>'

@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-our $VERSION = '1.20130906'; # VERSION 1.8
+our $VERSION = '1.20140208'; # VERSION 1.8
 
 # v1.8 - 2013-09-06  - Matt
 #      - applied PBP
@@ -111,7 +111,7 @@ sub get_perl_modules_from_ini {
     my $in = 0;
     my @modules;
     while ( my $line = <$fh> ) {
-        if ( '[Prereqs]' eq substr($line,0,9) ) {
+        if ( '[Prereqs' eq substr($line,0,8) ) {
             $in++;
             next;
         };
@@ -415,7 +415,7 @@ install_deps.pl - install dependencies with package manager or CPAN
 
 =head1 VERSION
 
-version 1.20130906
+version 1.20140208
 
 =head1 AUTHORS
 
@@ -431,23 +431,9 @@ Davide Migliavacca <shari@cpan.org>
 
 =back
 
-=head1 CONTRIBUTORS
-
-=over 4
-
-=item *
-
-Benny Pedersen <me@junc.eu>
-
-=item *
-
-ColocateUSA.net <company@colocateusa.net>
-
-=back
-
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2013 by ColocateUSA.com.
+This software is copyright (c) 2014 by ColocateUSA.com.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
