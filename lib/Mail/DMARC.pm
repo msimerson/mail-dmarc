@@ -510,6 +510,8 @@ Mar 13, 2013 Draft: http://tools.ietf.org/html/draft-kucherawy-dmarc-base-00
 
 Mar 30, 2012 Draft: http://www.dmarc.org/draft-dmarc-base-00-02.txt
 
+Best Current Practices: http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03
+
 =head1 HISTORY
 
 The daddy of this perl module was a DMARC module for the qpsmtpd MTA.
