@@ -4,27 +4,46 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use Getopt::Long;
 use HTTP::Request;
 use JSON;
 use LWP::UserAgent;
 
-my $url  = 'http://localhost:8080/dmarc/json/validate';
+my %command_line_options = (
+        'host:s' => \my $host,
+        'port:s' => \my $port,
+        'data:s' => \my $data,
+        );
+GetOptions (%command_line_options);
+
+if (!$host) { $host = 'localhost'; warn "using default: --host=$host\n"; };
+if (!$port) { $port = '8080'; warn "using default: --port=$port\n"; };
+if (!$data) { $data = get_json_request(); warn "using sample --data\n"; };
+if ($data eq '-') {
+    $data = '';
+    while ($_ = <>) { chomp; $data .= $_; };
+}
+
+my $url  = "http://$host:$port/dmarc/json/validate";
 my $json = JSON->new->utf8;
 my $ua   = LWP::UserAgent->new;
-my $data = get_json_request();
 my $req  = HTTP::Request->new(POST => $url);
    $req->content_type('application/json');
-   $req->content($json->encode($data));
+   $req->content($data);
 
 my $response = $ua->request($req)->decoded_content;
-#print Dumper($response);   # raw JSON response
-my $result = $json->decode( $response );
-print Dumper($result);      # pretty formatted struct
+#print Dumper($response);       # raw JSON response
+my $result;
+eval { $result = $json->decode($response) };
+if ($result) {
+    print Dumper($result);      # pretty formatted struct
+    exit;
+};
 
-exit;
+die $response;
 
 sub get_json_request {
-    return {
+    return $json->encode ({
         source_ip     => '192.0.1.1',
         envelope_to   => 'example.com',
         envelope_from => 'cars4you.info',
@@ -42,10 +61,25 @@ sub get_json_request {
                 result => 'pass',
             }
         ],
-    }
+    });
 };
 
 # ABSTRACT: an HTTP client for submitting a DMARC validation request
 # PODNAME: dmarc_http_client
 __END__
+
+=head1 SYNOPSIS
+
+Send JSON encoded HTTP requests to the DMARC validation service provided by dmarc_httpd.
+
+    dmarc_http_client --host=localhost
+                      --port=8080
+                      --data='{"envelope_from":"cars4you.info"...}'
+
+
+The data option accepts a special '-' value that will read the JSON encoded data from STDIN. Use it like this:
+
+
+   cat /path/to/data.json | dmarc_http_client --data=-
+
 

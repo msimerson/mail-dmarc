@@ -54,7 +54,7 @@ sub dmarc_dispatch {
 #   warn Dumper( { CGI->new->Vars } );
 
     my $path = $self->{request_info}{request_path};
-    if ( $path ) {
+    if ($path) {
         warn "path: $path\n";
         return report_json_report()  if $path eq '/dmarc/json/report';
         return report_json_rr()      if $path eq '/dmarc/json/row';
@@ -62,20 +62,18 @@ sub dmarc_dispatch {
         return serve_file($path)     if $path =~ /\.(?:js|css|html|gz)$/x;
     };
 
-    return serve_file($self,'/dmarc/index.html');
+    return serve_file('/dmarc/index.html');
 };
 
 sub serve_pretty_error {
     my $error = shift || 'Sorry, that operation is not supported.';
-        ;
-    print <<"EO_ERROR"
+    return print <<"EO_ERROR"
 Content-Type: text/html
 
 <p>$error</p>
 
 EO_ERROR
 ;
-    return;
 };
 
 sub serve_validator {
