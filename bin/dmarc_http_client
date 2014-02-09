@@ -1,0 +1,46 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use Data::Dumper;
+use HTTP::Request;
+use JSON;
+use LWP::UserAgent;
+
+my $url  = 'http://localhost:8080/dmarc/json/validate';
+my $json = JSON->new->utf8;
+my $ua   = LWP::UserAgent->new;
+my $data = get_json_request();
+my $req  = HTTP::Request->new(POST => $url);
+   $req->content_type('application/json');
+   $req->content($json->encode($data));
+
+my $response = $ua->request($req)->decoded_content;
+#print Dumper($response);   # raw JSON response
+my $result = $json->decode( $response );
+print Dumper($result);      # pretty formatted struct
+
+exit;
+
+sub get_json_request {
+    return {
+        source_ip     => '192.0.1.1',
+        envelope_to   => 'example.com',
+        envelope_from => 'cars4you.info',
+        header_from   => 'yahoo.com',
+        dkim          => [
+            {   domain       => 'example.com',
+                selector     => 'apr2013',
+                result       => 'fail',
+                human_result => 'fail (body has been altered)',
+            }
+        ],
+        spf => [
+            {   domain => 'example.com',
+                scope  => 'mfrom',
+                result => 'pass',
+            }
+        ],
+    }
+};
+

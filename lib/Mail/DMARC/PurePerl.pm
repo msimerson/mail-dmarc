@@ -26,11 +26,11 @@ sub validate {
     $self->result->disposition('none');   # defaults
 
 # 11.2.1 Extract RFC5322.From domain
-    my $from_dom = $self->get_from_dom() or return;
+    my $from_dom = $self->get_from_dom() or return $self->result;
 # 9.6. reject email if the domain appears to not exist
-    $self->exists_in_dns() or return;
+    $self->exists_in_dns() or return $self->result;
     $policy ||= $self->discover_policy();  # 11.2.2 Query DNS for DMARC policy
-    $policy or return;
+    $policy or return $self->result;
 
     #   3.5 Out of Scope  DMARC has no "short-circuit" provision, such as
     #         specifying that a pass from one authentication test allows one
@@ -39,7 +39,7 @@ sub validate {
     $self->is_dkim_aligned;   # 11.2.3. DKIM signature verification checks
     $self->is_spf_aligned;    # 11.2.4. SPF validation checks
     $self->is_aligned()       # 11.2.5. identifier alignment checks
-        and return 1;
+        and return $self->result;
 
     my $effective_p
         = $self->is_subdomain && defined $policy->sp
@@ -50,24 +50,24 @@ sub validate {
     #        disposed of in accordance with the discovered DMARC policy of the
     #        Domain Owner.  See Section 6.2 for details.
     if ( lc $effective_p eq 'none' ) {
-        return;
+        return $self->result;
     }
 
-    return if $self->is_whitelisted;
+    return $self->result if $self->is_whitelisted;
 
     # 7.1.  Policy Fallback Mechanism
     # If the "pct" tag is present in a policy record, application of policy
     # is done on a selective basis.
     if ( !defined $policy->pct ) {
         $self->result->disposition($effective_p);
-        return;
+        return $self->result;
     }
 
     # The stated percentage of messages that fail the DMARC test MUST be
     # subjected to whatever policy is selected by the "p" or "sp" tag
     if ( int( rand(100) ) >= $policy->pct ) {
         $self->result->reason( type => 'sampled_out' );
-        return;
+        return $self->result;
     }
 
     # Those that are not thus selected MUST instead be subjected to the next
@@ -75,7 +75,7 @@ sub validate {
     # the policies are "reject", "quarantine", and "none".
     $self->result->disposition(
         ( $effective_p eq 'reject' ) ? 'quarantine' : 'none' );
-    return;
+    return $self->result;
 }
 
 sub discover_policy {
