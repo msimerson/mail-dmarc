@@ -1,6 +1,7 @@
 
 {{$NEXT}}
 
+ - NEW FEATURE: added HTTP validation service (see dmarc_httpd)
  - install_deps: install optional prereqs by default
  - added Best Current Practices link on main page
  - minor tweaks to Pod (Ricardo Signes)

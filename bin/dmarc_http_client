@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# VERSION
 use strict;
 use warnings;
 
@@ -43,4 +44,8 @@ sub get_json_request {
         ],
     }
 };
+
+# ABSTRACT: an HTTP client for submitting a DMARC validation request
+# PODNAME: dmarc_http_client
+__END__
 
