@@ -159,7 +159,7 @@ sub is_dkim_aligned {
     my $self = shift;
 
     $self->result->dkim('fail');    # our 'default' result
-    my $pass_sigs = $self->get_dkim_pass_sigs() or return;
+    $self->get_dkim_pass_sigs() or return;
 
     # 11.2.3 Perform DKIM signature verification checks.  A single email may
     #        contain multiple DKIM signatures.  The results MUST include the
@@ -170,7 +170,7 @@ sub is_dkim_aligned {
     my $from_org = $self->get_organizational_domain();
 
     # Required in report: DKIM-Domain, DKIM-Identity, DKIM-Selector
-    foreach my $dkim_ref ( @$pass_sigs ) {
+    foreach my $dkim_ref ( $self->get_dkim_pass_sigs() ) {
         my $dkim_dom = $dkim_ref->{domain};
 
         # 4.3.1 make sure $dkim_dom is not a public suffix
@@ -210,14 +210,19 @@ sub is_dkim_aligned {
 sub is_spf_aligned {
     my $self    = shift;
     my $spf_dom = shift;
-    my $spfs = $self->spf;
-    if ( !$spf_dom && !$spfs ) { croak "missing SPF!"; }
 
+    if ( !$spf_dom && !$self->spf ) { croak "missing SPF!"; }
     if ( !$spf_dom ) {
-        my @passes = grep { $_->{result} =~ /pass/i } @$spfs;
-        my ($ref)  = grep { $_->{scope} eq 'mfrom' } @passes;
-        if (!$ref) { ($ref) = grep { $_->{scope} eq 'helo' } @passes };
-        if (!$ref) { return 0; };
+        my @passes = grep { $_->{result} =~ /pass/i } @{ $self->spf };
+        if (scalar @passes == 0) {
+            $self->result->spf('fail');
+            return 0;
+        };
+        my ($ref)  = grep { $_->{scope} && $_->{scope} eq 'mfrom' } @passes;
+        if (!$ref) {
+            ($ref) = grep { $_->{scope} && $_->{scope} eq 'helo' } @passes;
+        }
+        if (!$ref) { ($ref) = $passes[0]; };
         $spf_dom = $ref->{domain};
     };
 

@@ -80,8 +80,13 @@ sub serve_validator {
     my $cgi  = CGI->new();
     my $json = JSON->new->utf8;
     my $input= $json->decode( $cgi->param('POSTDATA') );
-    my $dmpp = Mail::DMARC::PurePerl->new( %$input );
-    my $res  = $dmpp->validate();
+    my ($dmpp, $res);
+    eval { $dmpp = Mail::DMARC::PurePerl->new( %$input ) };
+    if ($@) { $res = { err => $@ }; }
+    else {
+        eval { $res  = $dmpp->validate() };
+        if ($@) { $res = { err => $@ }; };
+    };
     print $cgi->header("application/json");
     print $json->allow_blessed->convert_blessed->encode( $res );
     return;
