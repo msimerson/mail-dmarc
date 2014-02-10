@@ -23,6 +23,7 @@ my %WriteMakefileArgs = (
   },
   "DISTNAME" => "Mail-DMARC",
   "EXE_FILES" => [
+    "bin/dmarc_http_client",
     "bin/dmarc_httpd",
     "bin/dmarc_lookup",
     "bin/dmarc_receive",
@@ -45,12 +46,14 @@ my %WriteMakefileArgs = (
     "English" => 0,
     "File::ShareDir" => 0,
     "Getopt::Long" => 0,
+    "HTTP::Request" => 0,
     "IO::Compress::Gzip" => 0,
     "IO::Compress::Zip" => 0,
     "IO::File" => 0,
     "IO::Uncompress::Gunzip" => 0,
     "IO::Uncompress::Unzip" => 0,
     "JSON" => 0,
+    "LWP::UserAgent" => 0,
     "Net::DNS::Resolver" => 0,
     "Net::HTTP" => 0,
     "Net::IP" => 0,
@@ -71,7 +74,7 @@ my %WriteMakefileArgs = (
   "TEST_REQUIRES" => {
     "Test::More" => 0
   },
-  "VERSION" => "1.20140208",
+  "VERSION" => "1.20140210",
   "test" => {
     "TESTS" => "t/*.t"
   }
@@ -91,12 +94,14 @@ my %FallbackPrereqs = (
   "English" => 0,
   "File::ShareDir" => 0,
   "Getopt::Long" => 0,
+  "HTTP::Request" => 0,
   "IO::Compress::Gzip" => 0,
   "IO::Compress::Zip" => 0,
   "IO::File" => 0,
   "IO::Uncompress::Gunzip" => 0,
   "IO::Uncompress::Unzip" => 0,
   "JSON" => 0,
+  "LWP::UserAgent" => 0,
   "Module::Build" => "0.3601",
   "Net::DNS::Resolver" => 0,
   "Net::HTTP" => 0,

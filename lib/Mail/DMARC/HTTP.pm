@@ -1,10 +1,7 @@
-package Mail::DMARC::Report::View::HTTP;
-our $VERSION = '1.20140208'; # VERSION
+package Mail::DMARC::HTTP;
+our $VERSION = '1.20140210'; # VERSION
 use strict;
 use warnings;
-
-# use HTTP::Server::Simple;  # a possibility?
-# use HTTP::Daemon;          # nope, IPv4 only
 
 use parent 'Net::Server::HTTP';
 
@@ -12,12 +9,14 @@ use CGI;
 use Data::Dumper;
 use File::ShareDir;
 use IO::Uncompress::Gunzip;
-use JSON;
+use JSON -convert_blessed_universally;
 use URI;
 
 use lib 'lib';
-require Mail::DMARC::Report;
-my $report = Mail::DMARC::Report->new;
+use Mail::DMARC;
+use Mail::DMARC::PurePerl;
+my $dmarc = Mail::DMARC->new();
+my $report = $dmarc->report;
 
 my %mimes  = (
     css  => 'text/css',
@@ -55,35 +54,50 @@ sub dmarc_dispatch {
 #   warn Dumper( { CGI->new->Vars } );
 
     my $path = $self->{request_info}{request_path};
-    if ( $path ) {
+    if ($path) {
         warn "path: $path\n";
-        return report_json_report($self) if $path eq '/dmarc/json/report';
-        return report_json_rr($self)     if $path eq '/dmarc/json/row';
-        return serve_file($self,$path)   if $path =~ /\.(?:js|css|html|gz)$/x;
+        return report_json_report()  if $path eq '/dmarc/json/report';
+        return report_json_rr()      if $path eq '/dmarc/json/row';
+        return serve_validator()     if $path eq '/dmarc/json/validate';
+        return serve_file($path)     if $path =~ /\.(?:js|css|html|gz)$/x;
     };
 
-    return serve_file($self,'/dmarc/index.html');
+    return serve_file('/dmarc/index.html');
 };
 
 sub serve_pretty_error {
     my $error = shift || 'Sorry, that operation is not supported.';
-        ;
-    print <<"EO_ERROR"
+    return print <<"EO_ERROR"
 Content-Type: text/html
 
 <p>$error</p>
 
 EO_ERROR
 ;
+};
+
+sub serve_validator {
+    my $cgi  = CGI->new();
+    my $json = JSON->new->utf8;
+    my $input= $json->decode( $cgi->param('POSTDATA') );
+    my ($dmpp, $res);
+    eval { $dmpp = Mail::DMARC::PurePerl->new( %$input ) };
+    if ($@) { $res = { err => $@ }; }
+    else {
+        eval { $res  = $dmpp->validate() };
+        if ($@) { $res = { err => $@ }; };
+    };
+    print $cgi->header("application/json");
+    print $json->allow_blessed->convert_blessed->encode( $res );
     return;
 };
 
 sub serve_file {
-    my ($http,$path) = @_;
+    my ($path) = @_;
 
     my @bits = split /\//, $path;
     shift @bits;
-    return serve_pretty_error("file not found") if 'dmarc' ne $bits[0];
+    return serve_pretty_error("file not found") if (!$bits[0] || 'dmarc' ne $bits[0]);
     shift @bits;
     $path = join '/', @bits;
     my $file = $bits[-1];
@@ -173,11 +187,11 @@ __END__
 
 =head1 NAME
 
-Mail::DMARC::Report::View::HTTP - view stored reports via HTTP
+Mail::DMARC::HTTP - view stored reports via HTTP
 
 =head1 VERSION
 
-version 1.20140208
+version 1.20140210
 
 =head1 SYNOPSIS
 

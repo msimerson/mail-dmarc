@@ -20,7 +20,7 @@ my %module_build_args = (
     "Davide Migliavacca <shari\@cpan.org>"
   ],
   "dist_name" => "Mail-DMARC",
-  "dist_version" => "1.20140208",
+  "dist_version" => "1.20140210",
   "license" => "perl",
   "module_name" => "Mail::DMARC",
   "recommends" => {
@@ -53,12 +53,14 @@ my %module_build_args = (
     "English" => 0,
     "File::ShareDir" => 0,
     "Getopt::Long" => 0,
+    "HTTP::Request" => 0,
     "IO::Compress::Gzip" => 0,
     "IO::Compress::Zip" => 0,
     "IO::File" => 0,
     "IO::Uncompress::Gunzip" => 0,
     "IO::Uncompress::Unzip" => 0,
     "JSON" => 0,
+    "LWP::UserAgent" => 0,
     "Net::DNS::Resolver" => 0,
     "Net::HTTP" => 0,
     "Net::IP" => 0,
@@ -78,6 +80,7 @@ my %module_build_args = (
     "warnings" => 0
   },
   "script_files" => [
+    "bin/dmarc_http_client",
     "bin/dmarc_httpd",
     "bin/dmarc_lookup",
     "bin/dmarc_receive",

@@ -33,7 +33,7 @@ sub _test_pass_strict {
     $pp->dkim(
         [ { domain => $test_dom, result => 'pass', selector => 'apr2013' } ]
     );
-    $pp->spf( { domain => $test_dom, result => 'pass' } );
+    $pp->spf( { domain => $test_dom, result => 'pass', scope => 'mfrom' } );
     $pp->validate();
     delete $pp->result->{published};
     is_deeply(

@@ -1,11 +1,11 @@
 #!/usr/bin/perl
-our $VERSION = '1.20140208'; # VERSION
+our $VERSION = '1.20140210'; # VERSION
 use strict;
 use warnings;
 
 use lib 'lib';
-use Mail::DMARC::Report::View::HTTP;
-my $http = Mail::DMARC::Report::View::HTTP->new;
+use Mail::DMARC::HTTP;
+my $http = Mail::DMARC::HTTP->new;
 $http->dmarc_httpd;
 exit;
 
@@ -22,11 +22,19 @@ dmarc_httpd - a web server for viewing DMARC reports
 
 =head1 VERSION
 
-version 1.20140208
+version 1.20140210
 
 =head1 SYNOPSIS
 
-A HTTP interface for the local DMARC report store.
+A HTTP interface for:
+
+=over 4
+
+=item * local DMARC reports
+
+=item * DMARC validator service
+
+=back
 
 Start the HTTP server:
 
@@ -35,6 +43,34 @@ Start the HTTP server:
 Connect with a web browser to L<http://localhost:8080|http://localhost:8080/>.
 
 =head1 DESCRIPTION
+
+The HTTP server handles 4 types of requests:
+
+=over 4
+
+=item * /
+
+Serves files stored in the perl share directory of the Mail::DMARC module.
+This presently entails one HTML file and a handful of CSS and JS files for
+the report viewing feature.
+
+=item * /dmarc/json/validate - DMARC validation requests
+
+Accepts a JSON encoded HTTP POST request. Validates the request, performs a
+DMARC validation and returns a JSON encoded result object. This is the API
+for non-perl applications to utilize Mail::DMARC.
+
+See the dmarc_http_client app for a usage example.
+
+=item * /dmarc/json/report
+
+Accepts AJAX requests from the browser and returns JSON encoded DMARC reports.
+
+=item * /dmarc/json/row
+
+Accepts AJAX requests from the browser and returns DMARC report rows.
+
+=back
 
 A L<Sample Report|http://search.cpan.org/dist/Mail-DMARC/example/report_cgi.png> is available which shows the web interface. It is implemented almost entirely in JavaScript, using jQuery, jQueryUI, and jqGrid.
 

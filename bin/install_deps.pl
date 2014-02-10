@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-our $VERSION = '1.20140208'; # VERSION 1.8
+our $VERSION = '1.20140210'; # VERSION 1.8
 
 # v1.8 - 2013-09-06  - Matt
 #      - applied PBP
@@ -415,7 +415,7 @@ install_deps.pl - install dependencies with package manager or CPAN
 
 =head1 VERSION
 
-version 1.20140208
+version 1.20140210
 
 =head1 AUTHORS
 
