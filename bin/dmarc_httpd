@@ -9,7 +9,7 @@ my $http = Mail::DMARC::HTTP->new;
 $http->dmarc_httpd;
 exit;
 
-# ABSTRACT: a web server for viewing DMARC reports
+# ABSTRACT: a web server for DMARC validation and report viewing
 # PODNAME: dmarc_httpd
 __END__
 
@@ -57,9 +57,11 @@ Accepts AJAX requests from the browser and returns JSON encoded DMARC reports.
 
 =item * /dmarc/json/row
 
-Accepts AJAX requests from the browser and returns DMARC report rows.
+Accepts AJAX requests from the browser and returns JSON encoded DMARC report rows.
 
 =back
+
+An implementation that uses the http validation service is the included <dmarc_http_client> and another is the dmarc plugin in the <Haraka mail server|http://haraka.github.io>.
 
 A L<Sample Report|http://search.cpan.org/dist/Mail-DMARC/example/report_cgi.png> is available which shows the web interface. It is implemented almost entirely in JavaScript, using jQuery, jQueryUI, and jqGrid.
 

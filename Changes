@@ -1,6 +1,10 @@
 
 {{$NEXT}}
 
+ - uncommented Net::Server in Prereqs/Recommended section
+ - added INSTALL
+ - updaded dmarc_httpd description to note validation feature
+
 1.20140210 2014-02-09 America/Los_Angeles
 
  - NEW FEATURE: added HTTP validation service (see dmarc_httpd)
