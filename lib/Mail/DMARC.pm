@@ -31,13 +31,13 @@ sub envelope_from {
 sub header_from {
     return $_[0]->{header_from} if 1 == scalar @_;
     croak "invalid header_from" if !$_[0]->is_valid_domain( $_[1] );
-    return $_[0]->{header_from} = $_[1];
+    return $_[0]->{header_from} = lc $_[1];
 }
 
 sub header_from_raw {
     return $_[0]->{header_from_raw} if 1 == scalar @_;
 #croak "invalid header_from_raw: $_[1]" if 'from:' ne lc substr($_[1], 0, 5);
-    return $_[0]->{header_from_raw} = $_[1];
+    return $_[0]->{header_from_raw} = lc $_[1];
 }
 
 sub local_policy {
@@ -176,7 +176,7 @@ sub is_valid_spf {
         croak if $spf->{scope} &&
             ! $self->is_valid_spf_scope( $spf->{scope} );
 
-        if ( $spf->{result} eq 'pass' && !$spf->{domain} ) {
+        if ( $spf->{result} =~ /^pass$/i && !$spf->{domain} ) {
             croak "SPF pass MUST include the RFC5321.MailFrom domain!";
         }
     };

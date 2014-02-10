@@ -170,7 +170,7 @@ sub is_dkim_aligned {
     my $from_org = $self->get_organizational_domain();
 
     # Required in report: DKIM-Domain, DKIM-Identity, DKIM-Selector
-    foreach my $dkim_ref ( $self->get_dkim_pass_sigs() ) {
+    foreach my $dkim_ref ( @$pass_sigs ) {
         my $dkim_dom = $dkim_ref->{domain};
 
         # 4.3.1 make sure $dkim_dom is not a public suffix
@@ -182,8 +182,7 @@ sub is_dkim_aligned {
             identity => '',                      # TODO, what is this?
         };
 
-        if ( $dkim_dom eq $from_dom )
-        {    # strict alignment requires exact match
+        if ( $dkim_dom eq $from_dom ) { # strict alignment requires exact match
             $self->result->dkim('pass');
             $self->result->dkim_align('strict');
             $self->result->dkim_meta($dkmeta);
@@ -191,7 +190,7 @@ sub is_dkim_aligned {
         }
 
         # don't try relaxed if policy specifies strict
-        next if $policy->adkim && lc $policy->adkim eq 's';
+        next if $policy->adkim && 's' eq lc $policy->adkim;
 
         # don't try relaxed if we already got a strict match
         next if 'pass' eq $self->result->dkim;
@@ -204,32 +203,30 @@ sub is_dkim_aligned {
             $self->result->dkim_meta($dkmeta);
         }
     }
-    return 1 if 'pass' eq $self->result->dkim;
+    return 1 if 'pass' eq lc $self->result->dkim;
     return;
 }
 
 sub is_spf_aligned {
     my $self    = shift;
     my $spf_dom = shift;
-    if ( !$spf_dom && !$self->spf ) { croak "missing SPF!"; }
+    my $spfs = $self->spf;
+    if ( !$spf_dom && !$spfs ) { croak "missing SPF!"; }
 
-    if ( ! $spf_dom ) {
-        foreach my $spf ( @{ $self->spf } ) {
-            next if ! $spf->{domain};
-            $spf_dom = $spf->{domain};
-            last;
-        };
+    if ( !$spf_dom ) {
+        my @passes = grep { $_->{result} =~ /pass/i } @$spfs;
+        my ($ref)  = grep { $_->{scope} eq 'mfrom' } @passes;
+        if (!$ref) { ($ref) = grep { $_->{scope} eq 'helo' } @passes };
+        if (!$ref) { return 0; };
+        $spf_dom = $ref->{domain};
     };
-    $spf_dom or croak "missing SPF domain";
 
     # 11.2.4 Perform SPF validation checks.  The results of this step
     #        MUST include the domain name from the RFC5321.MailFrom if SPF
     #        evaluation returned a "pass" result.
 
-    if ( !$spf_dom ) {
-        $self->result->spf('fail');
-        return 0;
-    }
+    $self->result->spf('fail');
+    return 0 if !$spf_dom;
 
     my $from_dom = $self->header_from or croak "header_from not set!";
 
@@ -240,19 +237,17 @@ sub is_spf_aligned {
     }
 
     # don't try relaxed match if strict policy requested
-    if ( $self->policy->aspf && lc $self->policy->aspf eq 's' ) {
-        $self->result->spf('fail');
+    if ( $self->policy->aspf && 's' eq lc $self->policy->aspf ) {
         return 0;
     }
 
     if ( $self->get_organizational_domain($spf_dom) eq
-        $self->get_organizational_domain($from_dom) )
+         $self->get_organizational_domain($from_dom) )
     {
         $self->result->spf('pass');
         $self->result->spf_align('relaxed');
         return 1;
     }
-    $self->result->spf('fail');
     return 0;
 }
 
@@ -303,7 +298,7 @@ sub get_dkim_pass_sigs {
         croak "dkim needs to be an array reference!";
     }
 
-    return grep { $_->{result} eq 'pass' } @$dkim_sigs;
+    return grep { 'pass' eq lc $_->{result} } @$dkim_sigs;
 }
 
 sub get_organizational_domain {
