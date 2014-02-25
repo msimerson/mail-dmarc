@@ -232,7 +232,9 @@ sub {}  # for vim automatic code folding
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
 
-  my $dmarc = Mail::DMARC::PurePerl->new( see L<new|#new> for required args );
+  my $dmarc = Mail::DMARC::PurePerl->new(
+    ... # see the documentation for the "new" method for required args
+  );
 
   my $result = $dmarc->validate();
 
