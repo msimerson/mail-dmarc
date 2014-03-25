@@ -7,6 +7,10 @@ perl:
   - "5.10"
 # 5.10 is the oldest perl on Travis-CI
 
+branches:
+  only:
+    - releases
+
 # Travis: http://blogs.perl.org/users/alex_balhatchet/2013/04/travis-ci-perl.html
 
 before_install:
