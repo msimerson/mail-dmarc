@@ -26,11 +26,11 @@ sub validate {
     $self->result->disposition('none');   # defaults
 
 # 11.2.1 Extract RFC5322.From domain
-    my $from_dom = $self->get_from_dom() or return;
+    my $from_dom = $self->get_from_dom() or return $self->result;
 # 9.6. reject email if the domain appears to not exist
-    $self->exists_in_dns() or return;
+    $self->exists_in_dns() or return $self->result;
     $policy ||= $self->discover_policy();  # 11.2.2 Query DNS for DMARC policy
-    $policy or return;
+    $policy or return $self->result;
 
     #   3.5 Out of Scope  DMARC has no "short-circuit" provision, such as
     #         specifying that a pass from one authentication test allows one
@@ -39,7 +39,7 @@ sub validate {
     $self->is_dkim_aligned;   # 11.2.3. DKIM signature verification checks
     $self->is_spf_aligned;    # 11.2.4. SPF validation checks
     $self->is_aligned()       # 11.2.5. identifier alignment checks
-        and return 1;
+        and return $self->result;
 
     my $effective_p
         = $self->is_subdomain && defined $policy->sp
@@ -50,37 +50,32 @@ sub validate {
     #        disposed of in accordance with the discovered DMARC policy of the
     #        Domain Owner.  See Section 6.2 for details.
     if ( lc $effective_p eq 'none' ) {
-        return;
+        return $self->result;
     }
+
+    return $self->result if $self->is_whitelisted;
 
     # 7.1.  Policy Fallback Mechanism
     # If the "pct" tag is present in a policy record, application of policy
     # is done on a selective basis.
     if ( !defined $policy->pct ) {
         $self->result->disposition($effective_p);
-        return;
+        return $self->result;
     }
 
     # The stated percentage of messages that fail the DMARC test MUST be
     # subjected to whatever policy is selected by the "p" or "sp" tag
     if ( int( rand(100) ) >= $policy->pct ) {
         $self->result->reason( type => 'sampled_out' );
-        return;
+        return $self->result;
     }
 
-    # Those that are not thus
-    # selected MUST instead be subjected to the next policy lower in terms
-    # of severity.  In decreasing order of severity, the policies are
-    # "reject", "quarantine", and "none".
-    #
-    # For example, in the presence of "pct=50" in the DMARC policy record
-    # for "example.com", half of the mesages with "example.com" in the
-    # RFC5322.From field which fail the DMARC test would be subjected to
-    # "reject" action, and the remainder subjected to "quarantine" action.
-
+    # Those that are not thus selected MUST instead be subjected to the next
+    # policy lower in terms of severity.  In decreasing order of severity,
+    # the policies are "reject", "quarantine", and "none".
     $self->result->disposition(
         ( $effective_p eq 'reject' ) ? 'quarantine' : 'none' );
-    return;
+    return $self->result;
 }
 
 sub discover_policy {
@@ -164,7 +159,7 @@ sub is_dkim_aligned {
     my $self = shift;
 
     $self->result->dkim('fail');    # our 'default' result
-    my $pass_sigs = $self->get_dkim_pass_sigs() or return;
+    $self->get_dkim_pass_sigs() or return;
 
     # 11.2.3 Perform DKIM signature verification checks.  A single email may
     #        contain multiple DKIM signatures.  The results MUST include the
@@ -187,8 +182,7 @@ sub is_dkim_aligned {
             identity => '',                      # TODO, what is this?
         };
 
-        if ( $dkim_dom eq $from_dom )
-        {    # strict alignment requires exact match
+        if ( $dkim_dom eq $from_dom ) { # strict alignment requires exact match
             $self->result->dkim('pass');
             $self->result->dkim_align('strict');
             $self->result->dkim_meta($dkmeta);
@@ -196,7 +190,7 @@ sub is_dkim_aligned {
         }
 
         # don't try relaxed if policy specifies strict
-        next if $policy->adkim && lc $policy->adkim eq 's';
+        next if $policy->adkim && 's' eq lc $policy->adkim;
 
         # don't try relaxed if we already got a strict match
         next if 'pass' eq $self->result->dkim;
@@ -209,32 +203,35 @@ sub is_dkim_aligned {
             $self->result->dkim_meta($dkmeta);
         }
     }
-    return 1 if 'pass' eq $self->result->dkim;
+    return 1 if 'pass' eq lc $self->result->dkim;
     return;
 }
 
 sub is_spf_aligned {
     my $self    = shift;
     my $spf_dom = shift;
-    if ( !$spf_dom && !$self->spf ) { croak "missing SPF!"; }
 
-    if ( ! $spf_dom ) {
-        foreach my $spf ( @{ $self->spf } ) {
-            next if ! $spf->{domain};
-            $spf_dom = $spf->{domain};
-            last;
+    if ( !$spf_dom && !$self->spf ) { croak "missing SPF!"; }
+    if ( !$spf_dom ) {
+        my @passes = grep { $_->{result} =~ /pass/i } @{ $self->spf };
+        if (scalar @passes == 0) {
+            $self->result->spf('fail');
+            return 0;
         };
+        my ($ref)  = grep { $_->{scope} && $_->{scope} eq 'mfrom' } @passes;
+        if (!$ref) {
+            ($ref) = grep { $_->{scope} && $_->{scope} eq 'helo' } @passes;
+        }
+        if (!$ref) { ($ref) = $passes[0]; };
+        $spf_dom = $ref->{domain};
     };
-    $spf_dom or croak "missing SPF domain";
 
     # 11.2.4 Perform SPF validation checks.  The results of this step
     #        MUST include the domain name from the RFC5321.MailFrom if SPF
     #        evaluation returned a "pass" result.
 
-    if ( !$spf_dom ) {
-        $self->result->spf('fail');
-        return 0;
-    }
+    $self->result->spf('fail');
+    return 0 if !$spf_dom;
 
     my $from_dom = $self->header_from or croak "header_from not set!";
 
@@ -245,21 +242,42 @@ sub is_spf_aligned {
     }
 
     # don't try relaxed match if strict policy requested
-    if ( $self->policy->aspf && lc $self->policy->aspf eq 's' ) {
-        $self->result->spf('fail');
+    if ( $self->policy->aspf && 's' eq lc $self->policy->aspf ) {
         return 0;
     }
 
     if ( $self->get_organizational_domain($spf_dom) eq
-        $self->get_organizational_domain($from_dom) )
+         $self->get_organizational_domain($from_dom) )
     {
         $self->result->spf('pass');
         $self->result->spf_align('relaxed');
         return 1;
     }
-    $self->result->spf('fail');
     return 0;
 }
+
+sub is_whitelisted {
+    my $self = shift;
+    my $s_ip = shift || $self->source_ip;
+    if ( ! $self->{_whitelist} ) {
+        my $white_file = $self->config->{smtp}{whitelist} or return;
+        return if ! -f $white_file || ! -r $white_file;
+        foreach my $line ( split /\n/, $self->slurp($white_file) ) {
+            next if $line =~ /^#/; # ignore comments
+            my ($lip,$reason) = split /\s+/, $line, 2;
+            $self->{_whitelist}{$lip} = $reason;
+        };
+    };
+    return if ! $self->{_whitelist}{$s_ip};
+
+    my ($type, $comment) = split /\s+/, $self->{_whitelist}{$s_ip}, 2;
+    $self->result->disposition('none');
+    $self->result->reason(
+            type => $type,
+            ($comment && $comment =~ /\S/ ? ('comment' => $comment) : () ),
+            );
+    return $type;
+};
 
 sub has_valid_reporting_uri {
     my ( $self, $rua ) = @_;
@@ -273,6 +291,7 @@ sub has_valid_reporting_uri {
         my $ext = $self->verify_external_reporting($uri_ref);
         push @has_permission, $ext if $ext;
     }
+    return @has_permission if wantarray;
     return scalar @has_permission;
 }
 
@@ -284,7 +303,7 @@ sub get_dkim_pass_sigs {
         croak "dkim needs to be an array reference!";
     }
 
-    return grep { $_->{result} eq 'pass' } @$dkim_sigs;
+    return grep { 'pass' eq lc $_->{result} } @$dkim_sigs;
 }
 
 sub get_organizational_domain {
@@ -402,11 +421,14 @@ sub get_from_dom {
         return;
     };
 
-    # Should I do something special with a From field with multiple addresses?
-    # Do what if the domains differ? This returns only the last.
+# TODO: the From header can contain multiple addresses and should be
+# parsed as described in RFC 2822. If From has multiple-addresses,
+# then parse and use the domain in the Sender header.
+
+    # This returns only the domain in the last email address.
     # Caller can pass in pre-parsed from_dom if this doesn't suit them.
     #
-    # I care only about the domain. This is way faster than RFC822 parsing
+    # I care only about the domain. This is way faster than RFC2822 parsing
 
     my ($from_dom) = ( split /@/, $header )[-1]; # grab everything after the @
     ($from_dom) = split /(\s+|>)/, $from_dom;    # remove trailing cruft
@@ -428,7 +450,10 @@ sub external_report {
     if ( 'mailto' eq $uri->scheme ) {
         my $dest_email = $uri->path;
         my ($dest_host) = ( split /@/, $dest_email )[-1];
-        if ($dest_host eq $dmarc_dom ) {
+        if ( $self->get_organizational_domain( $dest_host )
+                eq
+             $self->get_organizational_domain( $dmarc_dom )
+             ) {
             print "$dest_host not external for $dmarc_dom\n" if $self->verbose;
             return 0;
         };

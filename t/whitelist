@@ -1,0 +1,6 @@
+# Format: IP *whitespace* type *whitespace* comment
+# Reason types: forwarded sampled_out trusted_forwarder mailing_list local_policy other
+#    any IP without a type specified will default to 'other'
+# Comment is a free form entry
+127.0.0.3 trusted_forwarder Test Comment
+127.0.0.1 local_policy

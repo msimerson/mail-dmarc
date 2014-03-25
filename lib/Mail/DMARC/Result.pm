@@ -83,7 +83,7 @@ sub reason {
 
 1;
 
-# ABSTRACT: DMARC processing results
+# ABSTRACT: processing result object
 
 package Mail::DMARC::Result::Reason;    ## no critic (MultiplePackages)
 use strict;
@@ -120,7 +120,7 @@ sub comment {
 
 1;
 
-# ABSTRACT: the results of applying a policy
+# ABSTRACT: policy override reason
 __END__
 sub {}
 

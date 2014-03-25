@@ -5,12 +5,18 @@ use warnings;
 
 #use Data::Dumper;
 use Encode;
+use Getopt::Long;
 #use XML::LibXML;
+
+GetOptions (
+    'verbose+'   => \my $verbose,
+);
 
 $|++;
 use lib 'lib';
 use Mail::DMARC::Report;
 my $report = Mail::DMARC::Report->new();
+$report->verbose($verbose) if defined $verbose;
 
 #my $schema = 'http://dmarc.org/dmarc-xml/0.1/rua.xsd';
 #my $xmlschema = XML::LibXML::Schema->new( location => $schema );
@@ -33,12 +39,15 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 
     my $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
     my $sent    = 0;
+    my @too_big;
     foreach my $u_ref (@$uri_ref) {
         my $method = $u_ref->{uri};
         my $max    = $u_ref->{max_bytes};
 
         if ( $max && $bytes > $max ) {
+# TODO: try compressing the report with gzip -9 ?
             print "skipping $method: report size ($bytes) larger than $max\n";
+            push @too_big, $method;
             next;
         }
 
@@ -57,6 +66,9 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 
     if ( $sent ) {
         $report->store->delete_report($aggregate->metadata->report_id);
+    }
+    else {
+        send_too_big_email(\@too_big, $bytes, $aggregate);
     };
 
     print "sleeping 5";
@@ -66,21 +78,54 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 
 exit;
 # PODNAME: dmarc_send_reports
-# ABSTRACT: send aggregate reports to requestors
+# ABSTRACT: send aggregate reports
 
-sub email {
+sub send_too_big_email {
+    my ($too_big, $bytes, $aggregate) = @_;
+
+    foreach my $uri (@$too_big) {
+        next if 'mailto:' ne substr( $uri, 0, 7 );
+        my ($to) = ( split /:/, $uri )[-1];
+        my $body = $report->sendit->too_big_report(
+            {   uri          => $uri,
+                report_bytes => $bytes,
+                report_id    => $aggregate->metadata->report_id,
+                report_domain=> $aggregate->policy_published->domain,
+            }
+        );
+        email( $to, $body );
+    };
+    return;
+};
+
+sub get_smtp_connection {
     my ($to, $shrunk, $agg_ref) = @_;
 
     my $smtp = $report->sendit->smtp->connect_smtp_tls( $to ) or do {
         warn "\tSSL connection failed\n";  ## no critic (Carp)
-        $$agg_ref->metadata->error("SSL connection failed");
-        my $xml = $$agg_ref->as_xml();   # re-export XML, with error
-        $shrunk = $report->compress(\$xml);
+        if ( $agg_ref ) {
+            $$agg_ref->metadata->error("SSL connection failed");
+            my $xml = $$agg_ref->as_xml();   # re-export XML, with error
+            $shrunk = $report->compress(\$xml);
+        };
     };
 
+    my $rid;
+    $rid = $$agg_ref->metadata->report_id if $agg_ref;
     if ( ! $smtp ) {
         $smtp = $report->sendit->smtp->connect_smtp( $to ) or do {
             warn "\tSMTP connection failed\n";  ## no critic (Carp)
+            if ( $rid ) {
+                my $errors = scalar $$agg_ref->metadata->error;
+                if ( $errors >= 12 ) {
+                    print "Report $rid deleted (too many errors)\n";
+                    $report->store->delete_report($rid);
+                }
+                else {
+                    $report->store->error($rid, "SSL connection for $to failed");
+                    $report->store->error($rid, "SMTP connection for $to failed");
+                };
+            };
             return;
         };
     };
@@ -90,27 +135,61 @@ sub email {
         return;
     };
 
+    return $smtp;
+};
+
+sub email {
+    my ($to, $shrunk, $agg_ref) = @_;
+
+    my $smtp = get_smtp_connection($to,$shrunk,$agg_ref) or return;
     print "delivering message to $to, via ".$smtp->host."\n";
+
+    my $rid;
+    $rid = $$agg_ref->metadata->report_id if $agg_ref;
 
     my $from = $report->config->{organization}{email};
     $smtp->mail($from) or do {
-        print "MAIL FROM $from rejected\n";
-        $smtp->quit;
-        return;
-    };
-    $smtp->recipient( $to ) or do {
-        print "RCPT TO $to rejected\n";
+        my $err = $smtp->code ." ". $smtp->message;
+        print "MAIL FROM $from rejected\n\t$err\n";
+        $report->store->error($rid, $err) if $rid;
         $smtp->quit;
         return;
     };
 
-    my $body = $report->sendit->smtp->assemble_message($agg_ref, $to, $shrunk);
-    my $to_domain = $$agg_ref->policy_published->domain;
+    $smtp->recipient( $to ) or do {
+        my $err = $smtp->code ." ". $smtp->message;
+        print "RCPT TO $to rejected\n\t$err\n";
+        if ( $rid ) {
+            if ( $smtp->code =~ /^5/ ) {  # SMTP 5XX error
+                print "Report $rid deleted \n";
+                $report->store->delete_report($rid);
+            }
+            else {
+                $report->store->error($rid, $err);
+            };
+        };
+        $smtp->quit;
+        return;
+    };
+
+    my $body = $shrunk;
+    if ( $rid ) {
+        $body = $report->sendit->smtp->assemble_message($agg_ref, $to, $shrunk);
+    };
 
     $smtp->data($body) or do {
-        print "DATA for domain $to_domain report rejected\n";
+        my $err = $smtp->code ." ". $smtp->message;
+        if ( $agg_ref ) {
+            my $to_domain = $$agg_ref->policy_published->domain;
+            print "DATA for domain $to_domain report rejected\n\t$err\n";
+        }
+        else {
+            print "DATA for report rejected\n\t$err\n";
+        };
+        $report->store->error($rid, $err) if $rid;
         return;
     };
+
     $smtp->quit;
     return 1;
 }

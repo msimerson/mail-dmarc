@@ -12,6 +12,11 @@ sub delete_report {
     return $self->backend->delete_report(@_);
 }
 
+sub error {
+    my $self = shift;
+    return $self->backend->insert_error(@_);
+}
+
 sub retrieve {
     my $self = shift;
     return $self->backend->retrieve(@_);
@@ -40,7 +45,7 @@ sub backend {
 
 1;
 
-# ABSTRACT: persistent storage broker for DMARC reports
+# ABSTRACT: persistent storage broker for reports
 __END__
 
 =head1 SYNOPSIS

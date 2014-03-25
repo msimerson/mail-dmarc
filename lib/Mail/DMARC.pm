@@ -31,13 +31,13 @@ sub envelope_from {
 sub header_from {
     return $_[0]->{header_from} if 1 == scalar @_;
     croak "invalid header_from" if !$_[0]->is_valid_domain( $_[1] );
-    return $_[0]->{header_from} = $_[1];
+    return $_[0]->{header_from} = lc $_[1];
 }
 
 sub header_from_raw {
     return $_[0]->{header_from_raw} if 1 == scalar @_;
 #croak "invalid header_from_raw: $_[1]" if 'from:' ne lc substr($_[1], 0, 5);
-    return $_[0]->{header_from_raw} = $_[1];
+    return $_[0]->{header_from_raw} = lc $_[1];
 }
 
 sub local_policy {
@@ -176,7 +176,7 @@ sub is_valid_spf {
         croak if $spf->{scope} &&
             ! $self->is_valid_spf_scope( $spf->{scope} );
 
-        if ( $spf->{result} eq 'pass' && !$spf->{domain} ) {
+        if ( $spf->{result} =~ /^pass$/i && !$spf->{domain} ) {
             croak "SPF pass MUST include the RFC5321.MailFrom domain!";
         }
     };
@@ -232,9 +232,11 @@ sub {}  # for vim automatic code folding
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
 
-my $dmarc = Mail::DMARC->new( see L<new|#new> for required args );
+  my $dmarc = Mail::DMARC::PurePerl->new(
+    ... # see the documentation for the "new" method for required args
+  );
 
-my $result = $dmarc->validate();
+  my $result = $dmarc->validate();
 
  if ( $result->result eq 'pass' ) {
      ...continue normal processing...
@@ -261,9 +263,15 @@ This module can be used...
 
 =over 4
 
+=item *
+
 by MTAs and filtering tools like SpamAssassin to validate that incoming messages are aligned with the purported sender's policy.
 
+=item *
+
 by email senders, to receive DMARC reports from other mail servers and display them via CLI and web interfaces.
+
+=item *
 
 by MTA operators to send DMARC reports to DMARC author domains.
 
@@ -291,7 +299,11 @@ The report store can use the same database to store reports you have received as
 
 =over 4
 
+=item *
+
 received reports will have a null value for report_policy_published.rua
+
+=item *
 
 outgoing reports will have null values for report.uuid and report_record.count
 
@@ -499,6 +511,8 @@ Mail::DMARC on GitHub: https://github.com/msimerson/mail-dmarc
 Mar 13, 2013 Draft: http://tools.ietf.org/html/draft-kucherawy-dmarc-base-00
 
 Mar 30, 2012 Draft: http://www.dmarc.org/draft-dmarc-base-00-02.txt
+
+Best Current Practices: http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03
 
 =head1 HISTORY
 

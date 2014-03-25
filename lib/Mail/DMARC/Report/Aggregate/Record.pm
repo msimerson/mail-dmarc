@@ -58,5 +58,8 @@ sub row {
 __END__
 sub {}
 
+=head1 DESCRIPTION
 
+An aggregate report record, with object methods for identifiers, auth_results, and each row.
 
+=cut

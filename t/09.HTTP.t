@@ -14,7 +14,7 @@ foreach my $req ( 'DBD::SQLite 1.31', 'Net::Server::HTTP' ) {
     }
 };
 
-my $mod = 'Mail::DMARC::Report::View::HTTP';
+my $mod = 'Mail::DMARC::HTTP';
 use_ok($mod);
 my $http = $mod->new;
 isa_ok( $http, $mod );

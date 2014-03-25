@@ -32,6 +32,7 @@ sub config {
 sub get_config {
     my $self = shift;
     my $file = shift || $self->{config_file} or croak;
+    return Config::Tiny->read($file) if -r $file;  # fully qualified
     my @dirs = qw[ /usr/local/etc /opt/local/etc /etc ./ ];
     foreach my $d (@dirs) {
         next                              if !-d $d;
@@ -168,12 +169,11 @@ sub is_valid_ip {
 
 sub is_valid_domain {
     my ( $self, $domain ) = @_;
-    if ( $domain =~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x ) {
-        my $tld = ( split /\./, $domain )[-1];
-        return 1 if $self->is_public_suffix($tld);
-        $tld = join( '.', ( split /\./, $domain )[ -2, -1 ] );
-        return 1 if $self->is_public_suffix($tld);
-    }
+    return 0 if $domain !~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x;
+    my $tld = ( split /\./, $domain )[-1];
+    return 1 if $self->is_public_suffix($tld);
+    $tld = join( '.', ( split /\./, $domain )[ -2, -1 ] );
+    return 1 if $self->is_public_suffix($tld);
     return 0;
 }
 

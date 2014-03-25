@@ -43,14 +43,28 @@ sub retrieve {
 
     my $query = $self->get_report_query;
     my @params;
-    my @known = qw/ rid author from_domain begin end /;
 
-    foreach my $known ( @known ) {
-        next if ! defined $args{$known};
-        $query .= " AND $known=?";
-        push @params, $args{$known};
+    if ( $args{rid} ) {
+        $query .= " AND r.id=?";
+        push @params, $args{rid};
     };
-    my $reports = $self->query( $query );
+    if ( $args{begin} ) {
+        $query .= " AND r.begin>=?";
+        push @params, $args{begin};
+    };
+    if ( $args{end} ) {
+        $query .= " AND r.end<=?";
+        push @params, $args{end};
+    };
+    if ( $args{author} ) {
+        $query .= " AND a.org_name=?";
+        push @params, $args{author};
+    };
+    if ( $args{from_domain} ) {
+        $query .= " AND fd.domain=?";
+        push @params, $args{from_domain};
+    };
+    my $reports = $self->query( $query, \@params );
 
     foreach (@$reports ) {
         $_->{begin} = join(" ", split(/T/, $self->epoch_to_iso( $_->{begin} )));
@@ -98,6 +112,8 @@ sub delete_report {
     foreach my $table (qw/ report_policy_published report_record /) {
         $self->query( "DELETE FROM $table WHERE report_id=?", [$report_id] );
     }
+
+    $self->query( "DELETE FROM report_error WHERE report_id=?", [$report_id] );
 
     # In MySQL, where FK constraints DO cascade, this is the only query needed
     $self->query( "DELETE FROM report WHERE id=?", [$report_id] );
@@ -368,7 +384,7 @@ sub populate_agg_metadata {
             [ $$report_ref->{rid} ]
         );
     foreach ( @$errors ) {
-        $agg_ref->metadata->error( $_->{error} );
+        $$agg_ref->metadata->error( $_->{error} );
     };
     return 1;
 };
@@ -468,6 +484,17 @@ sub insert_agg_record {
         }
     }
     return 1;
+}
+
+sub insert_error {
+    my ( $self, $rid, $error ) = @_;
+# wait >5m before trying to deliver this report again
+    $self->query('UPDATE report SET end=? WHERE id=?', [time + (5*60), $rid]);
+
+    return $self->query(
+        'INSERT INTO report_error (report_id, error ) VALUES (??)',
+        [ $rid, $error ]
+    );
 }
 
 sub insert_rr_reason {
@@ -636,9 +663,7 @@ sub query {
     return $self->query_insert( $query, $err, @params )
         if $query =~ /^INSERT/ix;
     return $self->query_replace( $query, $err, @params )
-        if $query =~ /^REPLACE/ix;
-    return $self->query_update( $query, $err, @params )
-        if $query =~ /^UPDATE/ix;
+        if $query =~ /^(?:REPLACE|UPDATE)/ix;
     return $self->query_delete( $query, $err, @params )
         if $query =~ /^DELETE/ix;
     return $self->query_any( $query, $err, @params );
@@ -647,8 +672,10 @@ sub query {
 sub query_any {
     my ( $self, $query, $err, @params ) = @_;
 #warn "query: $query\n" . join(", ", @params) . "\n";
-    my $r = $self->dbix->query( $query, @params )->hashes or croak $err;
+    my $r;
+    eval { $r = $self->dbix->query( $query, @params )->hashes; } or print '';
     $self->db_check_err($err);
+    die "something went wrong with: $err\n" if ! $r; ## no critic (Carp)
     return $r;
 }
 
@@ -671,13 +698,6 @@ sub query_replace {
     return 1;    # sorry, no indication of success
 }
 
-sub query_update {
-    my ( $self, $query, $err, @params ) = @_;
-    $self->dbix->query( $query, @params ) or croak $err;
-    $self->db_check_err($err);
-    return 1;
-}
-
 sub query_delete {
     my ( $self, $query, $err, @params ) = @_;
     $self->dbix->query( $query, @params ) or croak $err;
@@ -690,7 +710,7 @@ sub query_delete {
 
 1;
 
-# ABSTRACT: SQL storage for DMARC reports
+# ABSTRACT: store and retrieve reports from a SQL RDBMS
 __END__
 
 =head1 SYPNOSIS

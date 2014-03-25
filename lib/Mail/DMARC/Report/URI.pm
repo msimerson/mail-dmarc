@@ -17,14 +17,14 @@ sub parse {
 
     my @valids = ();
     foreach my $raw ( split /,/, $str ) {
-#       warn "raw: $raw\n" if $self->verbose;
+#       warn "raw: $raw\n";
         my ( $u, $size_f ) = split /!/, $raw;
         my $bytes = $self->get_size_limit($size_f);
         my $uri = URI->new($u) or do {
             carp "can't parse URI from $u";
             next;
         };
-        my $scheme = $uri->scheme;
+        my $scheme = $uri->scheme or next;
         if ( $scheme eq 'mailto' && lc substr( $u, 0, 7 ) eq 'mailto:' ) {
             push @valids, { max_bytes => $bytes, uri => $uri };
             next;
@@ -58,9 +58,20 @@ sub get_size_limit {
 
 1;
 
-# ABSTRACT: a DMARC reporting URI
+# ABSTRACT: a DMARC report URI
 __END__
 sub {}
+
+=head1 SYNOPSIS
+
+  use Mail::DMARC::URI;
+  my $duri = Mail::DMARC::URI->new;
+  my $uri_ref = $duri->parse('mailto:rua@example.com,mailto:rua@external.otherdomain.com');
+  foreach my $u ( @$uri_ref ) {
+      my $method = $u->{uri};
+      my $max    = $u->{max_bytes};
+      ... do some URI stuff ...
+  };
 
 =head1 ABNF
 

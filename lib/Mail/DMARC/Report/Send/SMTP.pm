@@ -15,12 +15,26 @@ use parent 'Mail::DMARC::Base';
 
 sub get_domain_mx {
     my ( $self, $domain ) = @_;
-    my $query = $self->get_resolver->send( $domain, 'MX' ) or return [];
+    print "getting MX for $domain\n";
+    my $query;
+    eval {
+        $query = $self->get_resolver->send( $domain, 'MX' ) or return [];
+    } or print $@;
+
+    if ( ! $query ) {
+        print "\terror:\n\t$@";
+        return [];
+    };
+
     my @mx;
     for my $rr ( $query->answer ) {
         next if $rr->type ne 'MX';
         push @mx, { pref => $rr->preference, addr => $rr->exchange };
+        print $rr->exchange if $self->verbose;
     }
+    if ( $self->verbose ) {
+        print "found " . scalar @mx . "MX exchanges\n";
+    };
     return \@mx;
 }
 
@@ -32,6 +46,7 @@ sub connect_smtp {
         Timeout         => 10,
         Port            => 25,
         Hello           => $self->get_helo_hostname,
+        Debug           => $self->verbose ? 1 : 0,
         )
         or do {
             carp "SMTP connection failed\n";
@@ -51,6 +66,7 @@ sub connect_smtp_tls {
         Hello           => $self->get_helo_hostname,
         doSSL           => 'starttls',
         SSL_verify_mode => 'SSL_VERIFY_NONE',
+        Debug           => $self->verbose ? 1 : 0,
         )
         or do {
             warn "SSL connection failed\n"; ## no critic (Carp)
@@ -109,11 +125,11 @@ sent by a Mail Receiver.
 
 =cut
 
-    my $rid = $$agg_ref->{metadata}{report_id} || time;
+    my $rid = $$agg_ref->metadata->report_id || time;
     my $id = POSIX::strftime( "%Y.%m.%d.", localtime ) . $rid;
     my $us = $self->config->{organization}{domain};
-    my $pol_dom = $$agg_ref->{policy_published}{domain};
-    return "Report Domain: $pol_dom Submitter: $us Report-ID: <$id>";
+    my $pol_dom = $$agg_ref->policy_published->domain;
+    return "Report Domain: $pol_dom Submitter: $us Report-ID:$id";
 }
 
 sub human_summary {
@@ -219,7 +235,7 @@ sub get_helo_hostname {
 
 1;
 
-# ABSTRACT: send DMARC reports via SMTP
+# ABSTRACT: utility methods for sending reports via SMTP
 __END__
 sub {}
 

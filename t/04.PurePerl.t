@@ -20,14 +20,11 @@ my %test_policy = @test_policy;
 my $n;
 my $test_rec = join( '; ',
     map  { $_ . '=' . $test_policy{$_} }
-    grep { !( $n++ % 2 ) } @test_policy )
-    ;                 # extract keys from the ordered array
-
-#die "$test_rec\n";
+    grep { !( $n++ % 2 ) } @test_policy );  # extract keys
 
 my $dmarc = Mail::DMARC::PurePerl->new;
+$dmarc->config('t/mail-dmarc.ini');
 
-#$dmarc->header_from('example.com');
 isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 
 #done_testing(); exit;
@@ -39,6 +36,7 @@ test_exists_in_dns();
 test_is_spf_aligned();
 test_is_dkim_aligned();
 test_is_aligned();
+test_is_whitelisted();
 test_discover_policy();
 test_validate();
 test_has_valid_reporting_uri();
@@ -122,13 +120,21 @@ sub test_has_valid_reporting_uri {
         ok( $r_ref, "has_valid_reporting_uri, $v" );
     }
 
+    $dmarc->result->published->{domain} = 'dmarc-qa.com';
+    my @uris = $dmarc->has_valid_reporting_uri(
+        'mailto:mailto:a@dmarc-qa.com,mailto:b@dmarc-qa.com' );
+    ok( 2 ==scalar @uris, "has_valid_reporting_uri, 1.5.1 multiple");
+#print Dumper(\@uris);
+
     # invalid tests
     my @invalid = (
-        'ftp://ftp.example.com',    # invalid schemes
+        'ftp://ftp.example.com',          # invalid schemes
         'gopher://www.example.com/dmarc',
         'scp://secure.example.com',
-        'http://www.example.com/dmarc',    # host doesn't match
+        'http://www.example.com/dmarc',   # host doesn't match
+        'a@dmarc-qa.com',                 # 1.4.6 missing scheme
     );
+    $dmarc->result->published->{domain} = 'example.com';
     foreach my $v (@invalid) {
         my $r = $dmarc->has_valid_reporting_uri($v);
         ok( !$r, "has_valid_reporting_uri, neg, $v" )
@@ -164,10 +170,12 @@ sub test_discover_policy {
             fo    => 0,
             domain => 'mail-dmarc.tnpi.net',
         },
-        'discover_policy'
+        'discover_policy, deeply'
     );
 
-    #print Dumper($policy);
+    $policy = $dmarc->discover_policy('multiple.dmarc-qa.com');
+#   warn Dumper($policy);
+    ok( ! $policy, 'discover_policy, 1.3.3 multiple DMARC records not allowed' );
 }
 
 sub get_test_headers {
@@ -182,6 +190,18 @@ sub get_test_headers {
         ' <user@example.com > '                         => 'example.com',
         'Sample User <user@example.com>,Sample2<user@example2.com>' =>
             'example2.com',
+        'From: test@dmarc-qa.com'                       => 'dmarc-qa.com',
+        'From: <test@dmarc-qa.com>'                     => 'dmarc-qa.com',
+        'From: "Test 1.1.3" <test@dmarc-qa.com>'        => 'dmarc-qa.com',
+        'From: Test 1.1.4" <test@dmarc-qa.com>'         => 'dmarc-qa.com',
+        'From: "test@alt.dmarc-qa.com" <test@dmarc-qa.com>'=>'dmarc-qa.com',
+        ''                                              => '',
+        'From: "Test 1.1.11" <test1@dmarc-qa.com>, "Test 1.1.11" <test2@alt.dmarc-qa.com>'                                                 => 'alt.dmarc-qa.com',
+        'From: "Test 1.1.8"
+            <test@dmarc-qa.com>'                        => 'dmarc-qa.com',
+        'From: "Test 1.1.7" <nope@test@dmarc-qa.com>'   => '',
+        'From: Test 1.1.6 <test@dmarc-qa.com>'          => 'dmarc-qa.com',
+        'From: "Test 1.1.5"'                            => '',
     );
 }
 
@@ -272,6 +292,21 @@ sub test_is_aligned {
         or diag Data::Dumper::Dumper( $dmarc->is_aligned() );
 }
 
+sub test_is_whitelisted {
+    my %good = (
+            '127.0.0.1' => 'local_policy',
+            '127.0.0.3' => 'trusted_forwarder',
+        );
+    foreach ( keys %good ) {
+        cmp_ok( $dmarc->is_whitelisted($_), 'eq', $good{$_}, "is_whitelisted, $_, $good{$_}");
+    };
+
+    my @bad = qw/ 127.0.0.2 10.0.0.0 /;
+    foreach ( @bad ) {
+        ok( ! $dmarc->is_whitelisted($_), "is_whitelisted, neg, $_");
+    };
+};
+
 sub test_validate {
 
     # TODO: test various failure modes and results
@@ -319,6 +354,36 @@ sub test_fetch_dmarc_record {
     $matches = $dmarc->fetch_dmarc_record('mail-dmarc.tnpi.net');
     is_deeply( $matches, [$test_rec], 'fetch_dmarc_record' );
 
+    $matches = $dmarc->fetch_dmarc_record('one_one.test.dmarc-qa.com');
+    my $policy = $dmarc->policy->parse( $matches->[0] );
+    cmp_ok( $policy->p, 'eq', 'reject', "fetch_dmarc_record, 1.2.1 one_one.test.dmarc-qa.com" );
+
+    $matches = $dmarc->fetch_dmarc_record('dmarc-qafail.com');
+    cmp_ok( 0, '==', scalar @$matches, "fetch_dmarc_record, 1.2.2 DNS error");
+
+    $matches = $dmarc->fetch_dmarc_record('alt.dmarc-qa.com');
+    $policy = $dmarc->policy->parse( $matches->[0] );
+    cmp_ok( $policy->p, 'eq', 'none', "fetch_dmarc_record, 1.2.3 DNS error subdomain");
+
+    $matches = $dmarc->fetch_dmarc_record('servfail.dmarc-qa.com');
+    eval { $policy = $dmarc->policy->parse( $matches->[0] ) } if scalar @$matches;
+    cmp_ok( $policy->p, 'eq', 'none', "fetch_dmarc_record, 1.2.3 DNS srvfail");
+
+    $matches = $dmarc->fetch_dmarc_record('com');
+    is_deeply( $matches, [], 'fetch_dmarc_record, 1.2.4 TLD lookup not allowed' );
+
+    $matches = $dmarc->fetch_dmarc_record('cn.dmarc-qa.com');
+    eval { $policy = $dmarc->policy->parse( $matches->[0] ) } if scalar @$matches;
+    cmp_ok( $policy->p, 'eq', 'reject', "fetch_dmarc_record, 1.2.5 CNAME results in Org match");
+
+    $matches = $dmarc->fetch_dmarc_record('unrelated.dmarc-qa.com');
+    eval { $policy = $dmarc->policy->parse( $matches->[0] ) } if scalar @$matches;
+    cmp_ok( $policy->p, 'eq', 'reject', "fetch_dmarc_record, 1.3.1 unrelated TXT");
+
+    $matches = $dmarc->fetch_dmarc_record('mixed.dmarc-qa.com');
+    eval { $policy = $dmarc->policy->parse( $matches->[0] ) } if scalar @$matches;
+    cmp_ok( $policy->p, 'eq', 'none', "fetch_dmarc_record, 1.3.1 mixed TXT");
+
     #warn Dumper($matches);
 }
 
@@ -328,8 +393,15 @@ sub test_get_from_dom {
     foreach my $h ( keys %froms ) {
         $dmarc->init;
         $dmarc->header_from_raw($h);
-        my $s = $dmarc->get_from_dom();
-        ok( $s eq $froms{$h}, "get_from_dom, $s eq $froms{$h}" );
+        my $s;
+        eval { $s = $dmarc->get_from_dom() };
+        if ( $froms{$h} ) {
+            ok( $s eq $froms{$h}, "get_from_dom, $s eq $froms{$h}" );
+        }
+        else {
+            chomp $@;
+            ok( 1, "get_from_dom, $h, $@" );
+        };
     }
 }
 
