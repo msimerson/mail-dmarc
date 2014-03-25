@@ -16,7 +16,7 @@ my %command_line_options = (
     'file:s'    => \my $file,
     'imap'      => \my $imap,
     'mbox'      => \my $mbox,
-    'verbose'   => \my $verbose,
+    'verbose+'  => \my $verbose,
     );
 GetOptions (%command_line_options);
 
