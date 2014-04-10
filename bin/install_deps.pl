@@ -1,28 +1,5 @@
 #!/usr/bin/perl
-# VERSION 1.8
-
-# v1.8 - 2013-09-06  - Matt
-#      - applied PBP
-#
-# v1.7 - 2013-04-20  - Matt
-#      - get list of modules from Makefile.PL or dist.ini
-#      - abstracted yum and apt into subs
-#
-# v1.6 - 2013-04-01  - Matt
-#      - improved error reporting for FreeBSD port installs
-#
-# v1.5 - 2013-03-27  - Matt
-#      - added option to specify port category
-#
-# v1.4 - 2012-10-23  - Matt
-#      - improved yum & apt-get module installer
-#
-# v1.3 - 2012-10-23  - Matt
-#      - added apt-get support
-#      - added app install support
-#
-# circa 2008, by Matt Simerson & Phil Nadeau
-#      - based on installer in Mail::Toaster dating back to the 20th century
+# VERSION 1.10
 
 use strict;
 use warnings;
@@ -111,7 +88,7 @@ sub get_perl_modules_from_ini {
     my $in = 0;
     my @modules;
     while ( my $line = <$fh> ) {
-        if ( '[Prereqs' eq substr($line,0,8) ) {
+        if ( '[Prereqs]' eq substr($line,0,9) ) {
             $in++;
             next;
         };
@@ -131,13 +108,13 @@ sub get_perl_modules_from_ini {
 };
 
 sub install_app {
-    my ( $app, $info) = @_;
+    my ( $app, $info ) = @_;
 
     if ( lc($OSNAME) eq 'darwin' ) {
-        install_app_darwin($app, $info );
+        install_app_darwin( $app, $info );
     }
     elsif ( lc($OSNAME) eq 'freebsd' ) {
-        install_app_freebsd($app, $info );
+        install_app_freebsd( $app, $info );
     }
     elsif ( lc($OSNAME) eq 'linux' ) {
         install_app_linux( $app, $info );
@@ -164,17 +141,21 @@ sub install_app_freebsd {
     my ($app, $info ) = @_;
 
     print " from ports...";
-    my $name = $info->{port} || $app;
 
-    if ( `/usr/sbin/pkg_info | /usr/bin/grep $name` ) { ## no critic (Backtick)
-        return print "$app is installed.\n";
-    };
-    if ( `/usr/sbin/pkg info -x $name` ) {  ## no critic (Backtick)
-        return print "$app is installed.\n";
+    if ( -x '/usr/sbin/pkg_info' ) {
+        if ( `/usr/sbin/pkg_info | /usr/bin/grep $app` ) { ## no critic (Backtick)
+            return print "$app is installed.\n";
+        };
+    }
+    if ( -x '/usr/sbin/pkg') {
+        if ( `/usr/sbin/pkg info -x $app` ) {  ## no critic (Backtick)
+            return print "$app is installed.\n";
+        }
     }
 
     print "installing $app";
 
+    my $name = $info->{port} || $app;
     my $category = $info->{category} || '*';
     my ($portdir) = glob "/usr/ports/$category/$name"; ## no critic (Backtick)
 
@@ -276,11 +257,15 @@ sub install_module_freebsd {
 
     print " from ports...$portname...";
 
-    if ( `/usr/sbin/pkg_info | /usr/bin/grep $portname` ) { ## no critic (Backtick)
-        return print "$module is installed.\n";
+    if ( -x '/usr/sbin/pkg_info' ) {
+        if ( `/usr/sbin/pkg_info | /usr/bin/grep $portname` ) { ## no critic (Backtick)
+            return print "$module is installed.\n";
+        }
     }
-    if ( `/usr/sbin/pkg info -x $portname` ) { ## no critic (Backtick)
-        return print "$module is installed.\n";
+    if ( -x '/usr/sbin/pkg' ) {
+        if ( `/usr/sbin/pkg info -x $portname` ) { ## no critic (Backtick)
+            return print "$module is installed.\n";
+        }
     }
 
     print "installing $module ...";
@@ -289,7 +274,7 @@ sub install_module_freebsd {
     my ($portdir) = glob "/usr/ports/$category/$portname";
 
     if ( ! $portdir || ! -d $portdir ) {
-        print "oops, no match at /usr/ports/$category/$portname\n";
+        print "no match at /usr/ports/$category/$portname\n";
         return;
     };
 
@@ -394,7 +379,7 @@ sub name_overrides {
 # couple rules. When that doesn't work, add entries here for FreeBSD (port),
 # MacPorts ($dport), yum, and apt.
     my @modules = (
-        { module=>'LWP::UserAgent', info => { cat=>'www', port=>'p5-libwww', dport=>'p5-libwww-perl' }, },
+        { module=>'LWP::UserAgent', info => { cat=>'www', port=>'libwww', dport=>'p5-libwww-perl', yum=>'perl-libwww-perl' }, },
         { module=>'Mail::Send'    , info => { port => 'Mail::Tools', }  },
     );
     my ($match) = grep { $_->{module} eq $mod } @modules;
