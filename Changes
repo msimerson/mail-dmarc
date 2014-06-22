@@ -1,6 +1,7 @@
 
 {{$NEXT}}
 
+ - load PSL into hash to speed subsequent lookups (esp for daemon)
  - uncommented Net::Server in Prereqs/Recommended section
  - added INSTALL
  - updated dmarc_httpd description to note validation feature

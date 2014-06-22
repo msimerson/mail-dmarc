@@ -120,7 +120,7 @@ sub test_is_public_suffix {
         'net'          => 1,
         'com'          => 1,
         'co.uk'        => 1,
-        '*.uk'         => 1,
+        '*.uk'         => 0,
         'google.com'   => 0,
         'a'            => 0,
         'z'            => 0,

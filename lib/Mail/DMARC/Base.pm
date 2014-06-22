@@ -18,6 +18,7 @@ sub new {
     croak "invalid args" if scalar @args % 2 != 0;
     return bless {
         config_file => 'mail-dmarc.ini',
+        public_suffixes => {},
         @args,       # this may override config_file
     }, $class;
 }
@@ -73,6 +74,31 @@ sub is_public_suffix {
 
     croak "missing zone name!" if !$zone;
 
+    if (!$self->{public_suffixes}{'com'}) {
+        my $file = $self->find_psl_file();
+        my $fh = IO::File->new( $file, 'r' )
+            or croak "unable to open $file for read: $!\n";
+        # load PSL into hash for fast lookups, esp. for long running daemons
+        my %psl = map { $_ => 1 }
+                  grep { $_ !~ /^[\/\s]/ } # weed out comments & whitespace
+                  map { chomp($_); $_ }    # remove line endings
+                  <$fh>;
+        $self->{public_suffixes} = \%psl;
+    };
+
+    $zone =~ s/\*/\\*/g;    # escape * char
+    return 1 if $self->{public_suffixes}{$zone};
+
+    my @labels = split /\./, $zone;
+    $zone = join '.', '\*', (@labels)[ 1 .. scalar(@labels) - 1 ];
+
+    return 1 if $self->{public_suffixes}{$zone};
+    return 0;
+}
+
+sub find_psl_file {
+    my ($self) = @_;
+
     my $file = $self->config->{dns}{public_suffix_list}
         || 'share/public_suffix_list';
     my @dirs = qw[ ./ /usr/local/ /opt/local /usr/ ];
@@ -81,27 +107,16 @@ sub is_public_suffix {
         $match = $dir . $file;
         last if ( -f $match && -r $match );
     }
-    if ( !-r $match ) {
+    if (-r $match) {
+        print "using $match for Public Suffix List\n" if $self->verbose;
+        return $match;
+    };
 
-        # Fallback to included suffic list, dies if not found/readable
-        $match
-            = File::ShareDir::dist_file( 'Mail-DMARC', 'public_suffix_list' );
-    }
-
-    my $fh = IO::File->new( $match, 'r' )
-        or croak "unable to open $match for read: $!\n";
-
-    $zone =~ s/\*/\\*/g;    # escape * char
-    return 1 if grep {/^$zone$/} <$fh>;
-
-    my @labels = split /\./, $zone;
-    $zone = join '.', '\*', (@labels)[ 1 .. scalar(@labels) - 1 ];
-
-    $fh = IO::File->new( $match, 'r' );    # reopen
-    return 1 if grep {/^$zone$/} <$fh>;
-
-    return 0;
-}
+    # Fallback to included suffic list, dies if not found/readable
+    $match = File::ShareDir::dist_file( 'Mail-DMARC', 'public_suffix_list' );
+    print "using $match for Public Suffix List\n" if $self->verbose;
+    return $match;
+};
 
 sub has_dns_rr {
     my ( $self, $type, $domain ) = @_;
