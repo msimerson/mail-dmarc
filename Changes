@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20140622 2014-06-22 America/Los_Angeles
+
  - load PSL into hash to speed subsequent lookups (esp for daemon)
  - uncommented Net::Server in Prereqs/Recommended section
  - added INSTALL
