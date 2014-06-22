@@ -1,5 +1,5 @@
 package Mail::DMARC;
-our $VERSION = '1.20140210'; # VERSION
+our $VERSION = '1.20140622'; # VERSION
 use strict;
 use warnings;
 
@@ -234,13 +234,15 @@ Mail::DMARC - Perl implementation of DMARC
 
 =head1 VERSION
 
-version 1.20140210
+version 1.20140622
 
 =head1 SYNOPSIS
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
 
-  my $dmarc = Mail::DMARC::PurePerl->new( see L<new|#new> for required args );
+  my $dmarc = Mail::DMARC::PurePerl->new(
+    ... # see the documentation for the "new" method for required args
+  );
 
   my $result = $dmarc->validate();
 

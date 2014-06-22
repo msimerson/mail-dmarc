@@ -20,7 +20,7 @@ my %module_build_args = (
     "Davide Migliavacca <shari\@cpan.org>"
   ],
   "dist_name" => "Mail-DMARC",
-  "dist_version" => "1.20140210",
+  "dist_version" => "1.20140622",
   "license" => "perl",
   "module_name" => "Mail::DMARC",
   "recommends" => {
@@ -37,6 +37,7 @@ my %module_build_args = (
     "Net::HTTP" => 0,
     "Net::IMAP::Simple" => 0,
     "Net::SMTPS" => 0,
+    "Net::Server" => 2,
     "XML::LibXML" => 0
   },
   "recursive_test_files" => 1,

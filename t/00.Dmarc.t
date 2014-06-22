@@ -153,22 +153,24 @@ sub test_new {
     # empty policy
     my $dmarc = Mail::DMARC->new();
     isa_ok( $dmarc, 'Mail::DMARC' );
-    is_deeply( $dmarc, { config_file => 'mail-dmarc.ini' }, "new, empty" );
+    is_deeply( $dmarc, { config_file => 'mail-dmarc.ini', public_suffixes => {} }, "new, empty" );
 
     # new, one shot request
     $dmarc = Mail::DMARC->new(%sample_dmarc);
     isa_ok( $dmarc, 'Mail::DMARC' );
+    delete $dmarc->{public_suffixes};
     is_deeply( $dmarc, \%sample_dmarc, "new, one shot" );
 
     # new, individual accessors
     $dmarc = Mail::DMARC->new();
     isa_ok( $dmarc, 'Mail::DMARC' );
     foreach my $key ( keys %sample_dmarc ) {
-        next if grep {/$key/} qw/ config config_file /;
+        next if grep {/$key/} qw/ config config_file public_suffixes /;
         eval { $dmarc->$key( $sample_dmarc{$key} ); }
             or diag "error running $key with $sample_dmarc{$key} arg: $@";
     }
     delete $dmarc->{config};
+    delete $dmarc->{public_suffixes};
     is_deeply( $dmarc, \%sample_dmarc, "new, individual accessors" );
 }
 
