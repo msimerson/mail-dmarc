@@ -3,7 +3,8 @@
 
  - uncommented Net::Server in Prereqs/Recommended section
  - added INSTALL
- - updaded dmarc_httpd description to note validation feature
+ - updated dmarc_httpd description to note validation feature
+ - updated public_suffix_list
 
 1.20140210 2014-02-09 America/Los_Angeles
 
