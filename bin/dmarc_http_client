@@ -25,7 +25,6 @@ if ($data eq '-') {
 }
 
 my $url  = "http://$host:$port/dmarc/json/validate";
-my $json = JSON->new->utf8;
 my $ua   = LWP::UserAgent->new;
 my $req  = HTTP::Request->new(POST => $url);
    $req->content_type('application/json');
@@ -34,7 +33,7 @@ my $req  = HTTP::Request->new(POST => $url);
 my $response = $ua->request($req)->decoded_content;
 #print Dumper($response);       # raw JSON response
 my $result;
-eval { $result = $json->decode($response) };
+eval { $result = JSON->new->utf8->decode($response) };
 if ($result) {
     print Dumper($result);      # pretty formatted struct
     exit;
@@ -43,7 +42,7 @@ if ($result) {
 die $response;
 
 sub get_json_request {
-    return $json->encode ({
+    return JSON->new->encode ({
         source_ip     => '192.0.1.1',
         envelope_to   => 'example.com',
         envelope_from => 'cars4you.info',
