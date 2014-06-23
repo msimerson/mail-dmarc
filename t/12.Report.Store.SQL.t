@@ -82,7 +82,8 @@ sub test_populate_agg_records {
                                                 'reason' => $reasons,
                                             },
                         'source_ip' => '192.1.1.1'
-                    }
+                    },
+                    public_suffixes => {},
             }];
     is_deeply( $r, $expected, "populate_agg_records, deeply");
 };
@@ -104,7 +105,8 @@ sub test_populate_agg_metadata {
             'email' => 'noreply@example.com',
             'extra_contact_info' => 'http://www.example.com/dmarc-policy/',
             'org_name' => 'My Great Company',
-            'report_id' => 2
+            'report_id' => 2,
+            'public_suffixes' => {},
             },
             "populate_agg_metadata, deeply" ) or diag Dumper($agg);
 };

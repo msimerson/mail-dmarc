@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate;
-our $VERSION = '1.20140622'; # VERSION
+our $VERSION = '1.20140623'; # VERSION
 use strict;
 use warnings;
 
@@ -170,7 +170,7 @@ Mail::DMARC::Report::Aggregate - aggregate report object
 
 =head1 VERSION
 
-version 1.20140622
+version 1.20140623
 
 =head1 DESCRIPTION
 

@@ -1,4 +1,8 @@
 
+1.20140623 2014-06-23 America/Los_Angeles
+
+ - updated tests to accomodate the cached PSL
+
 1.20140622 2014-06-22 America/Los_Angeles
 
  - load PSL into hash to speed subsequent lookups (esp for daemon)

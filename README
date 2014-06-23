@@ -2,7 +2,7 @@ NAME
     Mail::DMARC - Perl implementation of DMARC
 
 VERSION
-    version 1.20140622
+    version 1.20140623
 
 SYNOPSIS
     DMARC: Domain-based Message Authentication, Reporting and Conformance

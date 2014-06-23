@@ -52,7 +52,8 @@ sub test_record {
             source_ip => $ip,
             count     => 1,
             policy_evaluated => { disposition=>'pass', dkim => 'pass', spf=>'pass' },
-        }
+        },
+        public_suffixes => {},
     };
     my $r;
     eval { $r = $agg->record( $test_r ) };

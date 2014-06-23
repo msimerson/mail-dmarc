@@ -20,7 +20,7 @@ my %module_build_args = (
     "Davide Migliavacca <shari\@cpan.org>"
   ],
   "dist_name" => "Mail-DMARC",
-  "dist_version" => "1.20140622",
+  "dist_version" => "1.20140623",
   "license" => "perl",
   "module_name" => "Mail::DMARC",
   "recommends" => {
