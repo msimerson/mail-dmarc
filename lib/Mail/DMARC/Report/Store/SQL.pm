@@ -501,7 +501,7 @@ sub insert_rr_reason {
     my ( $self, $row_id, $type, $comment ) = @_;
     return $self->query(
         'INSERT INTO report_record_reason (report_record_id, type, comment) VALUES (?,?,?)',
-        [ $row_id, $type, $comment || '' ]
+        [ $row_id, $type, ($comment || '') ]
     );
 }
 
