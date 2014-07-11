@@ -1,6 +1,13 @@
 
 {{$NEXT}}
 
+ - Store/SQL: use full sql name in WHERE clause
+ - DMARC/HTTP: added error handling and tests
+ - removed excess comma in mail_dmarc_schema.mysql
+ - added quotes around ($commit || ''), just in case
+ - try IMAP fetch without SORT if no results, for IMAP servers like Gmail that don't support SORT
+ - warn but still pass test if DNS query fails
+
 1.20140623 2014-06-23 America/Los_Angeles
 
  - updated tests to accomodate the cached PSL
