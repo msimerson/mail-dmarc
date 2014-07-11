@@ -44,4 +44,3 @@ like($r, qr/pass/, "serve_validator, pass SPF");
 #$http->dmarc_httpd();
 
 done_testing();
-exit;
