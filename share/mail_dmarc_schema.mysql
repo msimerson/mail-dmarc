@@ -201,7 +201,7 @@ CREATE TABLE `report` (
   KEY `author_id` (`author_id`),
   KEY `from_domain_id` (`from_domain_id`),
   CONSTRAINT `report_ibfk_3` FOREIGN KEY (`from_domain_id`) REFERENCES `domain` (`id`) ON UPDATE CASCADE,
-  CONSTRAINT `report_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `author` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  CONSTRAINT `report_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `author` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
 
 

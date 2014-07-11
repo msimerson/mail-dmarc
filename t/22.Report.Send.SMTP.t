@@ -62,10 +62,15 @@ sub test_get_domain_mx {
         'tnpi.net' => [ { 'pref' => 10, 'addr' => 'mail.theartfarm.com' } ],
     );
 
-    foreach ( keys %tests ) {
-        my $r = $smtp->get_domain_mx( $_ );
-        ok( $r, "get_domain_mx, $_");
-        is_deeply( $r, $tests{$_}, "get_domain_mx, deeply");
+    foreach my $dom ( keys %tests ) {
+        my $r = $smtp->get_domain_mx( $dom );
+        if (!$r) {
+            print "ERROR: it appears your DNS is not working.\n";
+            next;
+        }
+
+        ok( $r, "get_domain_mx, $dom");
+        is_deeply( $tests{$dom}, $r, "get_domain_mx, $dom, deeply");
 #       print Dumper($r);
     };
 };
@@ -132,12 +137,12 @@ sub test_get_smtp_hosts {
     my $initial_smarthost = $smtp->config->{smtp}{smarthost};
     $smtp->config->{smtp}{smarthost} = 'foo.example.com';
     my @mx = $smtp->get_smtp_hosts('bar.com');
-    is_deeply( \@mx, ['foo.example.com'], "get_smtp_hosts, smarthost");
+    is_deeply( ['foo.example.com'], \@mx, "get_smtp_hosts, smarthost");
 
     $smtp->config->{smtp}{smarthost} = undef;
     my $tnpi_expected = [ 'mail.theartfarm.com', 'tnpi.net' ];
     my @hosts = $smtp->get_smtp_hosts('tnpi.net');
-    is_deeply( \@hosts, $tnpi_expected, "get_smtp_hosts, tnpi.net");
+    is_deeply( $tnpi_expected, \@hosts, "get_smtp_hosts, tnpi.net");
 #   print Dumper(\@hosts);
 
     $smtp->config->{smtp}{smarthost} = $initial_smarthost;

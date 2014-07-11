@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Receive;
-our $VERSION = '1.20140623'; # VERSION
+our $VERSION = '1.20140711'; # VERSION
 use strict;
 use warnings;
 
@@ -47,6 +47,10 @@ sub from_imap {
     my $nm = $imap->select( $self->config->{imap}{folder} );
     $imap->expunge_mailbox( $self->config->{imap}{folder} );
     my @mess = $imap->search( 'UNSEEN', 'DATE' );
+    if (! scalar @mess) {
+        # imap server might not support SORT extension *Gmail*
+        @mess = $imap->search( 'UNSEEN' );
+    }
 
     print "\tfound " . scalar @mess . " messages\n" if $self->verbose;
 
@@ -386,7 +390,7 @@ Mail::DMARC::Report::Receive - process incoming DMARC reports
 
 =head1 VERSION
 
-version 1.20140623
+version 1.20140711
 
 =head1 DESCRIPTION
 

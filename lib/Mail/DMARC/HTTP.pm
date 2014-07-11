@@ -1,5 +1,5 @@
 package Mail::DMARC::HTTP;
-our $VERSION = '1.20140623'; # VERSION
+our $VERSION = '1.20140711'; # VERSION
 use strict;
 use warnings;
 
@@ -76,20 +76,40 @@ EO_ERROR
 ;
 };
 
+sub return_json_error {
+    my ($err) = @_;
+#   warn $err;
+    print JSON->new->utf8->encode( { err => $err } );  # to HTTP client
+    print "\n";
+    return $err;  # to caller
+};
+
 sub serve_validator {
-    my $cgi  = CGI->new();
+    my $cgi  = shift || CGI->new();  # passed in $cgi for testing
     my $json = JSON->new->utf8;
-    my $input= $json->decode( $cgi->param('POSTDATA') );
-    my ($dmpp, $res);
-    eval { $dmpp = Mail::DMARC::PurePerl->new( %$input ) };
-    if ($@) { $res = { err => $@ }; }
-    else {
-        eval { $res  = $dmpp->validate() };
-        if ($@) { $res = { err => $@ }; };
-    };
+
     print $cgi->header("application/json");
-    print $json->allow_blessed->convert_blessed->encode( $res );
-    return;
+
+    my $post = $cgi->param('POSTDATA');
+    if (!$post) { return return_json_error("missing POST data"); }
+
+    my ($input, $dmpp, $res);
+    eval { $input = $json->decode( $post ); };
+    if ($@) { return return_json_error($@); }
+
+    if (!$input || !ref $input) {
+        return return_json_error("invalid request $post");
+    }
+
+    eval { $dmpp = Mail::DMARC::PurePerl->new( %$input ) };
+    if ($@) { return return_json_error($@); }
+
+    eval { $res = $dmpp->validate(); };
+    if ($@) { return return_json_error($@); }
+
+    my $return = $json->allow_blessed->convert_blessed->encode( $res );
+    print "$return\n";
+    return $return;
 };
 
 sub serve_file {
@@ -191,7 +211,7 @@ Mail::DMARC::HTTP - view stored reports via HTTP
 
 =head1 VERSION
 
-version 1.20140623
+version 1.20140711
 
 =head1 SYNOPSIS
 
