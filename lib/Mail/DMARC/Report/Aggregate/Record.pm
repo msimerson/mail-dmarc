@@ -25,8 +25,8 @@ sub identifiers {
 sub auth_results {
     my ($self, @args) = @_;
     return $self->{auth_results} if ! scalar @args;
-    my %auth = 1 == scalar @args ? %{ $args[0] }
-           : scalar @args % 2 == 0 ? @args
+    my %auth = (1 == scalar @args) ? %{ $args[0] }
+           : (scalar @args % 2 == 0) ? @args
            : croak "auth_results is required!";
 
     croak "auth_results/spf is required!" if ! $auth{spf};

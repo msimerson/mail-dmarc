@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+ - fix for reasons not stored in SQL
+
 1.20140711 2014-07-10 America/Los_Angeles
 
  - Store/SQL: use full sql name in WHERE clause
