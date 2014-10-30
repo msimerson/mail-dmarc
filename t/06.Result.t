@@ -144,7 +144,7 @@ sub _test_fail_sampled_out {
     delete $pp->result->{published};
     is_deeply(
         $pp->result,
-        {   'disposition' => 'none',
+        {   'disposition' => 'quarantine',
             'dkim'        => 'fail',
             'spf'         => 'fail',
             'reason'      => [{ 'type' => 'sampled_out' }],
