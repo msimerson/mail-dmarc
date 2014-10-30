@@ -65,6 +65,7 @@ sub validate {
 
     # The stated percentage of messages that fail the DMARC test MUST be
     # subjected to whatever policy is selected by the "p" or "sp" tag
+    # The inverse of that percentage are sampled out
     if ( int( rand(100) ) >= $policy->pct ) {
         $self->result->reason( type => 'sampled_out' );
         return $self->result;
