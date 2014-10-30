@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20141030 2014-10-30 America/Los_Angeles
+
  - percent policy logic wasn't being applied correctly
  - fix for reasons not stored in SQL
 
