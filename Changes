@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20141119 2014-11-18 America/Los_Angeles
+
  - added auto_save option for validation reports
  - updated bin/install_deps.pl
 
