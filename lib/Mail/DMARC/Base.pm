@@ -86,11 +86,10 @@ sub is_public_suffix {
         $self->{public_suffixes} = \%psl;
     };
 
-    $zone =~ s/\*/\\*/g;    # escape * char
     return 1 if $self->{public_suffixes}{$zone};
 
     my @labels = split /\./, $zone;
-    $zone = join '.', '\*', (@labels)[ 1 .. scalar(@labels) - 1 ];
+    $zone = join '.', '*', (@labels)[ 1 .. scalar(@labels) - 1 ];
 
     return 1 if $self->{public_suffixes}{$zone};
     return 0;
