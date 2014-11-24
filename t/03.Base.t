@@ -83,7 +83,7 @@ sub test_is_valid_ip {
 sub test_is_valid_domain {
 
     # positive tests
-    foreach (qw/ example.com bbc.co.uk 3.am /) {
+    foreach (qw/ test.sch.uk example.com bbc.co.uk 3.am /) {
         ok( $base->is_valid_domain($_), "is_valid_domain, $_" );
     }
 
@@ -124,6 +124,8 @@ sub test_is_public_suffix {
         'google.com'   => 0,
         'a'            => 0,
         'z'            => 0,
+        'test.sch.uk'  => 1,
+        'sch.uk'       => 0,
     );
 
     foreach my $dom ( keys %tests ) {
