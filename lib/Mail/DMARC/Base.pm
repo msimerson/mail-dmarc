@@ -100,6 +100,10 @@ sub find_psl_file {
 
     my $file = $self->config->{dns}{public_suffix_list}
         || 'share/public_suffix_list';
+    if ( $file =~ /^\// && -f $file && -r $file ) {
+        print "using $file for Public Suffix List\n" if $self->verbose;
+        return $file;
+    }
     my @dirs = qw[ ./ /usr/local/ /opt/local /usr/ ];
     my $match;
     foreach my $dir (@dirs) {
