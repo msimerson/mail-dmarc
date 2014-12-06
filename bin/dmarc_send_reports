@@ -42,6 +42,7 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
     if ( scalar @{ $uri_ref } == 0 ) {
         print "No valid ruas found, deleting report\n";
         $report->store->delete_report($aggregate->metadata->report_id);
+        next;
     }
 
     my $sent    = 0;
