@@ -86,6 +86,7 @@ sub dkim_from_mail_dkim {
 
     # A DKIM verifier will have result and signature methods.
     foreach my $s ( $dkim->signatures ) {
+        next if ref $s eq 'Mail::DKIM::DkSignature';
         push @{ $self->{dkim} },
             {
             domain       => $s->domain,
