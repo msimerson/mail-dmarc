@@ -8,8 +8,11 @@ use Encode;
 use Getopt::Long;
 #use XML::LibXML;
 
+my $send_delay = 5;
+
 GetOptions (
     'verbose+'   => \my $verbose,
+    'delay=i'    => \$send_delay,
 );
 
 $|++;
@@ -71,9 +74,11 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
         send_too_big_email(\@too_big, $bytes, $aggregate);
     };
 
-    print "sleeping 5";
-    foreach ( 1 .. 5 ) { print '.'; sleep 1; };
-    print "done.\n";
+    if ( $send_delay > 0 ) {
+        print "sleeping $send_delay";
+        foreach ( 1 .. $send_delay ) { print '.'; sleep 1; };
+        print "done.\n";
+    }
 };
 
 exit;
