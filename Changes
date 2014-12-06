@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20141206 2014-12-05 America/Los_Angeles
+
  - Delete reports with no valid rua (Marc Bradshaw)
  - Ignore DomainKeys signatures (Marc Bradshaw)
  - allow configurable delay between sending emails (Marc Bradshaw)
