@@ -41,6 +41,13 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
     my $bytes  = length Encode::encode_utf8($shrunk);
 
     my $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
+
+    if ( scalar @{ $uri_ref } == 0 ) {
+        print "No valid ruas found, deleting report\n";
+        $report->store->delete_report($aggregate->metadata->report_id);
+        next;
+    }
+
     my $sent    = 0;
     my @too_big;
     foreach my $u_ref (@$uri_ref) {
