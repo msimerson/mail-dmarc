@@ -1,5 +1,5 @@
 package Mail::DMARC::Base;
-our $VERSION = '1.20140711'; # VERSION
+our $VERSION = '1.20141206'; # VERSION
 use strict;
 use warnings;
 
@@ -86,11 +86,10 @@ sub is_public_suffix {
         $self->{public_suffixes} = \%psl;
     };
 
-    $zone =~ s/\*/\\*/g;    # escape * char
     return 1 if $self->{public_suffixes}{$zone};
 
     my @labels = split /\./, $zone;
-    $zone = join '.', '\*', (@labels)[ 1 .. scalar(@labels) - 1 ];
+    $zone = join '.', '*', (@labels)[ 1 .. scalar(@labels) - 1 ];
 
     return 1 if $self->{public_suffixes}{$zone};
     return 0;
@@ -101,6 +100,10 @@ sub find_psl_file {
 
     my $file = $self->config->{dns}{public_suffix_list}
         || 'share/public_suffix_list';
+    if ( $file =~ /^\// && -f $file && -r $file ) {
+        print "using $file for Public Suffix List\n" if $self->verbose;
+        return $file;
+    }
     my @dirs = qw[ ./ /usr/local/ /opt/local /usr/ ];
     my $match;
     foreach my $dir (@dirs) {
@@ -232,7 +235,7 @@ Mail::DMARC::Base - DMARC utility functions
 
 =head1 VERSION
 
-version 1.20140711
+version 1.20141206
 
 =head1 METHODS
 
@@ -282,7 +285,7 @@ Davide Migliavacca <shari@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by ColocateUSA.com.
+This software is copyright (c) 2014 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

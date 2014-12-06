@@ -1,5 +1,5 @@
 package Mail::DMARC;
-our $VERSION = '1.20140711'; # VERSION
+our $VERSION = '1.20141206'; # VERSION
 use strict;
 use warnings;
 
@@ -86,6 +86,7 @@ sub dkim_from_mail_dkim {
 
     # A DKIM verifier will have result and signature methods.
     foreach my $s ( $dkim->signatures ) {
+        next if ref $s eq 'Mail::DKIM::DkSignature';
         push @{ $self->{dkim} },
             {
             domain       => $s->domain,
@@ -234,7 +235,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 =head1 VERSION
 
-version 1.20140711
+version 1.20141206
 
 =head1 SYNOPSIS
 
@@ -544,6 +545,8 @@ Davide Migliavacca <shari@cpan.org>
 
 =head1 CONTRIBUTORS
 
+=for stopwords Benny Pedersen ColocateUSA.net Marc Bradshaw Ricardo Signes
+
 =over 4
 
 =item *
@@ -556,13 +559,17 @@ ColocateUSA.net <company@colocateusa.net>
 
 =item *
 
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=item *
+
 Ricardo Signes <rjbs@cpan.org>
 
 =back
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by ColocateUSA.com.
+This software is copyright (c) 2014 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

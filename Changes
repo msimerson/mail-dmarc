@@ -1,4 +1,22 @@
 
+1.20141206 2014-12-05 America/Los_Angeles
+
+ - Delete reports with no valid rua (Marc Bradshaw)
+ - Ignore DomainKeys signatures (Marc Bradshaw)
+ - allow configurable delay between sending emails (Marc Bradshaw)
+ - permit absolute paths for public suffix list file location (Marc Bradshaw)
+ - fix lookup for *.foo entries (Marc Bradshaw)
+
+1.20141119 2014-11-18 America/Los_Angeles
+
+ - added auto_save option for validation reports
+ - updated bin/install_deps.pl
+
+1.20141030 2014-10-30 America/Los_Angeles
+
+ - percent policy logic wasn't being applied correctly
+ - fix for reasons not stored in SQL
+
 1.20140711 2014-07-10 America/Los_Angeles
 
  - Store/SQL: use full sql name in WHERE clause

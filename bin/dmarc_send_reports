@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-our $VERSION = '1.20140711'; # VERSION
+our $VERSION = '1.20141206'; # VERSION
 use strict;
 use warnings;
 
@@ -8,8 +8,11 @@ use Encode;
 use Getopt::Long;
 #use XML::LibXML;
 
+my $send_delay = 5;
+
 GetOptions (
     'verbose+'   => \my $verbose,
+    'delay=i'    => \$send_delay,
 );
 
 $|++;
@@ -38,6 +41,13 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
     my $bytes  = length Encode::encode_utf8($shrunk);
 
     my $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
+
+    if ( scalar @{ $uri_ref } == 0 ) {
+        print "No valid ruas found, deleting report\n";
+        $report->store->delete_report($aggregate->metadata->report_id);
+        next;
+    }
+
     my $sent    = 0;
     my @too_big;
     foreach my $u_ref (@$uri_ref) {
@@ -71,9 +81,11 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
         send_too_big_email(\@too_big, $bytes, $aggregate);
     };
 
-    print "sleeping 5";
-    foreach ( 1 .. 5 ) { print '.'; sleep 1; };
-    print "done.\n";
+    if ( $send_delay > 0 ) {
+        print "sleeping $send_delay";
+        foreach ( 1 .. $send_delay ) { print '.'; sleep 1; };
+        print "done.\n";
+    }
 };
 
 exit;
@@ -204,7 +216,7 @@ dmarc_send_reports - send aggregate reports
 
 =head1 VERSION
 
-version 1.20140711
+version 1.20141206
 
 =head1 AUTHORS
 
@@ -222,7 +234,7 @@ Davide Migliavacca <shari@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by ColocateUSA.com.
+This software is copyright (c) 2014 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

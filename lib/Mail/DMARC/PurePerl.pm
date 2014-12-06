@@ -1,5 +1,5 @@
 package Mail::DMARC::PurePerl;
-our $VERSION = '1.20140711'; # VERSION
+our $VERSION = '1.20141206'; # VERSION
 use strict;
 use warnings;
 
@@ -38,8 +38,17 @@ sub validate {
 
     $self->is_dkim_aligned;   # 11.2.3. DKIM signature verification checks
     $self->is_spf_aligned;    # 11.2.4. SPF validation checks
-    $self->is_aligned()       # 11.2.5. identifier alignment checks
-        and return $self->result;
+    my $aligned = $self->is_aligned(); # 11.2.5. identifier alignment checks
+
+    if ($self->config->{report_store}{auto_save}) {
+        my $pol;
+        eval { $pol = $self->result->published; };
+        if ( $pol && $self->has_valid_reporting_uri($pol->rua) ) {
+            eval { $self->save_aggregate(); };
+        };
+    }
+
+    return $self->result if $aligned;
 
     my $effective_p
         = $self->is_subdomain && defined $policy->sp
@@ -65,10 +74,12 @@ sub validate {
 
     # The stated percentage of messages that fail the DMARC test MUST be
     # subjected to whatever policy is selected by the "p" or "sp" tag
-    if ( int( rand(100) ) >= $policy->pct ) {
-        $self->result->reason( type => 'sampled_out' );
+    if ( int( rand(100) ) < $policy->pct ) {
+        $self->result->disposition($effective_p);
         return $self->result;
     }
+
+    $self->result->reason( type => 'sampled_out' );
 
     # Those that are not thus selected MUST instead be subjected to the next
     # policy lower in terms of severity.  In decreasing order of severity,
@@ -543,7 +554,7 @@ Mail::DMARC::PurePerl - Pure Perl implementation of DMARC
 
 =head1 VERSION
 
-version 1.20140711
+version 1.20141206
 
 =head1 METHODS
 
@@ -704,7 +715,7 @@ Davide Migliavacca <shari@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by ColocateUSA.com.
+This software is copyright (c) 2014 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

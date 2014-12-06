@@ -1,5 +1,5 @@
 package Mail::DMARC::Policy;
-our $VERSION = '1.20140711'; # VERSION
+our $VERSION = '1.20141206'; # VERSION
 use strict;
 use warnings;
 
@@ -172,7 +172,7 @@ Mail::DMARC::Policy - a DMARC policy in object format
 
 =head1 VERSION
 
-version 1.20140711
+version 1.20141206
 
 =head1 SYNOPSIS
 
@@ -422,7 +422,7 @@ Davide Migliavacca <shari@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by ColocateUSA.com.
+This software is copyright (c) 2014 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate::Record;
-our $VERSION = '1.20140711'; # VERSION
+our $VERSION = '1.20141206'; # VERSION
 use strict;
 use warnings;
 
@@ -25,8 +25,8 @@ sub identifiers {
 sub auth_results {
     my ($self, @args) = @_;
     return $self->{auth_results} if ! scalar @args;
-    my %auth = 1 == scalar @args ? %{ $args[0] }
-           : scalar @args % 2 == 0 ? @args
+    my %auth = (1 == scalar @args) ? %{ $args[0] }
+           : (scalar @args % 2 == 0) ? @args
            : croak "auth_results is required!";
 
     croak "auth_results/spf is required!" if ! $auth{spf};
@@ -64,7 +64,7 @@ Mail::DMARC::Report::Aggregate::Record - record section of aggregate report
 
 =head1 VERSION
 
-version 1.20140711
+version 1.20141206
 
 =head1 DESCRIPTION
 
@@ -86,7 +86,7 @@ Davide Migliavacca <shari@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by ColocateUSA.com.
+This software is copyright (c) 2014 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-our $VERSION = '1.20140711'; # VERSION
+our $VERSION = '1.20141206'; # VERSION
 use strict;
 use warnings;
 
@@ -453,19 +453,18 @@ sub row_exists {
 };
 
 sub insert_agg_record {
-    my ($self, $rid, $rec) = @_;
+    my ($self, $row_id, $rec) = @_;
 
-    return 1 if $self->row_exists( $rid, $rec);
+    return 1 if $self->row_exists( $row_id, $rec);
 
-    my $row_id = $self->insert_rr( $rid, $rec )
+    $row_id = $self->insert_rr( $row_id, $rec )
         or croak "failed to insert report row";
 
-    my $reasons = $rec->{policy_evaluated}{reason};
+    my $reasons = $rec->{row}{policy_evaluated}{reason};
     if ( $reasons ) {
         foreach my $reason ( @$reasons ) {
-            next if ! $reason || ! $reason->{type};
-            $self->insert_rr_reason( $row_id, $reason->{type},
-                $reason->{comment} );
+            next if !$reason || !$reason->{type};
+            $self->insert_rr_reason( $row_id, $reason->{type}, $reason->{comment} );
         };
     }
 
@@ -681,7 +680,10 @@ sub query_any {
 
 sub query_insert {
     my ( $self, $query, $err, @params ) = @_;
-    eval { $self->dbix->query( $query, @params ) } or croak $err;
+    eval { $self->dbix->query( $query, @params ) } or do {
+        warn DBIx::Simple->error;
+        croak $err;
+    };
     $self->db_check_err($err);
 
     # If the table has no autoincrement field, last_insert_id is zero
@@ -722,7 +724,7 @@ Mail::DMARC::Report::Store::SQL - store and retrieve reports from a SQL RDBMS
 
 =head1 VERSION
 
-version 1.20140711
+version 1.20141206
 
 =head1 DESCRIPTION
 
@@ -752,7 +754,7 @@ Davide Migliavacca <shari@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by ColocateUSA.com.
+This software is copyright (c) 2014 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

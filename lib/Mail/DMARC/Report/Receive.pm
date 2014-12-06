@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Receive;
-our $VERSION = '1.20140711'; # VERSION
+our $VERSION = '1.20141206'; # VERSION
 use strict;
 use warnings;
 
@@ -299,14 +299,24 @@ sub do_node_record {
     my $rec;
     $self->do_node_record_auth(\$rec, $node);
 
-    foreach my $row (qw/ source_ip count /) {
-        $rec->{row}{$row} = $node->findnodes("./row/$row")->string_value;
+    foreach my $r (qw/ source_ip count /) {
+        $rec->{row}{$r} = $node->findnodes("./row/$r")->string_value;
     };
 
     # policy_evaluated
     foreach my $pe (qw/ disposition dkim spf /) {
-        $rec->{row}{policy_evaluated}{$pe}
-            = $node->findnodes("./row/policy_evaluated/$pe")->string_value;
+        my $ResultType = $node->findnodes("./row/policy_evaluated/$pe")->string_value;
+        if ($pe eq 'disposition') {
+            if ($ResultType !~ /^(none|quarantine|reject)$/) {
+                $ResultType = 'none';  # invalid DispositionType (Facebook)
+            }
+        }
+        else {
+            if ($ResultType !~ /^(pass|fail)$/) {
+                $ResultType = 'pass';   # invalid ResultType (also FaceBook)
+            }
+        }
+        $rec->{row}{policy_evaluated}{$pe} = $ResultType;
     }
 
     # reason
@@ -328,6 +338,7 @@ sub do_node_record {
     $rec->{identifiers}{envelope_to} ||= $self->{_envelope_to};
     $rec->{identifiers}{header_from} ||= $self->{_header_from};
 
+    print Data::Dumper::Dumper($rec) if $self->verbose;
     $self->report->aggregate->record($rec);
     return $rec;
 }
@@ -372,7 +383,7 @@ sub do_node_record_reason {
     foreach my $r ( $node->findnodes("./row/policy_evaluated/reason") ) {
         my $type = $r->findnodes('./type')->string_value or next;
         my $comment = $r->findnodes('./comment')->string_value;
-        push @{ $$row->{policy_evaluated}{reason} }, {
+        push @{ $$row->{row}{policy_evaluated}{reason} }, {
             type    => $type,
             comment => $comment,
         };
@@ -390,7 +401,7 @@ Mail::DMARC::Report::Receive - process incoming DMARC reports
 
 =head1 VERSION
 
-version 1.20140711
+version 1.20141206
 
 =head1 DESCRIPTION
 
@@ -434,7 +445,7 @@ Davide Migliavacca <shari@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by ColocateUSA.com.
+This software is copyright (c) 2014 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

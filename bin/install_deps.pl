@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-our $VERSION = '1.20140711'; # VERSION 1.10
+our $VERSION = '1.20141206'; # VERSION 1.10
 
 use strict;
 use warnings;
@@ -8,7 +8,7 @@ use CPAN;
 use English qw( -no_match_vars );
 
 my $apps = [
-#   { app => 'mysql-server-5', info => { port => 'mysql50-server', dport=>'mysql5',  yum =>'mysql-server'} },
+#   { app => 'mysql-server-5', info => { port => 'mysql55-server', dport=>'mysql5',  yum =>'mysql-server'} },
 #   { app => 'apache22'      , info => { port => 'apache22',       dport=>'',     yum => 'httpd' } },
 ];
 
@@ -88,7 +88,10 @@ sub get_perl_modules_from_ini {
     my $in = 0;
     my @modules;
     while ( my $line = <$fh> ) {
-        if ( '[Prereqs]' eq substr($line,0,9) ) {
+        # install all prepreqs
+        if ( '[Prereqs' eq substr($line,0,8) ) {
+            # except for ones needed only by devs
+            next if $line =~ /(?:BuildRequires|TestRequires)/i;
             $in++;
             next;
         };
@@ -138,7 +141,15 @@ sub install_app_darwin {
 }
 
 sub install_app_freebsd {
-    my ($app, $info ) = @_;
+    my ( $app, $info ) = @_;
+
+    if ( -x '/usr/sbin/pkg' ) {
+        if ( `/usr/sbin/pkg info -x $app` ) {  ## no critic (Backtick)
+            return print "$app is installed.\n";
+        }
+        print "installing $app";
+        return if install_app_freebsd_pkg($info, $app);
+    }
 
     print " from ports...";
 
@@ -147,13 +158,13 @@ sub install_app_freebsd {
             return print "$app is installed.\n";
         };
     }
-    if ( -x '/usr/sbin/pkg') {
-        if ( `/usr/sbin/pkg info -x $app` ) {  ## no critic (Backtick)
-            return print "$app is installed.\n";
-        }
-    }
 
     print "installing $app";
+    return install_app_freebsd_port($app, $info);
+};
+
+sub install_app_freebsd_port {
+    my ( $app, $info ) = @_;
 
     my $name = $info->{port} || $app;
     my $category = $info->{category} || '*';
@@ -166,6 +177,21 @@ sub install_app_freebsd {
         };
     };
     return;
+};
+
+sub install_app_freebsd_pkg {
+    my ( $info, $app ) = @_;
+    my $pkg = get_freebsd_pkgng() or return;
+    my $name = $info->{port} || $app;
+    print "installing $name\n";
+    system "$pkg install -y $name";
+    return 1 if is_freebsd_port_installed($name);
+
+    return 0 if ($app eq $name);
+
+    system "$pkg install -y $app";
+    return 1 if is_freebsd_port_installed($app);
+    return 0;
 };
 
 sub install_app_linux {
@@ -252,20 +278,22 @@ sub install_module_freebsd {
     my ($module, $info, $version) = @_;
 
     my $name = $info->{port} || $module;
-    my $portname = "p5-$name";
+    my $portname = substr($name, 0, 3) eq 'p5-' ? $name : "p5-$name";
     $portname =~ s/::/-/g;
 
+    if (is_freebsd_port_installed($portname)) {
+        return print "$module is installed.\n";
+    };
+    return 1 if install_module_freebsd_pkg($portname);
+    return install_module_freebsd_port($portname, $info, $module);
+}
+
+sub install_module_freebsd_port {
+    my ($portname, $info, $module) = @_;
     print " from ports...$portname...";
 
-    if ( -x '/usr/sbin/pkg_info' ) {
-        if ( `/usr/sbin/pkg_info | /usr/bin/grep $portname` ) { ## no critic (Backtick)
-            return print "$module is installed.\n";
-        }
-    }
-    if ( -x '/usr/sbin/pkg' ) {
-        if ( `/usr/sbin/pkg info -x $portname` ) { ## no critic (Backtick)
-            return print "$module is installed.\n";
-        }
+    if (is_freebsd_port_installed($module, $portname)) {
+        return print "$module is installed.\n";
     }
 
     print "installing $module ...";
@@ -283,6 +311,50 @@ sub install_module_freebsd {
         and warn "'make install clean' failed for port $module\n"; ## no critic (Carp)
     return;
 }
+
+sub install_module_freebsd_pkg {
+    my ( $module ) = @_;
+    my $pkg = get_freebsd_pkgng() or return 0;
+    print "installing $module\n";
+    system "$pkg install -y $module";
+    return is_freebsd_port_installed($module);
+};
+
+sub is_freebsd_port_installed {
+    my ( $module, $portname ) = @_;
+
+    my $pkg = get_freebsd_pkgng();
+    if ($pkg) {
+        return 1 if `$pkg info -x $module`;  ## no critic (Backtick)
+    }
+
+    my $pkg_info = get_freebsd_pkgng();
+    if ($pkg_info) {
+        $portname ||= $module;
+        if ( `$pkg_info | /usr/bin/grep $portname` ) { ## no critic (Backtick)
+            return print "$module is installed.\n";
+        }
+    }
+
+    return 0;
+};
+
+sub get_freebsd_pkg_info {
+    if ( -x '/usr/sbin/pkg_info' ) {
+        return '/usr/sbin/pkg_info';
+    };
+    return;
+};
+
+sub get_freebsd_pkgng {
+    my $pkg = '/usr/local/sbin/pkg';  # port version is likely newest
+    if (! -x $pkg) { $pkg = '/usr/sbin/pkg'; };  # fall back
+    if (! -x $pkg) {
+        warn "pkg not installed!\n";
+        return 0;
+    }
+    return $pkg;
+};
 
 sub install_module_linux {
     my ($module, $info, $version) = @_;
@@ -379,8 +451,10 @@ sub name_overrides {
 # couple rules. When that doesn't work, add entries here for FreeBSD (port),
 # MacPorts ($dport), yum, and apt.
     my @modules = (
-        { module=>'LWP::UserAgent', info => { cat=>'www', port=>'libwww', dport=>'p5-libwww-perl', yum=>'perl-libwww-perl' }, },
+        { module=>'LWP::UserAgent', info => { cat=>'www', port=>'p5-libwww', dport=>'p5-libwww-perl', yum=>'perl-libwww-perl' }, },
         { module=>'Mail::Send'    , info => { port => 'Mail::Tools', }  },
+        { module=>'Date::Parse'   , info => { port => 'TimeDate',    }  },
+        { module=>'LWP'           , info => { port => 'p5-libwww',   }  },
     );
     my ($match) = grep { $_->{module} eq $mod } @modules;
     return $match if $match;
@@ -400,7 +474,7 @@ install_deps.pl - install dependencies with package manager or CPAN
 
 =head1 VERSION
 
-version 1.20140711
+version 1.20141206
 
 =head1 AUTHORS
 
@@ -418,7 +492,7 @@ Davide Migliavacca <shari@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by ColocateUSA.com.
+This software is copyright (c) 2014 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
