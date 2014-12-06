@@ -17,8 +17,8 @@ before_install:
    - git config --global user.name "TravisCI"
 
 install:
-    cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
-    cpanm --quiet --notest Net::IP Socket6 Email::MIME DBD::SQLite
+   - cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
+   - cpanm --quiet --notest Net::IP Socket6 Email::MIME DBD::SQLite
 
    # Deal with all of the DZIL dependencies, quickly and quietly
 #  - cpanm --quiet --notest --skip-satisfied Dist::Zilla
