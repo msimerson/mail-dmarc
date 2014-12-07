@@ -64,8 +64,8 @@ sub test_get_domain_mx {
 
     foreach my $dom ( keys %tests ) {
         my $r = $smtp->get_domain_mx( $dom );
-        if (!$r) {
-            print "ERROR: it appears your DNS is not working.\n";
+        if (!$r || $r eq 'Does not exist') {
+            print "it appears your DNS is not working.\n";
             next;
         }
 
