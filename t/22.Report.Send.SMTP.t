@@ -70,7 +70,7 @@ sub test_get_domain_mx {
         }
 
         ok( $r, "get_domain_mx, $dom");
-        is_deeply( $tests{$dom}, $r, "get_domain_mx, $dom, deeply");
+        is_deeply( $r, $tests{$dom}, "get_domain_mx, $dom, deeply");
 #       print Dumper($r);
     };
 };
@@ -137,12 +137,12 @@ sub test_get_smtp_hosts {
     my $initial_smarthost = $smtp->config->{smtp}{smarthost};
     $smtp->config->{smtp}{smarthost} = 'foo.example.com';
     my @mx = $smtp->get_smtp_hosts('bar.com');
-    is_deeply( ['foo.example.com'], \@mx, "get_smtp_hosts, smarthost");
+    is_deeply( \@mx, ['foo.example.com'], "get_smtp_hosts, smarthost");
 
     $smtp->config->{smtp}{smarthost} = undef;
     my $tnpi_expected = [ 'mail.theartfarm.com', 'tnpi.net' ];
     my @hosts = $smtp->get_smtp_hosts('tnpi.net');
-    is_deeply( $tnpi_expected, \@hosts, "get_smtp_hosts, tnpi.net");
+    is_deeply( \@hosts, $tnpi_expected, "get_smtp_hosts, tnpi.net");
 #   print Dumper(\@hosts);
 
     $smtp->config->{smtp}{smarthost} = $initial_smarthost;
