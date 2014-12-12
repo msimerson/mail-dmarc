@@ -171,6 +171,11 @@ sub get_resolver {
     return $self->{resolver};
 }
 
+sub set_resolver {
+    my ($self,$resolver) = @_;
+    $self->{resolver} = $resolver;
+}
+
 sub is_valid_ip {
     my ( $self, $ip ) = @_;
 
@@ -246,6 +251,10 @@ Determine if a DNS Resource Record of the specified type exists at the DNS name 
 =head2 get_resolver
 
 Returns a (cached) Net::DNS::Resolver object
+
+=head2 set_resolver
+
+Set the Net::DNS::Resolver object to be used for lookups
 
 =head2 is_valid_ip
 
