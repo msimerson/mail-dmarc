@@ -97,7 +97,7 @@ sub is_public_suffix {
 }
 
 sub update_psl_file {
-    my ($self, $sryrun) = @_;
+    my ($self, $dryrun) = @_;
 
     my $psl_file = $self->find_psl_file();
 
