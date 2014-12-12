@@ -6,6 +6,7 @@ use warnings;
 use Carp;
 use Config::Tiny;
 use File::ShareDir;
+use HTTP::Tiny;
 use IO::File;
 use Net::DNS::Resolver;
 use Net::IP;
@@ -93,6 +94,34 @@ sub is_public_suffix {
 
     return 1 if $self->{public_suffixes}{$zone};
     return 0;
+}
+
+sub update_psl_file {
+    my ($self, $sryrun) = @_;
+
+    my $psl_file = $self->find_psl_file();
+
+    die "No Public Suffix List file found\n"                  if ( ! $psl_file );
+    die "Public suffix list file $psl_file not found\n"       if ( ! -f $psl_file );
+    die "Cannot write to Public Suffix List file $psl_file\n" if ( ! -w $psl_file );
+
+    my $url = 'https://publicsuffix.org/list/effective_tld_names.dat';
+    my $response = HTTP::Tiny->new->get( $url );
+    my $content = $response->{'content'};
+    if ( !$response->{'success'} ) {
+        my $status  = $response->{'status'};
+        die "HTTP Request for Public Suffix List file failed with error $status ($content)\n";
+    }
+
+    if ( ! $dryrun ) {
+        open my $file, '>', $psl_file || die "Could not write to Public Suffix List file $psl_file\n";
+        print $file $content;
+        close $file;
+        print "Public Suffix List file $psl_file updated\n";
+    }
+    else {
+        print "Public Suffix List file $psl_file not updated (dryrun)\n";
+    }
 }
 
 sub find_psl_file {
@@ -237,7 +266,9 @@ Determines if part of a domain is a Top Level Domain (TLD). Examples of TLDs are
 
 Determination is made by consulting a Public Suffix List. The included PSL is from mozilla.org. See http://publicsuffix.org/list/ for more information, and a link to download the latest PSL.
 
-The authors of this module anticipate adding a function to this class which will periodically update the PSL.
+=head2 update_psl_file
+
+Download a new Public Suffix List file from mozilla and update the installed file with the new copy.
 
 =head2 has_dns_rr
 
