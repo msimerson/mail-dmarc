@@ -273,7 +273,7 @@ Determination is made by consulting a Public Suffix List. The included PSL is fr
 
 =head2 update_psl_file
 
-Download a new Public Suffix List fine from mozilla and update the installed file with the new copy.
+Download a new Public Suffix List file from mozilla and update the installed file with the new copy.
 
 =head2 has_dns_rr
 
