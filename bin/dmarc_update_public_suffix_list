@@ -9,13 +9,20 @@ use Mail::DMARC;
 use Pod::Usage;
 
 my $dryrun = 0;
+my $random = 0;
 
 GetOptions (
     'dryrun' => \$dryrun,
     'help'   => \my $help,
+    'random' => \$random,
 );
 
 pod2usage if $help;
+
+if ( $random ) {
+    my $sleep_for = int(rand(60*60));
+    sleep $sleep_for;
+}
 
 Mail::DMARC->new()->update_psl_file($dryrun);
 
@@ -33,6 +40,8 @@ sub {}
   dmarc_update_public_suffix_list [ --dryrun --help ]
 
     dryrun       - show what would be done without overwriting file
+    random       - introduce a random delay to spread server load
+                   intended for use when running from crontab
     help         - print this syntax guide
 
 =head1 EXAMPLES
