@@ -41,7 +41,7 @@ To check that a new file can be downloaded without error but not download the fi
 
   dmarc_update_public_suffix_list --dryrun
 
-To doanload a new Public Suffix List to the location specified my mail-dmarc.ini
+To download a new Public Suffix List to the location specified my mail-dmarc.ini
 
   dmarc_update_public_suffix_list
 
