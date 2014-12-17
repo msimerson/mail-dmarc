@@ -106,21 +106,24 @@ sub update_psl_file {
     die "Cannot write to Public Suffix List file $psl_file\n" if ( ! -w $psl_file );
 
     my $url = 'https://publicsuffix.org/list/effective_tld_names.dat';
-    my $response = HTTP::Tiny->new->get( $url );
-    my $content = $response->{'content'};
-    if ( !$response->{'success'} ) {
-        my $status  = $response->{'status'};
-        die "HTTP Request for Public Suffix List file failed with error $status ($content)\n";
+    if ( $dryrun ) {
+        print "Will attempt to update the Public Suffix List file at $psl_file (dryrun mode)\n";
+        return;
     }
 
-    if ( ! $dryrun ) {
-        open my $file, '>', $psl_file || die "Could not write to Public Suffix List file $psl_file\n";
-        print $file $content;
-        close $file;
-        print "Public Suffix List file $psl_file updated\n";
+    my $response = HTTP::Tiny->new->mirror( $url, $psl_file );
+    my $content = $response->{'content'};
+    if ( !$response->{'success'} ) {
+        my $status = $response->{'status'};
+        die "HTTP Request for Public Suffix List file failed with error $status ($content)\n";
     }
     else {
-        print "Public Suffix List file $psl_file not updated (dryrun)\n";
+        if ( $response->{'status'} eq '304' ) {
+            print "Public Suffix List file $psl_file not modified\n";
+        }
+        else {
+            print "Public Suffix List file $psl_file updated\n";
+        }
     }
 }
 
