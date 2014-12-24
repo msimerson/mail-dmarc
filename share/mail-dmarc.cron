@@ -1,0 +1,8 @@
+# /etc/cron.d/dmarc_update_public_suffix_list: crontab entries for the Mail::DMARC package
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# Periodically (once a week) check for updates of the public suffix list
+0 4 * * 0 root dmarc_update_public_suffix_list --random
+
