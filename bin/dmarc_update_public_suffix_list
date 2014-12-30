@@ -1,0 +1,101 @@
+#!/usr/bin/perl
+our $VERSION = '1.20141230'; # VERSION
+use strict;
+use warnings;
+
+use Getopt::Long;
+use HTTP::Tiny;
+use Mail::DMARC;
+use Pod::Usage;
+
+my $dryrun = 0;
+my $random = 0;
+
+GetOptions (
+    'dryrun' => \$dryrun,
+    'help'   => \my $help,
+    'random' => \$random,
+);
+
+pod2usage if $help;
+
+if ( $random ) {
+    my $sleep_for = int(rand(60*60));
+    sleep $sleep_for;
+}
+
+Mail::DMARC->new()->update_psl_file($dryrun);
+
+# PODNAME: dmarc_update_public_suffix_list
+# ABSTRACT: command line tool to download updated public suffix list
+
+=pod
+
+=head1 NAME
+
+dmarc_update_public_suffix_list - command line tool to download updated public suffix list
+
+=head1 VERSION
+
+version 1.20141230
+
+=head1 SYNOPSIS
+
+  dmarc_update_public_suffix_list [ --option=value ]
+
+=head2 Options
+
+  dmarc_update_public_suffix_list [ --dryrun --help ]
+
+    dryrun       - show what would be done without overwriting file
+    random       - introduce a random delay to spread server load
+                   intended for use when running from crontab
+    help         - print this syntax guide
+
+=head1 DESCRIPTION
+
+Downloads a new Public Suffix List to the location specified by /etc/mail-dmarc.ini
+
+This file is maintained by the Mozilla Foundation, it is updated a few times per
+month, you are requested to download no more than once per day.
+
+The URL of the file is https://publicsuffix.org/list/effective_tld_names.dat
+More details can be found on the https://publicsuffix.org/ website.
+
+=head1 EXAMPLES
+
+To check that a new file can be downloaded without error but not download the file:
+
+  dmarc_update_public_suffix_list --dryrun
+
+To download a new Public Suffix List to the location specified my mail-dmarc.ini
+
+  dmarc_update_public_suffix_list
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2014 by Matt Simerson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
+
+__END__
+sub {}
+
+

@@ -31,6 +31,7 @@ my %WriteMakefileArgs = (
     "bin/dmarc_lookup",
     "bin/dmarc_receive",
     "bin/dmarc_send_reports",
+    "bin/dmarc_update_public_suffix_list",
     "bin/dmarc_view_reports",
     "bin/install_deps.pl"
   ],
@@ -42,6 +43,7 @@ my %WriteMakefileArgs = (
     "CPAN" => 0,
     "Carp" => 0,
     "Config::Tiny" => 0,
+    "DBD::SQLite" => "1.31",
     "DBIx::Simple" => 0,
     "Data::Dumper" => 0,
     "Email::MIME" => 0,
@@ -51,9 +53,11 @@ my %WriteMakefileArgs = (
     "File::ShareDir" => 0,
     "Getopt::Long" => 0,
     "HTTP::Request" => 0,
+    "HTTP::Tiny" => 0,
     "IO::Compress::Gzip" => 0,
     "IO::Compress::Zip" => 0,
     "IO::File" => 0,
+    "IO::Socket::SSL" => 0,
     "IO::Uncompress::Gunzip" => 0,
     "IO::Uncompress::Unzip" => 0,
     "JSON" => 0,
@@ -62,6 +66,7 @@ my %WriteMakefileArgs = (
     "Net::HTTP" => 0,
     "Net::IP" => 0,
     "Net::SMTPS" => 0,
+    "Net::SSLeay" => 0,
     "POSIX" => 0,
     "Pod::Usage" => 0,
     "Regexp::Common" => "2013031301",
@@ -78,7 +83,7 @@ my %WriteMakefileArgs = (
   "TEST_REQUIRES" => {
     "Test::More" => 0
   },
-  "VERSION" => "1.20141206",
+  "VERSION" => "1.20141230",
   "test" => {
     "TESTS" => "t/*.t"
   }
@@ -90,6 +95,7 @@ my %FallbackPrereqs = (
   "CPAN" => 0,
   "Carp" => 0,
   "Config::Tiny" => 0,
+  "DBD::SQLite" => "1.31",
   "DBIx::Simple" => 0,
   "Data::Dumper" => 0,
   "Email::MIME" => 0,
@@ -101,9 +107,11 @@ my %FallbackPrereqs = (
   "File::ShareDir::Install" => "0.06",
   "Getopt::Long" => 0,
   "HTTP::Request" => 0,
+  "HTTP::Tiny" => 0,
   "IO::Compress::Gzip" => 0,
   "IO::Compress::Zip" => 0,
   "IO::File" => 0,
+  "IO::Socket::SSL" => 0,
   "IO::Uncompress::Gunzip" => 0,
   "IO::Uncompress::Unzip" => 0,
   "JSON" => 0,
@@ -113,6 +121,7 @@ my %FallbackPrereqs = (
   "Net::HTTP" => 0,
   "Net::IP" => 0,
   "Net::SMTPS" => 0,
+  "Net::SSLeay" => 0,
   "POSIX" => 0,
   "Pod::Usage" => 0,
   "Regexp::Common" => "2013031301",

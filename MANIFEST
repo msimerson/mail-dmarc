@@ -17,6 +17,7 @@ bin/dmarc_httpd
 bin/dmarc_lookup
 bin/dmarc_receive
 bin/dmarc_send_reports
+bin/dmarc_update_public_suffix_list
 bin/dmarc_view_reports
 bin/install_deps.pl
 dist.ini
@@ -98,6 +99,7 @@ share/html/plugins/jquery.tablednd.js.gz
 share/html/plugins/searchFilter.css
 share/html/plugins/ui.multiselect.css
 share/html/plugins/ui.multiselect.js.gz
+share/mail-dmarc.cron
 share/mail_dmarc_schema.mysql
 share/mail_dmarc_schema.sqlite
 share/public_suffix_list

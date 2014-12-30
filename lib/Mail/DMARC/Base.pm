@@ -1,11 +1,12 @@
 package Mail::DMARC::Base;
-our $VERSION = '1.20141206'; # VERSION
+our $VERSION = '1.20141230'; # VERSION
 use strict;
 use warnings;
 
 use Carp;
 use Config::Tiny;
 use File::ShareDir;
+use HTTP::Tiny;
 use IO::File;
 use Net::DNS::Resolver;
 use Net::IP;
@@ -95,6 +96,37 @@ sub is_public_suffix {
     return 0;
 }
 
+sub update_psl_file {
+    my ($self, $dryrun) = @_;
+
+    my $psl_file = $self->find_psl_file();
+
+    die "No Public Suffix List file found\n"                  if ( ! $psl_file );
+    die "Public suffix list file $psl_file not found\n"       if ( ! -f $psl_file );
+    die "Cannot write to Public Suffix List file $psl_file\n" if ( ! -w $psl_file );
+
+    my $url = 'https://publicsuffix.org/list/effective_tld_names.dat';
+    if ( $dryrun ) {
+        print "Will attempt to update the Public Suffix List file at $psl_file (dryrun mode)\n";
+        return;
+    }
+
+    my $response = HTTP::Tiny->new->mirror( $url, $psl_file );
+    my $content = $response->{'content'};
+    if ( !$response->{'success'} ) {
+        my $status = $response->{'status'};
+        die "HTTP Request for Public Suffix List file failed with error $status ($content)\n";
+    }
+    else {
+        if ( $response->{'status'} eq '304' ) {
+            print "Public Suffix List file $psl_file not modified\n";
+        }
+        else {
+            print "Public Suffix List file $psl_file updated\n";
+        }
+    }
+}
+
 sub find_psl_file {
     my ($self) = @_;
 
@@ -171,6 +203,11 @@ sub get_resolver {
     return $self->{resolver};
 }
 
+sub set_resolver {
+    my ($self,$resolver) = @_;
+    $self->{resolver} = $resolver;
+}
+
 sub is_valid_ip {
     my ( $self, $ip ) = @_;
 
@@ -235,7 +272,7 @@ Mail::DMARC::Base - DMARC utility functions
 
 =head1 VERSION
 
-version 1.20141206
+version 1.20141230
 
 =head1 METHODS
 
@@ -245,7 +282,9 @@ Determines if part of a domain is a Top Level Domain (TLD). Examples of TLDs are
 
 Determination is made by consulting a Public Suffix List. The included PSL is from mozilla.org. See http://publicsuffix.org/list/ for more information, and a link to download the latest PSL.
 
-The authors of this module anticipate adding a function to this class which will periodically update the PSL.
+=head2 update_psl_file
+
+Download a new Public Suffix List file from mozilla and update the installed file with the new copy.
 
 =head2 has_dns_rr
 
@@ -254,6 +293,10 @@ Determine if a DNS Resource Record of the specified type exists at the DNS name 
 =head2 get_resolver
 
 Returns a (cached) Net::DNS::Resolver object
+
+=head2 set_resolver
+
+Set the Net::DNS::Resolver object to be used for lookups
 
 =head2 is_valid_ip
 

@@ -19,25 +19,20 @@ meta-spec:
 name: Mail-DMARC
 recommends:
   CGI: '0'
-  DBD::SQLite: '1.31'
-  DBIx::Simple: '0'
-  Email::MIME: '0'
   Email::Simple: '0'
   IO::Compress::Gzip: '0'
   IO::Compress::Zip: '0'
   IO::Uncompress::Gunzip: '0'
   IO::Uncompress::Unzip: '0'
-  JSON: '0'
   Net::HTTP: '0'
   Net::IMAP::Simple: '0'
-  Net::SMTPS: '0'
   Net::Server: '2'
-  XML::LibXML: '0'
 requires:
   CGI: '0'
   CPAN: '0'
   Carp: '0'
   Config::Tiny: '0'
+  DBD::SQLite: '1.31'
   DBIx::Simple: '0'
   Data::Dumper: '0'
   Email::MIME: '0'
@@ -47,9 +42,11 @@ requires:
   File::ShareDir: '0'
   Getopt::Long: '0'
   HTTP::Request: '0'
+  HTTP::Tiny: '0'
   IO::Compress::Gzip: '0'
   IO::Compress::Zip: '0'
   IO::File: '0'
+  IO::Socket::SSL: '0'
   IO::Uncompress::Gunzip: '0'
   IO::Uncompress::Unzip: '0'
   JSON: '0'
@@ -58,6 +55,7 @@ requires:
   Net::HTTP: '0'
   Net::IP: '0'
   Net::SMTPS: '0'
+  Net::SSLeay: '0'
   POSIX: '0'
   Pod::Usage: '0'
   Regexp::Common: '2013031301'
@@ -75,7 +73,7 @@ resources:
   bugtracker: https://github.com/msimerson/mail-dmarc/issues
   homepage: https://github.com/msimerson/mail-dmarc/wiki
   repository: git://github.com/msimerson/mail-dmarc.git
-version: '1.20141206'
+version: '1.20141230'
 x_contributors:
   - 'Benny Pedersen <me@junc.eu>'
   - 'ColocateUSA.net <company@colocateusa.net>'
