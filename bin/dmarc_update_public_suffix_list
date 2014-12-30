@@ -29,7 +29,6 @@ Mail::DMARC->new()->update_psl_file($dryrun);
 # PODNAME: dmarc_update_public_suffix_list
 # ABSTRACT: command line tool to download updated public suffix list
 __END__
-sub {}
 
 =head1 SYNOPSIS
 
