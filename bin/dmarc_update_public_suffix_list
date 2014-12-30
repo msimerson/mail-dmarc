@@ -58,11 +58,11 @@ To download a new Public Suffix List to the location specified my mail-dmarc.ini
 
 Downloads a new Public Suffix List to the location specified by /etc/mail-dmarc.ini
 
-This file is maintained by the Mozilla Foundation, it is updated a few times per
+The PSL is maintained by the Mozilla Foundation. It is updated a few times per
 month, you are requested to download no more than once per day.
 
 The URL of the file is https://publicsuffix.org/list/effective_tld_names.dat
-More details can be found on the https://publicsuffix.org/ website.
+More details can be found at https://publicsuffix.org/
 
 =cut
 
