@@ -1,6 +1,10 @@
 
 {{$NEXT}}
 
+1.20141230 2014-12-29 America/Los_Angeles
+
+ - Add script to update the public suffix list file (Marc Bradshaw)
+
 1.20141206 2014-12-05 America/Los_Angeles
 
  - Delete reports with no valid rua (Marc Bradshaw)

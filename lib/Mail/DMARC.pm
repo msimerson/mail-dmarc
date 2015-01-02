@@ -519,6 +519,6 @@ Best Current Practices: http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03
 
 The daddy of this perl module was a DMARC module for the qpsmtpd MTA.
 
-Qpsmtpd plugin: https://github.com/qpsmtpd-dev/qpsmtpd-dev/blob/master/plugins/dmarc
+Qpsmtpd plugin: https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc
 
 =cut
