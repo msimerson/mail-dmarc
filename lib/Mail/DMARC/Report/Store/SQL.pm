@@ -440,7 +440,7 @@ sub row_exists {
     my ($self, $rid, $rec ) = @_;
 
     if ( ! defined $rec->{row}{count} ) {
-        carp "\tnew record";
+        print "new record\n" if $self->verbose;
         return;
     };
 
