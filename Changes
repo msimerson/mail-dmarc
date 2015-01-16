@@ -1,6 +1,13 @@
 
 {{$NEXT}}
 
+ - DMARC: update docs to show SPF one-shot syntax
+ - PurePerl: one shot accepts a Mail::DKIM::Verifier
+ - trap errors thrown by is_dkim_aligned
+ - INSTALL: added 'install mail-dmarc.ini' step
+ - Show "new record" output only in verbose mode. (Marc Bradshaw)
+ - require DBIx::Simple 1.35 (was any)
+
 1.20141230 2014-12-29 America/Los_Angeles
 
  - Add script to update the public suffix list file (Marc Bradshaw)
