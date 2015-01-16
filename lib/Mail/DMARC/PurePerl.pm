@@ -36,8 +36,8 @@ sub validate {
     #         specifying that a pass from one authentication test allows one
     #         to skip the other(s). All are required for reporting.
 
-    $self->is_dkim_aligned;   # 11.2.3. DKIM signature verification checks
-    $self->is_spf_aligned;    # 11.2.4. SPF validation checks
+    eval { $self->is_dkim_aligned; };  # 11.2.3. DKIM signature verification checks
+    eval { $self->is_spf_aligned;  };  # 11.2.4. SPF validation checks
     my $aligned = $self->is_aligned(); # 11.2.5. identifier alignment checks
 
     if ($self->config->{report_store}{auto_save}) {

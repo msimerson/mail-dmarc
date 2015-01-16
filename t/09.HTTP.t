@@ -34,11 +34,18 @@ like($r, qr/no header_from/, "serve_validator, missing header_from");
 
 $cgi->param('POSTDATA', '{"header_from":"tnpi.net"}');
 $r = Mail::DMARC::HTTP::serve_validator($cgi);
-like($r, qr/missing SPF/, "serve_validator, missing SPF");
+like($r, qr/"spf":""/, "serve_validator, missing SPF");
+like($r, qr/"dkim":"fail"/, "serve_validator, missing DKIM");
 
 $cgi->param('POSTDATA', '{"header_from":"tnpi.net","spf":[{"domain":"tnpi.net","scope":"mfrom","result":"pass"}]}');
 $r = Mail::DMARC::HTTP::serve_validator($cgi);
-like($r, qr/pass/, "serve_validator, pass SPF");
+like($r, qr/"spf":"pass"/, "serve_validator, pass SPF");
+like($r, qr/"dkim":"fail"/, "serve_validator, missing DKIM");
+
+$cgi->param('POSTDATA', '{"header_from":"tnpi.net","dkim":[{"domain":"tnpi.net","selector":"mar2013","result":"pass"}]}');
+$r = Mail::DMARC::HTTP::serve_validator($cgi);
+like($r, qr/"spf":""/, "serve_validator, missing SPF");
+like($r, qr/"dkim":"pass"/, "serve_validator, pass DKIM");
 
 # this starts up the httpd daemon
 #$http->dmarc_httpd();
