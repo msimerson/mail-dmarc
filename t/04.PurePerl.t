@@ -27,8 +27,6 @@ $dmarc->config('t/mail-dmarc.ini');
 
 isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 
-#done_testing(); exit;
-
 test_get_from_dom();
 test_fetch_dmarc_record();
 test_get_organizational_domain();
@@ -309,8 +307,41 @@ sub test_is_whitelisted {
 
 sub test_validate {
 
-    # TODO: test various failure modes and results
+    my %sample_dmarc = (
+        config_file   => 'mail-dmarc.ini',
+        source_ip     => '192.0.1.1',
+        envelope_to   => 'example.com',
+        envelope_from => 'cars4you.info',
+        header_from   => 'tnpi.net',
+        dkim          => [
+            {   domain       => 'example.com',
+                selector     => 'apr2013',
+                result       => 'fail',
+                human_result => 'fail (body has been altered)',
+            }
+        ],
+        spf => [
+            {   domain => 'tnpi.net',
+                scope  => 'mfrom',
+                result => 'pass',
+            }
+        ],
+    );
 
+    $dmarc = Mail::DMARC::PurePerl->new(%sample_dmarc);
+    eval { $dmarc->validate(); };
+    #print Dumper($dmarc->result);
+    ok($dmarc->is_spf_aligned(), "validate, one-shot, is_spf_aligned, yes" );
+    ok(!$dmarc->is_dkim_aligned(), "validate, one-shot, is_dkim_aligned, no" );
+
+    # TODO: mock up a Mail::DKIM::Verifier and replace $sample_dmarc{dkim}
+    #$dmarc = Mail::DMARC::PurePerl->new(%sample_dmarc);
+    #eval { $dmarc->validate(); };
+    #print Dumper($dmarc->result);
+    #ok($dmarc->is_spf_aligned(), "validate, one-shot, is_spf_aligned, yes" );
+    #ok(!$dmarc->is_dkim_aligned(), "validate, one-shot, is_dkim_aligned, Mail-DKIM, yes" );
+
+    # TODO: mock up a Mail::SPF::Result. Replace $sample_dmarc{spf}. Test again.
 }
 
 sub test_exists_in_dns {
