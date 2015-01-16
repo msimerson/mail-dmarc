@@ -342,7 +342,7 @@ L<Mail::DMARC::Report::View> - CLI and CGI methods for viewing reports
 
 =back
 
-L<Mail::DMARC::libopendmarc|http://search.cpan.org/~shari/Mail-DMARC-opendmarc> - an XS implementation using libopendmarc
+L<Mail::DMARC::opendmarc|http://search.cpan.org/~shari/Mail-DMARC-opendmarc> - an XS implementation using libopendmarc
 
 =head1 METHODS
 
