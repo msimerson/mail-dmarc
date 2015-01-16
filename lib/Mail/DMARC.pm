@@ -351,11 +351,17 @@ Populate it.
     $dmarc->envelope_from('sender.example.com');
     $dmarc->header_from('sender.example.com');
     $dmarc->dkim( $dkim_verifier );
-    $dmarc->spf(
-        domain => 'example.com',
-        scope  => 'mfrom',
-        result => 'pass',
-            );
+    $dmarc->spf([
+        {   domain => 'example.com',
+            scope  => 'mfrom',
+            result => 'pass',
+        },
+        {
+            scope  => 'helo',
+            domain => 'mta.example.com',
+            result => 'fail',
+        },
+    ]);
 
 Run the request:
 
