@@ -1,5 +1,7 @@
 
-The fast way, using your systems package manager (yum, apt, ports):
+# Install Mail::DMARC's dependencies
+
+## The fast way, using your systems package manager (yum, apt, ports):
 
    perl bin/install_deps.pl
 
@@ -11,6 +13,10 @@ Once the dependencies are installed, install Mail::DMARC as any other perl modul
    make
    make install clean
 
+Copy the mail-dmarc.ini file to your systems preferred local etc directory (/etc, /usr/local/etc, opt/local/etc) and edit at least the settings in the [organization] block:
+
+   cp mail-dmarc.ini /etc/
+   $EDITOR /etc/mail-dmarc.ini
 
 NOTE: Most of the dependencies are optionally required for the DMARC reporting features. Mail::DMARC will perform validation with only these modules:
 
