@@ -15,6 +15,7 @@ GetOptions (
     'dryrun' => \$dryrun,
     'help'   => \my $help,
     'random' => \$random,
+    'config-file=s' => \my $config_file,
 );
 
 pod2usage if $help;
@@ -24,7 +25,9 @@ if ( $random ) {
     sleep $sleep_for;
 }
 
-Mail::DMARC->new()->update_psl_file($dryrun);
+Mail::DMARC->new(
+    (defined $config_file ? (config_file => $config_file) : ())
+)->update_psl_file($dryrun);
 
 # PODNAME: dmarc_update_public_suffix_list
 # ABSTRACT: command line tool to download updated public suffix list
@@ -41,6 +44,7 @@ __END__
     dryrun       - show what would be done without overwriting file
     random       - introduce a random delay to spread server load
                    intended for use when running from crontab
+    config-file  - alternate config file path
     help         - print this syntax guide
 
 =head1 EXAMPLES
