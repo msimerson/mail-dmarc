@@ -25,24 +25,26 @@ eval { $base->config('t/mail-dmarc.ini'); };
 chomp $@;
 ok( !$@, "alternate config file" );
 
-test_any_inet_to();
-test_is_public_suffix();
-test_has_dns_rr();
-test_is_valid_ip();
-test_is_valid_domain();
-test_epoch_to_iso();
+__any_inet_to();
+__is_public_suffix();
+__has_dns_rr();
+__is_valid_ip();
+__is_valid_domain();
+__epoch_to_iso();
+__get_prefix();
+__get_sharefile();
 
 done_testing();
 exit;
 
 #warn Dumper($base);
 
-sub test_epoch_to_iso {
+sub __epoch_to_iso {
     my $iso = $base->epoch_to_iso(time);
     ok( $iso, "epoch_to_iso, $iso" );
 };
 
-sub test_any_inet_to {
+sub __any_inet_to {
 
     my @test_ips = (
         '1.1.1.1',                            '10.0.1.1',
@@ -67,7 +69,7 @@ sub test_any_inet_to {
     }
 }
 
-sub test_is_valid_ip {
+sub __is_valid_ip {
 
     # positive tests
     foreach (qw/ 0.0.0.0 1.1.1.1 255.255.255.255 2607:f060:b008:feed::2 /) {
@@ -80,7 +82,7 @@ sub test_is_valid_ip {
     }
 }
 
-sub test_is_valid_domain {
+sub __is_valid_domain {
 
     # positive tests
     foreach (qw/ test.sch.uk example.com bbc.co.uk 3.am /) {
@@ -94,7 +96,7 @@ sub test_is_valid_domain {
 
 }
 
-sub test_has_dns_rr {
+sub __has_dns_rr {
 
     my %tests = (
         'NS:tnpi.net'                 => 1,
@@ -113,7 +115,7 @@ sub test_has_dns_rr {
     }
 }
 
-sub test_is_public_suffix {
+sub __is_public_suffix {
     my %tests = (
         'www.tnpi.net' => 0,
         'tnpi.net'     => 0,
@@ -138,3 +140,34 @@ sub test_is_public_suffix {
     }
 }
 
+sub __get_prefix {
+    is_deeply(
+        [ $base->get_prefix() ],
+        [ '/usr/local/', '/opt/local/', '/' ],
+        "get_prefix: /usr/local/, /opt/local/, /",
+    );
+
+    is_deeply(
+        [ $base->get_prefix('etc') ],
+        [ '/usr/local/etc', '/opt/local/etc', '/etc' ],
+        "get_prefix(etc): /usr/local/etc, /opt/local/etc, /etc",
+    );
+
+    is_deeply(
+        [ $base->get_prefix('share') ],
+        [ '/usr/local/share', '/opt/local/share', '/share' ],
+        "get_prefix(share): /usr/local/share, /opt/local/share, /share",
+    );
+}
+
+sub __get_sharefile {
+    # throws an exception until after 'make install' has been run
+    my $r;
+    eval { $r = $base->get_sharefile('mail-dmarc.ini'); };
+
+    SKIP: {
+        skip '"make install" not yet run', 1 if $@;
+
+        ok($r, "get_sharefile: $r");
+    };
+}
