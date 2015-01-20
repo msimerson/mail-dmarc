@@ -143,20 +143,20 @@ sub __is_public_suffix {
 sub __get_prefix {
     is_deeply(
         [ $base->get_prefix() ],
-        [ '/usr/local/', '/opt/local/', '/' ],
-        "get_prefix: /usr/local/, /opt/local/, /",
+        [ '/usr/local/', '/opt/local/', '/', './' ],
+        "get_prefix: /usr/local/, /opt/local/, /, ./",
     );
 
     is_deeply(
         [ $base->get_prefix('etc') ],
-        [ '/usr/local/etc', '/opt/local/etc', '/etc' ],
-        "get_prefix(etc): /usr/local/etc, /opt/local/etc, /etc",
+        [ '/usr/local/etc', '/opt/local/etc', '/etc', './etc' ],
+        "get_prefix(etc): /usr/local/etc, /opt/local/etc, /etc, ./etc",
     );
 
     is_deeply(
         [ $base->get_prefix('share') ],
-        [ '/usr/local/share', '/opt/local/share', '/share' ],
-        "get_prefix(share): /usr/local/share, /opt/local/share, /share",
+        [ '/usr/local/share', '/opt/local/share', '/share', './share' ],
+        "get_prefix(share): /usr/local/share, /opt/local/share, /share, ./share",
     );
 }
 

@@ -33,7 +33,7 @@ sub config {
 
 sub get_prefix {
     my ($self, $subdir) = @_;
-    return map { $_ . ($subdir ? $subdir : '') } qw[ /usr/local/ /opt/local/ / ];
+    return map { $_ . ($subdir ? $subdir : '') } qw[ /usr/local/ /opt/local/ / ./ ];
 }
 
 sub get_sharefile {
@@ -56,6 +56,9 @@ sub get_config {
         return Config::Tiny->read("$d/$file");
     }
 
+    if ($file ne 'mail-dmarc.ini') {
+        croak "unable to find requested config file $file\n";
+    }
     return $self->get_sharefile('mail-dmarc.ini');
 }
 
