@@ -79,11 +79,11 @@ sub any_inet_pton {
 
     if ( $ip_txt =~ /:/ ) {
         return Socket6::inet_pton( AF_INET6, $ip_txt )
-            or croak "invalid IPv6: $ip_txt";
+            || croak "invalid IPv6: $ip_txt";
     }
 
     return Socket6::inet_pton( AF_INET, $ip_txt )
-        or croak "invalid IPv4: $ip_txt";
+        || croak "invalid IPv4: $ip_txt";
 }
 
 sub is_public_suffix {

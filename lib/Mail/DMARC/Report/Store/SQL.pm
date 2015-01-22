@@ -582,7 +582,7 @@ EO_RPP
     return $self->query( $query,
         [ $id, @$pub{ qw/ adkim aspf p sp pct rua /} ]
     )
-    or croak "failed to insert published policy";
+    || croak "failed to insert published policy";
 }
 
 sub db_connect {
