@@ -3,6 +3,9 @@ use warnings;
 
 use Test::More;
 
+use Test::File::ShareDir
+  -share => { -dist => { 'Mail-DMARC' => 'share' } };
+
 use lib 'lib';
 
 use_ok('Mail::DMARC');

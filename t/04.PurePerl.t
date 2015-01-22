@@ -5,6 +5,9 @@ use Data::Dumper;
 use Test::More;
 use URI;
 
+use Test::File::ShareDir
+  -share => { -dist => { 'Mail-DMARC' => 'share' } };
+
 use lib 'lib';
 use_ok('Mail::DMARC::PurePerl');
 
