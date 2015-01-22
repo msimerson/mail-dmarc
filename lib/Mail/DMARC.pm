@@ -47,8 +47,20 @@ sub local_policy {
     return $_[0]->{local_policy} = $_[1];
 }
 
+sub _unwrap {
+    my ( $self, $ref ) = @_;
+    if (ref $$ref and ref $$ref eq 'CODE') {
+        $$ref = $$ref->();
+        return 1;
+    }
+    return;
+}
+
 sub dkim {
     my ( $self, @args ) = @_;
+
+    $self->is_valid_dkim if $self->_unwrap( \$self->{dkim} );
+
     return $self->{dkim} if 0 == scalar @args;
 
     if ( scalar @args > 1 ) {
@@ -78,6 +90,11 @@ sub dkim {
         return $self->{dkim};
     };
 
+    if ( 'CODE' eq ref $dkim ) {
+        $self->{dkim} = $dkim;
+        return $self->{dkim}; # <-- may confuse people not thinking straight
+    };
+
     croak "invalid dkim argument";
 }
 
@@ -105,6 +122,9 @@ sub dkim_from_mail_dkim {
 
 sub spf {
     my ( $self, @args ) = @_;
+
+    $self->is_valid_spf if $self->_unwrap( \$self->{spf} );
+
     return $self->{spf} if 0 == scalar @args;
 
     if ( scalar @args == 1 && ref $args[0] ) {
@@ -113,6 +133,10 @@ sub spf {
             return $self->{spf};
         };
         if ( ref $args[0] eq 'ARRAY' ) {
+            $self->{spf} = $args[0];
+            return $self->{spf};
+        }
+        if ( ref $args[0] eq 'CODE' ) {
             $self->{spf} = $args[0];
             return $self->{spf};
         }

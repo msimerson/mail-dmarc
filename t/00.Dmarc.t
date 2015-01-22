@@ -65,6 +65,16 @@ sub test_dkim {
     ok( $dmarc->dkim([ \%test_dkim, \%test_dkim ]), "dkim, arrayref set" );
     is_deeply($dmarc->dkim, [ \%test_dkim, \%test_dkim ], "dkim, arrayref set result");
 
+# set with a callback
+    $dmarc->{dkim} = undef;
+    my $counter  = 0;
+    my $callback = sub { $counter++; [ \%test_dkim ] };
+    ok( $dmarc->dkim($callback), "dkim, arrayref set" );
+    is($counter, 0, "callback not yet called");
+    is_deeply($dmarc->dkim, [ \%test_dkim ], "dkim, callback-derived result");
+    is_deeply($dmarc->dkim, [ \%test_dkim ], "dkim, callback-cached result");
+    is($counter, 1, "callback exactly once");
+
 # set DKIM with invalid key=>val pairs
     eval { $dmarc->dkim( dom => 'foo', 'blah' ) };
     chomp $@;
@@ -96,6 +106,16 @@ sub test_spf {
     $dmarc->{spf} = undef;
     ok( $dmarc->spf([ \%test_spf, \%test_spf ]), "spf, arrayref set" );
     is_deeply($dmarc->spf, [ \%test_spf, \%test_spf ], "spf, arrayref set result");
+
+# set with a callback
+    $dmarc->{spf} = undef;
+    my $counter  = 0;
+    my $callback = sub { $counter++; [ \%test_spf ] };
+    ok( $dmarc->spf($callback), "spf, arrayref set" );
+    is($counter, 0, "callback not yet called");
+    is_deeply($dmarc->spf, [ \%test_spf ], "spf, callback-derived result");
+    is_deeply($dmarc->spf, [ \%test_spf ], "spf, callback-cached result");
+    is($counter, 1, "callback exactly once");
 
 # set SPF with invalid key=>val pairs
     eval { $dmarc->spf( dom => 'foo', 'blah' ) };
