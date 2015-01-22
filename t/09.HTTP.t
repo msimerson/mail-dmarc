@@ -5,6 +5,9 @@ use CGI;
 use Data::Dumper;
 use Test::More;
 
+use Test::File::ShareDir
+  -share => { -dist => { 'Mail-DMARC' => 'share' } };
+
 use lib 'lib';
 
 foreach my $req ( 'DBD::SQLite 1.31', 'Net::Server::HTTP' ) {

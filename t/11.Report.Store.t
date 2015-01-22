@@ -4,6 +4,9 @@ use warnings;
 use Data::Dumper;
 use Test::More;
 
+use Test::File::ShareDir
+  -share => { -dist => { 'Mail-DMARC' => 'share' } };
+
 use lib 'lib';
 
 eval "use DBD::SQLite 1.31";
