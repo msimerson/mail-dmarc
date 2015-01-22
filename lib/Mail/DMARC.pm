@@ -59,9 +59,12 @@ sub _unwrap {
 sub dkim {
     my ( $self, @args ) = @_;
 
-    $self->is_valid_dkim if $self->_unwrap( \$self->{dkim} );
+    if (0 == scalar @args) {
+      $self->is_valid_dkim if $self->_unwrap( \$self->{dkim} );
+      return $self->{dkim};
+    }
 
-    return $self->{dkim} if 0 == scalar @args;
+    $self->{dkim} ||= [];
 
     if ( scalar @args > 1 ) {
         croak "invalid arguments to dkim" if @args % 2;
@@ -123,9 +126,12 @@ sub dkim_from_mail_dkim {
 sub spf {
     my ( $self, @args ) = @_;
 
-    $self->is_valid_spf if $self->_unwrap( \$self->{spf} );
+    if (0 == scalar @args) {
+      $self->is_valid_spf if $self->_unwrap( \$self->{spf} );
+      return $self->{spf}
+    }
 
-    return $self->{spf} if 0 == scalar @args;
+    $self->{spf} ||= [];
 
     if ( scalar @args == 1 && ref $args[0] ) {
         if ( ref $args[0] eq 'HASH' ) {
