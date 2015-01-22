@@ -128,6 +128,9 @@ sent by a Mail Receiver.
     my $rid = $$agg_ref->metadata->report_id || time;
     my $id = POSIX::strftime( "%Y.%m.%d.", localtime ) . $rid;
     my $us = $self->config->{organization}{domain};
+    if ($us eq 'example.com') {
+        die "Please update mail-dmarc.ini";
+    }
     my $pol_dom = $$agg_ref->policy_published->domain;
     return "Report Domain: $pol_dom Submitter: $us Report-ID:$id";
 }

@@ -14,6 +14,7 @@ my $mod = 'Mail::DMARC::Report::Send::SMTP';
 use_ok($mod);
 my $smtp = $mod->new;
 isa_ok( $smtp, $mod );
+$smtp->config('t/mail-dmarc.ini');
 
 open my $REP, '<', 'share/dmarc-report-2013-draft.xsd'
     or die "unable to open: $!";
@@ -24,6 +25,7 @@ IO::Compress::Gzip::gzip( \$report, \$zipped ) or die "unable to compress";
 
 my $agg = Mail::DMARC::Report::Aggregate->new;
 my $pol = Mail::DMARC::Policy->new;
+
 $pol->domain('they.com');
 $agg->policy_published( $pol );
 $agg->metadata->begin( time - 10000 );
