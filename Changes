@@ -1,6 +1,11 @@
 
 {{$NEXT}}
 
+ - enable lazy evaluation of SPF & DKIM (Ricardo Signes)
+ - check ShareDir for mail-dmarc.ini, if not in a standard location
+ - map DKIM status=invalid to status->temperror
+ - add config arg to dmarc_update_public_suffix_list (Ricardo Signes)
+ - Send only a single cc email (Marc Bradshaw)
  - DMARC: update docs to show SPF one-shot syntax
  - PurePerl: one shot accepts a Mail::DKIM::Verifier
  - trap errors thrown by is_dkim_aligned
