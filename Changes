@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20150123 2015-01-22 America/Los_Angeles
+
  - enable lazy evaluation of SPF & DKIM (Ricardo Signes)
  - check ShareDir for mail-dmarc.ini, if not in a standard location
  - map DKIM status=invalid to status->temperror
