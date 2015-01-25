@@ -108,15 +108,17 @@ sub dkim_from_mail_dkim {
     foreach my $s ( $dkim->signatures ) {
         next if ref $s eq 'Mail::DKIM::DkSignature';
 
-        if ($s->{result} eq 'invalid') {  # See GH Issue #21
-            $s->{result} = 'temperror';
+        my $result = $s->result;
+
+        if ($result eq 'invalid') {  # See GH Issue #21
+            $result = 'temperror';
         }
 
         push @{ $self->{dkim} },
             {
             domain       => $s->domain,
             selector     => $s->selector,
-            result       => $s->result,
+            result       => $result,
             human_result => $s->result_detail,
             };
     }
