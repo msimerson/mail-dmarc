@@ -484,6 +484,8 @@ The dkim results can also be build iteratively by passing in key value pairs or 
 
 Each hash or hashref is appended to the dkim array.
 
+Finally, you can pass a coderef which won't be called until the dkim method is used to read the dkim results.  It must return an array reference as described above.  As a convenience, your can return the result of calling C<< $dmarc->dkim_from_mail_dkim($dkim_verifier) >> to produce such an arrayref from a Mail::DKIM::Verifier object.
+
 The dkim result is an array reference.
 
 =head3 domain
@@ -504,7 +506,7 @@ Additional information about the DKIM result. This is comparable to Mail::DKIM::
 
 =head2 spf
 
-The spf method works exactly the same as dkim. It accepts named arguments, a hashref, or an arrayref:
+The spf method works exactly the same as dkim. It accepts named arguments, a hashref, an arrayref, or a coderef:
 
     $dmarc->spf(
         domain => 'example.com',
