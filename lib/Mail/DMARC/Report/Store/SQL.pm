@@ -579,10 +579,10 @@ INSERT INTO report_policy_published
 VALUES (??)
 EO_RPP
     ;
-    return $self->query( $query,
+    $self->query( $query,
         [ $id, @$pub{ qw/ adkim aspf p sp pct rua /} ]
-    )
-    || croak "failed to insert published policy";
+    );
+    return 1;
 }
 
 sub db_connect {
