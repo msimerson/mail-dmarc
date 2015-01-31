@@ -582,7 +582,7 @@ EO_RPP
     $self->query( $query,
         [ $id, @$pub{ qw/ adkim aspf p sp pct rua /} ]
     );
-    return;
+    return 1;
 }
 
 sub db_connect {
