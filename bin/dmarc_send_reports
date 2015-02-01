@@ -8,10 +8,6 @@ use Encode;
 use Getopt::Long;
 #use XML::LibXML;
 
-use Mail::DKIM::PrivateKey;
-use Mail::DKIM::Signer;
-use Mail::DKIM::TextWrap;
-
 my $send_delay = 5;
 
 GetOptions (
@@ -30,12 +26,22 @@ $report->verbose($verbose) if defined $verbose;
 
 my $dkim_key;
 if ( $report->config->{report_sign}->{keyfile} ) {
-    my $file = $report->config->{report_sign}->{keyfile};
-    $dkim_key = Mail::DKIM::PrivateKey->load(
-        'File' => $file,
-    );
-    if ( ! $dkim_key ) {
-        die "Could not load DKIM key $file";
+    eval {
+        require Mail::DKIM::PrivateKey;
+        require Mail::DKIM::Signer;
+        require Mail::DKIM::TextWrap;
+    };
+    if ( UNIVERSAL::can( 'Mail::DKIM::Signer', "new" ) ) {
+        my $file = $report->config->{report_sign}->{keyfile};
+        $dkim_key = Mail::DKIM::PrivateKey->load(
+            'File' => $file,
+        );
+        if ( ! $dkim_key ) {
+            die "Could not load DKIM key $file";
+        }
+    }
+    else {
+        die 'DKIM signing requested but Mail::DKIM could not be loaded. Please check that Mail::DKIM is installed.';
     }
 }
 
