@@ -8,6 +8,10 @@ use Encode;
 use Getopt::Long;
 #use XML::LibXML;
 
+use Mail::DKIM::PrivateKey;
+use Mail::DKIM::Signer;
+use Mail::DKIM::TextWrap;
+
 my $send_delay = 5;
 
 GetOptions (
@@ -23,6 +27,14 @@ $report->verbose($verbose) if defined $verbose;
 
 #my $schema = 'http://dmarc.org/dmarc-xml/0.1/rua.xsd';
 #my $xmlschema = XML::LibXML::Schema->new( location => $schema );
+
+my $dkim_key;
+if ( $report->config->{report_sign}->{keyfile} ) {
+    my $file = $report->config->{report_sign}->{keyfile};
+    $dkim_key = Mail::DKIM::PrivateKey->load(
+        'File' => $file,
+    );
+}
 
 # 1. get reports, one at a time
 while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
@@ -190,6 +202,25 @@ sub email {
     if ( $rid ) {
         $body = $report->sendit->smtp->assemble_message($agg_ref, $to, $shrunk);
     };
+
+    if ( $dkim_key ) {
+        my $dkim_algorithm = $report->config->{report_sign}{algorithm};
+        my $dkim_method    = $report->config->{report_sign}{method};
+        my $dkim_domain    = $report->config->{report_sign}{domain};
+        my $dkim_selector  = $report->config->{report_sign}{selector};
+        my $dkim = Mail::DKIM::Signer->new(
+            Algorithm => $dkim_algorithm,
+            Method    => $dkim_method,
+            Domain    => $dkim_domain,
+            Selector  => $dkim_selector,
+            Key       => $dkim_key,
+        );
+        $body =~ s/\015?\012/\015\012/g;
+        $dkim->PRINT( $body );
+        $dkim->CLOSE;
+        my $signature = $dkim->signature;
+        $body = $signature->as_string . "\015\012" . $body;
+    }
 
     $smtp->data($body) or do {
         my $err = $smtp->code ." ". $smtp->message;
