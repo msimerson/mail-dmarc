@@ -34,6 +34,9 @@ if ( $report->config->{report_sign}->{keyfile} ) {
     $dkim_key = Mail::DKIM::PrivateKey->load(
         'File' => $file,
     );
+    if ( ! $dkim_key ) {
+        die "Could not load DKIM key $file";
+    }
 }
 
 # 1. get reports, one at a time
@@ -208,18 +211,25 @@ sub email {
         my $dkim_method    = $report->config->{report_sign}{method};
         my $dkim_domain    = $report->config->{report_sign}{domain};
         my $dkim_selector  = $report->config->{report_sign}{selector};
-        my $dkim = Mail::DKIM::Signer->new(
-            Algorithm => $dkim_algorithm,
-            Method    => $dkim_method,
-            Domain    => $dkim_domain,
-            Selector  => $dkim_selector,
-            Key       => $dkim_key,
-        );
-        $body =~ s/\015?\012/\015\012/g;
-        $dkim->PRINT( $body );
-        $dkim->CLOSE;
-        my $signature = $dkim->signature;
-        $body = $signature->as_string . "\015\012" . $body;
+        eval {
+            my $dkim = Mail::DKIM::Signer->new(
+                Algorithm => $dkim_algorithm,
+                Method    => $dkim_method,
+                Domain    => $dkim_domain,
+                Selector  => $dkim_selector,
+                Key       => $dkim_key,
+            );
+            $body =~ s/\015?\012/\015\012/g;
+            $dkim->PRINT( $body );
+            $dkim->CLOSE;
+            my $signature = $dkim->signature;
+            $body = $signature->as_string . "\015\012" . $body;
+        };
+        if ( my $error = $@ ) {
+            print "DKIM Signing error\n\t$error\n";
+            $smtp->quit;
+            return;
+        }
     }
 
     $smtp->data($body) or do {
