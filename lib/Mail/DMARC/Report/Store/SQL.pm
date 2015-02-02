@@ -36,7 +36,7 @@ sub save_aggregate {
     };
 
     return $rid;
-};
+}
 
 sub retrieve {
     my ( $self, %args ) = @_;
@@ -91,7 +91,7 @@ sub retrieve_todo {
 
     $self->populate_agg_records( \$agg, $report->{rid} );
     return $agg;
-};
+}
 
 sub delete_report {
     my $self = shift;
@@ -157,15 +157,15 @@ sub get_report_id {
 
     my $ids;
     if ( $meta->report_id ) {
-# reports arriving via the wire will have an author ID & report ID
+    # reports arriving via the wire will have an author ID & report ID
         $ids = $self->query(
         'SELECT id FROM report WHERE uuid=? AND author_id=?',
         [ $meta->report_id, $author_id ]
         );
     }
     else {
-# Reports submitted by our local MTA will not have a report ID
-# They aggregate on the From domain, where the DMARC policy was discovered
+    # Reports submitted by our local MTA will not have a report ID
+    # They aggregate on the From domain, where the DMARC policy was discovered
         $ids = $self->query(
         'SELECT id FROM report WHERE from_domain_id=? AND end > ?',
         [ $from_dom_id, time ]
@@ -195,7 +195,7 @@ sub get_report {
     my @known = qw/ rid author from_domain begin end /;
     my %known = map { $_ => 1 } @known;
 
-# TODO: allow custom search ops?  'searchOper'   => 'eq',
+    # TODO: allow custom search ops?  'searchOper' => 'eq',
     if ( $args{searchField} && $known{ $args{searchField} } ) {
         $query .= " AND $args{searchField}=?";
         push @params, $args{searchString};
@@ -228,20 +228,20 @@ sub get_report {
         };
     };
 
-#   warn "query: $query\n" . join(", ", @params) . "\n";
+    # warn "query: $query\n" . join(", ", @params) . "\n";
     my $reports = $self->query($query, \@params);
     foreach (@$reports ) {
         $_->{begin} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{begin} )));
         $_->{end} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{end} )));
     };
-# return in the format expected by jqGrid
+    # return in the format expected by jqGrid
     return {
         cur_page    => $args{page},
         total_pages => $total_pages,
         total_rows  => $total_recs,
         rows        => $reports,
     };
-};
+}
 
 sub get_report_policy_published {
     my ($self, $rid) = @_;
@@ -250,7 +250,7 @@ sub get_report_policy_published {
     $pp->{p} ||= 'none';
     $pp = Mail::DMARC::Policy->new( v=>'DMARC1', %$pp );
     return $pp;
-};
+}
 
 sub get_report_query {
     my $self = shift;
@@ -267,7 +267,7 @@ LEFT JOIN domain fd ON r.from_domain_id=fd.id
 WHERE 1=1
 EO_REPORTS
 ;
-};
+}
 
 sub get_todo_query {
     return <<'EO_TODO_QUERY'
@@ -288,7 +288,7 @@ ORDER BY r.id
 LIMIT 1
 EO_TODO_QUERY
 ;
-};
+}
 
 sub get_rr {
     my ($self,@args) = @_;
@@ -308,7 +308,7 @@ sub get_rr {
         total_rows  => scalar @$rows,
         rows        => $rows,
     };
-};
+}
 
 sub get_row_spf {
     my ($self, $rowid) = @_;
@@ -323,7 +323,7 @@ WHERE s.report_record_id=?
 EO_SPF_ROW
 ;
     return $self->query( $spf_query, [ $rowid ] );
-};
+}
 
 sub get_row_dkim {
     my ($self, $rowid) = @_;
@@ -339,7 +339,7 @@ WHERE report_record_id=?
 EO_DKIM_ROW
 ;
     return $self->query( $dkim_query, [ $rowid ] );
-};
+}
 
 sub get_row_reason {
     my ($self, $rowid) = @_;
@@ -350,7 +350,7 @@ WHERE report_record_id=?
 EO_ROW_QUERY
     ;
     return $self->query( $row_query, [ $rowid ] );
-};
+}
 
 sub get_rr_query {
     return <<'EO_ROW_QUERY'
@@ -366,7 +366,7 @@ WHERE report_id = ?
 ORDER BY id
 EO_ROW_QUERY
         ;
-};
+}
 
 sub populate_agg_metadata {
     my ($self, $agg_ref, $report_ref) = @_;
@@ -387,7 +387,7 @@ sub populate_agg_metadata {
         $$agg_ref->metadata->error( $_->{error} );
     };
     return 1;
-};
+}
 
 sub populate_agg_records {
     my ($self, $agg_ref, $rid) = @_;
@@ -450,7 +450,7 @@ sub row_exists {
 
     return 1 if scalar @$rows;
     return;
-};
+}
 
 sub insert_agg_record {
     my ($self, $row_id, $rec) = @_;
@@ -523,7 +523,7 @@ INSERT INTO report_record_dkim
     (report_record_id, $fields_str)
 VALUES (??)
 EO_DKIM
-        ;
+;
     $self->query( $query, [ $row_id, @values ] );
     return 1;
 }
@@ -556,7 +556,7 @@ INSERT INTO report_record
     disposition, dkim, spf)
    VALUES (??)
 EO_ROW_INSERT
-        ;
+;
 
     my @args = ( $report_id,
         $self->any_inet_pton( $rec->{row}{source_ip} ),
@@ -629,7 +629,7 @@ sub apply_db_schema {
     my ( $self, $file ) = @_;
     my $setup = $self->slurp($file);
     foreach ( split /;/, $setup ) {
-#       warn "$_\n";
+    # warn "$_\n";
         $self->dbix->query($_);
     }
     return;
@@ -670,7 +670,7 @@ sub query {
 
 sub query_any {
     my ( $self, $query, $err, @params ) = @_;
-#warn "query: $query\n" . join(", ", @params) . "\n";
+    #warn "query: $query\n" . join(", ", @params) . "\n";
     my $r;
     eval { $r = $self->dbix->query( $query, @params )->hashes; } or print '';
     $self->db_check_err($err);
