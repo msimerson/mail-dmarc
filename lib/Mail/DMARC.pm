@@ -243,7 +243,7 @@ sub save_aggregate {
                         disposition   => $self->result->disposition,
                         dkim          => $self->result->dkim,
                         spf           => $self->result->spf,
-                        reason        => [ $self->result->reason ],
+                        reason        => $self->result->reason,
                     },
                 },
                 identifiers => {

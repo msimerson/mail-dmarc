@@ -45,9 +45,51 @@ test_external_report();
 test_verify_external_reporting( 'tnpi.net',            'theartfarm.com', 1 );
 test_verify_external_reporting( 'cadillac.net',        'theartfarm.com', 1 );
 test_verify_external_reporting( 'mail-dmarc.tnpi.net', 'theartfarm.com', 1 );
+_test_reason();
 
 done_testing();
 exit;
+
+sub _test_reason {
+    $dmarc->init();
+    $dmarc->source_ip('66.128.51.165');
+    $dmarc->envelope_to('recipient.example.com');
+    $dmarc->envelope_from('dmarc-nonexist.tnpi.net');
+    $dmarc->header_from('mail-dmarc.tnpi.net');
+    $dmarc->dkim([
+            {
+            domain      => 'tnpi.net',
+            selector    => 'jan2015',
+            result      => 'fail',
+            human_result=> 'fail (body has been altered)',
+        }
+    ]);
+    $dmarc->spf([
+            {   domain => 'tnpi.net',
+                scope  => 'mfrom',
+                result => 'pass',
+            },
+            {
+                scope  => 'helo',
+                domain => 'mail.tnpi.net',
+                result => 'fail',
+            },
+        ]);
+
+    my $policy = $dmarc->discover_policy;
+    ok( $policy, "discover_policy" );
+    my $result = $dmarc->validate($policy);
+    ok(ref $result, "result is a ref");
+    ok($result->{result} eq 'pass', "result=pass");
+    ok($result->{spf} eq 'pass', "spf=pass");
+    ok( $result->{disposition} eq 'none', "disposition=none");
+    $result->disposition('reject');
+    ok( $result->{disposition} eq 'reject', "disposition changed to reject");
+    ok( $result->reason( type => 'local_policy' ), "added reason" );
+    ok( $result->reason( type => 'local_policy', comment => 'testing' ), "added reason 2" );
+
+    ok( $dmarc->save_aggregate(), "save aggregate");
+}
 
 sub test_verify_external_reporting {
     my ( $dmarc_dom, $dest_dom, $outcome ) = @_;
