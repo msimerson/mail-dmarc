@@ -76,8 +76,8 @@ sub retrieve {
 sub retrieve_todo {
     my ( $self, @args ) = @_;
 
-# this method extracts the data from the SQL tables and populates an
-# Aggregate report object with it.
+    # this method extracts the data from the SQL tables and populates an
+    # Aggregate report object with it.
     my $reports = $self->query( $self->get_todo_query, [ time ] );
     return if ! @$reports;
     my $report = $reports->[0];
@@ -420,7 +420,7 @@ sub populate_agg_records {
     }
 
     foreach my $u ( keys %uniq ) {
-        $$agg_ref->record( {
+        my $record = Mail::DMARC::Report::Aggregate::Record->new(
             identifiers  => $ident{$u},
             auth_results => $auth{$u},
             row => {
@@ -430,8 +430,9 @@ sub populate_agg_records {
                     %{ $pe{$u} },
                     $reasons{$u} ? ( reason => [ map { { type => $_, comment => $reasons{$u}{$_} } } sort keys %{ $reasons{$u} } ] ) : (),
                 },
-            },
-        } );
+            }
+        );
+        $$agg_ref->record( $record );
     }
     return $$agg_ref->record;
 }
@@ -460,7 +461,7 @@ sub insert_agg_record {
     $row_id = $self->insert_rr( $row_id, $rec )
         or croak "failed to insert report row";
 
-    my $reasons = $rec->{row}{policy_evaluated}{reason};
+    my $reasons = $rec->row->policy_evaluated->reason;
     if ( $reasons ) {
         foreach my $reason ( @$reasons ) {
             next if !$reason || !$reason->{type};
@@ -468,14 +469,14 @@ sub insert_agg_record {
         };
     }
 
-    my $spf_ref = $rec->{auth_results}{spf};
+    my $spf_ref = $rec->auth_results->spf;
     if ( $spf_ref ) {
         foreach my $spf (@$spf_ref) {
             $self->insert_rr_spf( $row_id, $spf );
         }
     }
 
-    my $dkim = $rec->{auth_results}{dkim};
+    my $dkim = $rec->auth_results->dkim;
     if ($dkim) {
         foreach my $sig (@$dkim) {
             next if ! $sig || ! $sig->{domain};
@@ -559,14 +560,14 @@ EO_ROW_INSERT
 ;
 
     my @args = ( $report_id,
-        $self->any_inet_pton( $rec->{row}{source_ip} ),
+        $self->any_inet_pton( $rec->row->source_ip ),
         $rec->{row}{count},
     );
-    foreach ( qw/ header_from envelope_to envelope_from / ) {
-        push @args, $rec->{identifiers}{$_} ?
-            $self->get_domain_id( $rec->{identifiers}{$_} ) : undef;
+    foreach my $f ( qw/ header_from envelope_to envelope_from / ) {
+        push @args, $rec->identifiers->$f ?
+            $self->get_domain_id( $rec->identifiers->$f ) : undef;
     };
-    push @args, map { $rec->{row}{policy_evaluated}{$_} } qw/ disposition dkim spf /;
+    push @args, map { $rec->row->policy_evaluated->$_ } qw/ disposition dkim spf /;
     my $rr_id = $self->query( $query, \@args ) or croak;
     return $self->{report_row_id} = $rr_id;
 }

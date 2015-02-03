@@ -39,9 +39,8 @@ sub _test_pass_strict {
     $pp->spf( { domain => $test_dom, result => 'pass', scope => 'mfrom' } );
     $pp->validate();
     delete $pp->result->{published};
-    is_deeply(
-        $pp->result,
-        {   'result'      => 'pass',
+    is_deeply( {
+            'result'      => 'pass',
             'disposition' => 'none',
             'dkim'        => 'pass',
             'spf'         => 'pass',
@@ -52,7 +51,9 @@ sub _test_pass_strict {
                 'selector' => 'apr2013',
             },
             'dkim_align' => 'strict',
+            reason => [],
         },
+        $pp->result,
         "result, pass, strict, $test_dom"
     ) or diag Data::Dumper::Dumper( $pp->result );
 }
@@ -63,7 +64,7 @@ sub _test_pass_relaxed {
     $pp->dkim(
         [ { domain => $test_dom, result => 'pass', selector => 'apr2013' } ]
     );
-    $pp->spf( { domain => $test_dom, result => 'pass' } );
+    $pp->spf( { scope => 'mfrom', domain => $test_dom, result => 'pass' } );
     $pp->validate();
     delete $pp->result->{published};
 
@@ -87,6 +88,7 @@ SKIP: {
                     'selector' => 'apr2013',
                 },
                 'spf_align' => 'relaxed',
+                reason => [],
             },
             "pass, relaxed, $test_dom"
         ) or diag Data::Dumper::Dumper( $pp->result );
@@ -101,7 +103,7 @@ sub _test_fail_strict {
     $pp->dkim(
         [ { domain => $test_dom, result => 'pass', selector => 'apr2013' } ]
     );
-    $pp->spf( { domain => $test_dom, result => 'pass' } );
+    $pp->spf( { scope => 'mfrom', domain => $test_dom, result => 'pass' } );
 
     my $policy = $pp->policy->parse("v=DMARC1; p=$pol; aspf=s; adkim=s");
     $policy->{domain} = $from_dom;
@@ -119,6 +121,7 @@ sub _test_fail_strict {
             'dkim'        => 'fail',
             'spf'         => 'fail',
             'result'      => 'fail',
+            reason => [],
         },
         "result, fail, strict, $test_dom"
     ) or diag Data::Dumper::Dumper( $pp->result );
@@ -132,7 +135,7 @@ sub _test_fail_sampled_out {
     $pp->dkim(
         [ { domain => $test_dom, result => 'pass', selector => 'apr2013' } ]
     );
-    $pp->spf( { domain => $test_dom, result => 'pass' } );
+    $pp->spf( { scope => 'mfrom', domain => $test_dom, result => 'pass' } );
 
     my $policy
         = $pp->policy->parse("v=DMARC1; p=$pol; aspf=s; adkim=s; pct=0");
