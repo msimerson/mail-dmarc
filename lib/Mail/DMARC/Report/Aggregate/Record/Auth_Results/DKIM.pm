@@ -9,8 +9,6 @@ sub new {
 
     my $self = bless {}, $class;
 
-    #$self->is_valid if $self->_unwrap( \$self->{dkim} );
-
     # a bare hash
     return $self->_from_hash(@args) if scalar @args > 1;
 
@@ -24,11 +22,6 @@ sub new {
     };
 
     return $self->_from_hashref($dkim) if 'HASH' eq ref $dkim;
-
-    if ( 'CODE' eq ref $dkim ) {
-        $self->{dkim} = $dkim;
-        return $self->{dkim}; # <-- may confuse people not thinking straight
-    };
 
     croak "invalid dkim argument";
 }
@@ -68,15 +61,6 @@ sub _from_hash {
 
 sub _from_hashref {
     return $_[0]->_from_hash(%{ $_[1] });
-}
-
-sub _unwrap {
-    my ( $self, $ref ) = @_;
-    if (ref $$ref and ref $$ref eq 'CODE') {
-        $$ref = $$ref->();
-        return 1;
-    }
-    return;
 }
 
 sub is_valid {

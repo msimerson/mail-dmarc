@@ -71,7 +71,15 @@ sub local_policy {
 
 sub dkim {
     my ($self, @args) = @_;
-    return $self->{dkim} if 0 == scalar @args;
+
+    if (0 == scalar @args) {
+      $self->_unwrap('dkim');
+      return $self->{dkim};
+    }
+
+    if (1 == scalar @args && ref $args[0] eq 'CODE') {
+      return $self->{dkim} = $args[0];
+    }
 
     # one shot
     if (1 == scalar @args && ref $args[0] eq 'ARRAY') {
@@ -89,9 +97,25 @@ sub dkim {
     return $self->{dkim};
 }
 
+sub _unwrap {
+    my ( $self, $key ) = @_;
+    if ($self->{$key} and ref $self->{$key} eq 'CODE') {
+        my $code = delete $self->{$key};
+        $self->$key( $self->$code );
+    }
+    return;
+}
+
 sub spf {
    my ($self, @args) = @_;
-    return $self->{spf} if 0 == scalar @args;
+    if (0 == scalar @args) {
+      $self->_unwrap('spf');
+      return $self->{spf};
+    }
+
+    if (1 == scalar @args && ref $args[0] eq 'CODE') {
+      return $self->{spf} = $args[0];
+    }
 
     if (1 == scalar @args && ref $args[0] eq 'ARRAY') {
         # warn "SPF one shot";
