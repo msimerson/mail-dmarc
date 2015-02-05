@@ -93,22 +93,22 @@ sub test_spf {
     my %test_spf = ( domain => 'a.c', scope => 'mfrom', result => 'fail' );
 
     ok( $dmarc->spf(%test_spf), "spf, hash set" );
-    is_deeply([ \%test_spf ], $dmarc->spf, "spf, hash set result");
+    is_deeply($dmarc->spf, [ \%test_spf ], "spf, hash set result");
 
     # set with a hashref
     $dmarc->init;
     ok( $dmarc->spf(\%test_spf), "spf, hashref set" );
-    is_deeply([ \%test_spf ], $dmarc->spf, "spf, hashref set, result");
+    is_deeply($dmarc->spf, [ \%test_spf ], "spf, hashref set, result");
 
     # set with an arrayref
     $dmarc->init;
     ok( $dmarc->spf([ \%test_spf ]), "spf, arrayref set" );
-    is_deeply([ \%test_spf ], $dmarc->spf, "spf, arrayref set result");
+    is_deeply($dmarc->spf, [ \%test_spf ], "spf, arrayref set result");
 
     # set with arrayref, two values
     $dmarc->init;
     ok( $dmarc->spf([ \%test_spf, \%test_spf ]), "spf, arrayref set" );
-    is_deeply([ \%test_spf, \%test_spf ], $dmarc->spf, "spf, arrayref set result");
+    is_deeply($dmarc->spf, [ \%test_spf, \%test_spf ], "spf, arrayref set result");
 
 return;  # drat, I don't know how to fix this...
 
@@ -119,8 +119,8 @@ return;  # drat, I don't know how to fix this...
     ok( $dmarc->spf($callback), "spf, callback set" );
     warn Dumper($dmarc);
     is($counter, 0, "callback not yet called");
-    is_deeply([ \%test_spf ], $dmarc->spf, "spf, callback-derived result");
-    is_deeply([ \%test_spf ], $dmarc->spf, "spf, callback-cached result");
+    is_deeply($dmarc->spf, [ \%test_spf ], "spf, callback-derived result");
+    is_deeply($dmarc->spf, [ \%test_spf ], "spf, callback-cached result");
     is($counter, 1, "callback exactly once");
 
     # set SPF with invalid key=>val pairs
@@ -182,12 +182,13 @@ sub test_new {
     # empty policy
     my $dmarc = Mail::DMARC->new();
     isa_ok( $dmarc, 'Mail::DMARC' );
-    is_deeply( $dmarc, { config_file => 'mail-dmarc.ini', public_suffixes => {} }, "new, empty" );
+    my $expected = { config_file => 'mail-dmarc.ini', public_suffixes => {} };
+    is_deeply( $dmarc, $expected, "new, empty" );
 
     # new, one shot request
     $dmarc = cleanup_obj( Mail::DMARC->new(%sample_dmarc) );
     isa_ok( $dmarc, 'Mail::DMARC' );
-    is_deeply(\%sample_dmarc, $dmarc, "new, one shot" );
+    is_deeply( $dmarc, \%sample_dmarc, "new, one shot" );
 
 
     # new, individual accessors
@@ -199,7 +200,7 @@ sub test_new {
             or diag "error running $key with $val arg: $@";
     }
     $dmarc = cleanup_obj($dmarc);
-    is_deeply(\%sample_dmarc, $dmarc, "new, individual accessors" );
+    is_deeply($dmarc, \%sample_dmarc, "new, individual accessors" );
 }
 
 sub cleanup_obj {

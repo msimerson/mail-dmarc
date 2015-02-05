@@ -28,7 +28,7 @@ sub new {
 sub identifiers {
     my ($self, @args) = @_;
 
-    if (! scalar @args) {
+    if ( !scalar @args ) {
         return $self->{identifiers} if $self->{identifiers};
     }
 

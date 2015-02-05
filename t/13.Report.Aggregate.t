@@ -54,7 +54,7 @@ sub test_policy_published {
 }
 
 sub test_record {
-    is_deeply([], $agg->record, "Mail::DMARC::Report::Aggregate::Record, empty");
+    is_deeply( $agg->record, [],"Mail::DMARC::Report::Aggregate::Record, empty");
 
     my $r;
     eval { $r = $agg->record( $test_r ) };

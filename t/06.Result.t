@@ -39,23 +39,22 @@ sub _test_pass_strict {
     $pp->spf( { domain => $test_dom, result => 'pass', scope => 'mfrom' } );
     $pp->validate();
     delete $pp->result->{published};
-    is_deeply( {
-            'result'      => 'pass',
-            'disposition' => 'none',
-            'dkim'        => 'pass',
-            'spf'         => 'pass',
-            'spf_align'   => 'strict',
-            'dkim_meta'   => {
-                'domain'   => 'tnpi.net',
-                'identity' => '',
-                'selector' => 'apr2013',
-            },
-            'dkim_align' => 'strict',
-            reason => [],
+    my $expected = {
+        'result'      => 'pass',
+        'disposition' => 'none',
+        'dkim'        => 'pass',
+        'spf'         => 'pass',
+        'spf_align'   => 'strict',
+        'dkim_meta'   => {
+            'domain'   => 'tnpi.net',
+            'identity' => '',
+            'selector' => 'apr2013',
         },
-        $pp->result,
-        "result, pass, strict, $test_dom"
-    ) or diag Data::Dumper::Dumper( $pp->result );
+        'dkim_align' => 'strict',
+        reason => [],
+    };
+    is_deeply( $pp->result, $expected, "result, pass, strict, $test_dom")
+        or diag Data::Dumper::Dumper( $pp->result );
 }
 
 sub _test_pass_relaxed {
@@ -74,24 +73,21 @@ sub _test_pass_relaxed {
     }
 SKIP: {
         skip $skip_reason, 1 if $skip_reason;
-
-        is_deeply(
-            $pp->result,
-            {   'result'      => 'pass',
-                'dkim'        => 'pass',
-                'spf'         => 'pass',
-                'disposition' => 'none',
-                'dkim_align'  => 'relaxed',
-                'dkim_meta'   => {
-                    'domain'   => 'tnpi.net',
-                    'identity' => '',
-                    'selector' => 'apr2013',
-                },
-                'spf_align' => 'relaxed',
-                reason => [],
+        my $expected = {   'result'      => 'pass',
+            'dkim'        => 'pass',
+            'spf'         => 'pass',
+            'disposition' => 'none',
+            'dkim_align'  => 'relaxed',
+            'dkim_meta'   => {
+                'domain'   => 'tnpi.net',
+                'identity' => '',
+                'selector' => 'apr2013',
             },
-            "pass, relaxed, $test_dom"
-        ) or diag Data::Dumper::Dumper( $pp->result );
+            'spf_align' => 'relaxed',
+            reason => [],
+        };
+        is_deeply( $pp->result, $expected, "pass, relaxed, $test_dom" )
+            or diag Data::Dumper::Dumper( $pp->result );
     }
 }
 
@@ -115,16 +111,14 @@ sub _test_fail_strict {
     ok( !$pp->is_spf_aligned,  "is_spf_aligned, neg" );
     ok( !$pp->is_aligned(),    "is_aligned, neg" );
     delete $pp->result->{published};
-    is_deeply(
-        $pp->result,
-        {   'disposition' => $pol,
-            'dkim'        => 'fail',
-            'spf'         => 'fail',
-            'result'      => 'fail',
-            reason => [],
-        },
-        "result, fail, strict, $test_dom"
-    ) or diag Data::Dumper::Dumper( $pp->result );
+    my $expected = {   'disposition' => $pol,
+        'dkim'        => 'fail',
+        'spf'         => 'fail',
+        'result'      => 'fail',
+        reason => [],
+    };
+    is_deeply( $pp->result, $expected, "result, fail, strict, $test_dom" )
+        or diag Data::Dumper::Dumper( $pp->result );
 }
 
 sub _test_fail_sampled_out {
@@ -148,15 +142,14 @@ sub _test_fail_sampled_out {
     ok( !$pp->is_spf_aligned,  "is_spf_aligned, neg" );
     ok( !$pp->is_aligned(),    "is_aligned, neg" );
     delete $pp->result->{published};
-    is_deeply(
-        $pp->result,
-        {   'disposition' => 'quarantine',
-            'dkim'        => 'fail',
-            'spf'         => 'fail',
-            'reason'      => [{ 'type' => 'sampled_out' }],
-            'result'      => 'fail',
-        },
-        "result, fail, strict, sampled out, $test_dom"
+    my $expected = {
+        'disposition' => 'quarantine',
+        'dkim'        => 'fail',
+        'spf'         => 'fail',
+        'reason'      => [{ 'type' => 'sampled_out' }],
+        'result'      => 'fail',
+    };
+    is_deeply( $pp->result, $expected, "result, fail, strict, sampled out, $test_dom"
     ) or diag Data::Dumper::Dumper( $pp->result );
 }
 

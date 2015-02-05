@@ -355,7 +355,6 @@ sub do_node_record {
 sub do_node_record_auth {
     my ($self, $row, $node) = @_;
 
-    my @dkim = qw/ domain selector result human_result /,
     my @spf  = qw/ domain scope result /;
 
     foreach ( $node->findnodes("./auth_results/spf") ) {
@@ -373,9 +372,10 @@ sub do_node_record_auth {
         $$row->auth_results->spf(\%spf);
     };
 
+    my @dkim = qw/ domain selector result human_result /;
     foreach ( $node->findnodes("./auth_results/dkim") ) {
         my %dkim = map { $_ => $node->findnodes("./auth_results/dkim/$_")->string_value } @dkim;
-        $$row->auth_results->spf(\%dkim);
+        $$row->auth_results->dkim(\%dkim);
     };
 
     return;
@@ -384,9 +384,8 @@ sub do_node_record_auth {
 sub do_node_record_reason {
     my ($self, $row, $node) = @_;
 
-    my @types = qw/ forwarded sampled_out trusted_forwarder mailing_list
-                    local_policy other /;
-    my %types = map { $_ => 1 } @types;
+#    my @types = qw/ forwarded sampled_out trusted_forwarder mailing_list
+#                    local_policy other /;
 
     foreach my $r ( $node->findnodes("./row/policy_evaluated/reason") ) {
         my $type = $r->findnodes('./type')->string_value or next;

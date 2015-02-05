@@ -211,18 +211,15 @@ sub test_discover_policy {
     ok( $policy, "discover_policy" )
         or return diag Data::Dumper::Dumper($dmarc);
     $policy->apply_defaults;
-    is_deeply(
-        $policy,
-        {   %test_policy,
-            aspf  => 'r',      # $pol->new adds the defaults that are
-            adkim => 'r',      #  implied in all DMARC records
-            ri    => 86400,
-            rf    => 'afrf',
-            fo    => 0,
-            domain => 'mail-dmarc.tnpi.net',
-        },
-        'discover_policy, deeply'
-    );
+    my $expected = {   %test_policy,
+        aspf  => 'r',      # $pol->new adds the defaults that are
+        adkim => 'r',      #  implied in all DMARC records
+        ri    => 86400,
+        rf    => 'afrf',
+        fo    => 0,
+        domain => 'mail-dmarc.tnpi.net',
+    };
+    is_deeply( $policy, $expected, 'discover_policy, deeply' );
 
     $policy = $dmarc->discover_policy('multiple.dmarc-qa.com');
 #   warn Dumper($policy);

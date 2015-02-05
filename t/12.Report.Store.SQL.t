@@ -116,7 +116,7 @@ sub test_populate_agg_records {
             },
         );
     $expected->auth_results->dkim->[2]{human_result} = undef;
-    is_deeply( [$expected], $r, "populate_agg_records, deeply");
+    is_deeply( $r, [$expected], "populate_agg_records, deeply");
 };
 
 sub test_populate_agg_metadata {
@@ -126,7 +126,9 @@ sub test_populate_agg_metadata {
 
     my $agg = Mail::DMARC::Report::Aggregate->new();
     ok( $sql->populate_agg_metadata( \$agg, \$report ), "populate_agg_metadata");
-    is_deeply({
+    is_deeply(
+        $agg->metadata,
+        {
             'config_file' => 'mail-dmarc.ini',
             'date_range' => {
                                 'begin' => $report->{begin},
@@ -137,9 +139,8 @@ sub test_populate_agg_metadata {
             'org_name' => 'My Great Company',
             'report_id' => 2,
             'public_suffixes' => {},
-            },
-            $agg->metadata,
-            "populate_agg_metadata, deeply" ) or diag Dumper($agg);
+        },
+        "populate_agg_metadata, deeply" ) or diag Dumper($agg);
 };
 
 sub test_get_report_policy_published {

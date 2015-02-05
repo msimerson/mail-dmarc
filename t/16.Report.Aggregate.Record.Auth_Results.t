@@ -22,7 +22,7 @@ sub _auth_results {
 };
 
 sub _spf {
-    is_deeply([], $ar->spf, "spf, empty");
+    is_deeply( $ar->spf, [], "spf, empty");
 
     my %spf_res = (
         domain => 'test.com',
@@ -31,20 +31,20 @@ sub _spf {
         );
 
     $ar->spf( %spf_res );
-    is_deeply([ \%spf_res ], $ar->spf, "spf, hash");
+    is_deeply( $ar->spf, [ \%spf_res ], "spf, hash");
 
     $ar->spf( %spf_res );
-    is_deeply([ \%spf_res, \%spf_res ], $ar->spf, "spf, hashref");
+    is_deeply( $ar->spf, [ \%spf_res, \%spf_res ], "spf, hashref");
 
     $ar = $mod->new;
     $ar->spf([ \%spf_res, \%spf_res ]);
-    is_deeply([ \%spf_res, \%spf_res ], $ar->spf, "spf, arrayref of hashref");
+    is_deeply( $ar->spf, [ \%spf_res, \%spf_res ], "spf, arrayref of hashref");
 
     #warn Dumper($ar->spf);
 }
 
 sub _dkim {
-    is_deeply([], $ar->dkim, "dkim");
+    is_deeply( $ar->dkim, [], "dkim");
 
     my %dkim_res = (
         domain      => 'tnpi.net',
@@ -54,25 +54,25 @@ sub _dkim {
     );
 
     $ar->dkim( %dkim_res );
-    is_deeply([ \%dkim_res ], $ar->dkim, "dkim, as hash");
+    is_deeply( $ar->dkim, [ \%dkim_res ], "dkim, as hash");
 
 
     $ar->dkim( \%dkim_res );
-    is_deeply([ \%dkim_res, \%dkim_res ], $ar->dkim, "dkim, as hashref");
+    is_deeply( $ar->dkim, [ \%dkim_res, \%dkim_res ], "dkim, as hashref");
 
     $ar->dkim( \%dkim_res );
-    is_deeply([ \%dkim_res, \%dkim_res, \%dkim_res ], $ar->dkim, "dkim, as hashref again");
+    is_deeply( $ar->dkim, [ \%dkim_res, \%dkim_res, \%dkim_res ], "dkim, as hashref again");
 
 
     $ar = $mod->new;
     $ar->dkim([ \%dkim_res, \%dkim_res ]);
-    is_deeply([ \%dkim_res, \%dkim_res ], $ar->dkim, "dkim, as arrayref of hashrefs");
+    is_deeply( $ar->dkim, [ \%dkim_res, \%dkim_res ], "dkim, as arrayref of hashrefs");
 
 
     $ar = $mod->new;
     my $dkv = Mail::DKIM::Verifier->new( %dkim_res );
     $ar->dkim( $dkv );
-    is_deeply([ \%dkim_res ], $ar->dkim, "dkim, as Mail::DKIM::Verifier");
+    is_deeply( $ar->dkim, [ \%dkim_res ], "dkim, as Mail::DKIM::Verifier");
 
     #warn Dumper($ar->dkim);
 }
