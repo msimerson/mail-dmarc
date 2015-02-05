@@ -66,7 +66,7 @@ sub test_dkim {
     ok( $dmarc->dkim([ \%test_dkim, \%test_dkim ]), "dkim, arrayref set" );
     is_deeply($dmarc->dkim, [ \%test_dkim, \%test_dkim ], "dkim, arrayref set result");
 
-return;
+
     # set with a callback
     $dmarc->{dkim} = undef;
     my $counter  = 0;
@@ -110,14 +110,11 @@ sub test_spf {
     ok( $dmarc->spf([ \%test_spf, \%test_spf ]), "spf, arrayref set" );
     is_deeply($dmarc->spf, [ \%test_spf, \%test_spf ], "spf, arrayref set result");
 
-return;  # drat, I don't know how to fix this...
-
     # set with a callback
     $dmarc->init;
     my $counter  = 0;
     my $callback = sub { $counter++; [ \%test_spf ] };
     ok( $dmarc->spf($callback), "spf, callback set" );
-    warn Dumper($dmarc);
     is($counter, 0, "callback not yet called");
     is_deeply($dmarc->spf, [ \%test_spf ], "spf, callback-derived result");
     is_deeply($dmarc->spf, [ \%test_spf ], "spf, callback-cached result");

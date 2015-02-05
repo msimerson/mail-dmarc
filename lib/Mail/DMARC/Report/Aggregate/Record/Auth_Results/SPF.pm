@@ -11,7 +11,6 @@ sub new {
     my $self = bless {}, $class;
 
     if (0 == scalar @args) {
-        $self->is_valid if $self->_unwrap( \$self->{callback} );
         return $self;
     }
 
@@ -22,7 +21,8 @@ sub new {
     return $spf if ref $spf eq $class;
 
     return $self->_from_hashref($spf) if 'HASH' eq ref $spf;
-    return $self->_from_callback($spf) if 'CODE' eq ref $spf;
+
+    croak "invalid spf argument";
 }
 
 sub domain {
@@ -55,19 +55,6 @@ sub _from_hash {
 
 sub _from_hashref {
     return $_[0]->_from_hash(%{ $_[1] });
-}
-
-sub _from_callback {
-    $_[0]->{callback} = $_[1];
-}
-
-sub _unwrap {
-    my ( $self, $ref ) = @_;
-    if (ref $$ref and ref $$ref eq 'CODE') {
-        $$ref = $$ref->();
-        return 1;
-    }
-    return;
 }
 
 sub is_valid {
