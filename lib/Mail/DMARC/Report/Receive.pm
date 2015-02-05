@@ -15,6 +15,7 @@ use XML::LibXML;
 use parent 'Mail::DMARC::Base';
 require Mail::DMARC::Policy;
 require Mail::DMARC::Report;
+require Mail::DMARC::Report::Aggregate::Record;
 
 sub from_imap {
     my $self = shift;
@@ -296,11 +297,13 @@ sub do_node_policy_published {
 sub do_node_record {
     my ( $self, $node ) = @_;
 
-    my $rec;
+    my $rec = Mail::DMARC::Report::Aggregate::Record->new;
     $self->do_node_record_auth(\$rec, $node);
 
     foreach my $r (qw/ source_ip count /) {
-        $rec->{row}{$r} = $node->findnodes("./row/$r")->string_value;
+        $rec->identifiers->$r(
+            $node->findnodes("./row/$r")->string_value
+        );
     };
 
     # policy_evaluated
@@ -316,7 +319,7 @@ sub do_node_record {
                 $ResultType = 'pass';   # invalid ResultType (also FaceBook)
             }
         }
-        $rec->{row}{policy_evaluated}{$pe} = $ResultType;
+        $rec->row->policy_evaluated->$pe($ResultType);
     }
 
     # reason
@@ -324,19 +327,25 @@ sub do_node_record {
 
     # identifiers
     foreach my $i (qw/ envelope_to envelope_from header_from /) {
-        $rec->{identifiers}{$i}
-            = $node->findnodes("./identifiers/$i")->string_value;
+        $rec->identifiers->$i(
+            $node->findnodes("./identifiers/$i")->string_value
+        );
     }
 
-# for reports from junc.org with mis-labeled identifiers
-    if ( ! $rec->{identifiers}{header_from} ) {
-        $rec->{identifiers}{header_from}
-            = $node->findnodes("./identities/header_from")->string_value;
+    # for reports from junc.org with mis-labeled identifiers
+    if ( !$rec->identifiers->header_from ) {
+        $rec->identifiers->header_from(
+            $node->findnodes("./identities/header_from")->string_value
+        );
     };
 
-# last resort...
-    $rec->{identifiers}{envelope_to} ||= $self->{_envelope_to};
-    $rec->{identifiers}{header_from} ||= $self->{_header_from};
+    # last resort...
+    if (!$rec->identifiers->envelope_to) {
+        $rec->identifiers->envelope_to($self->{_envelope_to});
+    }
+    if (!$rec->identifiers->header_from) {
+        $rec->identifiers->header_from($self->{_header_from});
+    }
 
     print Data::Dumper::Dumper($rec) if $self->verbose;
     $self->report->aggregate->record($rec);
@@ -346,7 +355,6 @@ sub do_node_record {
 sub do_node_record_auth {
     my ($self, $row, $node) = @_;
 
-    my @dkim = qw/ domain selector result human_result /,
     my @spf  = qw/ domain scope result /;
 
     foreach ( $node->findnodes("./auth_results/spf") ) {
@@ -361,13 +369,13 @@ sub do_node_record_auth {
             carp "invalid SPF result: $spf{result}, setting to temperror";
             $spf{result} = 'temperror';
         };
-        push @{ $$row->{auth_results}{spf} }, \%spf;
+        $$row->auth_results->spf(\%spf);
     };
 
+    my @dkim = qw/ domain selector result human_result /;
     foreach ( $node->findnodes("./auth_results/dkim") ) {
-        push @{ $$row->{auth_results}{dkim} }, {
-            map { $_ => $node->findnodes("./auth_results/dkim/$_")->string_value } @dkim
-        };
+        my %dkim = map { $_ => $node->findnodes("./auth_results/dkim/$_")->string_value } @dkim;
+        $$row->auth_results->dkim(\%dkim);
     };
 
     return;
@@ -376,17 +384,15 @@ sub do_node_record_auth {
 sub do_node_record_reason {
     my ($self, $row, $node) = @_;
 
-    my @types = qw/ forwarded sampled_out trusted_forwarder mailing_list
-                    local_policy other /;
-    my %types = map { $_ => 1 } @types;
+#    my @types = qw/ forwarded sampled_out trusted_forwarder mailing_list
+#                    local_policy other /;
 
     foreach my $r ( $node->findnodes("./row/policy_evaluated/reason") ) {
         my $type = $r->findnodes('./type')->string_value or next;
         my $comment = $r->findnodes('./comment')->string_value;
-        push @{ $$row->{row}{policy_evaluated}{reason} }, {
-            type    => $type,
-            comment => $comment,
-        };
+        $$row->row->policy_evaluated->reason(
+            { type => $type, comment => $comment }
+        );
     }
     return;
 };

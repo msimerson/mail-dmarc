@@ -9,6 +9,7 @@ use IO::Compress::Gzip;
 use lib 'lib';
 use Mail::DMARC::Policy;
 use Mail::DMARC::Report::Aggregate;
+use Mail::DMARC::Report::Aggregate::Record;
 
 my $mod = 'Mail::DMARC::Report::Send::SMTP';
 use_ok($mod);
@@ -78,47 +79,27 @@ sub test_get_domain_mx {
 };
 
 sub test_human_summary {
-    $agg->record( {
-            auth_results => { spf => [ { } ], },
-            identifiers => {
-                header_from => 'they.com',
-            },
-            row => {
-                source_ip => '192.2.0.1',
-                policy_evaluated => {
-                    disposition=>'none',
-                    dkim => 'pass',
-                    spf => 'fail'
-            } },
-        });
-    $agg->record( {
-            auth_results => { spf => [ { } ], },
-            identifiers => {
-                header_from => 'they.com',
-            },
-            row => {
-                source_ip => '192.2.0.1',
-                policy_evaluated => {
-                        disposition=>'none',
-                        dkim => 'fail',
-                        spf => 'pass'
-                },
-            },
-        } );
-    $agg->record( {
-            auth_results => { spf => [ { } ], },
-            identifiers => {
-                header_from => 'they.com',
-            },
-            row => {
-                source_ip => '192.2.0.1',
-                policy_evaluated => {
-                    disposition => 'none',
-                    dkim => 'fail',
-                    spf => 'fail'
-                }
+    my $record = Mail::DMARC::Report::Aggregate::Record->new(
+        auth_results => { spf => [] },
+        identifiers => {
+            header_from => 'they.com',
+        },
+        row => {
+            source_ip => '192.2.0.1',
+            policy_evaluated => {
+                disposition=>'none',
+                dkim => 'pass',
+                spf => 'fail'
             }
-        } );
+        }
+    );
+    $agg->record( $record );
+    $record->row->policy_evaluated->dkim('fail');
+    $record->row->policy_evaluated->spf('pass');
+    $agg->record( $record );
+    $record->row->policy_evaluated->dkim('fail');
+    $record->row->policy_evaluated->spf('fail');
+    $agg->record( $record );
     my $sum = $smtp->human_summary( \$agg );
     ok( $sum, 'human_summary' );
 #   print $sum;

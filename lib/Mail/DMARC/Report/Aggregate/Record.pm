@@ -6,57 +6,74 @@ use warnings;
 use Carp;
 
 use parent 'Mail::DMARC::Base';
+require Mail::DMARC::Report::Aggregate::Record::Identifiers;
+require Mail::DMARC::Report::Aggregate::Record::Auth_Results;
+require Mail::DMARC::Report::Aggregate::Record::Row;
+
+sub new {
+    my ( $class, @args ) = @_;
+    croak "invalid arguments" if @args % 2;
+
+    my $self = bless {}, $class;
+    return $self if 0 == scalar @args;
+
+    my %args = @args;
+    foreach my $key ( keys %args ) {
+        $self->$key( $args{$key} );
+    }
+
+    return $self;
+}
 
 sub identifiers {
     my ($self, @args) = @_;
-    return $self->{identifiers} if ! scalar @args;
-    croak "missing identifier"  if ! $args[0];
-    my %id = 1 == scalar @args ? %{ $args[0] }
-           : scalar @args % 2 == 0 ? @args
-           : croak "identifiers is required!";
 
-    croak "identifiers/header_from is required!" if ! $id{header_from};
-    if ( ! $id{envelope_from} && $self->verbose ) {
-        warn "\tidentifiers/envelope_from is missing!\n"; ## no critic (Carp)
-    };
-    return $self->{identifiers} = \%id;
+    if ( !scalar @args ) {
+        return $self->{identifiers} if $self->{identifiers};
+    }
+
+    if ('HASH' eq ref $args[0]) {
+        @args = %{ $args[0] };
+    }
+
+    return $self->{identifiers} =
+        Mail::DMARC::Report::Aggregate::Record::Identifiers->new(@args);
 }
 
 sub auth_results {
     my ($self, @args) = @_;
-    return $self->{auth_results} if ! scalar @args;
-    my %auth = (1 == scalar @args) ? %{ $args[0] }
-           : (scalar @args % 2 == 0) ? @args
-           : croak "auth_results is required!";
 
-    croak "auth_results/spf is required!" if ! $auth{spf};
-    if ( ! $auth{dkim} && $self->verbose ) {
-        warn  "\tauth_results/dkim is missing\n"; ## no critic (Carp)
-    };
-    return $self->{auth_results} = \%auth;
+    if ( !scalar @args ) {
+        return $self->{auth_results} if $self->{auth_results};
+    }
+
+    if ( 1 == scalar @args && 'HASH' eq ref $args[0] ) {
+        @args = %{ $args[0] };
+    }
+
+    return $self->{auth_results} =
+        Mail::DMARC::Report::Aggregate::Record::Auth_Results->new(@args);
 }
 
 sub row {
     my ($self, @args) = @_;
-    return $self->{row} if ! scalar @args;
-    croak "invalid row value!" if ! $args[0];
-    my %row = 1 == scalar @args     ? %{ $args[0] }
-            : 0 == scalar @args % 2 ? @args
-            : croak "row is required!";
 
-    croak "row/source_ip is required!" if ! $row{source_ip};
-    croak "row/policy_evaluated is missing!" if ! $row{policy_evaluated};
-    if ( ! $row{count} && $self->verbose ) {
-        warn "\trow/count is missing!";  ## no critic (Carp)
-    };
+    if ( 0 == scalar @args ) {
+        return $self->{row} if $self->{row};
+    }
 
-    return $self->{row} = \%row;
+    if ( 1 == scalar @args && 'HASH' eq ref $args[0] ) {
+        @args = %{ $args[0] };
+    }
+
+    return $self->{row} =
+        Mail::DMARC::Report::Aggregate::Record::Row->new(@args);
 }
 
 1;
+
 # ABSTRACT: record section of aggregate report
 __END__
-sub {}
 
 =head1 DESCRIPTION
 

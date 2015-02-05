@@ -21,59 +21,73 @@ done_testing();
 exit;
 
 sub test_identifiers {
-    my $r;
-    my %id;
-    eval { $r = $rec->identifiers( \%id ); };
-    chomp $@;
-    ok( $@, "identifiers, empty, as ref: $@") or diag Dumper($r);
+    my $id = $rec->identifiers;
 
-    $id{envelope_to} = 'to.example.com';
-    eval { $r = $rec->identifiers( \%id ) };
-    chomp $@;
-    ok( $@, "identifiers, missing header_from: $@");
+    ok( $id->envelope_to( 'to.example.com' ), "envelope_to, set");
+    ok( $id->envelope_to eq 'to.example.com', "envelope_to, get");
 
-    $id{header_from} = 'from.example.com';
-#   noisy test, causes a carp emission
-#   ok( $r = $rec->identifiers( \%id ), "identifiers, sufficient") or diag Dumper($r);
+    ok( $id->header_from( 'from.example.com' ), "header_from, set");
+    ok( $id->header_from eq 'from.example.com', "header_from, get");
 
-    $id{envelope_from} = 'from.example.com';
-    ok( $rec->identifiers( \%id ), "identifiers, complete") or diag Dumper ($r);
+    ok( $id->envelope_from( 'from.example.com' ), "envelope_from, set");
+    ok( $id->envelope_from eq 'from.example.com', "envelope_from, get");
+
+    # one shot
+    $id = $rec->identifiers(
+        envelope_to  => 'to.example.com',
+        header_from  => 'from.example.com',
+        envelope_from=> 'from.example.com',
+    );
+    ok( $id->envelope_to eq 'to.example.com', "envelope_to, get");
+    ok( $id->header_from eq 'from.example.com', "header_from, get");
+    ok( $id->envelope_from eq 'from.example.com', "envelope_from, get");
 };
 
 sub test_auth_results {
-    my $r;
-    my %auth;
-    eval { $r = $rec->auth_results( \%auth ); };
-    chomp $@;
-    ok( $@, "auth_results, empty, as ref: $@") or diag Dumper($r);
+    my $ar = $rec->auth_results;
 
-    $auth{spf} = [ { result => 'none' } ];
-#   noisy test, causes a carp
-#   ok( $rec->auth_results( \%auth ), "auth_results, sufficient");
+    my $expected = bless { dkim => [], spf => [] }, 'Mail::DMARC::Report::Aggregate::Record::Auth_Results';
+    is_deeply( $ar, $expected, "auth_results, empty");
 
-    $auth{dkim} = [ { result => 'none' } ];
-    ok( $rec->auth_results( \%auth ), "auth_results, complete");
+    my $spf1 = { domain => 'first', result => 'none', scope => 'helo' };
+    $expected = { dkim => [], spf => [ $spf1 ]};
+    $ar->spf( { domain => 'first', result => 'none', scope => 'helo' } );
+    is_deeply( $ar, $expected, "auth_results, one SPF");
 
+    my $spf2 = { domain => 'second', scope => 'helo', result => 'temperror' };
+    $expected = { dkim => [], spf => [ $spf1, $spf2 ] };
+    $ar->spf( { domain => 'second', result => 'temperror', scope => 'helo' } );
+    is_deeply( $ar, $expected, "auth_results, two SPF");
+
+    my $dkim1 = { domain => 'first', result => 'none' };
+    $expected = { dkim => [ $dkim1 ], spf => [ $spf1, $spf2 ] };
+    $ar->dkim( $dkim1 );
+    is_deeply( $ar, $expected, "auth_results, two SPF, one DKIM");
+
+    my $dkim2 = { domain => 'second', result => 'none' };
+    $expected = { dkim => [ $dkim1, $dkim2 ], spf => [ $spf1, $spf2 ] };
+    $ar->dkim( $dkim2 );
+    is_deeply( $ar, $expected, "auth_results, two SPF, two DKIM");
 };
 
 sub test_row {
-    my $r;
-    my %row;
-    eval { $r = $rec->row( \%row ); };
-    chomp $@;
-    ok( $@, "row, empty: $@") or diag Dumper($r);
+    my $ar = $rec->row;
 
-    $row{source_ip} = $ip;
-    eval { $r = $rec->row( \%row ); };
-    chomp $@;
-    ok( $@, "row, missing count: $@") or diag Dumper($r);
+    my $expected = bless {}, 'Mail::DMARC::Report::Aggregate::Record::Row';
+    is_deeply( $ar, $expected, "row, empty");
 
-    $row{count} = 1;
-    eval { $r = $rec->row( \%row ); };
-    chomp $@;
-    ok( $@, "row, missing policy_evaluated: $@") or diag Dumper($r);
+    $ar->source_ip( $ip );
+    $expected = { source_ip => $ip };
+    is_deeply( $ar, $expected, "row, source_ip");
 
-    $row{policy_evaluated} = { disposition => 'none', spf => 'fail', dkim => 'fail' };
-    ok( $r = $rec->row( \%row ), "row, ok") or diag Dumper($r);
+    $ar->count( 1 );
+    $expected = { count => 1, source_ip => $ip };
+    is_deeply( $ar, $expected, "row, count");
+
+    my $pe = { disposition => 'none', spf => 'fail', dkim => 'fail' };
+    $ar->policy_evaluated( $pe );
+    $pe->{reason} = [];
+    $expected = { policy_evaluated => $pe, count => 1, source_ip => $ip };
+    is_deeply( $ar, $expected, "row, policy_evaluated");
 };
 

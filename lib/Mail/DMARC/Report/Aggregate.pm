@@ -8,7 +8,6 @@ use Data::Dumper;
 
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate::Metadata;
-use Mail::DMARC::Report::Aggregate::Record;
 
 sub metadata {
     my $self = shift;
@@ -24,21 +23,21 @@ sub policy_published {
 }
 
 sub record {   ## no critic (Ambiguous)
-    my ($self, @args) = @_;
-    return $self->{record} if ! scalar @args;
-    my $rec = Mail::DMARC::Report::Aggregate::Record->new;
-    if ( 'HASH' eq ref $args[0] ) {
-        foreach my $s ( qw/ identifiers auth_results row / ) {
-            $rec->$s( $args[0]->{$s} );
-        };
+    my ($self, $record, @extra) = @_;
+    if ( !$record) {
+       return $self->{record} || [];
     }
-    else {
-        my %args = @args;
-        foreach my $s ( qw/ identifiers auth_results row / ) {
-            $rec->$s( $args[$s] );
-        };
-    };
-    push @{ $self->{record} }, $rec;
+
+    if (@extra) { croak "invalid args"; }
+
+    if ('Mail::DMARC::Report::Aggregate::Record' ne ref $record) {
+        croak "not a record object";
+    }
+
+    $self->{record} ||= [];
+
+    push @{ $self->{record} }, $record;
+
     return $self->{record};
 };
 
@@ -61,7 +60,7 @@ $meta
 $pubp
 $reco</feedback>
 EO_XML
-        ;
+;
 }
 
 sub get_record_as_xml {
@@ -143,7 +142,7 @@ sub get_policy_evaluated_as_xml {
     my $pe = "\t\t\t<policy_evaluated>\n";
 
     foreach my $f (qw/ disposition dkim spf /) {
-        $pe .= "\t\t\t\t<$f>$rec->{row}{policy_evaluated}{$f}</$f>\n";
+        $pe .= "\t\t\t\t<$f>$rec->row->policy_evaluated->$f</$f>\n";
     }
 
     my $reasons = $rec->{row}{policy_evaluated}{reason};
@@ -208,7 +207,7 @@ in order to facilitate correlation.
 
 =head1 Report Structure
 
-This is a translation of the XML report format in the 2013 Draft, converted to perl data structions.
+This is a translation of the XML report format in the 2013 Draft, converted to perl data structures.
 
    feedback => {
       version          => 1,  # decimal

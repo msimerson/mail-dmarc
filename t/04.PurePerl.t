@@ -79,16 +79,24 @@ sub _test_reason {
     my $policy = $dmarc->discover_policy;
     ok( $policy, "discover_policy" );
     my $result = $dmarc->validate($policy);
-    ok(ref $result, "result is a ref");
-    ok($result->{result} eq 'pass', "result=pass");
-    ok($result->{spf} eq 'pass', "spf=pass");
+    ok( ref $result, "result is a ref");
+    ok( $result->{result} eq 'pass', "result=pass");
+    ok( $result->{spf} eq 'pass', "spf=pass");
     ok( $result->{disposition} eq 'none', "disposition=none");
+
     $result->disposition('reject');
     ok( $result->{disposition} eq 'reject', "disposition changed to reject");
+
     ok( $result->reason( type => 'local_policy' ), "added reason" );
     ok( $result->reason( type => 'local_policy', comment => 'testing' ), "added reason 2" );
+    #warn Data::Dumper::Dumper($result->reason);
 
     ok( $dmarc->save_aggregate(), "save aggregate");
+
+    #delete $dmarc->{public_suffixes};
+    #delete $dmarc->{resolver};
+    #delete $dmarc->{config};
+    #warn Data::Dumper::Dumper($dmarc);
 }
 
 sub test_verify_external_reporting {
@@ -203,18 +211,15 @@ sub test_discover_policy {
     ok( $policy, "discover_policy" )
         or return diag Data::Dumper::Dumper($dmarc);
     $policy->apply_defaults;
-    is_deeply(
-        $policy,
-        {   %test_policy,
-            aspf  => 'r',      # $pol->new adds the defaults that are
-            adkim => 'r',      #  implied in all DMARC records
-            ri    => 86400,
-            rf    => 'afrf',
-            fo    => 0,
-            domain => 'mail-dmarc.tnpi.net',
-        },
-        'discover_policy, deeply'
-    );
+    my $expected = {   %test_policy,
+        aspf  => 'r',      # $pol->new adds the defaults that are
+        adkim => 'r',      #  implied in all DMARC records
+        ri    => 86400,
+        rf    => 'afrf',
+        fo    => 0,
+        domain => 'mail-dmarc.tnpi.net',
+    };
+    is_deeply( $policy, $expected, 'discover_policy, deeply' );
 
     $policy = $dmarc->discover_policy('multiple.dmarc-qa.com');
 #   warn Dumper($policy);

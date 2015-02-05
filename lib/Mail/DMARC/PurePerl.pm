@@ -224,7 +224,7 @@ sub is_spf_aligned {
 
     if ( !$spf_dom && !$self->spf ) { croak "missing SPF!"; }
     if ( !$spf_dom ) {
-        my @passes = grep { $_->{result} =~ /pass/i } @{ $self->spf };
+        my @passes = grep { $_->{result} && $_->{result} =~ /pass/i } @{ $self->spf };
         if (scalar @passes == 0) {
             $self->result->spf('fail');
             return 0;

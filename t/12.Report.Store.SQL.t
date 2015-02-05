@@ -16,7 +16,31 @@ if ($@) {
 }
 
 my $test_domain = 'example.com';
-my ($report_id, $rr_id, $policy, $dkim, $spf, $reasons, $identifiers, $policy_evaluated);
+my $dkim = [
+    {
+        domain       => 'from.com',
+        selector     => 'blah1',
+        result       => 'pass',
+        human_result => 'yay'
+    },
+    {
+        domain       => 'example.com',
+        selector     => 'blah2',
+        result       => 'pass',
+        human_result => undef,
+    },
+    {
+        domain       => 'example.com',
+        selector     => 'blah3',
+        result       => 'pass',
+    },
+];
+my $spf = [
+    { 'domain' => 'from.com',    'result' => 'pass', 'scope' => 'helo'  },
+    { 'domain' => 'from.com',    'result' => 'pass', 'scope' => 'mfrom' },
+    { 'domain' => 'example.com', 'result' => 'fail', 'scope' => 'mfrom' }
+];
+my ($report_id, $rr_id, $policy, $reasons);
 my $begin = time - 10000;
 my $end = time - 100;
 
@@ -67,25 +91,32 @@ sub test_populate_agg_records {
 
     my $r = $sql->populate_agg_records( \$agg, $report_id );
     ok( $r, "populate_agg_records");
-# human result is returned undef from SQL, but absent during insertion
-    delete $r->[0]{auth_results}{dkim}[2]{human_result};
-    my $expected = [{
-            'auth_results' => {
-                                'dkim' => $dkim,
-                                'spf'  => $spf,
-                                },
-            'config_file' => 'mail-dmarc.ini',
-            'identifiers' => $identifiers,
-            'row' => {
-                        'count' => 1,
-                        'policy_evaluated' => { %$policy_evaluated,
-                                                'reason' => $reasons,
-                                            },
-                        'source_ip' => '192.1.1.1'
-                    },
-                    public_suffixes => {},
-            }];
-    is_deeply( $r, $expected, "populate_agg_records, deeply");
+
+    # human result is returned undef from SQL, but absent during insertion
+    # delete $r->[0]{auth_results}{dkim}[2]{human_result};
+    my $expected = Mail::DMARC::Report::Aggregate::Record->new(
+            auth_results => {
+                'dkim' => $dkim,
+                'spf'  => $spf,
+            },
+            identifiers => {
+                header_from   => 'from.com',
+                envelope_to   => 'to.com',
+                envelope_from => 'from.com',
+            },
+            row => {
+                'count' => 1,
+                'policy_evaluated' => {
+                    disposition => 'pass',
+                    dkim        => 'pass',
+                    spf         => 'pass',
+                    reason      => $reasons,
+                },
+                'source_ip' => '192.1.1.1'
+            },
+        );
+    $expected->auth_results->dkim->[2]{human_result} = undef;
+    is_deeply( $r, [$expected], "populate_agg_records, deeply");
 };
 
 sub test_populate_agg_metadata {
@@ -95,8 +126,9 @@ sub test_populate_agg_metadata {
 
     my $agg = Mail::DMARC::Report::Aggregate->new();
     ok( $sql->populate_agg_metadata( \$agg, \$report ), "populate_agg_metadata");
-    is_deeply( $agg->metadata,
-            {
+    is_deeply(
+        $agg->metadata,
+        {
             'config_file' => 'mail-dmarc.ini',
             'date_range' => {
                                 'begin' => $report->{begin},
@@ -107,8 +139,8 @@ sub test_populate_agg_metadata {
             'org_name' => 'My Great Company',
             'report_id' => 2,
             'public_suffixes' => {},
-            },
-            "populate_agg_metadata, deeply" ) or diag Dumper($agg);
+        },
+        "populate_agg_metadata, deeply" ) or diag Dumper($agg);
 };
 
 sub test_get_report_policy_published {
@@ -250,69 +282,41 @@ sub test_get_report_id {
 sub test_insert_rr_reason {
     my @reasons = qw/ forwarded local_policy mailing_list other sampled_out trusted_forwarder /;
     foreach my $r ( @reasons) {
-        push @$reasons, { type => $r, comment => "test $r comment" };
+        push @$reasons, bless { type => $r, comment => "test $r comment" }, 'Mail::DMARC';
         ok( $sql->insert_rr_reason( $rr_id, $r, "test $r comment" ), "insert_rr_reason, $r" );
     }
 }
 
 sub test_insert_rr_dkim {
-
-    $dkim = [             # populates global $dkim
-        {
-            domain       => 'example.com',
-            selector     => 'blah',
-            result       => 'pass',
-            human_result => 'yay'
-        },
-        {
-            domain       => 'example.com',
-            selector     => 'blah',
-            result       => 'pass',
-            human_result => undef,
-        },
-        {
-            domain       => 'example.com',
-            selector     => 'blah',
-            result       => 'pass',
-        },
-    ];
-
     ok( $sql->insert_rr_dkim( $rr_id, $dkim->[0] ), 'insert_rr_dkim' );
     ok( $sql->insert_rr_dkim( $rr_id, $dkim->[1] ), 'insert_rr_dkim' );
     ok( $sql->insert_rr_dkim( $rr_id, $dkim->[2] ), 'insert_rr_dkim' );
 }
 
 sub test_insert_rr_spf {
-
-    $spf = [
-            { 'domain' => 'example.com', 'result' => 'pass', 'scope' => 'helo' },
-            { 'domain' => 'example.com', 'result' => 'pass', 'scope' => 'mfrom' },
-            { 'domain' => 'example.com', 'result' => 'fail', 'scope' => 'mfrom' }
-        ];
-
     foreach ( @$spf ) {
         ok( $sql->insert_rr_spf( $rr_id, $_ ), 'insert_rr_spf' );
     };
 }
 
 sub test_insert_rr {
-    $identifiers = {
+    my $record = Mail::DMARC::Report::Aggregate::Record->new;
+
+    $record->identifiers(
             header_from   => 'from.com',
             envelope_to   => 'to.com',
             envelope_from => 'from.com',
-        };
-    $policy_evaluated = {
-            disposition => 'none',
-            dkim        => 'fail',
-            spf         => 'pass',
-        };
-    my $record = {
-        row => {
+        );
+
+    $record->row(
             source_ip        => '192.1.1.1',
-            policy_evaluated => $policy_evaluated,
-        },
-        identifiers => $identifiers,
-    };
+            policy_evaluated => {
+                disposition => 'pass',
+                dkim        => 'pass',
+                spf         => 'pass',
+            }
+        );
+
     $rr_id = $sql->insert_rr( $report_id, $record );
     ok( $rr_id, "insert_rr, $rr_id" );
 }

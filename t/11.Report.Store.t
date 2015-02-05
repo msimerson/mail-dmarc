@@ -67,6 +67,7 @@ sub setup_dmarc_result {
             'spf'        => 'pass',
             'dkim_align' => 'strict',
             'spf_align'  => 'strict',
+            'reason'     => [],
         },
         "result, pass, strict, $test_dom"
     ) or diag Dumper( $dmarc->result );

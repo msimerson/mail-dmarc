@@ -6,6 +6,7 @@ use Test::More;
 
 use lib 'lib';
 use Mail::DMARC::Policy;
+use Mail::DMARC::Report::Aggregate::Record;
 
 eval "use DBD::SQLite 1.31";
 if ($@) {
@@ -17,6 +18,20 @@ my $mod = 'Mail::DMARC::Report::Aggregate';
 use_ok($mod);
 my $agg = $mod->new;
 isa_ok( $agg, $mod );
+
+my $ip = '192.2.1.1';
+my $test_r = Mail::DMARC::Report::Aggregate::Record->new(
+    identifiers => {
+        header_from   => 'example.com',
+        envelope_from => 'example.com',
+    },
+    auth_results => { dkim => [ ], spf => [ ] },
+    row => {
+        source_ip => $ip,
+        count     => 1,
+        policy_evaluated => { disposition=>'pass', dkim => 'pass', spf=>'pass' },
+    },
+);
 
 test_metadata_isa();
 test_record();
@@ -39,32 +54,17 @@ sub test_policy_published {
 }
 
 sub test_record {
-    ok( ! defined $agg->record, "Mail::DMARC::Report::Aggregate::Record, empty");
+    is_deeply( $agg->record, [],"Mail::DMARC::Report::Aggregate::Record, empty");
 
-    my $ip = '192.2.1.1';
-    my $test_r = {
-        identifiers => {
-            header_from   => 'example.com',
-            envelope_from => 'example.com',
-        },
-        auth_results => { dkim => [ ], spf => [ ] },
-        row=> {
-            source_ip => $ip,
-            count     => 1,
-            policy_evaluated => { disposition=>'pass', dkim => 'pass', spf=>'pass' },
-        },
-        public_suffixes => {},
-    };
     my $r;
     eval { $r = $agg->record( $test_r ) };
     ok( $r, "record, test") or diag Dumper($r);
-#warn Dumper($r);
 
-    delete $agg->record->[0]{config_file};
+    #delete $agg->record->[0]{config_file};
     is_deeply( $agg->record, [ $test_r ], "record, deeply");
 
-    $agg->record( $test_r, "record, empty, again");
-    delete $agg->record->[1]{config_file};
+    ok( $agg->record( $test_r ), "record, empty, again");
+    #delete $agg->record->[1]{config_file};
     is_deeply( $agg->record, [ $test_r,$test_r ], "record, deeply, multiple");
 };
 
@@ -78,6 +78,7 @@ sub test_as_xml {
         $agg->metadata->$m(time);
     };
 
+    #$agg->record( $test_r );
     ok( $agg->metadata->as_xml(), "metadata, as_xml");
     ok( $agg->get_policy_published_as_xml(), "policy_published, as_xml");
     ok( $agg->get_record_as_xml(), "record, as_xml");
