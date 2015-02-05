@@ -301,7 +301,7 @@ sub do_node_record {
     $self->do_node_record_auth(\$rec, $node);
 
     foreach my $r (qw/ source_ip count /) {
-        $rec->identifiers->$r(
+        $rec->row->$r(
             $node->findnodes("./row/$r")->string_value
         );
     };
