@@ -75,11 +75,13 @@ sub is_valid {
 
     foreach my $f (qw/ domain result scope /) {
         next if $self->{$f};
-        croak "SPF $f is required!";
+        warn "SPF $f is required!\n";
+        return 0;
     }
 
     if ( $self->{result} =~ /^pass$/i && !$self->{domain} ) {
-        croak "SPF pass MUST include the RFC5321.MailFrom domain!";
+        warn "SPF pass MUST include the RFC5321.MailFrom domain!\n";
+        return 0;
     }
 
     return 1;
