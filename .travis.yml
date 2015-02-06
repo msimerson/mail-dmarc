@@ -41,4 +41,4 @@ script: HARNESS_IS_VERBOSE=1 prove -v -Ilib t
 #
 #   - dzil smoke --release --author
 after_script:
-  - cover -test -report coveralls
+  - cover -test -make 'prove -v -Ilib t' -report coveralls
