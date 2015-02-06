@@ -205,6 +205,12 @@ sub init {
 # ABSTRACT: Perl implementation of DMARC
 __END__
 
+=head1 Code Climate
+
+=for markdown [![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
+
+=for markdown [![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
+
 =head1 SYNOPSIS
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
