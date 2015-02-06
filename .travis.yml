@@ -15,6 +15,7 @@ perl:
 before_install:
    # Prevent "Please tell me who you are" errors for certain DZIL configs
    - git config --global user.name "TravisCI"
+   - cpanm -n Devel::Cover::Report::Coveralls
 
 install:
    - cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
@@ -36,6 +37,6 @@ install:
 # using Socket6 instead, no need to force this upgrade
 #  - cpanm --quiet --notest --skip-satisfied 'Socket~2'
 #
-script: HARNESS_IS_VERBOSE=1 prove -v -Ilib t
+script: HARNESS_IS_VERBOSE=1 prove -v -Ilib t && cover -test --report coveralls
 #
 #   - dzil smoke --release --author
