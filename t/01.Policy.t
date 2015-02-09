@@ -131,16 +131,25 @@ sub test_parse {
     $pol = $pol->parse(
         'v=DMARC1; p=reject; rua=mailto:dmarc@example.co; pct=90');
     isa_ok( $pol, 'Mail::DMARC::Policy' );
-    is_deeply(
-        $pol,
-        {   v   => 'DMARC1',
-            p   => 'reject',
-            pct => 90,
-            rua => 'mailto:dmarc@example.co',
-        },
-        'parse'
-    );
+    my $expected = {
+        v   => 'DMARC1',
+        p   => 'reject',
+        pct => 90,
+        rua => 'mailto:dmarc@example.co',
+    };
+    is_deeply( $pol, $expected, 'parse');
 
+    is_deeply(
+        $pol->parse(
+            'v=DMARC1;p=reject;rua=mailto:dmarc-feedback@theartfarm.com;pct=;ruf=mailto:dmarc-feedback@theartfarm.com'
+        ),
+        {
+            v   => 'DMARC1',   p => 'reject',
+            rua => 'mailto:dmarc-feedback@theartfarm.com',
+            ruf => 'mailto:dmarc-feedback@theartfarm.com',
+        },
+        "parse, warns of invalid DMARC record format"
+    );
 }
 
 sub test_is_valid_p {

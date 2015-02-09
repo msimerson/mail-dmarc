@@ -28,9 +28,20 @@ sub parse {
     $str =~ s/\s//g;                                  # remove all whitespace
     $str =~ s/\\;/;/;                                 # replace \; with ;
     chop $str if ';' eq substr $str, -1, 1;           # remove a trailing ;
-    my $policy = { map { split /=/, $_ } split /;/, $str };
-    croak "invalid policy" if !$self->is_valid($policy);
-    return bless $policy, ref $self;    # inherited defaults + overrides
+    my @tag_vals = split /;/, $str;
+    my %policy;
+    foreach my $tv (@tag_vals) {
+        my ($tag, $value) = split /=/, $tv, 2;
+        if ( !defined $tag || !defined $value || $value eq '') {
+            warn "invalid DMARC record detected, please report to\n" .
+                 "\thttps://github.com/msimerson/mail-dmarc/issues/39\n" .
+                 "\t$str\n";
+            next;
+        }
+        $policy{$tag} = $value;
+    }
+    croak "invalid policy" if !$self->is_valid(\%policy);
+    return bless \%policy, ref $self;    # inherited defaults + overrides
 }
 
 sub apply_defaults {

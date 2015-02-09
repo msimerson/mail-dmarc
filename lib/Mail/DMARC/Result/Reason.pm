@@ -1,4 +1,5 @@
 package Mail::DMARC::Result::Reason;
+# VERSION
 use strict;
 use warnings;
 
@@ -38,7 +39,6 @@ __END__
 sub {}
 
 =head1 OVERVIEW
-
 
 A L<Result|Mail::DMARC::Result> object is the product of instantiating a L<DMARC::PurePerl|Mail::DMARC::PurePerl> object, populating the variables, and running $dmarc->validate. The results object looks like this:
 
