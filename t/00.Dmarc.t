@@ -47,34 +47,41 @@ exit;
 sub test_dkim {
     # set DKIM with key=>val pairs
     $dmarc->{dkim} = undef;
-    my %test_dkim = ( domain => 'a.c', result => 'fail' );
-    ok( $dmarc->dkim(%test_dkim), "dkim, hash set" );
-    is_deeply($dmarc->dkim, [ \%test_dkim ], "dkim, hash set result");
+    my %test_dkim1 = ( domain => 'a.c', result => 'fail' );
+    my %test_dkim2 = ( domain => 'a.b.c', result => 'pass' );
+
+    ok( $dmarc->dkim(%test_dkim1), "dkim, hash set" );
+    is_deeply($dmarc->dkim, [ \%test_dkim1 ], "dkim, hash set result");
 
     # set with a hashref
     $dmarc->{dkim} = undef;
-    ok( $dmarc->dkim(\%test_dkim), "dkim, hashref set" );
-    is_deeply($dmarc->dkim, [ \%test_dkim ], "dkim, hashref set, result");
+    ok( $dmarc->dkim(\%test_dkim1), "dkim, hashref set" );
+    is_deeply($dmarc->dkim, [ \%test_dkim1 ], "dkim, hashref set, result");
 
     # set with an arrayref
     $dmarc->{dkim} = undef;
-    ok( $dmarc->dkim([ \%test_dkim ]), "dkim, arrayref set" );
-    is_deeply($dmarc->dkim, [ \%test_dkim ], "dkim, arrayref set result");
+    ok( $dmarc->dkim([ \%test_dkim1 ]), "dkim, arrayref set" );
+    is_deeply($dmarc->dkim, [ \%test_dkim1 ], "dkim, arrayref set result");
 
     # set with arrayref, two values
     $dmarc->{dkim} = undef;
-    ok( $dmarc->dkim([ \%test_dkim, \%test_dkim ]), "dkim, arrayref set" );
-    is_deeply($dmarc->dkim, [ \%test_dkim, \%test_dkim ], "dkim, arrayref set result");
+    ok( $dmarc->dkim([ \%test_dkim1, \%test_dkim2 ]), "dkim, arrayref set" );
+    is_deeply($dmarc->dkim, [ \%test_dkim1, \%test_dkim2 ], "dkim, arrayref set result");
 
+    # set with hashes, iterative
+    $dmarc->{dkim} = undef;
+    ok( $dmarc->dkim(%test_dkim1), "dkim, hash set 1" );
+    ok( $dmarc->dkim(%test_dkim2), "dkim, hash set 2" );
+    is_deeply($dmarc->dkim, [ \%test_dkim1, \%test_dkim2 ], "dkim, iterative hashes");
 
     # set with a callback
     $dmarc->{dkim} = undef;
     my $counter  = 0;
-    my $callback = sub { $counter++; [ \%test_dkim ] };
+    my $callback = sub { $counter++; [ \%test_dkim1 ] };
     ok( $dmarc->dkim($callback), "dkim, arrayref set" );
     is($counter, 0, "callback not yet called");
-    is_deeply($dmarc->dkim, [ \%test_dkim ], "dkim, callback-derived result");
-    is_deeply($dmarc->dkim, [ \%test_dkim ], "dkim, callback-cached result");
+    is_deeply($dmarc->dkim, [ \%test_dkim1 ], "dkim, callback-derived result");
+    is_deeply($dmarc->dkim, [ \%test_dkim1 ], "dkim, callback-cached result");
     is($counter, 1, "callback exactly once");
 
     # set DKIM with invalid key=>val pairs

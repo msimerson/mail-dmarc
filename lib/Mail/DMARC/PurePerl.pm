@@ -25,9 +25,9 @@ sub validate {
     $self->result->result('fail');        # set a couple
     $self->result->disposition('none');   # defaults
 
-# 11.2.1 Extract RFC5322.From domain
+    # 11.2.1 Extract RFC5322.From domain
     my $from_dom = $self->get_from_dom() or return $self->result;
-# 9.6. reject email if the domain appears to not exist
+    # 9.6. reject email if the domain appears to not exist
     $self->exists_in_dns() or return $self->result;
     $policy ||= $self->discover_policy();  # 11.2.2 Query DNS for DMARC policy
     $policy or return $self->result;
@@ -437,9 +437,9 @@ sub get_from_dom {
         return;
     };
 
-# TODO: the From header can contain multiple addresses and should be
-# parsed as described in RFC 2822. If From has multiple-addresses,
-# then parse and use the domain in the Sender header.
+    # TODO: the From header can contain multiple addresses and should be
+    # parsed as described in RFC 2822. If From has multiple-addresses,
+    # then parse and use the domain in the Sender header.
 
     # This returns only the domain in the last email address.
     # Caller can pass in pre-parsed from_dom if this doesn't suit them.
