@@ -150,6 +150,18 @@ sub test_parse {
         },
         "parse, warns of invalid DMARC record format"
     );
+
+     is_deeply(
+        $pol->parse(
+            'domain=tnpi.net;v=DMARC1;p=reject;rua=mailto:dmarc-feedback@theartfarm.com;pct=;ruf=mailto:dmarc-feedback@theartfarm.com'
+        ),
+        {
+            v   => 'DMARC1',   p => 'reject', domain => 'tnpi.net',
+            rua => 'mailto:dmarc-feedback@theartfarm.com',
+            ruf => 'mailto:dmarc-feedback@theartfarm.com',
+        },
+        "parse, warns of invalid DMARC record format, with location"
+    );
 }
 
 sub test_is_valid_p {

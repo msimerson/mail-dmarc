@@ -12,8 +12,8 @@ sub new {
     my $package = ref $class ? ref $class : $class;
     my $self = bless {}, $package;
 
-    return $self if 0 == @args;                       # no args, empty pol
-    return $self->parse( $args[0] ) if 1 == @args;    # a string to parse
+    return $self if 0 == scalar @args;                # no args, empty pol
+    return $self->parse( $args[0] ) if 1 == @args;    # a string
 
     croak "invalid arguments" if @args % 2 != 0;
     my $policy = {@args};
@@ -33,7 +33,7 @@ sub parse {
     foreach my $tv (@tag_vals) {
         my ($tag, $value) = split /=/, $tv, 2;
         if ( !defined $tag || !defined $value || $value eq '') {
-            warn "invalid DMARC record detected, please report to\n" .
+            warn "invalid DMARC record, please post this message to\n" .
                  "\thttps://github.com/msimerson/mail-dmarc/issues/39\n" .
                  "\t$str\n";
             next;
