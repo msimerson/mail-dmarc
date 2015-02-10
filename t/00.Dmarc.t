@@ -47,7 +47,7 @@ exit;
 sub test_dkim {
     # set DKIM with key=>val pairs
     $dmarc->{dkim} = undef;
-    my %test_dkim1 = ( domain => 'a.c', result => 'fail' );
+    my %test_dkim1 = ( domain => 'a.c', result => 'fail', selector => undef, human_result => undef );
     my %test_dkim2 = ( domain => 'a.b.c', result => 'pass' );
 
     ok( $dmarc->dkim(%test_dkim1), "dkim, hash set" );
@@ -73,6 +73,13 @@ sub test_dkim {
     ok( $dmarc->dkim(%test_dkim1), "dkim, hash set 1" );
     ok( $dmarc->dkim(%test_dkim2), "dkim, hash set 2" );
     is_deeply($dmarc->dkim, [ \%test_dkim1, \%test_dkim2 ], "dkim, iterative hashes");
+
+    # set with a Mail::DKIM::Verifier
+    $dmarc->{dkim} = undef;
+    my $dkv = Mail::DKIM::Verifier->new( %test_dkim1 );
+    $dmarc->dkim( $dkv );
+    is_deeply( $dmarc->dkim, [ \%test_dkim1 ], "dkim, as Mail::DKIM::Verifier");
+
 
     # set with a callback
     $dmarc->{dkim} = undef;
@@ -214,3 +221,31 @@ sub cleanup_obj {
     }
     return $obj;
 }
+
+
+package Mail::DKIM::Verifier;
+sub new {
+    my ($class, %args) = @_;
+    my $self = bless { signatures => [] }, $class;
+    $self->signatures(%args);
+    return $self;
+}
+sub signatures {
+    my $self = shift;
+    return shift @{ $self->{signatures}} if 0 == scalar @_;
+    push @{ $self->{signatures} }, Mail::DKIM::Signature->new(@_);
+    $self->{signatures};
+}
+1;
+
+package Mail::DKIM::Signature;
+sub new { my $class = shift; return bless { @_ }, $class; };
+sub result { return $_[0]->{result}; }
+sub domain { return $_[0]->{domain}; }
+sub selector { return $_[0]->{selector}; }
+sub result_detail {
+    return $_[0]->{result_detail} || $_[0]->{human_result};
+}
+1;
+
+

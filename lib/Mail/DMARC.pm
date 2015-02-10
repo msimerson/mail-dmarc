@@ -73,28 +73,59 @@ sub dkim {
     my ($self, @args) = @_;
 
     if (0 == scalar @args) {
-      $self->_unwrap('dkim');
-      return $self->{dkim};
-    }
-
-    if (1 == scalar @args && ref $args[0] eq 'CODE') {
-      return $self->{dkim} = $args[0];
-    }
-
-    # one shot
-    if (1 == scalar @args && ref $args[0] eq 'ARRAY') {
-        foreach my $d ( @{ $args[0] }) {
-            push @{ $self->{dkim}},
-                Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new($d);
-        }
+        $self->_unwrap('dkim');
         return $self->{dkim};
     }
 
-    # iterative
+    # one shot
+    if (1 == scalar @args) {
+        # warn "one argument\n";
+        if (ref $args[0] eq 'CODE') {
+            return $self->{dkim} = $args[0];
+        }
+
+        if ( ref $args[0] eq 'ARRAY') {
+            foreach my $d ( @{ $args[0] }) {
+                push @{ $self->{dkim}},
+                    Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new($d);
+            }
+            return $self->{dkim};
+        }
+
+        if ( ref $args[0] eq 'Mail::DKIM::Verifier' ) {
+            $self->_from_mail_dkim($args[0]);
+            return $self->{dkim};
+        }
+    };
+
+    #warn "iterative\n";
     push @{ $self->{dkim}},
         Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new(@args);
 
     return $self->{dkim};
+}
+
+sub _from_mail_dkim {
+    my ( $self, $dkim ) = @_;
+
+    # A DKIM verifier will have result and signature methods.
+    foreach my $s ( $dkim->signatures ) {
+        next if ref $s eq 'Mail::DKIM::DkSignature';
+
+        my $result = $s->result;
+
+        if ($result eq 'invalid') {  # See GH Issue #21
+            $result = 'temperror';
+        }
+
+        push @{ $self->{dkim}},
+            Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new(
+                domain       => $s->domain,
+                selector     => $s->selector,
+                result       => $result,
+                human_result => $s->result_detail,
+            );
+    }
 }
 
 sub _unwrap {

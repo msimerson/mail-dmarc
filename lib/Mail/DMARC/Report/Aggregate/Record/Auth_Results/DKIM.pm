@@ -7,19 +7,17 @@ use Carp;
 sub new {
     my ( $class, @args ) = @_;
 
+    croak "missing arguments" if 0 == scalar @args;
+
     my $self = bless {}, $class;
 
     # a bare hash
     return $self->_from_hash(@args) if scalar @args > 1;
 
     my $dkim = shift @args;
-    croak "invalid dkim argument" if ! ref $dkim;
+    croak "dkim argument not a ref" if ! ref $dkim;
 
     return $dkim if ref $dkim eq $class;  # been here before...
-
-    if ( ref $dkim eq 'Mail::DKIM::Verifier' ) {
-        return $self->_from_mail_dkim($dkim);
-    };
 
     return $self->_from_hashref($dkim) if 'HASH' eq ref $dkim;
 
@@ -71,28 +69,6 @@ sub is_valid {
             croak "DKIM value $f is required!";
         }
     }
-}
-
-sub _from_mail_dkim {
-    my ( $self, $dkim ) = @_;
-
-    # A DKIM verifier will have result and signature methods.
-    foreach my $s ( $dkim->signatures ) {
-        next if ref $s eq 'Mail::DKIM::DkSignature';
-
-        my $result = $s->result;
-
-        if ($result eq 'invalid') {  # See GH Issue #21
-            $result = 'temperror';
-        }
-
-        $self->domain( $s->domain );
-        $self->selector( $s->selector );
-        $self->result( $result );
-        $self->human_result( $s->result_detail );
-    }
-    $self->is_valid;
-    return $self;
 }
 
 1;
