@@ -111,12 +111,12 @@ sub discover_policy {
     }
 
     my $policy;
-    eval { $policy = $self->policy( $matches->[0] ) } or return;
+    my $policy_str = "domain=$from_dom;" . $matches->[0];  # prefix with domain
+    eval { $policy = $self->policy( $policy_str ) } or return;
     if ($@) {
         $self->result->reason( type => 'other', comment => "policy parse error: $@" );
         return;
     };
-    $policy->domain($from_dom);
     $self->result->published($policy);
 
     # 9.6 If a retrieved policy record does not contain a valid "p" tag, or
