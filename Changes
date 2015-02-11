@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20150211 2015-02-10 America/Los_Angeles
+
  - optionally DKIM sign sent reports
  - warn when DMARC record format is invalid
  - accept callbacks (lazy eval) for SPF & DKIM results
