@@ -3,6 +3,7 @@ use warnings;
 
 use Data::Dumper;
 use Test::More;
+use Test::Output;
 $Data::Dumper::Sortkeys = 1;
 
 use lib 'lib';
@@ -57,7 +58,9 @@ $sql->config('t/mail-dmarc.ini');
 #  retrieve an aggregate report, as if reporting it
 #  validate the consistency of what was stored and retrieved
 test_db_connect();
-test_query_insert();
+stderr_is { test_query_insert() } 'DBI error: no such table: reporting
+DBI error: table report has no column named domin
+', 'STDERR has expected warning';
 test_query_replace();
 test_query_update();
 test_query_delete();

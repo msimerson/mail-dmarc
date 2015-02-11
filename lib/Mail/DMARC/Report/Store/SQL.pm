@@ -682,7 +682,7 @@ sub query_any {
 sub query_insert {
     my ( $self, $query, $err, @params ) = @_;
     eval { $self->dbix->query( $query, @params ) } or do {
-        warn DBIx::Simple->error;
+        warn DBIx::Simple->error . "\n";
         croak $err;
     };
     $self->db_check_err($err);

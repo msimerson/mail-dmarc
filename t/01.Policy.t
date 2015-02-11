@@ -3,6 +3,7 @@ use warnings;
 
 use Data::Dumper;
 use Test::More;
+use Test::Output;
 
 use lib 'lib';
 
@@ -16,16 +17,29 @@ ok( !$pol->v, "policy, version, neg" );
 ok( $pol->v('DMARC1'), "policy, set" );
 cmp_ok( $pol->v, 'eq', 'DMARC1', "policy, version, pos" );
 
+my $expected_parse_warning = __expected_parse_warning();
 test_new();
 test_is_valid_p();
 test_is_valid_rf();
-test_parse();
+stderr_is { test_parse() } $expected_parse_warning, 'STDERR yields parse warnings';
 test_setter_values();
 test_apply_defaults();
 test_is_valid();
 
 done_testing();
 exit;
+
+sub __expected_parse_warning {
+    return <<'EO_PARSE_WARN'
+invalid DMARC record, please post this message to
+	https://github.com/msimerson/mail-dmarc/issues/39
+	v=DMARC1;p=reject;rua=mailto:dmarc-feedback@theartfarm.com;pct=;ruf=mailto:dmarc-feedback@theartfarm.com
+invalid DMARC record, please post this message to
+	https://github.com/msimerson/mail-dmarc/issues/39
+	domain=tnpi.net;v=DMARC1;p=reject;rua=mailto:dmarc-feedback@theartfarm.com;pct=;ruf=mailto:dmarc-feedback@theartfarm.com
+EO_PARSE_WARN
+;
+}
 
 sub test_apply_defaults {
 

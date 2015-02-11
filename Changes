@@ -1,6 +1,13 @@
 
 {{$NEXT}}
 
+ - optionally DKIM sign sent reports
+ - warn when DMARC record format is invalid
+ - accept callbacks (lazy eval) for SPF & DKIM results
+ - make the report record building consistent for eval and reporting
+ - rewrite DKIM result invalid -> temperror
+ - capture test warnings, so 'make test' is prettier
+
 1.20150123 2015-01-22 America/Los_Angeles
 
  - enable lazy evaluation of SPF & DKIM (Ricardo Signes)
