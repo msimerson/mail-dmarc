@@ -193,7 +193,7 @@ sub test_new {
     # empty policy
     my $dmarc = Mail::DMARC->new();
     isa_ok( $dmarc, 'Mail::DMARC' );
-    my $expected = { config_file => 'mail-dmarc.ini', public_suffixes => {} };
+    my $expected = { config_file => 'mail-dmarc.ini' };
     is_deeply( $dmarc, $expected, "new, empty" );
 
     # new, one shot request
