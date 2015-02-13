@@ -19,7 +19,6 @@ sub new {
     croak "invalid args" if scalar @args % 2 != 0;
     return bless {
         config_file => 'mail-dmarc.ini',
-        public_suffixes => {},
         @args,       # this may override config_file
     }, $class;
 }
@@ -86,29 +85,38 @@ sub any_inet_pton {
         || croak "invalid IPv4: $ip_txt";
 }
 
+{
+    my $public_suffixes;
+    sub get_public_suffix_list {
+        my ( $self ) = @_;
+        if ( ! $public_suffixes ) {
+            my $file = $self->find_psl_file();
+            my $fh = IO::File->new( $file, 'r' )
+                or croak "unable to open $file for read: $!\n";
+            # load PSL into hash for fast lookups, esp. for long running daemons
+            my %psl = map { $_ => 1 }
+                      grep { $_ !~ /^[\/\s]/ } # weed out comments & whitespace
+                      map { chomp($_); $_ }    # remove line endings
+                      <$fh>;
+            $public_suffixes = \%psl;
+        }
+        return $public_suffixes;
+    }
+}
+
 sub is_public_suffix {
     my ( $self, $zone ) = @_;
 
     croak "missing zone name!" if !$zone;
 
-    if (!$self->{public_suffixes}{'com'}) {
-        my $file = $self->find_psl_file();
-        my $fh = IO::File->new( $file, 'r' )
-            or croak "unable to open $file for read: $!\n";
-        # load PSL into hash for fast lookups, esp. for long running daemons
-        my %psl = map { $_ => 1 }
-                  grep { $_ !~ /^[\/\s]/ } # weed out comments & whitespace
-                  map { chomp($_); $_ }    # remove line endings
-                  <$fh>;
-        $self->{public_suffixes} = \%psl;
-    };
+    my $public_suffixes = $self->get_public_suffix_list();
 
-    return 1 if $self->{public_suffixes}{$zone};
+    return 1 if $public_suffixes->{$zone};
 
     my @labels = split /\./, $zone;
     $zone = join '.', '*', (@labels)[ 1 .. scalar(@labels) - 1 ];
 
-    return 1 if $self->{public_suffixes}{$zone};
+    return 1 if $public_suffixes->{$zone};
     return 0;
 }
 
