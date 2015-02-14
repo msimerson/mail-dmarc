@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Carp;
+our $psl_loads = 0;
 
 use parent 'Mail::DMARC::Base';
 require Mail::DMARC::Policy;

@@ -12,11 +12,8 @@ use IO::Uncompress::Gunzip;
 use JSON -convert_blessed_universally;
 use URI;
 
-use lib 'lib';
-use Mail::DMARC;
+our $report;
 use Mail::DMARC::PurePerl;
-my $dmarc = Mail::DMARC->new();
-my $report = $dmarc->report;
 
 my %mimes  = (
     css  => 'text/css',
@@ -32,6 +29,7 @@ sub new {
 
 sub dmarc_httpd {
     my $self = shift;
+    $report = shift;
 
     my $port   = $report->config->{http}{port}   || 8080;
     my $ports  = $report->config->{https}{port};
@@ -44,6 +42,9 @@ sub dmarc_httpd {
         ipv   => '*', # IPv6 if available
         ($sslkey ? (SSL_key_file => $sslkey) : ()),
         ($sslcrt ? (SSL_cert_file => $sslcrt) : ()),
+        log_file => 'Sys::Syslog',
+        syslog_ident => 'mail_dmarc',
+        syslog_facility => 'MAIL',
     );
     return;
 };
