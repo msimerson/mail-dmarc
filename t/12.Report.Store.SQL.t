@@ -141,7 +141,6 @@ sub test_populate_agg_metadata {
             'extra_contact_info' => 'http://www.example.com/dmarc-policy/',
             'org_name' => 'My Great Company',
             'report_id' => 2,
-            'public_suffixes' => {},
         },
         "populate_agg_metadata, deeply" ) or diag Dumper($agg);
 };

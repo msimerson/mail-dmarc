@@ -18,7 +18,6 @@ sub new {
     my %args = @args;
     my $self = bless {
         config_file => 'mail-dmarc.ini',
-        public_suffixes => {},
         }, $class;
 
     foreach my $key ( keys %args ) {
