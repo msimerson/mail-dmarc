@@ -89,18 +89,18 @@ sub any_inet_pton {
     my $public_suffixes;
     sub get_public_suffix_list {
         my ( $self ) = @_;
-        if ( ! $public_suffixes ) {
-            my $file = $self->find_psl_file();
-            my $fh = IO::File->new( $file, 'r' )
-                or croak "unable to open $file for read: $!\n";
-            # load PSL into hash for fast lookups, esp. for long running daemons
-            my %psl = map { $_ => 1 }
-                      grep { $_ !~ /^[\/\s]/ } # weed out comments & whitespace
-                      map { chomp($_); $_ }    # remove line endings
-                      <$fh>;
-            $public_suffixes = \%psl;
-        }
-        return $public_suffixes;
+        if ( $public_suffixes ) { return $public_suffixes; }
+        no warnings 'once';
+        $Mail::DMARC::psl_loads++;
+        my $file = $self->find_psl_file();
+        my $fh = IO::File->new( $file, 'r' )
+            or croak "unable to open $file for read: $!\n";
+        # load PSL into hash for fast lookups, esp. for long running daemons
+        my %psl = map { $_ => 1 }
+                  grep { $_ !~ /^[\/\s]/ } # weed out comments & whitespace
+                  map { chomp($_); $_ }    # remove line endings
+                  <$fh>;
+        return $public_suffixes = \%psl;
     }
 }
 
