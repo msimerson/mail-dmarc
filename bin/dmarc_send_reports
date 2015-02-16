@@ -48,9 +48,9 @@ if ( $report->config->{report_sign}->{keyfile} ) {
 # 1. get reports, one at a time
 while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
 
-    print "ID: " . $aggregate->metadata->report_id . "\n";
-    print $aggregate->policy_published->domain . "\n";
-    print "rua:\t" . $aggregate->policy_published->rua . "\n";
+    print 'ID:     ' . $aggregate->metadata->report_id . "\n";
+    print 'Domain: ' . $aggregate->policy_published->domain . "\n";
+    print 'rua:    ' . $aggregate->policy_published->rua . "\n";
 
     my $xml = $aggregate->as_xml();
 #   warn $xml;  ## no critic (Carp)
@@ -105,9 +105,9 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
     };
 
     if ( $send_delay > 0 ) {
-        print "sleeping $send_delay";
-        foreach ( 1 .. $send_delay ) { print '.'; sleep 1; };
-        print "done.\n";
+        print "sleeping $send_delay" if $verbose;
+        foreach ( 1 .. $send_delay ) { print '.' if $verbose; sleep 1; };
+        print "done.\n" if $verbose;
     }
 };
 
