@@ -21,7 +21,11 @@ sub new {
         config_file => 'mail-dmarc.ini',
         }, $class;
 
-    foreach my $key ( keys %args ) {
+    my @keys = sort { $a eq 'config_file' ? -1
+                    : $b eq 'config_file' ?  1
+                    : ($a cmp $b) } keys %args;
+
+    foreach my $key ( @keys ) {
         if ($self->can($key)) {
             $self->$key( $args{$key} );
         }
