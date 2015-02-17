@@ -96,7 +96,7 @@ sub retrieve_todo {
 sub delete_report {
     my $self = shift;
     my $report_id = shift or croak "missing report ID";
-    print "deleting report $report_id\n";
+    print "deleting report $report_id\n" if $self->verbose;
 
     # deletes with FK don't cascade in SQLite? Clean each table manually
     my $rows = $self->query( 'SELECT id FROM report_record WHERE report_id=?',
@@ -105,7 +105,7 @@ sub delete_report {
     foreach my $table (
         qw/ report_record_spf report_record_dkim report_record_reason /)
     {
-        print "deleting $table rows $row_ids\n";
+        print "deleting $table rows $row_ids\n" if $self->verbose;
         $self->query(
             "DELETE FROM $table WHERE report_record_id IN ($row_ids)");
     }
