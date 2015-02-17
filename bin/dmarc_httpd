@@ -4,9 +4,14 @@ use strict;
 use warnings;
 
 use lib 'lib';
+use Mail::DMARC;
 use Mail::DMARC::HTTP;
+
+my $dmarc = Mail::DMARC->new();
+$dmarc->is_public_suffix('tnpi.net');
+my $report = $dmarc->report;
 my $http = Mail::DMARC::HTTP->new;
-$http->dmarc_httpd;
+$http->dmarc_httpd($report);
 exit;
 
 # ABSTRACT: a web server for DMARC validation and report viewing

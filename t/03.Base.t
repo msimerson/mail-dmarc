@@ -36,6 +36,7 @@ __is_valid_domain();
 __epoch_to_iso();
 __get_prefix();
 __get_sharefile();
+__psl_cached();
 
 done_testing();
 exit;
@@ -173,4 +174,9 @@ sub __get_sharefile {
 
         ok($r, "get_sharefile: $r");
     };
+}
+
+sub __psl_cached {
+    no warnings 'once';
+    cmp_ok($Mail::DMARC::psl_loads, '==', 1, 'Public Suffix List cached');
 }
