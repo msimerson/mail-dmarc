@@ -36,6 +36,7 @@ my %sample_dmarc = (
 );
 
 test_new();
+test_config_file_first();
 test_header_from();
 test_setter_values();
 test_spf();
@@ -214,6 +215,14 @@ sub test_new {
     is_deeply($dmarc, \%sample_dmarc, "new, individual accessors" );
 }
 
+sub test_config_file_first {
+    # config file loaded before any other attr initialization
+    my $new_dmarc = Mail::DMARC::Testing->new(
+        config_file => 't/mail-dmarc.ini',
+        assert_ok   => 1,
+    );
+};
+
 sub cleanup_obj {
     my $obj = shift;
     foreach my $k ( qw/ config public_suffixes dkim_ar spf_ar / ) {
@@ -248,4 +257,14 @@ sub result_detail {
 }
 1;
 
-
+package Mail::DMARC::Testing;
+use parent 'Mail::DMARC';
+sub assert_ok {
+    my ($self) = @_;
+    Test::More::is(
+        $self->config->{organization}{domain},
+        'example-test.com',
+        'config file is initialized before assert_ok',
+    );
+}
+1;
