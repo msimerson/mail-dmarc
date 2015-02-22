@@ -1,6 +1,12 @@
 
 {{$NEXT}}
 
+ - tolerate missing SPF auth type scope
+ - initialized config file first (was non-deterministic)
+ - remove ./mail-dmarc.ini (sample in share/mail-dmarc.ini)
+ - load PSL before dmarc_httpd forks, so we only load it once
+ - quieter report sending output unless --verbose
+
 1.20150211 2015-02-10 America/Los_Angeles
 
  - optionally DKIM sign sent reports
