@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20150222 2015-02-22 America/Los_Angeles
+
  - tolerate missing SPF auth type scope
  - initialized config file first (was non-deterministic)
  - remove ./mail-dmarc.ini (sample in share/mail-dmarc.ini)
