@@ -46,6 +46,8 @@ sub _from_hash {
     my ($self, %args) = @_;
 
     foreach my $key ( keys %args ) {
+        # scope is frequently absent on received reports
+        next if ($key eq 'scope' && !$args{$key});
         $self->$key( $args{$key} );
     }
 
@@ -62,7 +64,7 @@ sub is_valid {
 
     foreach my $f (qw/ domain result scope /) {
         next if $self->{$f};
-        warn "SPF $f is required!\n";
+        warn "SPF $f is required but missing!\n";
         return 0;
     }
 
