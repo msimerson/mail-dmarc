@@ -58,7 +58,7 @@ sub get_config {
     if ($file ne 'mail-dmarc.ini') {
         croak "unable to find requested config file $file\n";
     }
-    return $self->get_sharefile('mail-dmarc.ini');
+    return Config::Tiny->read( $self->get_sharefile('mail-dmarc.ini') );
 }
 
 sub any_inet_ntop {
