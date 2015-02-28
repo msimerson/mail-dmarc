@@ -31,7 +31,7 @@ sub parse {
     my @tag_vals = split /;/, $str;
     my %policy;
     foreach my $tv (@tag_vals) {
-        my ($tag, $value) = split /=/, $tv, 2;
+        my ($tag, $value) = split /=|:/, $tv, 2;
         if ( !defined $tag || !defined $value || $value eq '') {
             warn "invalid DMARC record, please post this message to\n" .
                  "\thttps://github.com/msimerson/mail-dmarc/issues/39\n" .
