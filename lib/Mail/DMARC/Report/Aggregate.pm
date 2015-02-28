@@ -142,7 +142,7 @@ sub get_policy_evaluated_as_xml {
     my $pe = "\t\t\t<policy_evaluated>\n";
 
     foreach my $f (qw/ disposition dkim spf /) {
-        $pe .= "\t\t\t\t<$f>$rec->row->policy_evaluated->$f</$f>\n";
+        $pe .= "\t\t\t\t<$f>$rec->{row}{policy_evaluated}{$f}</$f>\n";
     }
 
     my $reasons = $rec->{row}{policy_evaluated}{reason};
