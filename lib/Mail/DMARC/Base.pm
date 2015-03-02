@@ -111,12 +111,12 @@ sub is_public_suffix {
 
     my $public_suffixes = $self->get_public_suffix_list();
 
-    return 1 if $public_suffixes->{$zone};
+    return 1 if $public_suffixes->{lc $zone};
 
     my @labels = split /\./, $zone;
     $zone = join '.', '*', (@labels)[ 1 .. scalar(@labels) - 1 ];
 
-    return 1 if $public_suffixes->{$zone};
+    return 1 if $public_suffixes->{lc $zone};
     return 0;
 }
 
