@@ -182,7 +182,7 @@ sub is_dkim_aligned {
 
     # Required in report: DKIM-Domain, DKIM-Identity, DKIM-Selector
     foreach my $dkim_ref ( $self->get_dkim_pass_sigs() ) {
-        my $dkim_dom = $dkim_ref->{domain};
+        my $dkim_dom = lc $dkim_ref->{domain};
 
         # 4.3.1 make sure $dkim_dom is not a public suffix
         next if $self->is_public_suffix($dkim_dom);
@@ -334,7 +334,7 @@ sub get_organizational_domain {
     #     labels.  Number these labels from right-to-left; e.g. for
     #     "example.com", "com" would be label 1 and "example" would be
     #     label 2.;
-    my @labels = reverse split /\./, $from_dom;
+    my @labels = reverse split /\./, lc $from_dom;
 
     # 4.3 Search the public suffix list for the name that matches the
     #     largest number of labels found in the subject DNS domain.  Let
@@ -447,7 +447,7 @@ sub get_from_dom {
     # I care only about the domain. This is way faster than RFC2822 parsing
 
     my ($from_dom) = ( split /@/, $header )[-1]; # grab everything after the @
-    ($from_dom) = split /(\s+|>)/, $from_dom;    # remove trailing cruft
+    ($from_dom) = split /(\s+|>)/, lc $from_dom; # remove trailing cruft
     if ( !$from_dom ) {
         $self->result->reason(
             type    => 'other',
@@ -464,7 +464,7 @@ sub external_report {
         or croak "published policy not tagged!";
 
     if ( 'mailto' eq $uri->scheme ) {
-        my $dest_email = $uri->path;
+        my $dest_email = lc $uri->path;
         my ($dest_host) = ( split /@/, $dest_email )[-1];
         if ( $self->get_organizational_domain( $dest_host )
                 eq
