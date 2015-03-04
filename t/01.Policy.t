@@ -25,6 +25,7 @@ stderr_is { test_parse() } $expected_parse_warning, 'STDERR yields parse warning
 test_setter_values();
 test_apply_defaults();
 test_is_valid();
+handles_common_record_errors();
 
 done_testing();
 exit;
@@ -253,3 +254,55 @@ sub test_is_valid {
     };
     ok( $pol && $pol->is_valid, "is_valid, pos, implicit p=none w/rua" );
 }
+
+sub handles_common_record_errors {
+
+    foreach my $d (<DATA>) {
+        chomp $d;
+        my $pol = Mail::DMARC::Policy->new($d);
+
+        eval { ok( $pol->is_valid(), "policy is valid: $d"); };
+    }
+}
+
+# unhandled errors
+#domain=caasco.ca;v=DMARC1;p=none;sp=none;rua=mailto:dmarc_agg@auth.returnpath.net;ruf=mailto:dmarc_afrf@auth.returnpath.net;rf=afrf;pct100
+#domain=edm.groceryrun.com.au;v=dmarc1;p=none;rua=mailto:dmarc_feedback@inxmail.de&amp;amp;amp;amp;lt;dmarc_feedback@inxmail.de&amp;amp;amp;amp;gt
+#domain=reply.myphotobook.de;v=DMARC1;p=reject;adkim=s;aspf=r;rf�rf;pct0
+#domain=email.ex.kbhmaui.com;v=DMARC1;p=none;rua=mailto:dmarc-reports@email.ex.kbhmaui.com;pct=100;”
+
+__DATA__
+domain=accuquote.com;v=DMARC1;p=none;fo:0;adkim=r;aspf=r;sp=none;rua=mailto:accu_postmaster@accuquote.com
+domain=targetselect.net;v=DMARC1;p=none;rua=mailto:postmaster@targetselect.net;ruf=mailto:postmaster@targetselect.net;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=1105insight.com;v=DMARC1;p=none;rua=mailto:postmaster@1105insight.com;ruf=mailto:postmaster@1105insight.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=borsheims.net;v=DMARC1;p=none;rua=mailto:postmaster@borsheims.net;ruf=mailto:postmaster@borsheims.net;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=consumersilver.com;v=DMARC1;p=none;rua=mailto:postmaster@consumersilver.com;ruf=mailto:postmaster@consumersilver.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=coppermail-usa.com;v=DMARC1;p=none;rua=mailto:postmaster@coppermail-usa.com;ruf=mailto:postmaster@coppermail-usa.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=eglancesender.com;v=DMARC1;p=none;rua=mailto:postmaster@eglancesender.com;ruf=mailto:postmaster@eglancesender.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=egroupconsumer.com;v=DMARC1;p=none;rua=mailto:postmaster@egroupconsumer.com;ruf=mailto:postmaster@egroupconsumer.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=eselectsender.com;v=DMARC1;p=none;rua=mailto:postmaster@eselectsender.com;ruf=mailto:postmaster@eselectsender.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=filemail.com;v=DMARC1;p=none;rua=mailto:admin@filemail.com;ruf=mailto:admin@filemail.com;fo:0;adkim=r;aspf=r
+domain=fisherprograms.com;v=DMARC1;p=none;rua=mailto:postmaster@fisherprograms.com;ruf=mailto:postmaster@fisherprograms.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=mail-peninsula.com;v=DMARC1;p=none;rua=mailto:umesh@force24.co.uk;ruf=mailto:umesh@force24.co.uk;fo:0;adkim=r;aspf=r;pct=100;rf=afrf;ri=86000;sp=none
+domain=sendergroup.com;v=DMARC1;p=none;rua=mailto:postmaster@sendergroup.com;ruf=mailto:postmaster@sendergroup.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=targetselection.com;v=DMARC1;p=none;rua=mailto:postmaster@targetselection.com;ruf=mailto:postmaster@targetselection.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=trondheim-redcross.no;v=DMARC1;p=none;rua=mailto:postmaster@trondheim-redcross.no;ruf=mailto:johess@trondheim-redcross.no;fo:0;adkim=r;aspf=r;pct=100;rf=afrf;ri=86400;sp=none
+domain=vsender-2.com;v=DMARC1;p=none;rua=mailto:postmaster@vsender-2.com;ruf=mailto:postmaster@vsender-2.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=vsender-3.com;v=DMARC1;p=none;rua=mailto:postmaster@vsender-3.com;ruf=mailto:postmaster@vsender-3.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=wfyi.org;v=DMARC1;p=none;rua=mailto:dmarc1630@wfyi.org;ruf=mailto:dmarc1630@wfyi.org;fo:0;adkim=r;aspf=r;pct=100;rf=afrf;ri=86400;sp=none
+domain=wk1business.com;v=DMARC1;p=none;rua=mailto:postmaster@wk1business.com;ruf=mailto:postmaster@wk1business.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=teogenes.com.br;v=DMARC1;p=quarantine;rua=mailto:retorno@teogenes.com.br;fo:1:d;adkim=r;aspf=r;rf=afrf;sp=quarantine
+domain=wkcplatnium.com;v=DMARC1;p=none;rua=mailto:postmaster@wkcplatnium.com;ruf=mailto:postmaster@wkcplatnium.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=brightworksgroup.net;v=DMARC1;p=none;0;adkim=r;aspf=r
+domain=bronzemail-usa.com;v=DMARC1;p=none;rua=mailto:postmaster@bronzemail-usa.com;ruf=mailto:postmaster@bronzemail-usa.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=driveconsumer.com;v=DMARC1;p=none;rua=mailto:postmaster@driveconsumer.com;ruf=mailto:postmaster@driveconsumer.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=econnect1.com;v=DMARC1;p=none;rua=mailto:postmaster@econnect1.com;ruf=mailto:postmaster@econnect1.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=esender1.com;v=DMARC1;p=none;rua=mailto:postmaster@esender1.com;ruf=mailto:postmaster@esender1.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=esender3.com;v=DMARC1;p=none;rua=mailto:postmaster@esender3.com;ruf=mailto:postmaster@esender3.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=lns.com;v=DMARC1;p=none;rua=mailto:dmarc@lns.com;ruf=mailto:dmarc@lns.com;0;adkim=r;aspf=r;pct=100;rf=afrf;ri=86400;sp=none
+domain=my-dear-lady.com;v=DMARC1;p=none;rua=mailto:postmaster@my-dear-lady.com;ruf=mailto:postmaster@my-dear-lady.com;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=theluxurycloset.info;v=DMARC1;p=reject;adkim=s;aspf=r;rf=afrf;;pct=100
+domain=newsletter.ironpony.net;v=DMARC1;p=none;rua=mailto:postmaster@newsletter.ironpony.net;ruf=mailto:postmaster@newsletter.ironpony.net;adkim=r;aspf=r;pct=100;rf:afrf;ri=86400;sp=none
+domain=cmnet.org;v=DMARC1;p=none;sp=none;rua=mailto:postmaster@cmnet.org!10m;;pct=100;ri=86400
+domain=coachingcompass.com;v=DMARC1;p=quarantine;rua=mailto:dan@darau.com;ruf=mailto:dan@darau.com;1:d:s;adkim=r;aspf=r;rf=afrf;sp=quarantine
+domain=genetex.com;v=DMARC1;p=none;sp-none;rua=mailto:postmaster@genetex.com!1m;ruf=mailto:postmaster@genetex.com!1m;rf=afrf;pct=100;ri=86400

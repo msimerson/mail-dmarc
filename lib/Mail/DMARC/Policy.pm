@@ -25,17 +25,25 @@ sub new {
 sub parse {
     my ( $self, $str, @junk ) = @_;
     croak "invalid parse request" if 0 != scalar @junk;
-    $str =~ s/\s//g;                                  # remove all whitespace
-    $str =~ s/\\;/;/;                                 # replace \; with ;
-    chop $str if ';' eq substr $str, -1, 1;           # remove a trailing ;
-    my @tag_vals = split /;/, $str;
+    my $cleaned = $str;
+    $cleaned =~ s/\s//g;                             # remove whitespace
+    $cleaned =~ s/\\;/;/g;                           # replace \;  with ;
+    $cleaned =~ s/;;/;/g;                            # replace ;;  with ;
+    $cleaned =~ s/;0;/;/g;                           # replace ;0; with ;
+    chop $cleaned if ';' eq substr $cleaned, -1, 1;  # remove a trailing ;
+    my @tag_vals = split /;/, $cleaned;
     my %policy;
+    my $warned = 0;
     foreach my $tv (@tag_vals) {
-        my ($tag, $value) = split /=|:/, $tv, 2;
+        my ($tag, $value) = split /=|:|-/, $tv, 2;
         if ( !defined $tag || !defined $value || $value eq '') {
-            warn "invalid DMARC record, please post this message to\n" .
-                 "\thttps://github.com/msimerson/mail-dmarc/issues/39\n" .
-                 "\t$str\n";
+            if (!$warned) {
+                #warn "tv: $tv\n";
+                warn "invalid DMARC record, please post this message to\n" .
+                    "\thttps://github.com/msimerson/mail-dmarc/issues/39\n" .
+                    "\t$str\n";
+            }
+            $warned++;
             next;
         }
         $policy{$tag} = $value;
