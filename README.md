@@ -4,7 +4,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 # VERSION
 
-version 1.20150304
+version 1.20150310
 
 # SYNOPSIS
 
@@ -43,7 +43,7 @@ This module can be used...
 - by email senders, to receive DMARC reports from other mail servers and display them via CLI and web interfaces.
 - by MTA operators to send DMARC reports to DMARC author domains.
 
-When a message arrives via SMTP, the MTA or filtering application can pass in a small amount of metadata about the connection (envelope details, SPF and DKIM results) to Mail::DMARC. When the __validate__ method is called, Mail::DMARC will determine if:
+When a message arrives via SMTP, the MTA or filtering application can pass in a small amount of metadata about the connection (envelope details, SPF and DKIM results) to Mail::DMARC. When the **validate** method is called, Mail::DMARC will determine if:
 
     a. the header_from domain exists
     b. the header_from domain publishes a DMARC policy
@@ -145,19 +145,19 @@ The remote IP that attempted sending the message. DMARC only uses this data for 
 
 The domain portion of the RFC5321.RcptTo, (aka, the envelope recipient), and the bold portion in the following example:
 
-> RCPT TO:<user@__example.com__>
+> RCPT TO:<user@**example.com**>
 
 ## envelope\_from
 
 The domain portion of the RFC5321.MailFrom, (aka, the envelope sender). That is the the bold portion in the following example:
 
-> MAIL FROM:<user@__example.com__>
+> MAIL FROM:<user@**example.com**>
 
 ## header\_from
 
 The domain portion of the RFC5322.From, aka, the From message header.
 
-> From: Ultimate Vacation <sweepstakes@__example.com__>
+> From: Ultimate Vacation <sweepstakes@**example.com**>
 
 You can instead pass in the entire From: header with header\_from\_raw.
 
