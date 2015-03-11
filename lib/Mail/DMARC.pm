@@ -192,6 +192,44 @@ sub is_subdomain {
     return $_[0]->{is_subdomain} = $_[1];
 }
 
+sub get_report_window {
+    my ( $self, $interval, $now ) = @_;
+
+    my $min_interval = $self->config->{'report_sending'}{'min_interval'};
+    my $max_interval = $self->config->{'report_sending'}{'max_interval'};
+
+    $interval = 86400 if ! $interval; # Default to 1 day
+    if ( $min_interval ) {
+        $interval = $min_interval if $interval < $min_interval;
+    }
+    if ( $max_interval ) {
+        $interval = $max_interval if $interval > $max_interval;
+    }
+
+    if ( ( 86400 % $interval ) != 0 ) {
+        # Interval does not fit into a day nicely,
+        # So don't work out a window, just run with it.
+        return ( $now, $now + $interval - 1);
+    }
+
+    my $begin = $self->get_start_of_zulu_day( $now );
+    my $end = $begin + $interval - 1;
+
+    while ( $end < $now ) {
+        $begin = $begin + $interval;
+        $end   = $begin + $interval - 1;
+    }
+
+    return ( $begin, $end );
+}
+
+
+sub get_start_of_zulu_day {
+    my ( $self, $t ) = @_;
+    my $start_of_zulu_day = $t - ( $t % 86400 );
+    return $start_of_zulu_day;
+}
+
 sub save_aggregate {
     my ($self) = @_;
 
@@ -201,8 +239,11 @@ sub save_aggregate {
     foreach my $f ( qw/ org_name email extra_contact_info report_id / ) {
         $agg->metadata->$f( $self->config->{organization}{$f} );
     };
-    $agg->metadata->begin( time );
-    $agg->metadata->end( time + ($self->result->published->ri || 86400 ));
+
+    my ( $begin, $end ) = $self->get_report_window( $self->result->published->ri, time() );
+
+    $agg->metadata->begin( $begin );
+    $agg->metadata->end( $end );
 
     $agg->policy_published( $self->result->published );
 
