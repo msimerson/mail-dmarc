@@ -9,10 +9,12 @@ use Getopt::Long;
 #use XML::LibXML;
 
 my $send_delay = 5;
+my $batch_size = 1;
 
 GetOptions (
     'verbose+'   => \my $verbose,
     'delay=i'    => \$send_delay,
+    'batch=i'    => \$batch_size,
 );
 
 $|++;
@@ -44,6 +46,8 @@ if ( $report->config->{report_sign}->{keyfile} ) {
         die 'DKIM signing requested but Mail::DKIM could not be loaded. Please check that Mail::DKIM is installed.';
     }
 }
+
+my $batch_do = 1;
 
 # 1. get reports, one at a time
 while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
@@ -104,10 +108,13 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
         send_too_big_email(\@too_big, $bytes, $aggregate);
     };
 
-    if ( $send_delay > 0 ) {
-        print "sleeping $send_delay" if $verbose;
-        foreach ( 1 .. $send_delay ) { print '.' if $verbose; sleep 1; };
-        print "done.\n" if $verbose;
+    if ( $batch_do++ > $batch_size ) {
+        $batch_do = 1;
+        if ( $send_delay > 0 ) {
+            print "sleeping $send_delay" if $verbose;
+            foreach ( 1 .. $send_delay ) { print '.' if $verbose; sleep 1; };
+            print "done.\n" if $verbose;
+        }
     }
 };
 
