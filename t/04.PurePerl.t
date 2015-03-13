@@ -218,6 +218,7 @@ sub test_discover_policy {
         rf    => 'afrf',
         fo    => 0,
         domain => 'mail-dmarc.tnpi.net',
+        policy_from_dns_domain => 'mail-dmarc.tnpi.net',
     };
     is_deeply( $policy, $expected, 'discover_policy, deeply' );
 
