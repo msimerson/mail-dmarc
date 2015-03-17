@@ -152,6 +152,7 @@ sub test_get_report_policy_published {
     foreach ( qw/ sp pct / ) {
         delete $pp->{$_} if ! defined $pp->$_;
     };
+    $pp->policy_from_dns_domain( 'recip.example.com' );
     delete $pp->{report_id};
     delete $policy->{uri};
     ok( $pp, "get_report_policy_published");
@@ -247,6 +248,7 @@ sub test_get_author_id {
     }
 
     my $policy = Mail::DMARC::Policy->new("v=DMARC1; p=reject");
+    $policy->policy_from_dns_domain( 'recip.example.com' );
     ok( $policy->rua( 'mailto:' . $sql->config->{organization}{email} ), "policy, rua, set");
     ok( $policy->domain( 'recip.example.com'), "policy, domain, set");
     ok( $report->aggregate->policy_published( $policy ), "policy published, set");
@@ -271,6 +273,7 @@ sub test_get_report_id {
         ok( $report->aggregate->metadata->$_( $meta{$_} ), "meta, $_, set" );
     }
     $policy = Mail::DMARC::Policy->new("v=DMARC1; p=reject");
+    $policy->policy_from_dns_domain( 'recip.example.com' );
     $policy->apply_defaults;
     ok( $policy->rua( 'mailto:' . $sql->config->{organization}{email} ), "policy, rua, set");
     ok( $policy->domain( 'recip.example.com'), "policy, domain, set");
@@ -325,6 +328,7 @@ sub test_insert_rr {
 
 sub test_insert_policy_published {
     my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=none');
+    $policy->policy_from_dns_domain( 'recip.example.com' );
     $pol->apply_defaults;
     $pol->rua( 'mailto:' . $sql->config->{organization}{email} );
 #   warn Dumper($policy);
