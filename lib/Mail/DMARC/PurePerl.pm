@@ -96,7 +96,7 @@ sub discover_policy {
     my $org_dom  = $self->get_organizational_domain($from_dom);
 
     # 9.1  Mail Receivers MUST query the DNS for a DMARC TXT record
-    my $matches = $self->fetch_dmarc_record( $from_dom, $org_dom );
+    my ($matches, $at_dom) = $self->fetch_dmarc_record( $from_dom, $org_dom );
     if (0 == scalar @$matches ) {
         $self->result->reason( type => 'other', comment => 'no policy' );
         return;
@@ -111,7 +111,8 @@ sub discover_policy {
     }
 
     my $policy;
-    my $policy_str = "domain=$from_dom;" . $matches->[0];  # prefix with domain
+    if (!$at_dom) { $at_dom = $from_dom; }
+    my $policy_str = "domain=$at_dom;" . $matches->[0];  # prefix with domain
     eval { $policy = $self->policy( $policy_str ) } or return;
     if ($@) {
         $self->result->reason( type => 'other', comment => "policy parse error: $@" );
@@ -402,7 +403,7 @@ sub fetch_dmarc_record {
     $self->is_subdomain( defined $org_dom ? 0 : 1 );
     my @matches = ();
     my $query = $self->get_resolver->send( "_dmarc.$zone", 'TXT' )
-        or return \@matches;
+        or return (\@matches, $zone);
     for my $rr ( $query->answer ) {
         next if $rr->type ne 'TXT';
 
@@ -412,20 +413,22 @@ sub fetch_dmarc_record {
         print "\n" . $rr->txtdata . "\n\n" if $self->verbose;
         push @matches, join( '', $rr->txtdata );    # join long records
     }
-    return \@matches if scalar @matches;            # found one! (at least)
+    if (scalar @matches) {
+        return \@matches, $zone;            # found one! (at least)
+    }
 
     #   3.  If the set is now empty, the Mail Receiver MUST query the DNS for
     #       a DMARC TXT record at the DNS domain matching the Organizational
     #       Domain in place of the RFC5322.From domain in the message (if
     #       different).  This record can contain policy to be asserted for
     #       subdomains of the Organizational Domain.
-    if ( defined $org_dom ) {    #  <- recursion break
+    if ( defined $org_dom ) {                              #  <- recursion break
         if ( $org_dom ne $zone ) {
             return $self->fetch_dmarc_record($org_dom);    #  <- recursion
         }
     }
 
-    return \@matches;
+    return \@matches, $zone;
 }
 
 sub get_from_dom {
