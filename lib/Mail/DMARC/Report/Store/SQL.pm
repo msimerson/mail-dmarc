@@ -160,8 +160,8 @@ sub get_report_id {
         ? $self->config->{report_sending}{squash_domain_reports}
         : 1;
     if ( $squash_domain_reports ) {
-        if ( lc $pol->policy_from_domain ne lc $pol->domain &&
-             lc $pol->policy_from_domain eq lc $self->get_organizational_domain( $pol->domain )
+        if ( lc $pol->policy_from_dns_domain ne lc $pol->domain &&
+             lc $pol->policy_from_dns_domain eq lc $self->get_organizational_domain( $pol->domain )
         ) {
             $from_dom_id = $self->get_domain_id( $self->get_organizational_domain( $pol->domain ) )  or croak;
         }
