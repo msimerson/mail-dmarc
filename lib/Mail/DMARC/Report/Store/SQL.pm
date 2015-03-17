@@ -155,10 +155,14 @@ sub get_report_id {
     my $author_id   = $self->get_author_id( $meta )         or croak;
     my $from_dom_id = $self->get_domain_id( $pol->domain )  or croak;
 
-    if ( $self->config->{report_sending}{squash_domain_reports} ) {
-        if ( lc $pol->policy_from_dns_domain ne lc $pol->domain &&
-             lc $pol->policy_from_dns_domain eq lc $self->get_organizational_domain( $pol->domain ) )
-        {
+    my $squash_domain_reports =
+        exists $self->config->{report_sending}->{squash_domain_reports}
+        ? $self->config->{report_sending}{squash_domain_reports}
+        : 1;
+    if ( $squash_domain_reports ) {
+        if ( lc $pol->policy_from_domain ne lc $pol->domain &&
+             lc $pol->policy_from_domain eq lc $self->get_organizational_domain( $pol->domain )
+        ) {
             $from_dom_id = $self->get_domain_id( $self->get_organizational_domain( $pol->domain ) )  or croak;
         }
     }
