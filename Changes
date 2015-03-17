@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20150317 2015-03-17 America/Los_Angeles
+
  - squash subdomains w/o DMARC records into parent report (#59)
  - add batch reporting (suppress throttling until...)
  - align reports with hour/UTC day
