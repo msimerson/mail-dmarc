@@ -1,6 +1,11 @@
 
 {{$NEXT}}
 
+ - squash subdomains w/o DMARC records into parent report (#59)
+ - add batch reporting (suppress throttling until...)
+ - align reports with hour/UTC day
+ - swap git contributors plugin
+
 1.20150310 2015-03-10 America/Los_Angeles
  - lower case domain names at entry points (resolves #53)
  - tolerate substitution of = with : in DMARC DNS rec
