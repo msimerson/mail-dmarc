@@ -173,6 +173,47 @@ sub find_psl_file {
     return $self->get_sharefile('public_suffix_list');
 };
 
+sub get_organizational_domain {
+    my $self = shift;
+    my $from_dom = shift || $self->header_from
+        or croak "missing header_from!";
+
+    # 4.1 Acquire a "public suffix" list, i.e., a list of DNS domain
+    #     names reserved for registrations. http://publicsuffix.org/list/
+
+    # 4.2 Break the subject DNS domain name into a set of "n" ordered
+    #     labels.  Number these labels from right-to-left; e.g. for
+    #     "example.com", "com" would be label 1 and "example" would be
+    #     label 2.;
+    my @labels = reverse split /\./, lc $from_dom;
+
+    # 4.3 Search the public suffix list for the name that matches the
+    #     largest number of labels found in the subject DNS domain.  Let
+    #     that number be "x".
+    my $greatest = 0;
+    for ( my $i = 0; $i <= scalar @labels; $i++ ) {
+        next if !$labels[$i];
+        my $tld = join '.', reverse( (@labels)[ 0 .. $i ] );
+
+        if ( $self->is_public_suffix($tld) ) {
+            $greatest = $i + 1;
+        }
+    }
+
+    if ( $greatest == scalar @labels ) {    # same
+        return $from_dom;
+    }
+
+    # 4.4 Construct a new DNS domain name using the name that matched
+    #     from the public suffix list and prefixing to it the "x+1"th
+    #     label from the subject domain. This new name is the
+    #     Organizational Domain.
+    my $org_dom = join '.', reverse( (@labels)[ 0 .. $greatest ] );
+    print "Organizational Domain: $org_dom\n" if $self->verbose;
+    return $org_dom;
+}
+
+
 sub has_dns_rr {
     my ( $self, $type, $domain ) = @_;
 

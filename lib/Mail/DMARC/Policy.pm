@@ -65,6 +65,11 @@ sub apply_defaults {
     return 1;
 }
 
+sub policy_from_dns_domain {
+    return $_[0]->{policy_from_dns_domain} if 1 == scalar @_;
+    return $_[0]->{policy_from_dns_domain} = $_[1];
+}
+
 sub v {
     return $_[0]->{v} if 1 == scalar @_;
     croak "unsupported DMARC version" if 'DMARC1' ne uc $_[1];
