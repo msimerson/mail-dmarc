@@ -87,12 +87,16 @@ sub any_inet_pton {
 
 {
     my $public_suffixes;
+    my $public_suffixes_stamp;
+
     sub get_public_suffix_list {
         my ( $self ) = @_;
         if ( $public_suffixes ) { return $public_suffixes; }
         no warnings 'once';
         $Mail::DMARC::psl_loads++;
         my $file = $self->find_psl_file();
+        $public_suffixes_stamp = ( stat( $file ) )[9];
+
         my $fh = IO::File->new( $file, 'r' )
             or croak "unable to open $file for read: $!\n";
         # load PSL into hash for fast lookups, esp. for long running daemons
@@ -102,7 +106,20 @@ sub any_inet_pton {
                   <$fh>;
         return $public_suffixes = \%psl;
     }
-}
+
+    sub check_public_suffix_list {
+        my ( $self ) = @_;
+        my $file = $self->find_psl_file();
+        my $new_public_suffixes_stamp = ( stat( $file ) )[9];
+        if ( $new_public_suffixes_stamp != $public_suffixes_stamp ) {
+            $public_suffixes = undef;
+            $self->get_public_suffix_list();
+            return 1;
+        }
+        return 0;
+     }
+
+ }
 
 sub is_public_suffix {
     my ( $self, $zone ) = @_;

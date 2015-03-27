@@ -37,6 +37,7 @@ __epoch_to_iso();
 __get_prefix();
 __get_sharefile();
 __psl_cached();
+__psl_cached_reload();
 
 done_testing();
 exit;
@@ -180,3 +181,20 @@ sub __psl_cached {
     no warnings 'once';
     cmp_ok($Mail::DMARC::psl_loads, '==', 1, 'Public Suffix List cached');
 }
+
+sub __psl_cached_reload {
+    no warnings 'once';
+    cmp_ok($Mail::DMARC::psl_loads, '==', 1, 'Public Suffix List loaded');
+
+    my $file = $base->find_psl_file();
+    my $future = time() + 3600;
+    utime ( $future, $future, $file );
+
+    my $check = $base->check_public_suffix_list();
+    cmp_ok($Mail::DMARC::psl_loads, '==', 2, 'Public Suffix List reloaded');
+    cmp_ok($check, '==', 1, 'Public Suffix List reloaded true return');
+
+    $check = $base->check_public_suffix_list();
+    cmp_ok($check, '==', 0, 'Public Suffix List reloaded false return');
+}
+
