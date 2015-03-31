@@ -37,7 +37,7 @@ __END__
 
 =head1 USAGE
 
- dmarc_receive [ --imap | --mbox | -- file ]
+ dmarc_receive [ --imap | --mbox | --file ]
 
 
 =head1 DESCRIPTION
