@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/msimerson/mail-dmarc.png?label=ready&title=Ready)](https://waffle.io/msimerson/mail-dmarc)
 # NAME
 
 Mail::DMARC - Perl implementation of DMARC
