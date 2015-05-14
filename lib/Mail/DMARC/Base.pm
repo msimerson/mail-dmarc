@@ -233,7 +233,7 @@ sub is_valid_ip {
 
     # Using Regexp::Common removes perl 5.8 compat
     # Perl 5.008009 does not support the pattern $RE{net}{IPv6}.
-    # You need Perl 5.01 or later at lib/Mail/DMARC/DNS.pm line 83.
+    # You need Perl 5.01 or later
 
     if ( $ip =~ /:/ ) {
         return Net::IP->new( $ip, 6 );
