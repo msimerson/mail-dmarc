@@ -130,8 +130,16 @@ sub get_policy_published_as_xml {
     my $pp = $self->policy_published or return '';
     my $xml = "\t<policy_published>\n\t\t<domain>$pp->{domain}</domain>\n";
     foreach my $f (qw/ adkim aspf p sp pct /) {
-        next if !defined $pp->{$f};
-        $xml .= "\t\t<$f>$pp->{$f}</$f>\n";
+        my $v = $pp->{$f};
+        # Set some default values for missing optional fields if necessary
+        if ( $f eq 'sp' && !defined $v ) {
+            $v = $pp->{'p'};
+        }
+        if ( $f eq 'pct' && !defined $v ) {
+            $v = '100';
+        }
+        next if !defined $v;
+        $xml .= "\t\t<$f>$v</$f>\n";
     }
     $xml .= "\t</policy_published>";
     return $xml;
