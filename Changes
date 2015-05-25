@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+ - add timeout to sending script
+
 1.20150317 2015-03-17 America/Los_Angeles
 
  - squash subdomains w/o DMARC records into parent report (#59)
