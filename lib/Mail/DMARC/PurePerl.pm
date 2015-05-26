@@ -293,6 +293,7 @@ sub is_whitelisted {
 
 sub has_valid_reporting_uri {
     my ( $self, $rua ) = @_;
+    return unless $rua;
     my $recips_ref = $self->report->uri->parse($rua);
     my @has_permission;
     foreach my $uri_ref (@$recips_ref) {
