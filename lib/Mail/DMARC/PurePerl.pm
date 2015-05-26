@@ -313,10 +313,6 @@ sub get_dkim_pass_sigs {
 
     my $dkim_sigs = $self->dkim or return ();    # message not signed
 
-    if ( ref $dkim_sigs eq 'Mail::DKIM::Verifier' ) {
-        $dkim_sigs = $self->dkim_from_mail_dkim($dkim_sigs);
-    };
-
     if ( 'ARRAY' ne ref $dkim_sigs ) {
         croak "dkim needs to be an array reference!";
     }
