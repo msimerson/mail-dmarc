@@ -287,6 +287,8 @@ __END__
 
 =for markdown [![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
 
+=for markdown [![Stories in Ready](https://badge.waffle.io/msimerson/mail-dmarc.png?label=ready&title=Ready)](https://waffle.io/msimerson/mail-dmarc)
+
 =head1 SYNOPSIS
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
