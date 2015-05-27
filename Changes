@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20150527 2015-05-26 America/Los_Angeles
+
  - check for an updated PSL file and load if necessary
  - handle domains with missing rua/ruf
  - add timeout to sending script
