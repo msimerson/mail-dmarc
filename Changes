@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+ - Optionally log sending of reports to syslog
+
 1.20150527 2015-05-26 America/Los_Angeles
 
  - check for an updated PSL file and load if necessary
