@@ -9,6 +9,7 @@ use File::ShareDir;
 use HTTP::Tiny;
 use IO::File;
 use Net::DNS::Resolver;
+use Net::IDN::Encode qw/domain_to_unicode/;
 use Net::IP;
 use Regexp::Common 2013031301 qw /net/;
 use Socket;
@@ -97,13 +98,15 @@ sub any_inet_pton {
         my $file = $self->find_psl_file();
         $public_suffixes_stamp = ( stat( $file ) )[9];
 
-        my $fh = IO::File->new( $file, 'r' )
+        open my $fh, '<:encoding(UTF-8)', $file
             or croak "unable to open $file for read: $!\n";
         # load PSL into hash for fast lookups, esp. for long running daemons
+        my @data = <$fh>;
+        close $fh;
         my %psl = map { $_ => 1 }
                   grep { $_ !~ /^[\/\s]/ } # weed out comments & whitespace
                   map { chomp($_); $_ }    # remove line endings
-                  <$fh>;
+                  @data;
         return $public_suffixes = \%psl;
     }
 
@@ -127,6 +130,8 @@ sub is_public_suffix {
     croak "missing zone name!" if !$zone;
 
     my $public_suffixes = $self->get_public_suffix_list();
+
+    $zone = domain_to_unicode( $zone ) if $zone =~ /xn--/;
 
     return 1 if $public_suffixes->{$zone};
 

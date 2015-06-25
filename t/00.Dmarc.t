@@ -44,9 +44,26 @@ test_dkim();
 test_zulu_time();
 test_report_window();
 test_interval_limits();
+test_public_suffix_list();
 
 done_testing();
 exit;
+
+sub test_public_suffix_list {
+
+    my $data = {
+        'com'                    => 1,
+        'examplebogusdomainname' => 0,
+        'xn--55qx5d.cn'          => 1,
+        'xn--zfr164b'            => 1,
+    };
+
+    foreach my $domain ( keys %$data ) {
+        my $result = $dmarc->is_public_suffix( $domain );
+        is( $result, $data->{ $domain }, "Public Suffix: $domain" );
+    }
+
+}
 
 sub test_zulu_time {
 
