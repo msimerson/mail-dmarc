@@ -101,12 +101,11 @@ sub any_inet_pton {
         open my $fh, '<:encoding(UTF-8)', $file
             or croak "unable to open $file for read: $!\n";
         # load PSL into hash for fast lookups, esp. for long running daemons
-        my @data = <$fh>;
-        close $fh;
         my %psl = map { $_ => 1 }
                   grep { $_ !~ /^[\/\s]/ } # weed out comments & whitespace
                   map { chomp($_); $_ }    # remove line endings
-                  @data;
+                  <$fh>;
+        close $fh;
         return $public_suffixes = \%psl;
     }
 
