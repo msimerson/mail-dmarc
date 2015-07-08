@@ -22,6 +22,7 @@ install:
    - cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
    - cpanm --quiet --notest Net::IP Socket6 Email::MIME DBD::SQLite Net::SMTPS XML::LibXML
    - cpanm --quiet --notest DBIx::Simple HTTP::Tiny Test::File::ShareDir Test::Output
+   - cpanm --quiet --notest Net::IDN::Encode
 
    # Deal with all of the DZIL dependencies, quickly and quietly
 #  - cpanm --quiet --notest --skip-satisfied Dist::Zilla
