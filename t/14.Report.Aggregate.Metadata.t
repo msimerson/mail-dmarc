@@ -89,10 +89,10 @@ sub test_uuid  {
 sub test_as_xml  {
     my $expected = <<"EO_XML"
 \t<report_metadata>
-\t\t<report_id>12345566677888\@sender.com</report_id>
 \t\t<org_name>Test Org</org_name>
 \t\t<email>test\@example.com</email>
 \t\t<extra_contact_info>http://www.example.com/path/to/dmarc.cgi</extra_contact_info>
+\t\t<report_id>12345566677888\@sender.com</report_id>
 \t\t<date_range>
 \t\t\t<begin>$start</begin>
 \t\t\t<end>$end</end>
