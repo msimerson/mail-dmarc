@@ -17,7 +17,7 @@ my $smtp = $mod->new;
 isa_ok( $smtp, $mod );
 $smtp->config('t/mail-dmarc.ini');
 
-open my $REP, '<', 'share/dmarc-report-2013-draft.xsd'
+open my $REP, '<', 'share/rua-schema.xsd'
     or die "unable to open: $!";
 my $report = join( '', <$REP> );
 close $REP;

@@ -58,6 +58,7 @@ my $result = $dmarc->validate($policy);
 $dmarc->save_aggregate();
 
 my $store = $dmarc->{'report'}->{'store'};
+$store->{SQL}->config('t/mail-dmarc.ini');
 
 die 'Not using test store' if $store->{'SQL'}->{'config'}->{'report_store'}->{'dsn'} ne 'dbi:SQLite:dbname=:memory:';
 
@@ -76,7 +77,7 @@ sub test_against_schema {
 
     my $xml = $agg->as_xml();
     lives_ok( sub{
-        my $validator = XML::Validator::Schema->new(file => 't/rua-schema.xsd');
+        my $validator = XML::Validator::Schema->new(file => 'share/rua-schema.xsd');
         my $parser = XML::SAX::ParserFactory->parser(Handler => $validator);
         $parser->parse_string( $xml );
     }, 'Check schema' );
