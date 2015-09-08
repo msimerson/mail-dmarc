@@ -242,7 +242,22 @@ sub email {
     my $rid;
     $rid = $$agg_ref->metadata->report_id if $agg_ref;
 
-    my $smtp = get_smtp_connection($to,$shrunk,$agg_ref) or return;
+    my $smtp;
+    eval {
+        $smtp = get_smtp_connection($to,$shrunk,$agg_ref) or return;
+    };
+    if ( my $error = $@ ) {
+        print "error ".$error."\n";
+        log_to_syslog({
+            'id'         => $rid,
+            'deliver_to' => $to,
+            'error'      => $error,
+        });
+        $report->store->error($rid, $error);
+        return;
+    }
+    return if ! $smtp;
+
     print "delivering message to $to, via ".$smtp->host."\n";
     log_to_syslog({
         'id'         => $rid,
