@@ -110,7 +110,7 @@ sub test_populate_agg_records {
             row => {
                 'count' => 1,
                 'policy_evaluated' => {
-                    disposition => 'pass',
+                    disposition => 'none',
                     dkim        => 'pass',
                     spf         => 'pass',
                     reason      => $reasons,
@@ -313,7 +313,7 @@ sub test_insert_rr {
     $record->row(
             source_ip        => '192.1.1.1',
             policy_evaluated => {
-                disposition => 'pass',
+                disposition => 'none',
                 dkim        => 'pass',
                 spf         => 'pass',
             }

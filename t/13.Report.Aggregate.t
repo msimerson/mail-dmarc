@@ -29,7 +29,7 @@ my $test_r = Mail::DMARC::Report::Aggregate::Record->new(
     row => {
         source_ip => $ip,
         count     => 1,
-        policy_evaluated => { disposition=>'pass', dkim => 'pass', spf=>'pass' },
+        policy_evaluated => { disposition=>'none', dkim => 'pass', spf=>'pass' },
     },
 );
 

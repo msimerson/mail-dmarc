@@ -18,6 +18,8 @@ sub new {
 
 sub disposition {
     return $_[0]->{disposition} if 1 == scalar @_;
+    croak "invalid disposition ($_[1]"
+        if 0 == grep {/^$_[1]$/ix} qw/ reject quarantine none /;
     return $_[0]->{disposition} =  $_[1];
 }
 
