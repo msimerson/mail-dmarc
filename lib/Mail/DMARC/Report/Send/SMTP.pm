@@ -65,7 +65,7 @@ sub connect_smtp_tls {
         Port            => $self->config->{smtp}{smarthost} ? 587 : 25,
         Hello           => $self->get_helo_hostname,
         doSSL           => 'starttls',
-        SSL_verify_mode => 'SSL_VERIFY_NONE',
+        SSL_verify_mode => 0,
         Debug           => $self->verbose ? 1 : 0,
         )
         or do {
