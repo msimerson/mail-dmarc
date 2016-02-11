@@ -85,10 +85,22 @@ while (defined(my $aggregate = $report->store->retrieve_todo ) ) {
     my $shrunk = $report->compress(\$xml);
     my $bytes  = length Encode::encode_utf8($shrunk);
 
-    my $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
+    my $uri_ref;
+    eval{
+      $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
+    };
+    if ( my $error = $@ ) {
+       print "No valid ruas found, deleting report\n";
+       log_to_syslog({
+            'id'    =>  $aggregate->metadata->report_id,
+            'error' => 'No valid ruas found - deleting reporti - ' . $error,
+        });
+        $report->store->delete_report($aggregate->metadata->report_id);
+        next;
+    }
 
     if ( scalar @{ $uri_ref } == 0 ) {
-        print "No valid ruas found, deleting report\n";
+       print "No valid ruas found, deleting report\n";
        log_to_syslog({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report',
