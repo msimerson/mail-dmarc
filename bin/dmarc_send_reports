@@ -70,7 +70,7 @@ foreach my $aggregate ( @{ $todo_reports } ) {
         send_single_report( $aggregate, $report );
     };
     if ( my $error = $@ ) {
-        print "Sending error $error\m" if $verbose;
+        print "Sending error $error\n" if $verbose;
         syslog( LOG_INFO, 'error sending report: ' . $error ) if $syslog;
     }
 
