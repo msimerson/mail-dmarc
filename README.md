@@ -4,7 +4,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 # VERSION
 
-version 1.20150908
+version 1.20160212
 
 # SYNOPSIS
 
@@ -147,19 +147,19 @@ The remote IP that attempted sending the message. DMARC only uses this data for 
 
 The domain portion of the RFC5321.RcptTo, (aka, the envelope recipient), and the bold portion in the following example:
 
-> RCPT TO:<user@**example.com**>
+> RCPT TO:&lt;user@**example.com**>
 
 ## envelope\_from
 
 The domain portion of the RFC5321.MailFrom, (aka, the envelope sender). That is the the bold portion in the following example:
 
-> MAIL FROM:<user@**example.com**>
+> MAIL FROM:&lt;user@**example.com**>
 
 ## header\_from
 
 The domain portion of the RFC5322.From, aka, the From message header.
 
-> From: Ultimate Vacation <sweepstakes@**example.com**>
+> From: Ultimate Vacation &lt;sweepstakes@**example.com**>
 
 You can instead pass in the entire From: header with header\_from\_raw.
 
@@ -279,17 +279,17 @@ Qpsmtpd plugin: https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc
 
 # AUTHORS
 
-- Matt Simerson <msimerson@cpan.org>
-- Davide Migliavacca <shari@cpan.org>
+- Matt Simerson &lt;msimerson@cpan.org>
+- Davide Migliavacca &lt;shari@cpan.org>
 
 # CONTRIBUTORS
 
-- Benny Pedersen <me@junc.eu>
-- Making GitHub Delicious. <iron@waffle.io>
-- Marc Bradshaw <marc@marcbradshaw.net>
-- Priyadi Iman Nurcahyo <priyadi@priyadi.net>
-- Ricardo Signes <rjbs@cpan.org>
-- Ricardo Signes <rjbs@users.noreply.github.com>
+- Benny Pedersen &lt;me@junc.eu>
+- Making GitHub Delicious. &lt;iron@waffle.io>
+- Marc Bradshaw &lt;marc@marcbradshaw.net>
+- Priyadi Iman Nurcahyo &lt;priyadi@priyadi.net>
+- Ricardo Signes &lt;rjbs@cpan.org>
+- Ricardo Signes &lt;rjbs@users.noreply.github.com>
 
 # COPYRIGHT AND LICENSE
 
