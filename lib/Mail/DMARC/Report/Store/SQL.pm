@@ -288,6 +288,7 @@ LEFT JOIN domain fd ON r.from_domain_id=fd.id
 WHERE rr.count IS NULL
   AND rr.report_id IS NOT NULL
   AND r.end < ?
+GROUP BY r.id
 ORDER BY r.id
 EO_TODO_QUERY
 ;
