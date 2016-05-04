@@ -72,7 +72,7 @@ sub spf_align {
 
 sub result {
     return $_[0]->{result} if 1 == scalar @_;
-    croak "invalid result" if 0 == grep {/^$_[1]$/ix} qw/ pass fail /;
+    croak "invalid result" if 0 == grep {/^$_[1]$/ix} qw/ pass fail none /;
     return $_[0]->{result} = $_[1];
 }
 
