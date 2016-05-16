@@ -41,11 +41,7 @@ sub validate {
     my $aligned = $self->is_aligned(); # 11.2.5. identifier alignment checks
 
     if ($self->config->{report_store}{auto_save}) {
-        my $pol;
-        eval { $pol = $self->result->published; };
-        if ( $pol && $self->has_valid_reporting_uri($pol->rua) ) {
-            eval { $self->save_aggregate(); };
-        };
+        eval { $self->save_aggregate(); };
     }
 
     return $self->result if $aligned;
@@ -87,6 +83,25 @@ sub validate {
     $self->result->disposition(
         ( $effective_p eq 'reject' ) ? 'quarantine' : 'none' );
     return $self->result;
+}
+
+sub save_aggregate {
+    my ( $self ) = @_;
+
+    my $pol;
+    eval { $pol = $self->result->published; };
+    if ( $pol && $self->has_valid_reporting_uri($pol->rua) ) {
+        my @valid_report_uris = $self->get_valid_reporting_uri($pol->rua);
+
+        my $filtered_report_uris = join( ',',
+            map { $_->{'uri'} . ( ( $_->{'max_bytes'} > 0 ) ? ( '!' . $$_->{'max_bytes'} ) : q{} ) }
+                @valid_report_uris
+        );
+
+        $self->result->published->rua( $filtered_report_uris );
+
+        $self->SUPER::save_aggregate();
+    }
 }
 
 sub discover_policy {
@@ -293,6 +308,12 @@ sub is_whitelisted {
 
 sub has_valid_reporting_uri {
     my ( $self, $rua ) = @_;
+    my @valid_reporting_uris = $self->get_valid_reporting_uri( $rua );
+    return scalar @valid_reporting_uris;
+}
+
+sub get_valid_reporting_uri {
+    my ( $self, $rua ) = @_;
     return unless $rua;
     my $recips_ref = $self->report->uri->parse($rua);
     my @has_permission;
@@ -302,10 +323,9 @@ sub has_valid_reporting_uri {
             next;
         }
         my $ext = $self->verify_external_reporting($uri_ref);
-        push @has_permission, $ext if $ext;
+        push @has_permission, $uri_ref if $ext;
     }
-    return @has_permission if wantarray;
-    return scalar @has_permission;
+    return @has_permission;
 }
 
 sub get_dkim_pass_sigs {
