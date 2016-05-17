@@ -172,10 +172,18 @@ sub test_has_valid_reporting_uri {
     }
 
     $dmarc->result->published->{domain} = 'dmarc-qa.com';
-    my @uris = $dmarc->has_valid_reporting_uri(
+    my $uris = $dmarc->has_valid_reporting_uri(
         'mailto:mailto:a@dmarc-qa.com,mailto:b@dmarc-qa.com' );
-    ok( 2 ==scalar @uris, "has_valid_reporting_uri, 1.5.1 multiple");
+    ok( 2 == $uris, "has_valid_reporting_uri, 1.5.1 multiple");
 #print Dumper(\@uris);
+
+    $uris = $dmarc->has_valid_reporting_uri(
+        'mailto:mailto:a@dmarc-qa.com,mailto:b@dmarc-qa.com,mailto:invalid@no-premission.example.com' );
+    ok( 2 == $uris, "has_valid_reporting_uri, multiple filtered");
+
+    $uris = $dmarc->has_valid_reporting_uri(
+        'mailto:invalid@no-premission.example.com' );
+    ok( 0 == $uris, "has_valid_reporting_uri, single filtered");
 
     # invalid tests
     my @invalid = (
