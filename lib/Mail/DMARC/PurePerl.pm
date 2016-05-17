@@ -113,6 +113,7 @@ sub discover_policy {
     # 9.1  Mail Receivers MUST query the DNS for a DMARC TXT record
     my ($matches, $at_dom) = $self->fetch_dmarc_record( $from_dom, $org_dom );
     if (0 == scalar @$matches ) {
+        $self->result->result('none');
         $self->result->reason( type => 'other', comment => 'no policy' );
         return;
     };

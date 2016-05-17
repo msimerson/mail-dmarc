@@ -212,7 +212,7 @@ SKIP: {
 
         is_deeply(
             $pp->result,
-            {   'result'      => 'fail',
+            {   'result'      => 'none',
                 'disposition' => 'none',
                 'dkim'        => '',
                 'spf'         => '',
