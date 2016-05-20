@@ -100,8 +100,9 @@ sub save_aggregate {
 
         $self->result->published->rua( $filtered_report_uris );
 
-        $self->SUPER::save_aggregate();
+        return $self->SUPER::save_aggregate();
     }
+    return;
 }
 
 sub discover_policy {
@@ -385,8 +386,11 @@ sub exists_in_dns {
     my $self = shift;
     my $from_dom = shift || $self->header_from or croak "no header_from!";
 
-  # 9.6 # If the RFC5322.From domain does not exist in the DNS, Mail Receivers
-  #     SHOULD direct the receiving SMTP server to reject the message {R9}.
+  # rfc7489 6.6.3
+  #     If the set produced by the mechanism above contains no DMARC policy
+  #     record (i.e., any indication that there is no such record as opposed
+  #     to a transient DNS error), Mail Receivers SHOULD NOT apply the DMARC
+  #     mechanism to the message.
 
     my $org_dom = $self->get_organizational_domain($from_dom);
     my @todo    = $from_dom;
@@ -403,7 +407,8 @@ sub exists_in_dns {
         $matched++ and next if $self->has_dns_rr( 'AAAA', $_ );
     }
     if ( !$matched ) {
-        $self->result->disposition('reject');
+        $self->result->result('none');
+        $self->result->disposition('none');
         $self->result->reason(
             type    => 'other',
             comment => "$from_dom not in DNS"

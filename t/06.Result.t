@@ -172,8 +172,8 @@ SKIP: {
 
         is_deeply(
             $pp->result,
-            {   'result'      => 'fail',
-                'disposition' => 'reject',
+            {   'result'      => 'none',
+                'disposition' => 'none',
                 'dkim'        => '',
                 'spf'         => '',
                 'reason'      => [{
@@ -181,7 +181,7 @@ SKIP: {
                     'type'    => 'other',
                 }],
             },
-            "result, fail, nonexist"
+            "result, none, nonexist"
         ) or diag Data::Dumper::Dumper( $pp->result );
     }
 }
