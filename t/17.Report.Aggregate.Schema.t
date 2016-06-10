@@ -64,7 +64,7 @@ die 'Not using test store' if $store->{'SQL'}->{'config'}->{'report_store'}->{'d
 
 my $a = $store->{'SQL'}->query('UPDATE report SET begin=begin-86400, end=end-86400 WHERE id=1');
 
-my $agg = $store->retrieve_todo();
+my $agg = $store->retrieve_todo()->[0];
 
 test_against_schema();
 
