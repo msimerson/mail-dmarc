@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20160612 2016-06-11 America/Los_Angeles
+
 1.20150908 2015-09-08 America/Los_Angeles
 
  - Optionally log sending of reports to syslog
