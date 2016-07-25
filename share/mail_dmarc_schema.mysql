@@ -233,7 +233,7 @@ CREATE TABLE `report_record` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `report_id` int(11) unsigned NOT NULL,
   `source_ip` varbinary(16) NOT NULL DEFAULT '',
-  `count` tinyint(2) unsigned DEFAULT NULL,
+  `count` int(11) unsigned DEFAULT NULL,
   `disposition` varchar(10) NOT NULL DEFAULT '',
   `dkim` char(4) NOT NULL DEFAULT '',
   `spf` char(4) NOT NULL DEFAULT '',
