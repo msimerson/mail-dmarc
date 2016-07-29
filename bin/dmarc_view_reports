@@ -88,7 +88,6 @@ sub get_geoip_details {
 
     my $r = $gip->record_by_addr($ip) or return '';
     my $country_code = $r->country_code();
-    my $country_name = $r->country_name();
     my $continent = $r->continent_code();
     my $city = $r->city;
 
