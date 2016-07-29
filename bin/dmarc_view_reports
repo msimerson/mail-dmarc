@@ -3,7 +3,6 @@
 use strict;
 use warnings;
 
-use Net::IPv4Addr 'ipv4_chkip';
 use Data::Dumper;
 use Getopt::Long;
 use Pod::Usage;
@@ -90,7 +89,7 @@ sub get_geoip_details {
     $gip ||= get_geoip_db();
     return if ! $gip;
 
-    if (ipv4_chkip($ip)) {
+    if ($ip =~ /^\d+\.\d+\.\d+\.\d+$/) {
         $ip = '::ffff:'.$ip;
     }
 
