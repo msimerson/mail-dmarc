@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 
+use Net::IPv4Addr 'ipv4_chkip';
 use Data::Dumper;
 use Getopt::Long;
 use Pod::Usage;
@@ -17,10 +18,7 @@ my %command_line_options = (
     'dkim:s'        => \my $dkim,
     'spf:s'         => \my $spf,
     'dns'           => \my $dns_opt,
-    'geoip'         => \my $geoip_opt,
-    'geoip_country'   => \my $geoip_country_opt,
-    'geoip_city'      => \my $geoip_city_opt,
-    'geoip_continent' => \my $geoip_continent_opt,
+    'geoip:s'       => \my $geoip_opt,
     'help'          => \my $help,
     'verbose'       => \my $verbose,
     );
@@ -85,28 +83,43 @@ sub print_header {
 
 sub get_geoip_details {
     my $ip = shift;
-    if ($geoip_opt) {
-        $geoip_country_opt = 1;
-        $geoip_city_opt = 1;
-        $geoip_continent_opt = 1;
-    }
-    return if ! ($geoip_country_opt or $geoip_city_opt or $geoip_continent_opt);
+
+    return if ! defined $geoip_opt;
+    $geoip_opt ||= 'country_name';
+
     $gip ||= get_geoip_db();
     return if ! $gip;
 
-    my $r = $gip->record_by_addr($ip) or return '';
-    my $country_code = $r->country_code();
-    my $continent = $r->continent_code();
-    my $city = $r->city;
+    if (ipv4_chkip($ip)) {
+        $ip = '::ffff:'.$ip;
+    }
 
-    my $res;
-    if ($geoip_city_opt) { $res = "$city, " }
-    if ($geoip_country_opt) { $res .= "$country_code, " }
-    if ($geoip_continent_opt) { $res .= "$continent" }
+    my $r = $gip->record_by_addr_v6($ip) or return '';
 
-    $res =~ s/, $//;
+    my @result;
+    my @fields = split(',', $geoip_opt);
+    my @allowed = qw(
+	country_code
+	country_code3
+	country_name
+	region
+	region_name
+	city
+	postal_code
+	latitude
+	longitude
+	time_zone
+	area_code
+	continent_code
+	metro_code
+    );
 
-    return $res;
+    foreach my $f (@fields) {
+       return if ! grep {$_ eq $f} @allowed;
+       push @result, $r->${f}() || '';
+    }
+
+    return join(', ', @result);
 }
 
 sub get_geoip_db {
@@ -121,7 +134,7 @@ sub get_geoip_db {
     foreach my $local ( '/usr/local', '/opt/local', '/usr' ) {
         my $db_dir = "$local/share/GeoIP";
 
-        foreach my $db (qw/ GeoIPCity GeoLiteCity /) {
+        foreach my $db (qw/ GeoIPCityv6 GeoLiteCityv6 /) {
             if (-f "$db_dir/$db.dat") {
                 print "using db $db" if $verbose;
                 $gip = Geo::IP->open("$db_dir/$db.dat");
