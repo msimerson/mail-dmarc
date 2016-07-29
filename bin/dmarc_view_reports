@@ -67,7 +67,7 @@ sub print_rows {
             print "( $r->{comment} )" if $r->{comment};
         };
         my $geoip_details = get_geoip_details( $row->{source_ip} );
-        print " $geoip_details";
+        print "  $geoip_details";
         my $dns_hostname = get_dns_hostname( $row->{source_ip} );
         print "  $dns_hostname\n";
     }
