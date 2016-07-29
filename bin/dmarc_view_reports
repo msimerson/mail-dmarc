@@ -18,6 +18,9 @@ my %command_line_options = (
     'spf:s'         => \my $spf,
     'dns'           => \my $dns_opt,
     'geoip'         => \my $geoip_opt,
+    'geoip_country'   => \my $geoip_country_opt,
+    'geoip_city'      => \my $geoip_city_opt,
+    'geoip_continent' => \my $geoip_continent_opt,
     'help'          => \my $help,
     'verbose'       => \my $verbose,
     );
@@ -82,7 +85,12 @@ sub print_header {
 
 sub get_geoip_details {
     my $ip = shift;
-    return if ! $geoip_opt;
+    if ($geoip_opt) {
+        $geoip_country_opt = 1;
+        $geoip_city_opt = 1;
+        $geoip_continent_opt = 1;
+    }
+    return if ! ($geoip_country_opt or $geoip_city_opt or $geoip_continent_opt);
     $gip ||= get_geoip_db();
     return if ! $gip;
 
@@ -91,8 +99,14 @@ sub get_geoip_details {
     my $continent = $r->continent_code();
     my $city = $r->city;
 
-    if ($city) { $city = "$city,"; }
-    return "$city $country_code, $continent"
+    my $res;
+    if ($geoip_city_opt) { $res = "$city, " }
+    if ($geoip_country_opt) { $res .= "$country_code, " }
+    if ($geoip_continent_opt) { $res .= "$continent" }
+
+    $res =~ s/, $//;
+
+    return $res;
 }
 
 sub get_geoip_db {
