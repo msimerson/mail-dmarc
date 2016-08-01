@@ -115,7 +115,8 @@ sub get_geoip_details {
 
     foreach my $f (@fields) {
        next if ! grep {$_ eq $f} @allowed;
-       push @result, $r->${f}() || '';
+       next if ! $r->${f}();
+       push @result, $r->${f}();
     }
 
     return join(', ', @result);
