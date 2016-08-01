@@ -181,7 +181,7 @@ sub {}
 
   dmarc_view_reports [ --geoip --dns --help --verbose ]
 
-    geoip        - include GeoIP location (requires the free GeoCity Lite db)
+    geoip        - do GeoIP lookups (requires the free Maxmind GeoCityLitev6 database).
     dns          - do reverse DNS lookups and display hostnames
     help         - print this syntax guide
     verbose      - print additional debug info
@@ -193,6 +193,30 @@ To search for all reports from google.com that failed DMARC alignment:
   dmarc_view_reports --author=google.com --dkim=fail --spf=fail
 
 Note that we don't use --disposition. That would only tell us the result of applying DMARC policy, not necessarily if the messages failed DMARC alignment.
+
+To display GeoIP lookup data for the source ip:
+
+  dmarc_view_reports --geoip
+
+By default; city, country_code & continent_code are shown. You can optionally pass a comma delimited string to --geoip= with any of the following fields:
+
+country_code
+country_code3
+country_name
+region
+region_name
+city
+postal_code
+latitude
+longitude
+time_zone
+area_code
+continent_code
+metro_code
+
+  dmarc_view_reports --geoip=country_name,continent_code
+  dmarc_view_reports --geoip=continent_code,country_name # keep order
+  dmarc_view_reports --geoip=city,city,city              # repeat
 
 
 =head1 DESCRIPTION
