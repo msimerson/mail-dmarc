@@ -17,7 +17,7 @@ my %command_line_options = (
     'dkim:s'        => \my $dkim,
     'spf:s'         => \my $spf,
     'dns'           => \my $dns_opt,
-    'geoip'         => \my $geoip_opt,
+    'geoip:s'       => \my $geoip_opt,
     'help'          => \my $help,
     'verbose'       => \my $verbose,
     );
@@ -61,13 +61,14 @@ sub print_rows {
         next if $disposition && $disposition ne $row->{disposition};
         next if $dkim && $dkim ne $row->{dkim};
         next if $spf  && $spf ne $row->{spf};
-        my $dns_hostname = get_dns_hostname( $row->{source_ip} );
         printf "  | -- %3s %20s %39s %13s %7s %7s", @$row{qw/ count header_from source_ip disposition dkim spf /};
         foreach my $r ( @{ $row->{reasons} } ) {
             print '  ' . $r->{type};
             print "( $r->{comment} )" if $r->{comment};
         };
-        my $geoip = print_geoip( $row->{source_ip} );
+        my $geoip_details = get_geoip_details( $row->{source_ip} );
+        print "  $geoip_details";
+        my $dns_hostname = get_dns_hostname( $row->{source_ip} );
         print "  $dns_hostname\n";
     }
     return;
@@ -79,32 +80,47 @@ sub print_header {
     return;
 };
 
-sub print_geoip {
+sub get_geoip_details {
     my $ip = shift;
-    return if ! $geoip_opt;
+
+    return if ! defined $geoip_opt;
+    $geoip_opt ||= 'city,country_code,continent_code';
+
     $gip ||= get_geoip_db();
     return if ! $gip;
 
-    my $r = $gip->record_by_addr($ip) or return '';
-    my $country_code = $r->country_code();
-    my $country_name = $r->country_name();
-    my $continent = $r->continent_code();
-    my $city = $r->city;
-    print $city ?  " $city," : ' ';
-    print " $country_code, $continent";
-    return;
+    if ($ip =~ /^\d+\.\d+\.\d+\.\d+$/) {
+        $ip = '::ffff:'.$ip;
+    }
+
+    my $r = $gip->record_by_addr_v6($ip) or return '';
+
+    my @result;
+    my @fields = split(',', $geoip_opt);
+    my @allowed = qw(
+	country_code
+	country_code3
+	country_name
+	region
+	region_name
+	city
+	postal_code
+	latitude
+	longitude
+	time_zone
+	area_code
+	continent_code
+	metro_code
+    );
+
+    foreach my $f (@fields) {
+       next if ! grep {$_ eq $f} @allowed;
+       next if ! $r->${f}();
+       push @result, $r->${f}();
+    }
+
+    return join(', ', @result);
 }
-
-sub get_dns_hostname {
-    my $ip = shift;
-    return if ! $dns_opt;
-
-    my @answers = $report->has_dns_rr('PTR', $ip);
-    return '' if 0 == scalar @answers;
-    return $answers[0] if scalar @answers >= 1;
-    print Dumper(\@answers);
-    return;
-};
 
 sub get_geoip_db {
 
@@ -118,7 +134,7 @@ sub get_geoip_db {
     foreach my $local ( '/usr/local', '/opt/local', '/usr' ) {
         my $db_dir = "$local/share/GeoIP";
 
-        foreach my $db (qw/ GeoIPCity GeoLiteCity /) {
+        foreach my $db (qw/ GeoIPCityv6 GeoLiteCityv6 /) {
             if (-f "$db_dir/$db.dat") {
                 print "using db $db" if $verbose;
                 $gip = Geo::IP->open("$db_dir/$db.dat");
@@ -129,6 +145,17 @@ sub get_geoip_db {
     };
     return $gip;
 }
+
+sub get_dns_hostname {
+    my $ip = shift;
+    return if ! $dns_opt;
+
+    my @answers = $report->has_dns_rr('PTR', $ip);
+    return '' if 0 == scalar @answers;
+    return $answers[0] if scalar @answers >= 1;
+    print Dumper(\@answers);
+    return;
+};
 
 exit;
 # PODNAME: dmarc_view_reports
@@ -154,7 +181,7 @@ sub {}
 
   dmarc_view_reports [ --geoip --dns --help --verbose ]
 
-    geoip        - include GeoIP location (requires the free GeoCity Lite db)
+    geoip        - do GeoIP lookups (requires the free Maxmind GeoCityLitev6 database).
     dns          - do reverse DNS lookups and display hostnames
     help         - print this syntax guide
     verbose      - print additional debug info
@@ -166,6 +193,30 @@ To search for all reports from google.com that failed DMARC alignment:
   dmarc_view_reports --author=google.com --dkim=fail --spf=fail
 
 Note that we don't use --disposition. That would only tell us the result of applying DMARC policy, not necessarily if the messages failed DMARC alignment.
+
+To display GeoIP lookup data for the source ip:
+
+  dmarc_view_reports --geoip
+
+By default; city, country_code & continent_code are shown. You can optionally pass a comma delimited string to --geoip= with any of the following fields:
+
+country_code
+country_code3
+country_name
+region
+region_name
+city
+postal_code
+latitude
+longitude
+time_zone
+area_code
+continent_code
+metro_code
+
+  dmarc_view_reports --geoip=country_name,continent_code
+  dmarc_view_reports --geoip=continent_code,country_name # keep order
+  dmarc_view_reports --geoip=city,city,city              # repeat
 
 
 =head1 DESCRIPTION
