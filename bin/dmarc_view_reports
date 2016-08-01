@@ -84,7 +84,7 @@ sub get_geoip_details {
     my $ip = shift;
 
     return if ! defined $geoip_opt;
-    $geoip_opt ||= 'country_name';
+    $geoip_opt ||= 'city,country_code,continent_code';
 
     $gip ||= get_geoip_db();
     return if ! $gip;
