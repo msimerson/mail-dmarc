@@ -4,7 +4,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 # VERSION
 
-version 1.20160212
+version 1.20170206
 
 # SYNOPSIS
 
@@ -279,17 +279,19 @@ Qpsmtpd plugin: https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc
 
 # AUTHORS
 
-- Matt Simerson &lt;msimerson@cpan.org>
-- Davide Migliavacca &lt;shari@cpan.org>
+- Matt Simerson <msimerson@cpan.org>
+- Davide Migliavacca <shari@cpan.org>
 
 # CONTRIBUTORS
 
-- Benny Pedersen &lt;me@junc.eu>
-- Making GitHub Delicious. &lt;iron@waffle.io>
-- Marc Bradshaw &lt;marc@marcbradshaw.net>
-- Priyadi Iman Nurcahyo &lt;priyadi@priyadi.net>
-- Ricardo Signes &lt;rjbs@cpan.org>
-- Ricardo Signes &lt;rjbs@users.noreply.github.com>
+- Benny Pedersen <me@junc.eu>
+- Jean Paul Galea <jeanpaul@yubico.com>
+- Jean Paul Galea <jp@galea.se>
+- Making GitHub Delicious. <iron@waffle.io>
+- Marc Bradshaw <marc@marcbradshaw.net>
+- Priyadi Iman Nurcahyo <priyadi@priyadi.net>
+- Ricardo Signes <rjbs@cpan.org>
+- Ricardo Signes <rjbs@users.noreply.github.com>
 
 # COPYRIGHT AND LICENSE
 

@@ -5,6 +5,7 @@ use warnings;
 
 use Carp;
 use Data::Dumper;
+use XML::LibXML;
 
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate::Metadata;
@@ -73,6 +74,8 @@ sub get_record_as_xml {
         my $ip = $rec->{row}{source_ip} or croak "no source IP!?";
         my $count = $rec->{row}{count} or croak "no count!?";
         $rec->{row}{policy_evaluated}{disposition} or croak "no disposition?";
+        $ip    = XML::LibXML::Text->new( $ip )->toString();
+        $count = XML::LibXML::Text->new( $count )->toString();
         $rec_xml
             .="\t\t<row>\n"
             . "\t\t\t<source_ip>$ip</source_ip>\n"
@@ -94,7 +97,8 @@ sub get_identifiers_as_xml {
             croak "missing header_from!";
         };
         next if !$rec->{identifiers}{$f};
-        $id .= "\t\t\t<$f>$rec->{identifiers}{$f}</$f>\n";
+        my $val = XML::LibXML::Text->new( $rec->{identifiers}{$f} )->toString();
+        $id .= "\t\t\t<$f>$val</$f>\n";
     }
     $id .= "\t\t</identifiers>\n";
     return $id;
@@ -108,7 +112,8 @@ sub get_auth_results_as_xml {
         $ar .= "\t\t\t<dkim>\n";
         foreach my $g (qw/ domain selector result human_result /) {
             next if !defined $dkim_sig->{$g};
-            $ar .= "\t\t\t\t<$g>$dkim_sig->{$g}</$g>\n";
+            my $val = XML::LibXML::Text->new( $dkim_sig->{$g} )->toString();
+            $ar .= "\t\t\t\t<$g>$val</$g>\n";
         }
         $ar .= "\t\t\t</dkim>\n";
     }
@@ -117,7 +122,8 @@ sub get_auth_results_as_xml {
         $ar .= "\t\t\t<spf>\n";
         foreach my $g (qw/ domain scope result /) {
             next if !defined $spf->{$g};
-            $ar .= "\t\t\t\t<$g>$spf->{$g}</$g>\n";
+            my $val = XML::LibXML::Text->new( $spf->{$g} )->toString();
+            $ar .= "\t\t\t\t<$g>$val</$g>\n";
         }
         $ar .= "\t\t\t</spf>\n";
     }
@@ -143,6 +149,7 @@ sub get_policy_published_as_xml {
             $v = '0';
         }
         next if !defined $v;
+        $v = XML::LibXML::Text->new( $v )->toString();
         $xml .= "\t\t<$f>$v</$f>\n";
     }
     $xml .= "\t</policy_published>";
@@ -154,15 +161,18 @@ sub get_policy_evaluated_as_xml {
     my $pe = "\t\t\t<policy_evaluated>\n";
 
     foreach my $f (qw/ disposition dkim spf /) {
-        $pe .= "\t\t\t\t<$f>$rec->{row}{policy_evaluated}{$f}</$f>\n";
+        my $val = XML::LibXML::Text->new( $rec->{row}{policy_evaluated}{$f} )->toString();
+        $pe .= "\t\t\t\t<$f>$val</$f>\n";
     }
 
     my $reasons = $rec->{row}{policy_evaluated}{reason};
     if ( $reasons && scalar @$reasons ) {
         foreach my $reason ( @$reasons ) {
+            my $typeval    = XML::LibXML::Text->new( $reason->{type} )->toString();
+            my $commentval = XML::LibXML::Text->new( $reason->{comment} )->toString();
             $pe .= "\t\t\t\t<reason>\n";
-            $pe .= "\t\t\t\t\t<type>$reason->{type}</type>\n";
-            $pe .= "\t\t\t\t\t<comment>$reason->{comment}</comment>\n";
+            $pe .= "\t\t\t\t\t<type>$typeval</type>\n";
+            $pe .= "\t\t\t\t\t<comment>$commentval</comment>\n";
             $pe .= "\t\t\t\t</reason>\n";
         }
     };

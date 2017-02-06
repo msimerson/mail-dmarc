@@ -2,6 +2,7 @@ package Mail::DMARC::Report::Aggregate::Metadata;
 # VERSION
 use strict;
 use warnings;
+use XML::LibXML;
 
 use parent 'Mail::DMARC::Base';
 
@@ -58,14 +59,18 @@ sub as_xml {
 
     foreach my $f (qw/ org_name email extra_contact_info report_id /) {
         my $val = $self->$f or next;
+        $val = XML::LibXML::Text->new( $val )->toString();
         $meta .= "\t\t<$f>$val</$f>\n";
     }
-    $meta .= "\t\t<date_range>\n\t\t\t<begin>" . $self->begin . "</begin>\n"
-          .  "\t\t\t<end>" . $self->end . "</end>\n\t\t</date_range>\n";
+    my $begin = XML::LibXML::Text->new( $self->begin )->toString();
+    my $end   = XML::LibXML::Text->new( $self->end )->toString();
+    $meta .= "\t\t<date_range>\n\t\t\t<begin>" . $begin . "</begin>\n"
+          .  "\t\t\t<end>" . $end . "</end>\n\t\t</date_range>\n";
 
     my $errors = $self->error;
     if ( $errors && @$errors ) {
         foreach my $err ( @$errors ) {
+            $err = XML::LibXML::Text->new( $err )->toString();
             $meta .= "\t\t<error>$err</error>\n";
         };
     };
