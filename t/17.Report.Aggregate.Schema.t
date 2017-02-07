@@ -63,6 +63,7 @@ $store->{SQL}->config('t/mail-dmarc.ini');
 die 'Not using test store' if $store->{'SQL'}->{'config'}->{'report_store'}->{'dsn'} ne 'dbi:SQLite:dbname=:memory:';
 
 my $a = $store->{'SQL'}->query('UPDATE report SET begin=begin-86400, end=end-86400 WHERE id=1');
+   $a = $store->{'SQL'}->query('INSERT INTO report_error(report_id,error,time) VALUES(1,"<ERROR> Test error & encoding",100)');
 
 my $agg = $store->retrieve_todo()->[0];
 
