@@ -72,8 +72,6 @@ The report store can use the same database to store reports you have received as
 
 [![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
 
-[![Stories in Ready](https://badge.waffle.io/msimerson/mail-dmarc.png?label=ready&title=Ready)](https://waffle.io/msimerson/mail-dmarc)
-
 # CLASSES
 
 [Mail::DMARC](https://metacpan.org/pod/Mail::DMARC) - the perl interface for DMARC
@@ -243,19 +241,19 @@ The SPF result code: none, neutral, pass, fail, softfail, temperror, or permerro
 
 ## Correct
 
-The DMARC spec is lengthy and evolving, making correctness a moving target. In cases where correctness is ambiguous, options are generally provided.
+In cases where correctness is ambiguous, options are provided.
 
 ## Easy to use
 
-The effectiveness of DMARC will improve significantly as adoption increases. Proving an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
+Providing an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume is expected to increase adoption.
 
 The list of dependencies appears long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is about 5. See the \[Prereq\] versus \[Prereq / Recommends\] sections in dist.ini.
 
 ## Maintainable
 
-Since DMARC is evolving, this implementation aims to be straight forward and dare I say, easy, to alter and extend. The programming style is primarily OO, which carries a small performance penalty but large dividends in maintainability.
+This implementation aims to be straight forward and easy to alter and extend. The programming style is primarily OO, which carries a small performance penalty but large dividends in maintainability.
 
-When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class, to broker the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than the many provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
+When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class, to broker the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than those provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
 
 ## Fast
 
@@ -263,19 +261,17 @@ If you deploy this in an environment where performance is insufficient, please p
 
 # SEE ALSO
 
-Mail::DMARC on GitHub: https://github.com/msimerson/mail-dmarc
+Mail::DMARC on [GitHub](https://github.com/msimerson/mail-dmarc)
 
-Mar 13, 2013 Draft: http://tools.ietf.org/html/draft-kucherawy-dmarc-base-00
+2015-03: [RFC 7489](https://tools.ietf.org/html/rfc7489)
 
-Mar 30, 2012 Draft: http://www.dmarc.org/draft-dmarc-base-00-02.txt
-
-Best Current Practices: http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03
+DMARC [Best Current Practices](http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03)
 
 # HISTORY
 
 The daddy of this perl module was a DMARC module for the qpsmtpd MTA.
 
-Qpsmtpd plugin: https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc
+[Qpsmtpd plugin](https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc)
 
 # AUTHORS
 
@@ -285,17 +281,15 @@ Qpsmtpd plugin: https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc
 # CONTRIBUTORS
 
 - Benny Pedersen <me@junc.eu>
+- ColocateUSA.net <company@colocateusa.net>
 - Jean Paul Galea <jeanpaul@yubico.com>
-- Jean Paul Galea <jp@galea.se>
-- Making GitHub Delicious. <iron@waffle.io>
 - Marc Bradshaw <marc@marcbradshaw.net>
 - Priyadi Iman Nurcahyo <priyadi@priyadi.net>
 - Ricardo Signes <rjbs@cpan.org>
-- Ricardo Signes <rjbs@users.noreply.github.com>
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2015 by Matt Simerson.
+This software is copyright (c) 2017 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

@@ -121,14 +121,14 @@ sub send_single_report {
     my $bytes  = length Encode::encode_utf8($shrunk);
 
     my $uri_ref;
-    eval{
-      $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
+    eval {
+        $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
     };
     if ( my $error = $@ ) {
-       print "No valid ruas found, deleting report\n";
-       log_to_syslog({
+        print "No valid ruas found, deleting report\n";
+        log_to_syslog({
             'id'    =>  $aggregate->metadata->report_id,
-            'error' => 'No valid ruas found - deleting reporti - ' . $error,
+            'error' => 'No valid ruas found - deleting report - ' . $error,
         });
         $report->store->delete_report($aggregate->metadata->report_id);
         alarm(0);
@@ -136,8 +136,8 @@ sub send_single_report {
     }
 
     if ( scalar @{ $uri_ref } == 0 ) {
-       print "No valid ruas found, deleting report\n";
-       log_to_syslog({
+        print "No valid ruas found, deleting report\n";
+        log_to_syslog({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report',
         });
@@ -155,7 +155,6 @@ sub send_single_report {
         my $max    = $u_ref->{max_bytes};
 
         if ( $max && $bytes > $max ) {
-# TODO: try compressing the report with gzip -9 ?
            log_to_syslog({
                 'id'   => $aggregate->metadata->report_id,
                 "info' => 'skipping $method: report size ($bytes) larger than $max",
@@ -191,6 +190,7 @@ sub send_single_report {
     };
 
     alarm(0);
+    return;
 }
 
 sub send_too_big_email {

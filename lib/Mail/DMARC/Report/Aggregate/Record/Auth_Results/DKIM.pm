@@ -69,6 +69,7 @@ sub is_valid {
             croak "DKIM value $f is required!";
         }
     }
+    return;
 }
 
 1;

@@ -130,6 +130,7 @@ sub _from_mail_dkim {
                 human_result => $s->result_detail,
             );
     }
+    return;
 }
 
 sub _unwrap {
@@ -274,6 +275,7 @@ sub init {
     # used for testing
     my $self = shift;
     map { delete $self->{$_} } qw/ spf spf_ar dkim dkim_ar /;
+    return;
 }
 
 1;
@@ -287,7 +289,6 @@ __END__
 
 =for markdown [![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
 
-=for markdown [![Stories in Ready](https://badge.waffle.io/msimerson/mail-dmarc.png?label=ready&title=Ready)](https://waffle.io/msimerson/mail-dmarc)
 
 =head1 SYNOPSIS
 
