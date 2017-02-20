@@ -1,46 +1,20 @@
 language: perl
 perl:
   - "5.20"
-  - "5.18"
-  - "5.16"
   - "5.14"
-  - "5.12"
   - "5.10"
 
-#branches:
-#  only:
-#    - releases
-
-# Travis: http://blogs.perl.org/users/alex_balhatchet/2013/04/travis-ci-perl.html
-
 before_install:
-   # Prevent "Please tell me who you are" errors for certain DZIL configs
-   - git config --global user.name "TravisCI"
-   - cpanm -n Devel::Cover::Report::Coveralls
 
 install:
    - cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
    - cpanm --quiet --notest Net::IP Socket6 Email::MIME DBD::SQLite Net::SMTPS XML::LibXML
    - cpanm --quiet --notest DBIx::Simple HTTP::Tiny Test::File::ShareDir Test::Output
-   - cpanm --quiet --notest Net::IDN::Encode
+   - cpanm --quiet --notest Net::IDN::Encode CGI
 
-   # Deal with all of the DZIL dependencies, quickly and quietly
-#  - cpanm --quiet --notest --skip-satisfied Dist::Zilla
-#  - cpanm --quiet --notest --skip-satisfied Pod::Weaver::Section::Contributors
-#  - cpanm --quiet --notest --skip-satisfied Pod::Coverage::TrustPod
-#  - cpanm --quiet --notest --skip-satisfied Test::Pod::Coverage
-#
-#  - dzil authordeps | grep -vP '[^\w:]' | xargs -n 5 -P 10 cpanm --quiet --notest --skip-satisfied
-#
-#  - export RELEASE_TESTING=1 AUTOMATED_TESTING=1 AUTHOR_TESTING=1 HARNESS_OPTIONS=j10:c HARNESS_TIMER=1
-#
-#  - dzil listdeps | grep -vP '[^\w:]' | cpanm --verbose
-#
-# using Socket6 instead, no need to force this upgrade
-#  - cpanm --quiet --notest --skip-satisfied 'Socket~2'
-#
-script: HARNESS_IS_VERBOSE=1 prove -v -Ilib t
-#
-#   - dzil smoke --release --author
-after_script:
+script:
+   - HARNESS_IS_VERBOSE=1 prove -v -Ilib t
+
+after_success:
+  - cpanm -n Devel::Cover::Report::Coveralls
   - cover -test -make 'prove -Ilib t' -report coveralls

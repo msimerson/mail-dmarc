@@ -1,4 +1,4 @@
-severity = harsh
+severity = stern
 ; gentle stern harsh cruel brutal
 
 verbose  = [%p] %m at line %l, column %c.  %e.  (Severity: %s)\n

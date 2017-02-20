@@ -13,7 +13,11 @@ sub new {
     my $self = bless {}, $package;
 
     return $self if 0 == scalar @args;                # no args, empty pol
-    return $self->parse( $args[0] ) if 1 == @args;    # a string
+    if (1 == @args) {                                 # a string
+        my $policy = $self->parse( $args[0] );
+        $self->is_valid($policy);
+        return $policy;
+    }
 
     croak "invalid arguments" if @args % 2 != 0;
     my $policy = {@args};
@@ -48,7 +52,6 @@ sub parse {
         }
         $policy{$tag} = $value;
     }
-    croak "invalid policy" if !$self->is_valid(\%policy);
     return bless \%policy, ref $self;    # inherited defaults + overrides
 }
 
@@ -256,6 +259,7 @@ via DNS.
 
     my $pol = Mail::DMARC::Policy->new;
     $pol->parse( 'v=DMARC1; p=none; rua=mailto:dmarc@example.com' );
+    $pol->parse( 'v=DMARC1' );       # external reporting record
 
 =head1 Record Tags
 

@@ -93,7 +93,7 @@ sub any_inet_pton {
     sub get_public_suffix_list {
         my ( $self ) = @_;
         if ( $public_suffixes ) { return $public_suffixes; }
-        no warnings 'once';
+        no warnings 'once';  ## no critic
         $Mail::DMARC::psl_loads++;
         my $file = $self->find_psl_file();
         $public_suffixes_stamp = ( stat( $file ) )[9];
@@ -103,7 +103,7 @@ sub any_inet_pton {
         # load PSL into hash for fast lookups, esp. for long running daemons
         my %psl = map { $_ => 1 }
                   grep { $_ !~ /^[\/\s]/ } # weed out comments & whitespace
-                  map { chomp($_); $_ }    # remove line endings
+                  map { chomp($_); $_ }    ## no critic, remove line endings
                   <$fh>;
         close $fh;
         return $public_suffixes = \%psl;
@@ -170,6 +170,7 @@ sub update_psl_file {
             print "Public Suffix List file $psl_file updated\n";
         }
     }
+    return;
 }
 
 sub find_psl_file {
@@ -182,7 +183,7 @@ sub find_psl_file {
         return $file;
     }
     my $path;
-    foreach $path ($self->get_prefix('share/' . $file)) {
+    foreach $path ($self->get_prefix('share/' . $file)) {    ## no critic
         last if ( -f $path && -r $path );
     }
     if ($path && -r $path) {
@@ -247,6 +248,7 @@ sub get_resolver {
 sub set_resolver {
     my ($self,$resolver) = @_;
     $self->{resolver} = $resolver;
+    return;
 }
 
 sub is_valid_ip {

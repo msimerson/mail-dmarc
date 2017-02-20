@@ -1,7 +1,18 @@
 
 {{$NEXT}}
 
+ - Ensure entities in XML agg reports are properly escaped #104
+ - geoip v6 support and field selection #103
+ - use a larger integer type for report_record.count #102
+ - improved apt package lookups in install_deps.pl #98
+
 1.20160612 2016-06-11 America/Los_Angeles
+
+ - fix aggregrate schema test #96
+ - Do not reject NXDOMAIN as per rfc #94
+ - added none result for no policy #93
+ - avoid deadlock with some invalid rua data #92
+ - avoid loop when sending reports via http #92
 
 1.20150908 2015-09-08 America/Los_Angeles
 

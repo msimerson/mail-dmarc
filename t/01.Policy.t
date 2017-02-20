@@ -166,7 +166,7 @@ sub test_parse {
         "parse, warns of invalid DMARC record format"
     );
 
-     is_deeply(
+    is_deeply(
         $pol->parse(
             'domain=tnpi.net;v=DMARC1;p=reject;rua=mailto:dmarc-feedback@theartfarm.com;pct=;ruf=mailto:dmarc-feedback@theartfarm.com'
         ),
@@ -177,6 +177,13 @@ sub test_parse {
         },
         "parse, warns of invalid DMARC record format, with location"
     );
+
+    $pol = $pol->parse('v=DMARC1');
+    isa_ok( $pol, 'Mail::DMARC::Policy' );
+    $expected = {
+        v   => 'DMARC1'
+    };
+    is_deeply( $pol, $expected, 'parse');
 }
 
 sub test_is_valid_p {
