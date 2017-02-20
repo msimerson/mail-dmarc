@@ -129,28 +129,28 @@ sub test_external_report {
     my @test_doms = qw/ example.com silly.com /;
     foreach my $dom (@test_doms) {
 
-        my $policy = $dmarc->policy->parse('v=DMARC1; p=none');
+        my $policy = $dmarc->policy->parse('v=DMARC1');
         $policy->{domain} = $dom;
         ok( $policy, "new policy" );
         $dmarc->result->published($policy);
 
         my $uri = URI->new("mailto:test\@$dom");
 
-        #       warn "path: " . $uri->path;
+        # warn "path: " . $uri->path;
         ok( $uri, "new URI" );
         ok( !$dmarc->external_report($uri),
             "external_report, $uri for $dom" );
     }
 
     foreach my $dom (@test_doms) {
-        my $policy = $dmarc->policy->parse('v=DMARC1; p=none');
+        my $policy = $dmarc->policy->parse('v=DMARC1');
         $policy->{domain} = "$dom.com";
         ok( $policy, "new policy" );
         $dmarc->result->published($policy);
 
         my $uri = URI->new("mailto:test\@$dom");
 
-        #       warn "path: " . $uri->path;
+        # warn "path: " . $uri->path;
         ok( $uri, "new URI" );
         ok( $dmarc->external_report($uri),
             "external_report, $uri for $dom.com"
