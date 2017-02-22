@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20170222 2017-02-21 America/Los_Angeles
+
  - Ensure entities in XML agg reports are properly escaped #104
  - geoip v6 support and field selection #103
  - use a larger integer type for report_record.count #102
