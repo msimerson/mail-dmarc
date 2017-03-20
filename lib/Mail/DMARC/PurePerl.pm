@@ -12,9 +12,14 @@ sub init {
     $self->is_subdomain(0);
     $self->{header_from} = undef;
     $self->{header_from_raw} = undef;
+    $self->{envelope_to} = undef;
+    $self->{envelope_from} = undef;
+    $self->{source_ip} = undef;
     $self->{policy} = undef;
     $self->{result} = undef;
     $self->{report} = undef;
+    $self->{spf} = undef;
+    $self->{dkim} = undef;
     return;
 }
 
