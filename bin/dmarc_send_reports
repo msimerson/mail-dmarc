@@ -101,9 +101,9 @@ sub send_single_report {
 
     alarm($alarm_at);
 
-    print 'ID:     ' . $aggregate->metadata->report_id . "\n";
-    print 'Domain: ' . $aggregate->policy_published->domain . "\n";
-    print 'rua:    ' . $aggregate->policy_published->rua . "\n";
+    print 'ID:     ' . $aggregate->metadata->report_id . "\n" if $verbose;
+    print 'Domain: ' . $aggregate->policy_published->domain . "\n" if $verbose;
+    print 'rua:    ' . $aggregate->policy_published->rua . "\n" if $verbose;
 
     log_to_syslog({
         'id'     => $aggregate->metadata->report_id,
@@ -125,8 +125,8 @@ sub send_single_report {
         $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
     };
     if ( my $error = $@ ) {
-        print "No valid ruas found, deleting report\n";
-        log_to_syslog({
+       print "No valid ruas found, deleting report\n" if $verbose;
+       log_to_syslog({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report - ' . $error,
         });
@@ -136,8 +136,8 @@ sub send_single_report {
     }
 
     if ( scalar @{ $uri_ref } == 0 ) {
-        print "No valid ruas found, deleting report\n";
-        log_to_syslog({
+       print "No valid ruas found, deleting report\n" if $verbose;
+       log_to_syslog({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report',
         });
@@ -159,7 +159,7 @@ sub send_single_report {
                 'id'   => $aggregate->metadata->report_id,
                 "info' => 'skipping $method: report size ($bytes) larger than $max",
             });
-            print "skipping $method: report size ($bytes) larger than $max\n";
+            print "skipping $method: report size ($bytes) larger than $max\n" if $verbose;
             push @too_big, $method;
             next URI;
         }
@@ -241,7 +241,7 @@ sub get_smtp_connection {
             if ( $rid ) {
                 my $errors = scalar $$agg_ref->metadata->error;
                 if ( $errors >= 12 ) {
-                    print "Report $rid deleted (too many errors)\n";
+                    print "Report $rid deleted (too many errors)\n" if $verbose;
                     log_to_syslog({
                         'id'    => $rid,
                         'error' => 'Report deleted, too many errors',
@@ -279,68 +279,85 @@ sub email {
     my $rid;
     $rid = $$agg_ref->metadata->report_id if $agg_ref;
 
+    my $sendmail_binary = $report->config->{sendmail}->{binary} || q{};
     my $smtp;
-    eval {
-        $smtp = get_smtp_connection($to,$shrunk,$agg_ref) or return;
-    };
-    if ( my $error = $@ ) {
-        print "error ".$error."\n";
+
+    if ( $sendmail_binary ) {
+        # Send using the sendmail binary
+        print "delivering message to $to, using $sendmail_binary\n" if $verbose;
         log_to_syslog({
             'id'         => $rid,
             'deliver_to' => $to,
-            'error'      => $error,
+            'sendmail'   => $sendmail_binary,
         });
-        $report->store->error($rid, $error);
-        return;
     }
-    return if ! $smtp;
-
-    print "delivering message to $to, via ".$smtp->host."\n";
-    log_to_syslog({
-        'id'         => $rid,
-        'deliver_to' => $to,
-        'smtp_via'   => $smtp->host,
-    });
+    else {
+        eval {
+            $smtp = get_smtp_connection($to,$shrunk,$agg_ref) or return;
+        };
+        if ( my $error = $@ ) {
+            print "error ".$error."\n" if $verbose;
+            log_to_syslog({
+                'id'         => $rid,
+                'deliver_to' => $to,
+                'error'      => $error,
+            });
+            $report->store->error($rid, $error);
+            return;
+        }
+        return if ! $smtp;
+        print "delivering message to $to, via ".$smtp->host."\n" if $verbose;
+        log_to_syslog({
+            'id'         => $rid,
+            'deliver_to' => $to,
+            'smtp_via'   => $smtp->host,
+        });
+    }
 
     my $from = $report->config->{organization}{email};
-    $smtp->mail($from) or do {
-        my $err = $smtp->code ." ". $smtp->message;
-        print "MAIL FROM $from rejected\n\t$err\n";
-        log_to_syslog({
-            'id'         => $rid,
-            'mail_from'  => $from,
-            'smtp_error' => $err,
-        });
-        $report->store->error($rid, $err) if $rid;
-        $smtp->quit;
-        return;
-    };
 
-    $smtp->recipient( $to ) or do {
-        my $err = $smtp->code ." ". $smtp->message;
-        print "RCPT TO $to rejected\n\t$err\n";
-        log_to_syslog({
-            'id'         => $rid,
-            'rcpt_to'    => $to,
-            'smtp_error' => $err,
-        });
-        if ( $rid ) {
-            if ( $smtp->code =~ /^5/ ) {  # SMTP 5XX error
-                print "Report $rid deleted \n";
-                log_to_syslog({
-                    'id'        => $rid,
-                    'error'     => 'Report deleted',
-                    'smtp_code' => $smtp->code,
-                });
-                $report->store->delete_report($rid);
-            }
-            else {
-                $report->store->error($rid, $err);
-            };
+    if ( $smtp ) {
+
+        $smtp->mail($from) or do {
+            my $err = $smtp->code ." ". $smtp->message;
+            print "MAIL FROM $from rejected\n\t$err\n" if $verbose;
+            log_to_syslog({
+                'id'         => $rid,
+                'mail_from'  => $from,
+                'smtp_error' => $err,
+            });
+            $report->store->error($rid, $err) if $rid;
+            $smtp->quit;
+            return;
         };
-        $smtp->quit;
-        return;
-    };
+
+        $smtp->recipient( $to ) or do {
+            my $err = $smtp->code ." ". $smtp->message;
+            print "RCPT TO $to rejected\n\t$err\n" if $verbose;
+            log_to_syslog({
+                'id'         => $rid,
+                'rcpt_to'    => $to,
+                'smtp_error' => $err,
+            });
+            if ( $rid ) {
+                if ( $smtp->code =~ /^5/ ) {  # SMTP 5XX error
+                    print "Report $rid deleted \n" if $verbose;
+                    log_to_syslog({
+                        'id'        => $rid,
+                        'error'     => 'Report deleted',
+                        'smtp_code' => $smtp->code,
+                    });
+                    $report->store->delete_report($rid);
+                }
+                else {
+                    $report->store->error($rid, $err);
+                };
+            };
+            $smtp->quit;
+            return;
+        };
+
+    }
 
     my $body = $shrunk;
     if ( $rid ) {
@@ -367,7 +384,7 @@ sub email {
             $body = $signature->as_string . "\015\012" . $body;
         };
         if ( my $error = $@ ) {
-            print "DKIM Signing error\n\t$error\n";
+            print "DKIM Signing error\n\t$error\n" if $verbose;
             log_to_syslog({
                 'id'           => $rid,
                 'error'        => 'DKIM Signing error',
@@ -378,40 +395,94 @@ sub email {
         }
     }
 
-    $smtp->data($body) or do {
-        my $err = $smtp->code ." ". $smtp->message;
-        if ( $agg_ref ) {
-            my $to_domain = $$agg_ref->policy_published->domain;
-            print "DATA for domain $to_domain report rejected\n\t$err\n";
-            log_to_syslog({
-                'id'           => $rid,
-                'error'        => 'DATA rejected',
-                'to_domain'    => $to_domain,
-                'error_detail' => $err,
-            });
-        }
-        else {
-            print "DATA for report rejected\n\t$err\n";
-            log_to_syslog({
-                'id'           => $rid,
-                'error'        => 'DATA rejected',
-                'error_detail' => $err,
-            });
+    if ( $smtp ) {
+        $smtp->data($body) or do {
+            my $err = $smtp->code ." ". $smtp->message;
+            if ( $agg_ref ) {
+                my $to_domain = $$agg_ref->policy_published->domain;
+                print "DATA for domain $to_domain report rejected\n\t$err\n" if $verbose;
+                log_to_syslog({
+                    'id'           => $rid,
+                    'error'        => 'DATA rejected',
+                    'to_domain'    => $to_domain,
+                    'error_detail' => $err,
+                });
+            }
+            else {
+                print "DATA for report rejected\n\t$err\n" if $verbose;
+                log_to_syslog({
+                    'id'           => $rid,
+                    'error'        => 'DATA rejected',
+                    'error_detail' => $err,
+                });
+            };
+            $report->store->error($rid, $err) if $rid;
+            return;
         };
-        $report->store->error($rid, $err) if $rid;
-        return;
-    };
 
-    my @accepts = $smtp->message;
-    my $accept = $smtp->code . ' ' . pop @accepts;
-    $accept =~ s/\r$//;
-    print "SMTP accepted\n\t$accept\n";
-    log_to_syslog({
-        'id'          => $rid,
-        'smtp_accept' => $accept,
-    });
+        my @accepts = $smtp->message;
+        my $accept = $smtp->code . ' ' . pop @accepts;
+        $accept =~ s/\r$//;
+        print "SMTP accepted\n\t$accept\n" if $verbose;
+        log_to_syslog({
+            'id'          => $rid,
+            'smtp_accept' => $accept,
+        });
 
-    $smtp->quit;
+        $smtp->quit;
+
+    }
+    else {
+        # Send message using sendmail binary
+        my @binary_template = split( / /, $sendmail_binary );
+        my @binary_options;
+        foreach my $option ( @binary_template ) {
+            if ( $option eq '%from%' ) {
+                push @binary_options, $from;
+            }
+            elsif ( $option eq '%to%' ) {
+                push @binary_options, $to;
+            }
+            else {
+                push @binary_options, $option;
+            }
+        }
+
+        open(my $Send, "|-", @binary_options )
+        || do {
+            if ( $agg_ref ) {
+                my $to_domain = $$agg_ref->policy_published->domain;
+                print "Failed to open sendmail for domain $to_domain\n" if $verbose;
+                log_to_syslog({
+                    'id'           => $rid,
+                    'error'        => 'Failed to open sendmail',
+                    'to_domain'    => $to_domain,
+                    'error_detail' => 'open failed',
+                });
+            }
+            else {
+                print "Failed to open sendmail\n" if $verbose;
+                log_to_syslog({
+                    'id'           => $rid,
+                    'error'        => 'DATA rejected',
+                    'error_detail' => 'open failed',
+                });
+            };
+            $report->store->error($rid, 'sending failed') if $rid;
+            return;
+        };
+
+        print $Send $body;
+        close $Send;
+
+        print "passed to sendmail\n" if $verbose;
+        log_to_syslog({
+            'id'     => $rid,
+            'accept' => 'sendmail',
+        });
+
+    }
+
     return 1;
 }
 
