@@ -125,8 +125,8 @@ sub send_single_report {
         $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
     };
     if ( my $error = $@ ) {
-       print "No valid ruas found, deleting report\n" if $verbose;
-       log_to_syslog({
+        print "No valid ruas found, deleting report\n" if $verbose;
+        log_to_syslog({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report - ' . $error,
         });
@@ -136,8 +136,8 @@ sub send_single_report {
     }
 
     if ( scalar @{ $uri_ref } == 0 ) {
-       print "No valid ruas found, deleting report\n" if $verbose;
-       log_to_syslog({
+        print "No valid ruas found, deleting report\n" if $verbose;
+        log_to_syslog({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report',
         });
@@ -279,7 +279,7 @@ sub email {
     my $rid;
     $rid = $$agg_ref->metadata->report_id if $agg_ref;
 
-    my $sendmail_binary = $report->config->{sendmail}->{binary} || q{};
+    my $sendmail_binary = $report->config->{sendmail}->{binary} || '';
     my $smtp;
 
     if ( $sendmail_binary ) {
