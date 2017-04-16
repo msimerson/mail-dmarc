@@ -46,6 +46,26 @@ test_report_window();
 test_interval_limits();
 test_public_suffix_list();
 
+{ # config file loaded before any other attr initialization
+    {
+        package Mail::DMARC::Testing;
+        our @ISA = qw(Mail::DMARC);
+        sub assert_ok {
+            my ($self) = @_;
+            Test::More::is(
+                $self->config->{organization}{domain},
+                "example-test.com",
+                "config file is initialized before assert_ok",
+            );
+        }
+    }
+
+    my $new_dmarc = Mail::DMARC::Testing->new(
+        config_file => "t/mail-dmarc.ini",
+        assert_ok   => 1,
+    );
+};
+
 done_testing();
 exit;
 
