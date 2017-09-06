@@ -1,6 +1,9 @@
 
 {{$NEXT}}
 
+1.20170906 2017-09-06 Australia/Melbourne
+ - Ignore the case of tag keys when parsing DMARC records
+
 1.20170222 2017-02-21 America/Los_Angeles
 
  - Ensure entities in XML agg reports are properly escaped #104

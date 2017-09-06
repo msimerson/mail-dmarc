@@ -50,7 +50,7 @@ sub parse {
             $warned++;
             next;
         }
-        $policy{$tag} = $value;
+        $policy{lc $tag} = $value;
     }
     return bless \%policy, ref $self;    # inherited defaults + overrides
 }
