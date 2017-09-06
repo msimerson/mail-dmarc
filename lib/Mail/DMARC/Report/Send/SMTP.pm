@@ -226,8 +226,12 @@ sub assemble_message {
 sub get_timestamp_rfc2822 {
     my ($self, @args) = @_;
     my @ts = scalar @args ? @args : localtime;
-    return POSIX::strftime( '%a, %d %b %Y %H:%M:%S %z', @ts );
-};
+    my $locale = setlocale(LC_CTYPE);
+    setlocale(LC_ALL, 'C');
+    my $timestamp = POSIX::strftime( '%a, %d %b %Y %H:%M:%S %z', @ts );
+    setlocale(LC_ALL, $locale);
+    return $timestamp;
+}
 
 sub get_helo_hostname {
     my $self = shift;
