@@ -101,9 +101,9 @@ sub send_single_report {
 
     alarm($alarm_at);
 
-    print 'ID:     ' . $aggregate->metadata->report_id . "\n";
-    print 'Domain: ' . $aggregate->policy_published->domain . "\n";
-    print 'rua:    ' . $aggregate->policy_published->rua . "\n";
+    print 'ID:     ' . $aggregate->metadata->report_id . "\n" if $verbose;
+    print 'Domain: ' . $aggregate->policy_published->domain . "\n" if $verbose;
+    print 'rua:    ' . $aggregate->policy_published->rua . "\n" if $verbose;
 
     log_to_syslog({
         'id'     => $aggregate->metadata->report_id,
@@ -125,7 +125,7 @@ sub send_single_report {
         $uri_ref = $report->uri->parse( $aggregate->policy_published->rua );
     };
     if ( my $error = $@ ) {
-        print "No valid ruas found, deleting report\n";
+        print "No valid ruas found, deleting report\n" if $verbose;
         log_to_syslog({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report - ' . $error,
@@ -136,7 +136,7 @@ sub send_single_report {
     }
 
     if ( scalar @{ $uri_ref } == 0 ) {
-        print "No valid ruas found, deleting report\n";
+        print "No valid ruas found, deleting report\n" if $verbose;
         log_to_syslog({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report',
@@ -159,7 +159,7 @@ sub send_single_report {
                 'id'   => $aggregate->metadata->report_id,
                 "info' => 'skipping $method: report size ($bytes) larger than $max",
             });
-            print "skipping $method: report size ($bytes) larger than $max\n";
+            print "skipping $method: report size ($bytes) larger than $max\n" if $verbose;
             push @too_big, $method;
             next URI;
         }
@@ -241,7 +241,7 @@ sub get_smtp_connection {
             if ( $rid ) {
                 my $errors = scalar $$agg_ref->metadata->error;
                 if ( $errors >= 12 ) {
-                    print "Report $rid deleted (too many errors)\n";
+                    print "Report $rid deleted (too many errors)\n" if $verbose;
                     log_to_syslog({
                         'id'    => $rid,
                         'error' => 'Report deleted, too many errors',
@@ -284,7 +284,7 @@ sub email {
         $smtp = get_smtp_connection($to,$shrunk,$agg_ref) or return;
     };
     if ( my $error = $@ ) {
-        print "error ".$error."\n";
+        print "error ".$error."\n" if $verbose;
         log_to_syslog({
             'id'         => $rid,
             'deliver_to' => $to,
@@ -295,7 +295,7 @@ sub email {
     }
     return if ! $smtp;
 
-    print "delivering message to $to, via ".$smtp->host."\n";
+    print "delivering message to $to, via ".$smtp->host."\n" if $verbose;
     log_to_syslog({
         'id'         => $rid,
         'deliver_to' => $to,
@@ -305,7 +305,7 @@ sub email {
     my $from = $report->config->{organization}{email};
     $smtp->mail($from) or do {
         my $err = $smtp->code ." ". $smtp->message;
-        print "MAIL FROM $from rejected\n\t$err\n";
+        print "MAIL FROM $from rejected\n\t$err\n" if $verbose;
         log_to_syslog({
             'id'         => $rid,
             'mail_from'  => $from,
@@ -318,7 +318,7 @@ sub email {
 
     $smtp->recipient( $to ) or do {
         my $err = $smtp->code ." ". $smtp->message;
-        print "RCPT TO $to rejected\n\t$err\n";
+        print "RCPT TO $to rejected\n\t$err\n" if $verbose;
         log_to_syslog({
             'id'         => $rid,
             'rcpt_to'    => $to,
@@ -326,7 +326,7 @@ sub email {
         });
         if ( $rid ) {
             if ( $smtp->code =~ /^5/ ) {  # SMTP 5XX error
-                print "Report $rid deleted \n";
+                print "Report $rid deleted \n" if $verbose;
                 log_to_syslog({
                     'id'        => $rid,
                     'error'     => 'Report deleted',
@@ -367,7 +367,7 @@ sub email {
             $body = $signature->as_string . "\015\012" . $body;
         };
         if ( my $error = $@ ) {
-            print "DKIM Signing error\n\t$error\n";
+            print "DKIM Signing error\n\t$error\n" if $verbose;
             log_to_syslog({
                 'id'           => $rid,
                 'error'        => 'DKIM Signing error',
@@ -382,7 +382,7 @@ sub email {
         my $err = $smtp->code ." ". $smtp->message;
         if ( $agg_ref ) {
             my $to_domain = $$agg_ref->policy_published->domain;
-            print "DATA for domain $to_domain report rejected\n\t$err\n";
+            print "DATA for domain $to_domain report rejected\n\t$err\n" if $verbose;
             log_to_syslog({
                 'id'           => $rid,
                 'error'        => 'DATA rejected',
@@ -391,7 +391,7 @@ sub email {
             });
         }
         else {
-            print "DATA for report rejected\n\t$err\n";
+            print "DATA for report rejected\n\t$err\n" if $verbose;
             log_to_syslog({
                 'id'           => $rid,
                 'error'        => 'DATA rejected',
@@ -405,7 +405,7 @@ sub email {
     my @accepts = $smtp->message;
     my $accept = $smtp->code . ' ' . pop @accepts;
     $accept =~ s/\r$//;
-    print "SMTP accepted\n\t$accept\n";
+    print "SMTP accepted\n\t$accept\n" if $verbose;
     log_to_syslog({
         'id'          => $rid,
         'smtp_accept' => $accept,
