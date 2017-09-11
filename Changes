@@ -1,6 +1,9 @@
 
 {{$NEXT}}
 
+1.20170911 2017009011 Australia/Melbourne
+ - STARTTLS workaround for Net::SMTPS issue.
+
 1.20170906 2017-09-06 Australia/Melbourne
  - Ignore the case of tag keys when parsing DMARC records
 
