@@ -71,7 +71,7 @@ sub test_setter_values {
         sp    => [qw/ none reject quarantine NoNe REjEcT QuarAntine /],
         adkim => [qw/ r s R S /],
         aspf  => [qw/ r s R S /],
-        fo    => [qw/ 0 1 d s D S /],
+        fo    => [qw/ 0 1 d s D S 0:d 0:1:d:s /],
         rua   => [
             qw{ http://example.com/pub/dmarc!30m mailto:dmarc-feed@example.com!10m }
         ],
