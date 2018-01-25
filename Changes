@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+ - Allow domains listed in the public suffix list to align.
+
 1.20170911 2017009011 Australia/Melbourne
  - STARTTLS workaround for Net::SMTPS issue.
 

@@ -329,6 +329,27 @@ sub test_is_dkim_aligned {
     # no DKIM signatures
     ok( $dmarc->dkim( [] ), "dkim, no signatures" );
     ok( !$dmarc->is_dkim_aligned(), "is_dkim_aligned, empty" );
+
+    # PSL listed domains
+
+    ok( $dmarc->dkim(
+            [   {   domain       => 'net',
+                    selector     => 'apr2013',
+                    result       => 'pass',
+                    human_result => 'pass',
+                },
+            ]
+        ),
+        "dkim, setup"
+    );
+
+    ok( $dmarc->header_from('net'), "dkim, set header_from" );
+    ok( $dmarc->is_dkim_aligned(),               "is_dkim_aligned, relaxed" );
+
+    # negative test
+    ok( $dmarc->header_from('example.net'), "dkim, set header_from" );
+    ok( !$dmarc->is_dkim_aligned(),              "is_dkim_aligned, miss" );
+
 }
 
 sub test_is_aligned {
