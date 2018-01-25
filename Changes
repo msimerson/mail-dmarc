@@ -1,6 +1,8 @@
 
 {{$NEXT}}
 
+1.20180125 2018-01-25 Australia/Melbourne
+
  - Allow domains listed in the public suffix list to align.
 
 1.20170911 2017009011 Australia/Melbourne
