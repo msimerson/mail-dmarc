@@ -207,9 +207,6 @@ sub is_dkim_aligned {
     foreach my $dkim_ref ( $self->get_dkim_pass_sigs() ) {
         my $dkim_dom = lc $dkim_ref->{domain};
 
-        # 4.3.1 make sure $dkim_dom is not a public suffix
-        next if $self->is_public_suffix($dkim_dom);
-
         my $dkmeta = {
             domain   => $dkim_ref->{domain},
             selector => $dkim_ref->{selector},
@@ -293,6 +290,7 @@ sub is_spf_aligned {
 sub is_whitelisted {
     my $self = shift;
     my $s_ip = shift || $self->source_ip;
+    return if ! defined $s_ip;
     if ( ! $self->{_whitelist} ) {
         my $white_file = $self->config->{smtp}{whitelist} or return;
         return if ! -f $white_file || ! -r $white_file;
