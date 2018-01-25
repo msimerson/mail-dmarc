@@ -290,6 +290,7 @@ sub is_spf_aligned {
 sub is_whitelisted {
     my $self = shift;
     my $s_ip = shift || $self->source_ip;
+    return if ! defined $s_ip;
     if ( ! $self->{_whitelist} ) {
         my $white_file = $self->config->{smtp}{whitelist} or return;
         return if ! -f $white_file || ! -r $white_file;
