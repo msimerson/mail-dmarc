@@ -3,7 +3,6 @@ package Mail::DMARC::Report::Send;
 use strict;
 use warnings;
 
-use lib 'lib';
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Send::SMTP;
 use Mail::DMARC::Report::Send::HTTP;
