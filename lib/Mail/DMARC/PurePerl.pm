@@ -99,7 +99,7 @@ sub save_aggregate {
         my @valid_report_uris = $self->get_valid_reporting_uri($pol->rua);
 
         my $filtered_report_uris = join( ',',
-            map { $_->{'uri'} . ( ( $_->{'max_bytes'} > 0 ) ? ( '!' . $$_->{'max_bytes'} ) : q{} ) }
+            map { $_->{'uri'} . ( ( $_->{'max_bytes'} > 0 ) ? ( '!' . $_->{'max_bytes'} ) : q{} ) }
                 @valid_report_uris
         );
 
