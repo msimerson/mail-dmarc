@@ -241,19 +241,19 @@ The SPF result code: none, neutral, pass, fail, softfail, temperror, or permerro
 
 ## Correct
 
-In cases where correctness is ambiguous, options are provided.
+The DMARC spec is lengthy and evolving, making correctness a moving target. In cases where correctness is ambiguous, options are generally provided.
 
 ## Easy to use
 
-Providing an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume is expected to increase adoption.
+The effectiveness of DMARC will improve significantly as adoption increases. Proving an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
 
 The list of dependencies appears long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is about 5. See the \[Prereq\] versus \[Prereq / Recommends\] sections in dist.ini.
 
 ## Maintainable
 
-This implementation aims to be straight forward and easy to alter and extend. The programming style is primarily OO, which carries a small performance penalty but large dividends in maintainability.
+Since DMARC is evolving, this implementation aims to be straight forward and easy to alter and extend. The programming style is primarily OO, which carries a small performance penalty but large dividends in maintainability.
 
-When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class, to broker the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than those provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
+When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class to broker the request. When storing reports, calls are made to the Store class which dispatches to the SQL class. The idea is that if someone desired a data store other than those provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
 
 ## Fast
 
@@ -281,7 +281,6 @@ The daddy of this perl module was a DMARC module for the qpsmtpd MTA.
 # CONTRIBUTORS
 
 - Benny Pedersen <me@junc.eu>
-- ColocateUSA.net <company@colocateusa.net>
 - Jean Paul Galea <jeanpaul@yubico.com>
 - Marc Bradshaw <marc@marcbradshaw.net>
 - Priyadi Iman Nurcahyo <priyadi@priyadi.net>
