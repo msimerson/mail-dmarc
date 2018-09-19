@@ -398,7 +398,21 @@ sub email {
                 'error_detail' => $err,
             });
         };
-        $report->store->error($rid, $err) if $rid;
+
+        if ($rid) {
+            if ( $smtp->code =~ /^5/ ) {  # SMTP 5XX error
+                print "Report $rid deleted\n";
+                log_to_syslog({
+                    'id'        => $rid,
+                    'error'     => 'Report deleted',
+                    'smtp_code' => $smtp->code,
+                });
+                $report->store->delete_report($rid);
+            }
+            else {
+                $report->store->error($rid, $err);
+            }
+        }
         return;
     };
 
