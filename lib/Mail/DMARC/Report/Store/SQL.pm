@@ -172,8 +172,8 @@ sub get_report_id {
     # Reports submitted by our local MTA will not have a report ID
     # They aggregate on the From domain, where the DMARC policy was discovered
         $ids = $self->query(
-        'SELECT id FROM report WHERE from_domain_id=? AND end > ?',
-        [ $from_dom_id, time ]
+        'SELECT id FROM report WHERE from_domain_id=? AND end > ? AND author_id=?',
+        [ $from_dom_id, time, $author_id ]
         );
     };
 
