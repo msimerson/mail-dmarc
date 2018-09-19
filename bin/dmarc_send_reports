@@ -375,7 +375,7 @@ sub email {
             });
             $smtp->quit;
             return;
-        };
+        }
     }
 
     $smtp->data($body) or do {
@@ -411,8 +411,8 @@ sub email {
             }
             else {
                 $report->store->error($rid, $err);
-            };
-        };
+            }
+        }
         return;
     };
 

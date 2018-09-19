@@ -245,7 +245,7 @@ The DMARC spec is lengthy and evolving, making correctness a moving target. In c
 
 ## Easy to use
 
-The effectiveness of DMARC will improve significantly as adoption increases. Proving an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
+The effectiveness of DMARC will improve significantly as adoption increases. Providing an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
 
 The list of dependencies appears long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is about 5. See the \[Prereq\] versus \[Prereq / Recommends\] sections in dist.ini.
 
