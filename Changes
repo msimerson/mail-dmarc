@@ -1,5 +1,7 @@
 
 {{$NEXT}}
+
+1.20181001 2018-10-01 Australia/Melbourne
  - Check author when saving a new report record
  - Fix bug in RUA filtering when recipient had a size filter
  - Fix TLS fails for report sending to certain domains
