@@ -1,5 +1,9 @@
 
 {{$NEXT}}
+ - Check author when saving a new report record
+ - Fix bug in RUA filtering when recipient had a size filter
+ - Fix TLS fails for report sending to certain domains
+ - Fix report sending loop problem
 
 1.20180125 2018-01-25 Australia/Melbourne
 
