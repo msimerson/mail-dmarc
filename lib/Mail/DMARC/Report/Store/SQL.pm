@@ -73,6 +73,32 @@ sub retrieve {
     return $reports;
 }
 
+sub next_todo {
+    my ( $self ) = @_;
+
+    if ( ! exists $self->{ _todo_list } ) {
+        $self->{_todo_list} = $self->query( $self->get_todo_query, [ time ] );
+        return if ! $self->{_todo_list};
+    }
+
+    my $next_todo = shift @{ $self->{_todo_list} };
+    if ( ! $next_todo ) {
+        delete $self->{_todo_list};
+        return;
+    }
+
+    my $agg = Mail::DMARC::Report::Aggregate->new();
+    $self->populate_agg_metadata( \$agg, \$next_todo );
+
+    my $pp = $self->get_report_policy_published( $next_todo->{rid} );
+    $pp->{domain} = $next_todo->{from_domain};
+    $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
+
+    $self->populate_agg_records( \$agg, $next_todo->{rid} );
+    return $agg;
+
+}
+
 sub retrieve_todo {
     my ( $self, @args ) = @_;
 
@@ -96,7 +122,6 @@ sub retrieve_todo {
     }
     return \@reports_todo;
 }
-
 
 sub delete_report {
     my $self = shift;

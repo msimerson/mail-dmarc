@@ -59,12 +59,11 @@ if ( $report->config->{report_sign}->{keyfile} ) {
 
 local $SIG{'ALRM'} = sub{ die "timeout\n" };
 
-my $todo_reports = $report->store->retrieve_todo();
 my $batch_do = 1;
 
 # 1. get reports, one at a time
 REPORT:
-foreach my $aggregate ( @{ $todo_reports } ) {
+while ( my $aggregate = $report->store->next_todo() ) {
 
     eval {
         send_single_report( $aggregate, $report );
