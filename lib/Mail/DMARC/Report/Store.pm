@@ -22,6 +22,11 @@ sub retrieve {
     return $self->backend->retrieve(@_);
 }
 
+sub next_todo {
+    my $self = shift;
+    return $self->backend->next_todo(@_);
+}
+
 sub retrieve_todo {
     my $self = shift;
     return $self->backend->retrieve_todo(@_);
