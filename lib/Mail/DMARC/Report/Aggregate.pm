@@ -232,7 +232,7 @@ in order to facilitate correlation.
 This is a translation of the XML report format in the 2013 Draft, converted to perl data structures.
 
    feedback => {
-      version          => 1,  # decimal
+      version          => 1.0,  # decimal
       report_metadata  => {                # info about DMARC reporter
           report_id          => string
           org_name           => 'Art Farm',
@@ -251,17 +251,18 @@ This is a translation of the XML report format in the 2013 Draft, converted to p
           p      =>   none, quarantine, reject
           sp     =>   none, quarantine, reject
           pct    =>   integer
+          fo     =>   string
       },
       record   => [
          {  row => {
                source_ip     =>   # IPAddress
                count         =>   # integer
-               policy_evaluated => {       # min=0
+               policy_evaluated => {       # min=1
                   disposition =>           # none, quarantine, reject
                   dkim        =>           # pass, fail
                   spf         =>           # pass, fail
                   reason      => [         # min 0, max unbounded
-                      {   type    =>    # forwarded sampled_out ...
+                      {   type    =>    # forwarded sampled_out, trusted_forwarder, mailing_list, local_policy, other
                           comment =>    # string, min 0
                       },
                   ],
@@ -273,17 +274,17 @@ This is a translation of the XML report format in the 2013 Draft, converted to p
                 header_from    min=1
             },
             auth_results => {
-               spf => [           # min 1, max unbounded
+               spf => [            # min 1, max unbounded
                   {  domain  =>    # min 1
-                     scope   =>    # helo, mfrom  -  min 1
-                     result  =>    # none neutral ...
+                     scope   =>    # min 1, helo, mfrom
+                     result  =>    # min 1, none neutral pass fail softfail temperror permerror
                   }
                ]                   # ( unknown -> temperror, error -> permerror )
                dkim   => [                # min 0, max unbounded
-                  {  domain       =>  ,   # the d= parameter in the signature
-                     selector     =>  ,   # min 0
-                     result       =>  ,   # none pass fail policy ...
-                     human_result =>      # min 0
+                  {  domain       =>  ,   # min 1, the d= parameter in the signature
+                     selector     =>  ,   # min 0, string
+                     result       =>  ,   # none pass fail policy neutral temperror permerror
+                     human_result =>      # min 0, string
                   },
                ],
             },
