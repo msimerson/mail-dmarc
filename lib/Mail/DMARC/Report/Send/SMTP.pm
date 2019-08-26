@@ -38,73 +38,9 @@ sub get_domain_mx {
     return \@mx;
 }
 
-sub connect_smtp {
-    my ( $self, $to ) = @_;
-
-    my $smtp = Net::SMTP->new(
-        [ $self->get_smtp_hosts($to) ],
-        Timeout         => 30,
-        Port            => 25,
-        Hello           => $self->get_helo_hostname,
-        Debug           => $self->verbose ? 1 : 0,
-        )
-        or do {
-            carp "SMTP connection failed\n";
-            return;
-        };
-
-    return $smtp;
-};
-
-sub connect_smtp_tls {
-    my ($self, $to) = @_;
-
-    # lazy load, so test can load this file w/o dep. installed
-    eval "require Net::SMTPS" or return;  ## no critic (Eval)
-
-    my $smtp = Net::SMTPS->new(
-        [ $self->get_smtp_hosts($to) ],
-        Timeout         => 32,
-        Port            => $self->config->{smtp}{smarthost} ? 587 : 25,
-        Hello           => $self->get_helo_hostname,
-        Debug           => $self->verbose ? 1 : 0,
-        SSL_verify_mode => 0,
-        )
-        or do {
-            warn "SSL connection failed\n"; ## no critic (Carp)
-            return;
-        };
-
-    my $tls_supported = $smtp->supports('STARTTLS');
-    if ( ! defined $tls_supported ) {
-        warn "server does not support STARTTLS\n"; ## no critic (Carp)
-        return;
-    }
-
-    $smtp->starttls();
-    if ( $smtp->code =~ /^5/ ) {
-        warn "server failed STARTTLS upgrade\n"; ## no critic (Carp)
-        return;
-    }
-    $smtp->hello($self->get_helo_hostname);
-
-    my $c = $self->config->{smtp};
-    if ( $c->{smarthost} && $c->{smartuser} && $c->{smartpass} ) {
-        $smtp->auth( $c->{smartuser}, $c->{smartpass} ) or do {
-            carp "auth attempt for $c->{smartuser} failed";
-        };
-    }
-
-    return $smtp;
-};
-
 sub get_smtp_hosts {
     my $self = shift;
     my $email = shift or croak "missing email!";
-
-    if ( $self->config->{smtp}{smarthost} ) {
-        return $self->config->{smtp}{smarthost};
-    }
 
     my ($domain) = ( split /@/, $email )[-1];
     my @mx = map  { $_->{addr} }
@@ -176,7 +112,32 @@ sub get_filename {
     ) . '.xml';
 }
 
-sub assemble_message {
+sub assemble_too_big_message_object {
+    my ( $self, $to, $body ) = @_;
+
+    my @parts    = Email::MIME->create(
+        attributes => {
+            content_type => "text/plain",
+            disposition  => "inline",
+            charset      => "US-ASCII",
+        },
+        body => body,
+    ) or croak "unable to add body!";
+
+    my $email = Email::MIME->create(
+        header_str => [
+            From => $self->config->{organization}{email},
+            To   => $to,
+            Date => $self->get_timestamp_rfc2822,
+            Subject => 'DMARC too big report',
+        ],
+        parts => [@parts],
+    ) or croak "unable to assemble message\n";
+
+    return $email;
+}
+
+sub assemble_message_object {
     my ( $self, $agg_ref, $to, $shrunk ) = @_;
 
     my $filename = $self->get_filename($agg_ref);
@@ -215,7 +176,7 @@ sub assemble_message {
         parts => [@parts],
     ) or croak "unable to assemble message\n";
 
-    return $email->as_string;
+    return $email;
 }
 
 sub get_timestamp_rfc2822 {
