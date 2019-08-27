@@ -254,7 +254,7 @@ sub save_aggregate {
         $agg->metadata->$f( $self->config->{organization}{$f} );
     };
 
-    my ( $begin, $end ) = $self->get_report_window( $self->result->published->ri, time() );
+    my ( $begin, $end ) = $self->get_report_window( $self->result->published->ri, $self->time );
 
     $agg->metadata->begin( $begin );
     $agg->metadata->end( $end );

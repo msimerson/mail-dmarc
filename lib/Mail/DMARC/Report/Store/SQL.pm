@@ -84,7 +84,7 @@ sub next_todo {
     my ( $self ) = @_;
 
     if ( ! exists $self->{ _todo_list } ) {
-        $self->{_todo_list} = $self->query( $self->grammar->select_todo_query, [ time ] );
+        $self->{_todo_list} = $self->query( $self->grammar->select_todo_query, [ $self->time ] );
         return if ! $self->{_todo_list};
     }
 
@@ -110,8 +110,7 @@ sub retrieve_todo {
 
     # this method extracts the data from the SQL tables and populates a
     # list of Aggregate report objects with them.
-    my $reports = $self->query( $self->grammar->select_todo_query, [ time ] );
-
+    my $reports = $self->query( $self->grammar->select_todo_query, [ $self->time ] );
     my @reports_todo;
     return \@reports_todo if ! scalar @$reports;
 
@@ -207,7 +206,7 @@ sub get_report_id {
     # They aggregate on the From domain, where the DMARC policy was discovered
         $ids = $self->query(
         $self->grammar->select_id_with_end,
-        [ $from_dom_id, time, $author_id ]
+        [ $from_dom_id, $self->time, $author_id ]
         );
     };
 
@@ -433,7 +432,7 @@ sub insert_agg_record {
 sub insert_error {
     my ( $self, $rid, $error ) = @_;
     # wait >5m before trying to deliver this report again
-    $self->query($self->grammar->insert_error(0), [time + (5*60), $rid]);
+    $self->query($self->grammar->insert_error(0), [$self->time + (5*60), $rid]);
 
     return $self->query(
         $self->grammar->insert_error(1),

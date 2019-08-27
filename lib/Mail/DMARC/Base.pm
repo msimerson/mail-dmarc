@@ -24,6 +24,18 @@ sub new {
     }, $class;
 }
 
+my $_fake_time;
+sub time {
+    # Ability to return a fake time for testing
+    my ( $self ) = @_;
+    return $Mail::DMARC::Base::_fake_time if defined $Mail::DMARC::Base::_fake_time;
+    return time;
+}
+sub set_fake_time {
+    my ( $self, $time ) = @_;
+    $Mail::DMARC::Base::_fake_time = $time;
+}
+
 sub config {
     my ( $self, $file, @too_many ) = @_;
     croak "invalid args" if scalar @too_many;

@@ -56,8 +56,8 @@ sub get_subject {
     my ( $self, $agg_ref ) = @_;
 
 
-    my $rid = $$agg_ref->metadata->report_id || time;
-    my $id = POSIX::strftime( "%Y.%m.%d.", localtime ) . $rid;
+    my $rid = $$agg_ref->metadata->report_id || $self->time;
+    my $id = POSIX::strftime( "%Y.%m.%d.", localtime $self->time ) . $rid;
     my $us = $self->config->{organization}{domain};
     if ($us eq 'example.com') {
         die "Please update mail-dmarc.ini";
@@ -108,7 +108,7 @@ sub get_filename {
         $$agg_ref->policy_published->domain,
         $$agg_ref->metadata->begin,
         $$agg_ref->metadata->end,
-        $$agg_ref->metadata->report_id || time,
+        $$agg_ref->metadata->report_id || $self->time,
     ) . '.xml';
 }
 
@@ -181,7 +181,7 @@ sub assemble_message_object {
 
 sub get_timestamp_rfc2822 {
     my ($self, @args) = @_;
-    my @ts = scalar @args ? @args : localtime;
+    my @ts = scalar @args ? @args : localtime $self->time;
     my $locale = setlocale(LC_CTYPE);
     setlocale(LC_ALL, 'C');
     my $timestamp = POSIX::strftime( '%a, %d %b %Y %H:%M:%S %z', @ts );
