@@ -121,7 +121,7 @@ sub assemble_too_big_message_object {
             disposition  => "inline",
             charset      => "US-ASCII",
         },
-        body => body,
+        body => $body,
     ) or croak "unable to add body!";
 
     my $email = Email::MIME->create(
