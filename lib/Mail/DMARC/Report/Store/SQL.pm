@@ -513,8 +513,12 @@ sub insert_policy_published {
     return 1;
 }
 
+my $memory_db;
 sub db_connect {
     my $self = shift;
+
+    return $self->{dbix} if $self->{dbix};    # caching
+    return $Mail::DMARC::Report::Store::SQL::memory_db if $Mail::DMARC::Report::Store::SQL::memory_db;
 
     my $dsn  = $self->config->{report_store}{dsn} or croak;
     my $user = $self->config->{report_store}{user};
@@ -550,6 +554,12 @@ sub db_connect {
     if ($needs_tables) {
         $self->apply_db_schema($needs_tables);
     }
+
+    if ( $dsn eq 'dbi:SQLite:dbname=:memory:' ) {
+      # In memory database, make persistent
+      $Mail::DMARC::Report::Store::SQL::memory_db = $self->{dbix};
+    }
+
     return $self->{dbix};
 }
 
