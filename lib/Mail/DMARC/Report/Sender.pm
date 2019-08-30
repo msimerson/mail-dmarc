@@ -33,6 +33,7 @@ sub new {
 sub set_transports_method {
     my ( $self,$transports_method ) = @_;
     $self->{transports_method} = $transports_method;
+    return;
     # Transports method is a sub which returns
     # a list of transports for the given args.
 }
@@ -175,6 +176,7 @@ sub run {
     syslog( LOG_INFO, 'dmarc_send_reports done' ) if $self->{syslog};
     closelog() if $self->{syslog};
 
+    return;
 }
 
 # PODNAME: dmarc_send_reports
