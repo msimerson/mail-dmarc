@@ -111,17 +111,13 @@ sub test_get_filename {
 };
 
 sub test_assemble_message {
-    my $mess = $smtp->assemble_message( \$agg, 'matt@example.com', $zipped );
-    ok( $mess, "assemble_message" );
+    my $mess = $smtp->assemble_message_object( \$agg, 'matt@example.com', $zipped )->as_string;
+    ok( $mess, "assemble_message_object" );
     #warn print $mess;
 }
 
 sub test_get_smtp_hosts {
     my $initial_smarthost = $smtp->config->{smtp}{smarthost};
-    $smtp->config->{smtp}{smarthost} = 'foo.example.com';
-    my @mx = $smtp->get_smtp_hosts('bar.com');
-    is_deeply( \@mx, ['foo.example.com'], "get_smtp_hosts, smarthost");
-
     $smtp->config->{smtp}{smarthost} = undef;
     my $tnpi_expected = [ 'mail.theartfarm.com', 'tnpi.net' ];
     my @hosts = $smtp->get_smtp_hosts('tnpi.net');
