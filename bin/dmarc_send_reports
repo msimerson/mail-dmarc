@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-
 use Mail::DMARC::Report::Sender;
 my $sender = Mail::DMARC::Report::Sender->new;
 $sender->run;

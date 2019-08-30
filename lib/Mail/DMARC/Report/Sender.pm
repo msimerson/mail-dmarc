@@ -3,7 +3,7 @@ package Mail::DMARC::Report::Sender;
 use strict;
 use warnings;
 
-#use Data::Dumper;
+use Data::Dumper;
 use Carp;
 use Encode;
 use Getopt::Long;
@@ -23,17 +23,17 @@ sub new {
         alarm_at => 120,
         syslog => 0,
         smarthost => undef,
-        transports_object => undef,
+        transports_method => undef,
         dkim_key => undef,
-        verbose => 0,
+        verbose => 1,
     };
     return bless $self, $class;
 };
 
-sub set_transports_object {
-    my ( $self,$transports_object ) = @_;
-    $self->{transports_object} = $transports_object;
-    # Transports object is an object with a get_transports_for method which returns
+sub set_transports_method {
+    my ( $self,$transports_method ) = @_;
+    $self->{transports_method} = $transports_method;
+    # Transports method is a sub which returns
     # a list of transports for the given args.
 }
 
@@ -42,8 +42,8 @@ sub get_transports_for {
     my ( $self, $args ) = @_;
 
     # Have we passed a custom transports generation class?
-    if ( $self->{transports_objects} ) {
-        return $self->{transports_object}->get_transports_for( $args );
+    if ( $self->{transports_method} ) {
+        return &{$self->{transports_method}}( $args );
     }
 
     my $report = $args->{report};
@@ -133,7 +133,6 @@ sub run {
     my $report = Mail::DMARC::Report->new();
     $self->{report} = $report;
     $report->verbose($self->{verbose}) if defined $self->{verbose};
-
     # If we have defined a custom transports generation class then
     # load and instantiate it here.
     if ( $report->config->{smtp}->{transports} ) {
@@ -153,7 +152,6 @@ sub run {
     # 1. get reports, one at a time
     REPORT:
     while ( my $aggregate = $report->store->next_todo() ) {
-
         eval {
             $self->send_report( $aggregate, $report );
         };
@@ -361,17 +359,19 @@ sub email {
     });
     my $success;
     while ( my $transport = shift @transports ) {
+        my $done = 0;
         eval {
             $success = sendmail(
                 $body,
                 {
                     from => $report->config->{organization}{email},
+                    to => $to,
                     transport => $transport,
                 }
             );
             if ( $success ) {
                 $log_data->{success} = $success->{message};
-                last;
+                $done = 1;
             }
         };
         if ( my $error = $@ ) {
@@ -390,6 +390,7 @@ sub email {
             }
             $report->store->error($rid, $error->message);
         }
+        last if $done;
     }
 
     $self->log_to_syslog( $log_data );
