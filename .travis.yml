@@ -7,16 +7,16 @@ perl:
 before_install:
 
 install:
-   - sudo cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
-   - sudo cpanm --quiet --notest Net::IP Socket6 Email::MIME DBD::SQLite Net::SMTPS XML::LibXML
-   - sudo cpanm --quiet --notest DBIx::Simple HTTP::Tiny Test::File::ShareDir Test::Output
-   - sudo cpanm --quiet --notest Net::IDN::Encode CGI
+   - cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
+   - cpanm --quiet --notest Net::IP Socket6 Email::MIME DBD::SQLite Net::SMTPS XML::LibXML
+   - cpanm --quiet --notest DBIx::Simple HTTP::Tiny Test::File::ShareDir Test::Output
+   - cpanm --quiet --notest Net::IDN::Encode CGI
 
 script:
    - HARNESS_IS_VERBOSE=1 prove -v -Ilib t
 
 after_success:
-  - sudo cpanm -n Devel::Cover::Report::Coveralls
+  - cpanm -n Devel::Cover::Report::Coveralls
   - cover -test -make 'prove -Ilib t' -report coveralls
 
-sudo: false
+sudo: true
