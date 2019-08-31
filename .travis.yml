@@ -1,8 +1,10 @@
 language: perl
 perl:
-  - "5.20"
-  - "5.14"
-  - "5.10"
+  - "5.22"
+# perlbrew (used by Travis to install perl versions) no longer supports these
+# lower versions
+# - "5.14"
+# - "5.10"
 
 before_install:
 
@@ -18,3 +20,5 @@ script:
 after_success:
   - cpanm -n Devel::Cover::Report::Coveralls
   - cover -test -make 'prove -Ilib t' -report coveralls
+
+sudo: true
