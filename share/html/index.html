@@ -5,8 +5,8 @@
  <title>Mail::DMARC::HTTP</title>
  <link rel="stylesheet" type="text/css" media="screen" href="http://code.jquery.com/ui/1.10.3/themes/cupertino/jquery-ui.css" />
  <link rel="stylesheet" type="text/css" media="screen" href="/dmarc/css/ui.jqgrid.css" />
- <script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.js"></script>
- <script type="text/javascript" src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+ <script type="text/javascript" src="http://code.jquery.com/jquery-3.4.1.min.js"></script>
+ <script type="text/javascript" src="http://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
  <script type="text/javascript" src="/dmarc/js/i18n/grid.locale-en.js"></script>
  <script type="text/javascript" src="/dmarc/js/jquery.jqGrid.min.js"></script>
 
@@ -29,16 +29,16 @@ span.cellWithoutBackground {
 <script type="text/javascript">
 // Set the options globally
 jQuery.extend(jQuery.jgrid.defaults, {
-		altRows:true,
-    datatype: "json",
-    height:'500',
-    jsonReader : {
-		  root:   'rows',
-			page:   'cur_page',
-			total:  'total_pages',
-			records:'total_rows',
-        repeatitems:false,
-			subgrid: {
+  altRows:true,
+  datatype: "json",
+  height:'60%',
+  jsonReader : {
+    root:   'rows',
+    page:   'cur_page',
+    total:  'total_pages',
+    records:'total_rows',
+    repeatitems:false,
+    subgrid: {
 				root:   'rows',
 				page:   'cur_page',
 				total:  'total_pages',
@@ -70,7 +70,7 @@ jQuery(document).ready(function(){
       sortorder: 'desc',
       caption:"DMARC Reports",
 			subGrid: true,
-      subGridRowExpanded: function(subgrid_id, row_id) {
+      subGridRowExpanded: function (subgrid_id, row_id) {
 
     // subgrid_id is a id of the div tag created within a table
     // the row_id is the id of the row
@@ -128,7 +128,7 @@ jQuery("#mybutton").click(function() {
 </head>
 
 <body>
-<p><a href="http://search.cpan.org/dist/Mail-DMARC/">Mail::DMARC::HTTP</a> - sponsored by <a href="http://www.colocateusa.net/">ColocateUSA</a>.</p>
+<p><a href="http://search.cpan.org/dist/Mail-DMARC/">Mail::DMARC::HTTP</a>.</p>
 
 <div id="mybutton"></div>
 
