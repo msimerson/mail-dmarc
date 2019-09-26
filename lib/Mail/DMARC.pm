@@ -321,21 +321,21 @@ DMARC: Domain-based Message Authentication, Reporting and Conformance
 
 This module is a suite of tools for implementing DMARC. It adheres very tightly to the 2013 DMARC draft, intending to implement every MUST and every SHOULD.
 
-This module can be used...
+This module can be used by...
 
 =over 4
 
 =item *
 
-by MTAs and filtering tools like SpamAssassin to validate that incoming messages are aligned with the purported sender's policy.
+MTAs and filtering tools like SpamAssassin to validate that incoming messages are aligned with the purported sender's policy.
 
 =item *
 
-by email senders, to receive DMARC reports from other mail servers and display them via CLI and web interfaces.
+email senders, to receive DMARC reports from other mail servers and display them via CLI and web interfaces.
 
 =item *
 
-by MTA operators to send DMARC reports to DMARC author domains.
+MTA operators to send DMARC reports to DMARC author domains.
 
 =back
 
@@ -578,9 +578,7 @@ If you deploy this in an environment where performance is insufficient, please p
 
 Mail::DMARC on GitHub: https://github.com/msimerson/mail-dmarc
 
-Mar 13, 2013 Draft: http://tools.ietf.org/html/draft-kucherawy-dmarc-base-00
-
-Mar 30, 2012 Draft: http://www.dmarc.org/draft-dmarc-base-00-02.txt
+2015-03 RFC 7489: https://tools.ietf.org/html/rfc7489
 
 Best Current Practices: http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03
 
