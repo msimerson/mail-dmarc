@@ -3,10 +3,10 @@
 <head>
  <meta charset="utf-8" />
  <title>Mail::DMARC::HTTP</title>
- <link rel="stylesheet" type="text/css" media="screen" href="http://code.jquery.com/ui/1.10.3/themes/cupertino/jquery-ui.css" />
+ <link rel="stylesheet" type="text/css" media="screen" href="https://code.jquery.com/ui/1.10.3/themes/cupertino/jquery-ui.css" />
  <link rel="stylesheet" type="text/css" media="screen" href="/dmarc/css/ui.jqgrid.css" />
- <script type="text/javascript" src="http://code.jquery.com/jquery-3.4.1.min.js"></script>
- <script type="text/javascript" src="http://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+ <script type="text/javascript" src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+ <script type="text/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
  <script type="text/javascript" src="/dmarc/js/i18n/grid.locale-en.js"></script>
  <script type="text/javascript" src="/dmarc/js/jquery.jqGrid.min.js"></script>
 
@@ -39,15 +39,15 @@ jQuery.extend(jQuery.jgrid.defaults, {
     records:'total_rows',
     repeatitems:false,
     subgrid: {
-				root:   'rows',
-				page:   'cur_page',
-				total:  'total_pages',
-				records:'total_rows',
-				repeatitems:false,
-			},
+      root:   'rows',
+      page:   'cur_page',
+      total:  'total_pages',
+      records:'total_rows',
+      repeatitems:false,
     },
-    pager: '#gridpager',
-  });
+  },
+  pager: '#gridpager',
+});
 
 jQuery(document).ready(function(){
   jQuery("#grid").jqGrid({
@@ -69,8 +69,8 @@ jQuery(document).ready(function(){
       editurl:"/dmarc/json/record/edit",
       sortorder: 'desc',
       caption:"DMARC Reports",
-			subGrid: true,
-      subGridRowExpanded: function (subgrid_id, row_id) {
+      subGrid: true,
+      subGridRowExpanded: (subgrid_id, row_id) => {
 
     // subgrid_id is a id of the div tag created within a table
     // the row_id is the id of the row
@@ -102,15 +102,15 @@ jQuery(document).ready(function(){
        });
       },
 
-		  filterToolbar: {
-				autosearch:true
-			},
+      filterToolbar: {
+        autosearch:true
+      },
   })
-	.navGrid('#gridpager',{add:false,del:false,edit:false,search:true});
+  .navGrid('#gridpager',{add:false,del:false,edit:false,search:true});
 });
 
-function dmarcFormatter(cellValue, Options, rowObject) {
-  var color;
+function dmarcFormatter (cellValue, Options, rowObject) {
+  let color;
   if ( cellValue == 'fail' ) color = '#FFCCCC';
   if ( cellValue == 'pass' ) color = '#CCFFCC';       // CCFFCC green
   if ( cellValue == 'reject' ) color = '#FFCCCC';     // FFCCCC red
@@ -128,7 +128,7 @@ jQuery("#mybutton").click(function() {
 </head>
 
 <body>
-<p><a href="http://search.cpan.org/dist/Mail-DMARC/">Mail::DMARC::HTTP</a>.</p>
+<p><a href="https://search.cpan.org/dist/Mail-DMARC/">Mail::DMARC::HTTP</a>.</p>
 
 <div id="mybutton"></div>
 
