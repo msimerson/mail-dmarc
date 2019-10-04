@@ -2,8 +2,13 @@
 {{$NEXT}}
 
 1.20191004 2019-10-04 America/Los_Angeles
+ - updated PSL
+ - update jQuery, jQuery grid
+ - empty ENV FROM when missing #144
 
 1.20190831 2019-08-31 America/Los_Angeles
+ - improve aggregate report docs #142
+ - added dmarc_whitelist hosts #119
 
 1.20190308 2019-03-08 Australia/Melbourne
  - Lower memory usage when sending reports
