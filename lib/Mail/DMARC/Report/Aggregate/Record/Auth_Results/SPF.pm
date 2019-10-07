@@ -64,7 +64,10 @@ sub is_valid {
 
     foreach my $f (qw/ domain result scope /) {
         next if $self->{$f};
-        warn "SPF $f is required but missing!\n";
+        if ($f ne 'scope') {
+            # quite a few DMARC reporters don't include scope
+            warn "SPF $f is required but missing!\n";
+        }
         return 0;
     }
 
