@@ -24,11 +24,18 @@ sub new {
         syslog => 0,
         smarthost => undef,
         transports_method => undef,
+        transports_object => undef,
         dkim_key => undef,
         verbose => 1,
     };
     return bless $self, $class;
 };
+
+sub set_transports_object {
+    my ( $self,$transports_object ) = @_;
+    $self->{transports_object} = $transports_object;
+    return;
+}
 
 sub set_transports_method {
     my ( $self,$transports_method ) = @_;
@@ -45,6 +52,9 @@ sub get_transports_for {
     # Have we passed a custom transports generation class?
     if ( $self->{transports_method} ) {
         return &{$self->{transports_method}}( $args );
+    }
+    if ( $self->{transports_object} ) {
+        return $self->{transports_object}->get_transports_for( $args );
     }
 
     my $report = $args->{report};
