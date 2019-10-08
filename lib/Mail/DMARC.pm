@@ -137,7 +137,7 @@ sub _from_mail_dkim {
     if ($signatures < 1) {
         push @{ $self->{dkim}},
             Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new(
-                domain       => $s->domain,
+                domain       => 'no.dkim.signatures',
                 result       => 'none',
             );
     }
