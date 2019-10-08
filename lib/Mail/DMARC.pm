@@ -112,9 +112,12 @@ sub dkim {
 sub _from_mail_dkim {
     my ( $self, $dkim ) = @_;
 
+    my $signatures = 0;
+
     # A DKIM verifier will have result and signature methods.
     foreach my $s ( $dkim->signatures ) {
         next if ref $s eq 'Mail::DKIM::DkSignature';
+        $signatures++;
 
         my $result = $s->result;
 
@@ -130,6 +133,15 @@ sub _from_mail_dkim {
                 human_result => $s->result_detail,
             );
     }
+
+    if ($signatures < 1) {
+        push @{ $self->{dkim}},
+            Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new(
+                domain       => $s->domain,
+                result       => 'none',
+            );
+    }
+
     return;
 }
 
@@ -269,7 +281,7 @@ sub save_aggregate {
 
     $agg->record($rec);
     return $self->report->save_aggregate;
-};
+}
 
 sub init {
     # used for testing
