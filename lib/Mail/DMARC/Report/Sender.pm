@@ -48,13 +48,14 @@ sub set_transports_method {
 # Return a list of transports to try in order.
 sub get_transports_for {
     my ( $self, $args ) = @_;
-
     # Have we passed a custom transports generation class?
     if ( $self->{transports_method} ) {
-        return &{$self->{transports_method}}( $args );
+        my @transports = &{$self->{transports_method}}( $args );
+        return @transports;
     }
     if ( $self->{transports_object} ) {
-        return $self->{transports_object}->get_transports_for( $args );
+        my @transports = $self->{transports_object}->get_transports_for( $args );
+        return @transports;
     }
 
     my $report = $args->{report};
@@ -77,12 +78,13 @@ sub get_transports_for {
     }
 
     my @smtp_hosts = $report->sendit->smtp->get_smtp_hosts;
-    my $first_host = $smtp_hosts[0]; ## TODO Try multiple hosts
+    my $first_host = $smtp_hosts[0];
     my $log_data = $args->{log_data};
     $log_data->{smtp_host} = $first_host;
     my @transports;
     push @transports, Email::Sender::Transport::SMTP->new({
-        host => $smtp_hosts[0],
+        host => $first_host,
+        hosts => \@smtp_hosts,
         ssl => 1,
         port => 25,
         helo => $report->sendit->smtp->get_helo_hostname,
@@ -90,6 +92,7 @@ sub get_transports_for {
     });
     push @transports, Email::Sender::Transport::SMTP->new({
         host => $smtp_hosts[0],
+        hosts => \@smtp_hosts,
         ssl => 0,
         port => 25,
         helo => $report->sendit->smtp->get_helo_hostname,
@@ -387,13 +390,14 @@ sub email {
             }
         };
         if ( my $error = $@ ) {
+            next if scalar @transports;
             my $code = $error->code;
             my $message = $error->message;
             $code = join( ', ', $log_data->{send_error_code}, $code ) if exists $log_data->{send_error_code};
             $message = join( ', ', $log_data->{send_error}, $message ) if exists $log_data->{send_error};
             $log_data->{send_error} = $message;
             $log_data->{send_error_code} = $code;
-            if ( $error->code =~ /^5/ ) {
+            if ( $error->code && $error->code =~ /^5/ ) {
                 # Perma error
                 $log_data->{deleted} = 1;
                 $report->store->delete_report($rid);

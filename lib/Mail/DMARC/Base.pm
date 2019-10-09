@@ -28,8 +28,8 @@ my $_fake_time;
 sub time { ## no critic
     # Ability to return a fake time for testing
     my ( $self ) = @_;
-    return $Mail::DMARC::Base::_fake_time if defined $Mail::DMARC::Base::_fake_time;
-    return time;
+    my $time = defined $Mail::DMARC::Base::_fake_time ? $Mail::DMARC::Base::_fake_time : time;
+    return $time;
 }
 sub set_fake_time {
     my ( $self, $time ) = @_;

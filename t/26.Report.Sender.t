@@ -7,13 +7,15 @@ use Test::More;
 use Mail::DMARC::PurePerl;
 
 use Mail::DMARC::Test::Transport;
+use Email::Sender::Transport::Failable;
 use Email::Sender::Transport::Test;
 
 # We test both method and object type callbacks
-foreach my $callback_type ( qw{ method object } ) {
+foreach my $callback_type ( qw{ method object fail fallback } ) {
 
     subtest $callback_type => sub{
 
+        $Mail::DMARC::Report::Store::SQL::memory_db = undef;
         my $dmarc = Mail::DMARC::PurePerl->new;
         $dmarc->set_fake_time( time-86400);
         $dmarc->init();
@@ -68,16 +70,50 @@ foreach my $callback_type ( qw{ method object } ) {
             $sender->run;
             @deliveries = $transports->get_test_transport->deliveries;
         }
+        elsif ( $callback_type eq 'fail' ) {
+            my $transport = Email::Sender::Transport::Test->new;
+            my $transport_fail = Email::Sender::Transport::Failable->new(
+                transport => $transport,
+                failure_conditions => [ sub{ return 1 } ],
+            );
+            $sender->set_transports_method( sub{
+                my @transports;
+                push @transports, $transport_fail;
+                return @transports;
+            });
+            $sender->run;
+            @deliveries = $transport_fail->transport->deliveries;
+        }
+        elsif ( $callback_type eq 'fallback' ) {
+            my $transport = Email::Sender::Transport::Test->new;
+            my $transport_fail = Email::Sender::Transport::Failable->new(
+                transport => $transport,
+                failure_conditions => [ sub{ return 1 } ],
+            );
+            $sender->set_transports_method( sub{
+                my @transports;
+                push @transports, $transport_fail;
+                push @transports, $transport;
+                return @transports;
+            });
+            $sender->run;
+            @deliveries = $transport->deliveries;
+        }
         else {
             die 'Unknown callback type in test';
         }
 
-        is( scalar @deliveries, 1, '1 Email sent' );
-        is( $deliveries[0]->{envelope}->{to}->[0], 'rua@fastmaildmarc.com', 'Sent to correct address' );
-        my $body = ${$deliveries[0]->{email}->[0]->{body}};
-        is( $body =~ /This is a DMARC aggregate report for fastmaildmarc.com/, 1, 'Human readable description' );
-        is( $body =~ /1 records.\n0 passed.\n1 failed./, 1, 'Human readable summary');
-        is( $body =~ /Content-Type: application\/gzip/, 1, 'Gzip attachment' );
+        if ( $callback_type eq 'fail' ) {
+            is( scalar @deliveries, 0, 'Email send fails' );
+        }
+        else {
+            is( scalar @deliveries, 1, '1 Email sent' );
+            is( $deliveries[0]->{envelope}->{to}->[0], 'rua@fastmaildmarc.com', 'Sent to correct address' );
+            my $body = ${$deliveries[0]->{email}->[0]->{body}};
+            is( $body =~ /This is a DMARC aggregate report for fastmaildmarc.com/, 1, 'Human readable description' );
+            is( $body =~ /1 records.\n0 passed.\n1 failed./, 1, 'Human readable summary');
+            is( $body =~ /Content-Type: application\/gzip/, 1, 'Gzip attachment' );
+        }
     };
 
 }
