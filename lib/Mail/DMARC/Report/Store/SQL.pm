@@ -442,11 +442,11 @@ sub db_connect {
                 or croak
                 "can't locate DB $db AND can't find $schema! Create $db manually.\n";
         }
-        $self->{grammar} = new SQLite();
+        $self->{grammar} = SQLite->new();
     } elsif ($dsn =~ /mysql/i) {
-        $self->{grammar} = new MySQL();
+        $self->{grammar} = MySQL->new();
     } elsif ($dsn =~ /pgsql/i) {
-        $self->{grammar} = new PostgreSQL();
+        $self->{grammar} = PostgreSQL->new();
     } else {
         croak "can't determine database type, so unable to load grammar.\n";
     }
