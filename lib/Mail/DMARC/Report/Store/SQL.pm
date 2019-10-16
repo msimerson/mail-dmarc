@@ -448,7 +448,7 @@ sub db_connect {
     } elsif ($dsn =~ /pgsql/i) {
         $self->config->grammar = new PostgreSQL();
     } else {
-        croak "can't determine database type, so unable to load grammar.\n"
+        croak "can't determine database type, so unable to load grammar.\n";
     }
 
     $self->{dbix} = DBIx::Simple->connect( $dsn, $user, $pass )
@@ -636,7 +636,7 @@ sub insert_rr_spf {
 sub insert_rr {
     my ( $self, $report_id, $rec ) = @_;
     $report_id or croak "report ID required?!";
-    my $query = $self->config->grammar->insert_rr
+    my $query = $self->config->grammar->insert_rr;
 
     my @args = ( $report_id,
         $self->any_inet_pton( $rec->row->source_ip ),
