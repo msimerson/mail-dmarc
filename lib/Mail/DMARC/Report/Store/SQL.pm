@@ -8,9 +8,9 @@ use Data::Dumper;
 use DBIx::Simple;
 use File::ShareDir;
 
-use Mail::DMARC::REPORT::STORE::SQL::Grammars::MySQL;
-use Mail::DMARC::REPORT::STORE::SQL::Grammars::SQLite;
-use Mail::DMARC::REPORT::STORE::SQL::Grammars::PostgreSQL;
+use Mail::DMARC::Report::Store::SQL::Grammars::MySQL;
+use Mail::DMARC::Report::Store::SQL::Grammars::SQLite;
+use Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL;
 
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate;
