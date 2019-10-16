@@ -193,7 +193,7 @@ sub find_psl_file {
 
     # Fallback to included suffic list
     return $self->get_sharefile('public_suffix_list');
-};
+}
 
 sub has_dns_rr {
     my ( $self, $type, $domain ) = @_;
@@ -233,7 +233,7 @@ sub epoch_to_iso {
     my $yy = ( $fields[5] + 1900 );                # year
 
     return "$yy-$mm-$dd" .'T'."$hh:$mn:$ss";
-};
+}
 
 sub get_resolver {
     my $self = shift;
@@ -280,7 +280,7 @@ sub is_valid_spf_scope {
     return lc $scope if grep { lc $scope eq $_ } qw/ mfrom helo /;
     carp "$scope is not a valid SPF scope";
     return;
-};
+}
 
 sub is_valid_spf_result {
     my ($self, $result ) = @_;
@@ -288,7 +288,7 @@ sub is_valid_spf_result {
         qw/ fail neutral none pass permerror softfail temperror /;
     carp "$result is not a valid SPF result";
     return;
-};
+}
 
 sub slurp {
     my ( $self, $file ) = @_;
@@ -301,7 +301,7 @@ sub slurp {
 sub verbose {
     return $_[0]->{verbose} if 1 == scalar @_;
     return $_[0]->{verbose} = $_[1];
-};
+}
 
 1;
 
