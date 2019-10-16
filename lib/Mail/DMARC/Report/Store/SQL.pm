@@ -438,7 +438,7 @@ sub db_connect {
         my ($db) = ( split /=/, $dsn )[-1];
         if ( !$db || $db eq ':memory:' || !-e $db ) {
             my $schema = 'mail_dmarc_schema.sqlite';
-            $needs_tables = $self->{grammar}->select_db_schema($schema)
+            $needs_tables = $self->select_db_schema($schema)
                 or croak
                 "can't locate DB $db AND can't find $schema! Create $db manually.\n";
         }
