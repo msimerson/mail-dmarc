@@ -8,6 +8,10 @@ use Data::Dumper;
 use DBIx::Simple;
 use File::ShareDir;
 
+use Mail::DMARC::REPORT::STORE::SQL::Grammars::MySQL;
+use Mail::DMARC::REPORT::STORE::SQL::Grammars::SQLite;
+use Mail::DMARC::REPORT::STORE::SQL::Grammars::PostgreSQL;
+
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate;
 
@@ -22,7 +26,7 @@ sub save_aggregate {
         croak "meta field $f required" if ! $agg->metadata->$f;
     }
 
-    my $rid = $self->get_report_id( $agg )
+    my $rid = $self->config->grammar->select_report_id( $agg )
         or croak "failed to create report!";
 
 # on 6/8/2013, Microsoft spat out a bunch of reports with zero records.
@@ -32,7 +36,7 @@ sub save_aggregate {
     };
 
     foreach my $rec ( @{ $agg->record } ) {
-        $self->insert_agg_record($rid, $rec);
+        $self->config->grammar->insert_agg_record($rid, $rec);
     };
 
     return $rid;
@@ -41,27 +45,27 @@ sub save_aggregate {
 sub retrieve {
     my ( $self, %args ) = @_;
 
-    my $query = $self->get_report_query;
+    my $query = $self->config->grammar->select_report_query;
     my @params;
 
     if ( $args{rid} ) {
-        $query .= " AND r.id=?";
+        $query .= $self->config->grammar->and_arg('r.id');
         push @params, $args{rid};
     };
     if ( $args{begin} ) {
-        $query .= " AND r.begin>=?";
+        $query .= $self->config->grammar->and_arg('r.begin', '>=');
         push @params, $args{begin};
     };
     if ( $args{end} ) {
-        $query .= " AND r.end<=?";
+        $query .= $self->config->grammar->and_arg('r.end', '<=');
         push @params, $args{end};
     };
     if ( $args{author} ) {
-        $query .= " AND a.org_name=?";
+        $query .= $self->config->grammar->and_arg('a.org_name');
         push @params, $args{author};
     };
     if ( $args{from_domain} ) {
-        $query .= " AND fd.domain=?";
+        $query .= $self->config->grammar->and_arg('fd.domain');
         push @params, $args{from_domain};
     };
     my $reports = $self->query( $query, \@params );
@@ -77,7 +81,7 @@ sub next_todo {
     my ( $self ) = @_;
 
     if ( ! exists $self->{ _todo_list } ) {
-        $self->{_todo_list} = $self->query( $self->get_todo_query, [ time ] );
+        $self->{_todo_list} = $self->query( $self->config->grammar->select_todo_query, [ time ] );
         return if ! $self->{_todo_list};
     }
 
@@ -90,7 +94,7 @@ sub next_todo {
     my $agg = Mail::DMARC::Report::Aggregate->new();
     $self->populate_agg_metadata( \$agg, \$next_todo );
 
-    my $pp = $self->get_report_policy_published( $next_todo->{rid} );
+    my $pp = $self->config->grammar->select_report_policy_published( $next_todo->{rid} );
     $pp->{domain} = $next_todo->{from_domain};
     $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
 
@@ -104,7 +108,7 @@ sub retrieve_todo {
 
     # this method extracts the data from the SQL tables and populates a
     # list of Aggregate report objects with them.
-    my $reports = $self->query( $self->get_todo_query, [ time ] );
+    my $reports = $self->query( $self->config->grammar->select_todo_query, [ time ] );
     return if ! @$reports;
     my @reports_todo;
 
@@ -113,7 +117,7 @@ sub retrieve_todo {
         my $agg = Mail::DMARC::Report::Aggregate->new();
         $self->populate_agg_metadata( \$agg, \$report );
 
-        my $pp = $self->get_report_policy_published( $report->{rid} );
+        my $pp = $self->config->grammar->select_report_policy_published( $report->{rid} );
         $pp->{domain} = $report->{from_domain};
         $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
 
@@ -129,7 +133,7 @@ sub delete_report {
     print "deleting report $report_id\n" if $self->verbose;
 
     # deletes with FK don't cascade in SQLite? Clean each table manually
-    my $rows = $self->query( 'SELECT id FROM report_record WHERE report_id=?',
+    my $rows = $self->query( $self->config->grammar->report_record_id,
         [$report_id] );
     my $row_ids = join( ',', map { $_->{id} } @$rows ) or return 1;
     foreach my $table (
@@ -137,59 +141,57 @@ sub delete_report {
     {
         print "deleting $table rows $row_ids\n" if $self->verbose;
         $self->query(
-            "DELETE FROM $table WHERE report_record_id IN ($row_ids)");
+            $self->config->grammar->delete_from_where_record_in($table, $row_ids));
     }
-    foreach my $table (qw/ report_policy_published report_record /) {
-        $self->query( "DELETE FROM $table WHERE report_id=?", [$report_id] );
+    foreach my $table (qw/ report_policy_published report_record report_error /) {
+        $self->query( $self->config->grammar->delete_from_where_report($table), [$report_id] );
     }
-
-    $self->query( "DELETE FROM report_error WHERE report_id=?", [$report_id] );
 
     # In MySQL, where FK constraints DO cascade, this is the only query needed
-    $self->query( "DELETE FROM report WHERE id=?", [$report_id] );
+    $self->query( $self->config->grammar->delete_report, [$report_id] );
     return 1;
 }
 
-sub get_domain_id {
+sub select_domain_id {
     my ( $self, $domain ) = @_;
     croak "missing domain calling " . ( caller(0) )[3] if !$domain;
-    my $r = $self->query( 'SELECT id FROM domain WHERE domain=?', [$domain] );
+    my $r = $self->query( $self->config->grammar->select_domain_id, [$domain] );
     if ( $r && scalar @$r ) {
         return $r->[0]{id};
     }
-    return $self->query( 'INSERT INTO domain (domain) VALUES (?)', [$domain]);
+    return $self->query( $self->config->grammar->insert_domain, [$domain]);
 }
 
-sub get_author_id {
+sub select_author_id {
     my ( $self, $meta ) = @_;
     croak "missing author name" if !$meta->org_name;
-    my $r = $self->query( 'SELECT id FROM author WHERE org_name=?',
+    my $r = $self->query( $self->config->grammar->select_author_id,
         [ $meta->org_name ] );
     if ( $r && scalar @$r ) {
         return $r->[0]{id};
     }
     carp "missing email" if !$meta->email;
     return $self->query(
-        'INSERT INTO author (org_name,email,extra_contact) VALUES (??)',
+        $self->config->grammar->insert_author,
         [ $meta->org_name, $meta->email, $meta->extra_contact_info ]
     );
 }
 
-sub get_report_id {
+sub select_report_id {
     my ( $self, $aggr ) = @_;
 
     my $meta = $aggr->metadata;
     my $pol  = $aggr->policy_published;
 
     # check if report exists
-    my $author_id   = $self->get_author_id( $meta )         or croak;
-    my $from_dom_id = $self->get_domain_id( $pol->domain )  or croak;
+    my $author_id   = $self->config->grammar->select_author_id( $meta )         or croak;
+    my $from_dom_id = $self->config->grammar->select_domain_id( $pol->domain )  or croak;
 
     my $ids;
     if ( $meta->report_id ) {
     # reports arriving via the wire will have an author ID & report ID
         $ids = $self->query(
-        'SELECT id FROM report WHERE uuid=? AND author_id=?',
+        $self->config->grammar->select_report_id,
         [ $meta->report_id, $author_id ]
         );
     }
@@ -197,7 +199,7 @@ sub get_report_id {
     # Reports submitted by our local MTA will not have a report ID
     # They aggregate on the From domain, where the DMARC policy was discovered
         $ids = $self->query(
-        'SELECT id FROM report WHERE from_domain_id=? AND end > ? AND author_id=?',
+        $self->config->grammar->select_id_with_end,
         [ $from_dom_id, time, $author_id ]
         );
     };
@@ -207,53 +209,52 @@ sub get_report_id {
     }
 
     my $rid = $self->{report_id} = $self->query(
-        'INSERT INTO report (from_domain_id, begin, end, author_id, uuid) VALUES (??)',
+        $self->config->grammar->insert_report,
         [ $from_dom_id, $meta->begin, $meta->end, $author_id, $meta->uuid ]
     ) or return;
 
-    $self->insert_policy_published( $rid, $pol );
+    $self->config->grammar->insert_policy_published( $rid, $pol );
     return $rid;
 }
 
-sub get_report {
+sub select_report {
     my ($self,@args) = @_;
     croak "invalid parameters" if @args % 2;
     my %args = @args;
 
-    my $query = $self->get_report_query;
+    my $query = $self->config->grammar->select_report_query;
     my @params;
     my @known = qw/ rid author from_domain begin end /;
     my %known = map { $_ => 1 } @known;
 
     # TODO: allow custom search ops?  'searchOper' => 'eq',
     if ( $args{searchField} && $known{ $args{searchField} } ) {
-        $query .= " AND $args{searchField}=?";
+        $query .= $self->config->grammar->and_arg($args{searchField});
         push @params, $args{searchString};
     };
 
     foreach my $known ( @known ) {
         next if ! defined $args{$known};
-        $query .= " AND $known=?";
+        $query .= $self->config->grammar->and_arg($known);
         push @params, $args{$known};
     };
     if ( $args{sidx} && $known{$args{sidx}} ) {
-        $query .= " ORDER BY " . $args{sidx};
         if ( $args{sord} ) {
-            $query .= $args{sord} eq 'desc' ? ' DESC' : ' ASC';
+            $query .= $self->config->grammar->order_by($args{sidx}, $args{sord} eq 'desc' ? ' DESC' : ' ASC');
         };
     };
-    my $total_recs = $self->dbix->query('SELECT COUNT(*) FROM report')->list;
+    my $total_recs = $self->dbix->query($self->config->grammar->count_reports)->list;
     my $total_pages = 0;
     if ( $args{rows} ) {
         if ( $args{page} ) {
             $total_pages = POSIX::ceil($total_recs / $args{rows});
             my $start = ($args{rows} * $args{page}) - $args{rows};
             $start = 0 if $start < 0;
-            $query .= " LIMIT ?,?";
+            $query .= $self->config->grammar->limit(2);
             push @params, $start, $args{rows};
         }
         else {
-            $query .= " LIMIT ?";
+            $query .= $self->config->grammar->limit;
             push @params, $args{rows};
         };
     };
@@ -273,62 +274,25 @@ sub get_report {
     };
 }
 
-sub get_report_policy_published {
+sub select_report_policy_published {
     my ($self, $rid) = @_;
-    my $pp_query = 'SELECT * from report_policy_published WHERE report_id=?';
+    my $pp_query = $self->config->grammar->select_report_policy_published;
     my $pp = $self->query($pp_query, [ $rid ] )->[0];
     $pp->{p} ||= 'none';
     $pp = Mail::DMARC::Policy->new( v=>'DMARC1', %$pp );
     return $pp;
 }
 
-sub get_report_query {
-    my $self = shift;
-    return <<'EO_REPORTS'
-SELECT r.id    AS rid,
-    r.uuid,
-    r.begin    AS begin,
-    r.end      AS end,
-    a.org_name AS author,
-    fd.domain  AS from_domain
-FROM report r
-LEFT JOIN author a  ON r.author_id=a.id
-LEFT JOIN domain fd ON r.from_domain_id=fd.id
-WHERE 1=1
-EO_REPORTS
-;
-}
-
-sub get_todo_query {
-    return <<'EO_TODO_QUERY'
-SELECT r.id    AS rid,
-    r.begin    AS begin,
-    r.end      AS end,
-    a.org_name AS author,
-    fd.domain  AS from_domain
-FROM report r
-LEFT JOIN report_record rr ON r.id=rr.report_id
-LEFT JOIN author a  ON r.author_id=a.id
-LEFT JOIN domain fd ON r.from_domain_id=fd.id
-WHERE rr.count IS NULL
-  AND rr.report_id IS NOT NULL
-  AND r.end < ?
-GROUP BY r.id
-ORDER BY r.id
-EO_TODO_QUERY
-;
-}
-
-sub get_rr {
+sub select_rr {
     my ($self,@args) = @_;
     croak "invalid parameters" if @args % 2;
     my %args = @args;
 #warn Dumper(\%args);
     croak "missing report ID (rid)!" if ! defined $args{rid};
 
-    my $rows = $self->query( $self->get_rr_query, [ $args{rid} ] );
+    my $rows = $self->query( $self->config->grammar->select_rr_query, [ $args{rid} ] );
     foreach ( @$rows ) {
-        $_->{reasons} = $self->query('SELECT type,comment FROM report_record_reason WHERE report_record_id=?', [ $_->{id} ] );
+        $_->{reasons} = $self->query($self->config->grammar->select_report_reason, [ $_->{id} ] );
         $_->{source_ip} = $self->any_inet_ntop( $_->{source_ip} );
     };
     return {
@@ -337,64 +301,6 @@ sub get_rr {
         total_rows  => scalar @$rows,
         rows        => $rows,
     };
-}
-
-sub get_row_spf {
-    my ($self, $rowid) = @_;
-
-    my $spf_query = <<"EO_SPF_ROW"
-SELECT d.domain AS domain,
-       s.result AS result,
-       s.scope  AS scope
-FROM report_record_spf s
-LEFT JOIN domain d ON s.domain_id=d.id
-WHERE s.report_record_id=?
-EO_SPF_ROW
-;
-    return $self->query( $spf_query, [ $rowid ] );
-}
-
-sub get_row_dkim {
-    my ($self, $rowid) = @_;
-
-    my $dkim_query = <<"EO_DKIM_ROW"
-SELECT d.domain       AS domain,
-       k.selector     AS selector,
-       k.result       AS result,
-       k.human_result AS human_result
-FROM report_record_dkim k
-LEFT JOIN domain d ON k.domain_id=d.id
-WHERE report_record_id=?
-EO_DKIM_ROW
-;
-    return $self->query( $dkim_query, [ $rowid ] );
-}
-
-sub get_row_reason {
-    my ($self, $rowid) = @_;
-    my $row_query = <<"EO_ROW_QUERY"
-SELECT type,comment
-FROM report_record_reason
-WHERE report_record_id=?
-EO_ROW_QUERY
-    ;
-    return $self->query( $row_query, [ $rowid ] );
-}
-
-sub get_rr_query {
-    return <<'EO_ROW_QUERY'
-SELECT rr.*,
-    etd.domain AS envelope_to,
-    efd.domain AS envelope_from,
-    hfd.domain AS header_from
-FROM report_record rr
-LEFT JOIN domain etd ON etd.id=rr.envelope_to_did
-LEFT JOIN domain efd ON efd.id=rr.envelope_from_did
-LEFT JOIN domain hfd ON hfd.id=rr.header_from_did
-WHERE report_id = ?
-ORDER BY id
-EO_ROW_QUERY
-        ;
 }
 
 sub populate_agg_metadata {
@@ -409,7 +315,7 @@ sub populate_agg_metadata {
         $$agg_ref->metadata->$f( $$report_ref->{$f} );
     };
 
-    my $errors = $self->query('SELECT error FROM report_error WHERE report_id=?',
+    my $errors = $self->query($self->config->grammar->select_report_error,
             [ $$report_ref->{rid} ]
         );
     foreach ( @$errors ) {
@@ -421,7 +327,7 @@ sub populate_agg_metadata {
 sub populate_agg_records {
     my ($self, $agg_ref, $rid) = @_;
 
-    my $recs = $self->query( $self->get_rr_query, [ $rid ] );
+    my $recs = $self->query( $self->config->grammar->select_rr_query, [ $rid ] );
 
     # aggregate the connections per IP-Disposition-DKIM-SPF uniqueness
     my (%ips, %uniq, %pe, %auth, %ident, %reasons);
@@ -438,10 +344,10 @@ sub populate_agg_records {
         $pe{$key}{dkim}   ||= $rec->{dkim};
         $pe{$key}{spf}    ||= $rec->{spf};
 
-        $auth{$key}{spf } ||= $self->get_row_spf($rec->{id});
-        $auth{$key}{dkim} ||= $self->get_row_dkim($rec->{id});
+        $auth{$key}{spf } ||= $self->config->grammar->select_row_spf($rec->{id});
+        $auth{$key}{dkim} ||= $self->config->grammar->select_row_dkim($rec->{id});
 
-        my $reasons = $self->get_row_reason( $rec->{id} );
+        my $reasons = $self->config->grammar->select_row_reason( $rec->{id} );
         foreach my $reason ( @$reasons ) {
             my $type = $reason->{type} or next;
             $reasons{$key}{$type} = $reason->{comment};   # flatten reasons
@@ -474,7 +380,7 @@ sub row_exists {
         return;
     };
 
-    my $rows = $self->query('SELECT id FROM report_record WHERE report_id=? AND source_ip=? AND count=?',
+    my $rows = $self->query($self->config->grammar->select_report_record,
             [ $rid, $rec->{row}{source_ip}, $rec->{row}{count}, ]
             );
 
@@ -487,21 +393,21 @@ sub insert_agg_record {
 
     return 1 if $self->row_exists( $row_id, $rec);
 
-    $row_id = $self->insert_rr( $row_id, $rec )
+    $row_id = $self->config->grammar->insert_rr( $row_id, $rec )
         or croak "failed to insert report row";
 
     my $reasons = $rec->row->policy_evaluated->reason;
     if ( $reasons ) {
         foreach my $reason ( @$reasons ) {
             next if !$reason || !$reason->{type};
-            $self->insert_rr_reason( $row_id, $reason->{type}, $reason->{comment} );
+            $self->config->grammar->insert_rr_reason( $row_id, $reason->{type}, $reason->{comment} );
         };
     }
 
     my $spf_ref = $rec->auth_results->spf;
     if ( $spf_ref ) {
         foreach my $spf (@$spf_ref) {
-            $self->insert_rr_spf( $row_id, $spf );
+            $self->config->grammar->insert_rr_spf( $row_id, $spf );
         }
     }
 
@@ -509,111 +415,12 @@ sub insert_agg_record {
     if ($dkim) {
         foreach my $sig (@$dkim) {
             next if ! $sig || ! $sig->{domain};
-            $self->insert_rr_dkim( $row_id, $sig );
+            $self->config->grammar->insert_rr_dkim( $row_id, $sig );
         }
     }
     return 1;
 }
 
-sub insert_error {
-    my ( $self, $rid, $error ) = @_;
-# wait >5m before trying to deliver this report again
-    $self->query('UPDATE report SET end=? WHERE id=?', [time + (5*60), $rid]);
-
-    return $self->query(
-        'INSERT INTO report_error (report_id, error ) VALUES (??)',
-        [ $rid, $error ]
-    );
-}
-
-sub insert_rr_reason {
-    my ( $self, $row_id, $type, $comment ) = @_;
-    return $self->query(
-        'INSERT INTO report_record_reason (report_record_id, type, comment) VALUES (?,?,?)',
-        [ $row_id, $type, ($comment || '') ]
-    );
-}
-
-sub insert_rr_dkim {
-    my ( $self, $row_id, $dkim ) = @_;
-    my (@fields, @values);
-    foreach ( qw/ domain selector result human_result / ) {
-        next if ! $dkim->{$_};
-        if ( 'domain' eq $_ ) {
-            push @fields, 'domain_id';
-            push @values, $self->get_domain_id( $dkim->{domain} );
-            next;
-        };
-        push @fields, $_;
-        push @values, $dkim->{$_};
-    };
-    my $fields_str = join ',', @fields;
-    my $query = <<"EO_DKIM"
-INSERT INTO report_record_dkim
-    (report_record_id, $fields_str)
-VALUES (??)
-EO_DKIM
-;
-    $self->query( $query, [ $row_id, @values ] );
-    return 1;
-}
-
-sub insert_rr_spf {
-    my ( $self, $row_id, $spf ) = @_;
-    my (@fields, @values);
-    for ( qw/ domain scope result / ) {
-        next if ! $spf->{$_};
-        if ( 'domain' eq $_ ) {
-            push @fields, 'domain_id';
-            push @values, $self->get_domain_id( $spf->{domain} );
-            next;
-        };
-        push @fields, $_;
-        push @values, $spf->{$_};
-    };
-    my $fields_str = join ',', @fields;
-    my $query = "INSERT INTO report_record_spf (report_record_id, $fields_str) VALUES(??)";
-    $self->query( $query, [ $row_id, @values ]);
-    return 1;
-}
-
-sub insert_rr {
-    my ( $self, $report_id, $rec ) = @_;
-    $report_id or croak "report ID required?!";
-    my $query = <<'EO_ROW_INSERT'
-INSERT INTO report_record
-   (report_id, source_ip, count, header_from_did, envelope_to_did, envelope_from_did,
-    disposition, dkim, spf)
-   VALUES (??)
-EO_ROW_INSERT
-;
-
-    my @args = ( $report_id,
-        $self->any_inet_pton( $rec->row->source_ip ),
-        $rec->{row}{count},
-    );
-    foreach my $f ( qw/ header_from envelope_to envelope_from / ) {
-        push @args, $rec->identifiers->$f ?
-            $self->get_domain_id( $rec->identifiers->$f ) : undef;
-    };
-    push @args, map { $rec->row->policy_evaluated->$_ } qw/ disposition dkim spf /;
-    my $rr_id = $self->query( $query, \@args ) or croak;
-    return $self->{report_row_id} = $rr_id;
-}
-
-sub insert_policy_published {
-    my ( $self, $id, $pub ) = @_;
-    my $query = <<"EO_RPP"
-INSERT INTO report_policy_published
-  (report_id, adkim, aspf, p, sp, pct, rua)
-VALUES (??)
-EO_RPP
-    ;
-    $self->query( $query,
-        [ $id, @$pub{ qw/ adkim aspf p sp pct rua /} ]
-    );
-    return 1;
-}
 
 sub db_connect {
     my $self = shift;
@@ -624,15 +431,24 @@ sub db_connect {
     my $user = $self->config->{report_store}{user};
     my $pass = $self->config->{report_store}{pass};
 
+
     my $needs_tables;
-    if ( $dsn =~ /sqlite/i ) {
+
+    if ($dsn =~ /sqlite/i) {
         my ($db) = ( split /=/, $dsn )[-1];
         if ( !$db || $db eq ':memory:' || !-e $db ) {
             my $schema = 'mail_dmarc_schema.sqlite';
-            $needs_tables = $self->get_db_schema($schema)
+            $needs_tables = $self->config->grammar->select_db_schema($schema)
                 or croak
                 "can't locate DB $db AND can't find $schema! Create $db manually.\n";
         }
+        $self->config->grammar = new SQLite();
+    } elsif ($dsn =~ /mysql/i) {
+        $self->config->grammar = new MySQL();
+    } elsif ($dsn =~ /pgsql/i) {
+        $self->config->grammar = new PostgreSQL();
+    } else {
+        croak "can't determine database type, so unable to load grammar.\n"
     }
 
     $self->{dbix} = DBIx::Simple->connect( $dsn, $user, $pass )
@@ -665,7 +481,7 @@ sub apply_db_schema {
     return;
 }
 
-sub get_db_schema {
+sub select_db_schema {
     my ( $self, $file ) = @_;
     return "share/$file" if -f "share/$file";    # when testing
     return File::ShareDir::dist_file( 'Mail-DMARC', $file );  # when installed
@@ -735,9 +551,113 @@ sub query_delete {
     $self->dbix->query( $query, @params ) or croak $err;
     $self->db_check_err($err);
     my $affected = 0;
-    eval { $affected = $self->dbix->query("SELECT ROW_COUNT()")->list }; ## no critic (Eval)
-    return 1 if $@;    # succeed for SQLite
-    return $affected;
+    return $self->config->grammar->query_delete;
+    if ($self->config->grammar->language == 'mysql')  {
+        eval { $affected = $self->dbix->query("SELECT ROW_COUNT()")->list }; ## no critic (Eval)
+        return $affected;
+    } else {
+        return 1 if $@;
+    }
+}
+
+
+sub select_row_spf {
+    my ($self, $rowid) = @_;
+    return $self->query( $self->config->grammar->select_row_spf, [ $rowid ] );
+}
+
+
+sub select_row_dkim {
+    my ($self, $rowid) = @_;
+    return $self->query( $self->config->grammar->select_row_dkim, [ $rowid ] );
+}
+
+sub select_row_reason {
+    my ($self, $rowid) = @_;
+    return $self->query( $self->config->grammar->select_row_reason, [ $rowid ] );
+}
+
+
+sub insert_error {
+    my ( $self, $rid, $error ) = @_;
+# wait >5m before trying to deliver this report again
+    $self->query($self->config->grammar->insert_error(0), [time + (5*60), $rid]);
+
+    return $self->query(
+        $self->config->grammar->insert_error(1),
+        [ $rid, $error ]
+    );
+}
+
+sub insert_rr_reason {
+    my ( $self, $row_id, $type, $comment ) = @_;
+    return $self->query(
+        $self->config->grammar->insert_rr_reason,
+        [ $row_id, $type, ($comment || '') ]
+    );
+}
+
+sub insert_rr_dkim {
+    my ( $self, $row_id, $dkim ) = @_;
+    my (@fields, @values);
+    foreach ( qw/ domain selector result human_result / ) {
+        next if ! $dkim->{$_};
+        if ( 'domain' eq $_ ) {
+            push @fields, 'domain_id';
+            push @values, $self->config->grammar->select_domain_id( $dkim->{domain} );
+            next;
+        };
+        push @fields, $_;
+        push @values, $dkim->{$_};
+    };
+    my $query = $self->config->grammar->insert_rr_dkim(\@fields);
+    $self->query( $query, [ $row_id, @values ] );
+    return 1;
+}
+
+sub insert_rr_spf {
+    my ( $self, $row_id, $spf ) = @_;
+    my (@fields, @values);
+    for ( qw/ domain scope result / ) {
+        next if ! $spf->{$_};
+        if ( 'domain' eq $_ ) {
+            push @fields, 'domain_id';
+            push @values, $self->config->grammar->select_domain_id( $spf->{domain} );
+            next;
+        };
+        push @fields, $_;
+        push @values, $spf->{$_};
+    };
+    my $query = $self->config->grammar->insert_rr_spf(\@fields);
+    $self->query( $query, [ $row_id, @values ]);
+    return 1;
+}
+
+sub insert_rr {
+    my ( $self, $report_id, $rec ) = @_;
+    $report_id or croak "report ID required?!";
+    my $query = $self->config->grammar->insert_rr
+
+    my @args = ( $report_id,
+        $self->any_inet_pton( $rec->row->source_ip ),
+        $rec->{row}{count},
+    );
+    foreach my $f ( qw/ header_from envelope_to envelope_from / ) {
+        push @args, $rec->identifiers->$f ?
+            $self->config->grammar->select_domain_id( $rec->identifiers->$f ) : undef;
+    };
+    push @args, map { $rec->row->policy_evaluated->$_ } qw/ disposition dkim spf /;
+    my $rr_id = $self->query( $query, \@args ) or croak;
+    return $self->{report_row_id} = $rr_id;
+}
+
+sub insert_policy_published {
+    my ( $self, $id, $pub ) = @_;
+    my $query = $self->config->grammar->insert_policy_published;
+    $self->query( $query,
+        [ $id, @$pub{ qw/ adkim aspf p sp pct rua /} ]
+    );
+    return 1;
 }
 
 1;
