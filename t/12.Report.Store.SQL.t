@@ -45,7 +45,7 @@ use_ok($mod);
 my $sql = $mod->new;
 isa_ok( $sql, $mod );
 
-opendir( DIR, 't/backends/' );
+opendir( my $dir, 't/backends/' );
 # The general gist of the tests is:
 #  test query mechanisms
 #  build and store an aggregate report, as it would happen In Real Life
@@ -54,7 +54,7 @@ opendir( DIR, 't/backends/' );
 # We need to run the tests for every back-end type.
 #  This includes all Grammars for SQL, but it also could mean other backends
 #  that aren't currently supported.
-while ( my $file = readdir( DIR ) ) {
+while ( my $file = readdir( $dir ) ) {
     if ( $file =~ /mail-dmarc\.sql\.(\w+)\.ini/i ) {
         my $provider = $1;
         eval "use DBD::$provider";
@@ -97,6 +97,7 @@ while ( my $file = readdir( DIR ) ) {
     test_populate_agg_metadata();
     test_populate_agg_records();
 }
+closedir( $dir );
 done_testing();
 exit;
 
