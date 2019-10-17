@@ -11,8 +11,10 @@ services:
   - postgresql
 
 before_install:
+  - psql -c 'CREATE DATABASE dmarc_report;' -U postgres
+  - psql -U postgres dmarc_report < share/mail_dmarc_schema.pgsql
   - mysql -e 'CREATE DATABASE IF NOT EXISTS dmarc_report;'
-  - mysql --user=root --password='' -p dmarc_report < share/mail_dmarc_schema.mysql
+  - mysql -u root --password="" dmarc_report < share/mail_dmarc_schema.mysql
   
 install:
    - cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
@@ -20,10 +22,6 @@ install:
    - cpanm --quiet --notest Net::IP Socket6 Email::MIME Net::SMTPS XML::LibXML
    - cpanm --quiet --notest DBIx::Simple HTTP::Tiny Test::File::ShareDir Test::Output
    - cpanm --quiet --notest Net::IDN::Encode CGI
-
-before_script:
-  - psql -c 'CREATE DATABASE dmarc_report;' -U postgres
-  - psql -U postgres dmarc_report < share/mail_dmarc_schema.pgsql
 
 script:
    - HARNESS_IS_VERBOSE=1 prove -v -Ilib t
