@@ -551,7 +551,7 @@ sub query_delete {
     $self->dbix->query( $query, @params ) or croak $err;
     $self->db_check_err($err);
     my $affected = 0;
-    if ($self->{grammar}->language == 'mysql')  {
+    if ($self->{grammar}->language eq 'mysql')  {
         eval { $affected = $self->dbix->query("SELECT ROW_COUNT()")->list }; ## no critic (Eval)
         return $affected;
     } else {
