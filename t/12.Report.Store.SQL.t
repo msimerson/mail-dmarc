@@ -58,6 +58,7 @@ $sql->config('t/mail-dmarc.ini');
 #  retrieve an aggregate report, as if reporting it
 #  validate the consistency of what was stored and retrieved
 test_db_connect();
+test_grammar_loaded();
 stderr_is { test_query_insert() } 'DBI error: no such table: reporting
 DBI error: table report has no column named domin
 ', 'STDERR has expected warning';
@@ -467,6 +468,10 @@ sub test_db_connect {
     my $dbh = $sql->db_connect();
     ok( $dbh, "db_connect" );
     isa_ok( $dbh, "DBIx::Simple" );
+}
+
+sub test_grammar_loaded {
+    isa_ok( $sql->grammar(), 'Mail::DMARC::Report::Store::SQL::Grammars::SQLite' );
 }
 
 sub compare_any_inet_round_trip {

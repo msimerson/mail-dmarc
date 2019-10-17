@@ -659,6 +659,10 @@ sub insert_policy_published {
     return 1;
 }
 
+sub grammar {
+    return $this->{grammar};
+}
+
 1;
 
 # ABSTRACT: store and retrieve reports from a SQL RDBMS
