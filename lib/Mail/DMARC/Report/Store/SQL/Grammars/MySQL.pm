@@ -198,7 +198,7 @@ sub select_from {
 
 sub insert_into {
     my ($self, $table, $cols) = @_;
-    $columns = join ', ', @$cols;
+    my $columns = join ', ', @$cols;
     return "INSERT INTO $table ($columns) VALUES (??)";
 }
 
