@@ -143,7 +143,9 @@ sub test_populate_agg_records {
 
 sub test_populate_agg_metadata {
 
-    my $query = 'SELECT id AS rid,begin,end FROM report WHERE id=?';
+    my @cols = qw(rid begin end);
+    my $query = $sql->grammar->select_from( \@cols, 'report' );
+    $query .= $sql->grammar->and_arg( 'id' );
     my $report = $sql->query( $query, [ $report_id ] )->[0];
 
     my $agg = Mail::DMARC::Report::Aggregate->new();
@@ -359,6 +361,8 @@ sub test_ip_store_and_fetch {
 
     foreach my $ip (@test_ips) {
 
+        my $query; my @cols;
+
         my $ipbin = $sql->any_inet_pton($ip);
         ok( $ipbin, "any_inet_pton, $ip" );
 
@@ -367,14 +371,19 @@ sub test_ip_store_and_fetch {
 
         compare_any_inet_round_trip( $ip, $pres );
 
+        @cols = qw(report_id source_ip disposition dkim spf header_from_did);
+        $query = $sql->grammar->insert_into('report_record', \@cols);
         my $report_id = $sql->query(
-            "INSERT INTO report_record ( report_id, source_ip, disposition, dkim,spf,header_from_did) VALUES (?,?,?,?,?,?)",
+            $query,
             [ 1, $ipbin, 'none', 'pass', 'pass', 1 ]
         ) or die "failed to insert?";
 
+        @cols = qw(id source_ip);
+        $query = $sql->grammar->select_from(\@cols, 'report_record');
+        $query .= $sql->grammar->and_arg('id');
         my $r_ref
             = $sql->query(
-            "SELECT id,source_ip FROM report_record WHERE id=?",
+            $query,
             [$report_id] );
         compare_any_inet_round_trip( $ip,
             $sql->any_inet_ntop( $r_ref->[0]{source_ip} ),
@@ -383,26 +392,27 @@ sub test_ip_store_and_fetch {
 }
 
 sub test_query {
-    ok( $sql->query("SELECT id FROM report LIMIT 1"), "query" );
+    my $query = $sql->grammar->select_from( 'report', [ 'id' ] );
+    ok( $sql->query( $query ), "query" );
 }
 
 sub test_query_insert {
     my $end       = time + 86400;
     my $from_did  = $sql->query(
-        "INSERT INTO domain (domain) VALUES (?)", [ 'ignore.test.com' ]
+        $sql->grammar->insert_domain, [ 'ignore.test.com' ]
     );
     my $rid = $sql->query(
-        "INSERT INTO report (author_id, from_domain_id, begin, end) VALUES (??)",
-        [ 0, $from_did, $begin, $end ]
+        $sql->grammar->insert_into( 'report', [ 'from_domain_id', 'begin', 'end', 'author_id' ] ),
+        [ $from_did, $begin, $end, 0 ]
     );
     ok( $rid, "query_insert, report, $rid" );
-
-    ok( $sql->query("DELETE FROM report WHERE id=?", [$rid] ), "query_delete" );
+    my $query = $sql->grammar->delete_from('report').$sql->grammar->and_arg('id');
+    ok( $sql->query( $query, [$rid] ), "query_delete" );
 
     # negative tests
     eval {
         $rid = $sql->query(
-            "INSERT INTO reporting (domain, begin, end) VALUES (?,?,?)",
+            $sql->grammar->insert_into( 'reporting', [ 'domain', 'begin', 'end' ] ),
             [ $test_domain, $begin, $end ] );
     };
     chomp $@;
@@ -410,8 +420,9 @@ sub test_query_insert {
 
     eval {
         $rid = $sql->query(
-            "INSERT INTO report (domin, begin, end) VALUES (?,?,?)",
-            [ 'a' x 257, 'yellow', $end ] );
+            $sql->grammar->insert_into( 'report', [ 'domain', 'begin', 'end' ] ),
+            [ 'a' x 257, 'yellow', $end ]
+        );
     };
     chomp $@;
     ok( $@, "query_insert, report, neg: $@" );
@@ -420,10 +431,14 @@ sub test_query_insert {
 sub test_query_replace {
     my $end   = time + 86400;
 
-    my $snafus = $sql->query("SELECT id FROM report WHERE begin='yellow'");
+    
+    my $snafus = $sql->query(
+        $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->and_arg('begin'),
+        [ 'yellow' ]
+    );
     foreach my $s (@$snafus) {
         ok( $sql->query(
-                "REPLACE INTO report (id,domain, begin, end) VALUES (?,?,?,?)",
+                $sql->grammar->replace_into( 'report', [ 'id', 'domain', 'begin', 'end' ] ),
                 [ $s->{id}, $test_domain, $begin, $end ]
             ),
             "query_replace"
@@ -433,23 +448,26 @@ sub test_query_replace {
     # negative
     eval {
         $sql->query(
-            "REPLACE INTO rep0rt (id,domain, begin, end) VALUES (?,?,?,?)",
-            [ 1, 1, 1, 1 ] );
+            $sql->grammar->replace_into( 'rep0rt', [ 'id', 'domain', 'begin', 'end' ] ),
+            [ 1, 1, 1, 1 ]
+        );
     };
     chomp $@;
     ok( $@, "replace, negative, $@" );
 }
 
 sub test_query_update {
-    my $victims = $sql->query("SELECT id FROM report LIMIT 1");
+    my $victims = $sql->query($sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit);
     foreach my $v (@$victims) {
-        my $r = $sql->query( "UPDATE report SET end=? WHERE id=?",
+        my $r = $sql->query( 
+            $sql->grammar->update( 'report', [ 'end' ] ).$sql->grammar->and_arg( 'id' ),
             [ time, $v->{id} ] );
         ok( $r, "query_update, $r" );
 
         # negative test
         eval {
-            $sql->query( "UPDATE report SET ed=? WHERE id=?",
+            $sql->query( 
+                $sql->grammar->update( 'report', [ 'ed' ] ).$sql->grammar->and_arg( 'id' ),
                 [ time, $v->{id} ] );
         };
         ok( $@, "query_update, neg" );
@@ -457,14 +475,21 @@ sub test_query_update {
 }
 
 sub test_query_delete {
-    my $victims = $sql->query("SELECT id FROM report LIMIT 1");
+    
+    my $victims = $sql->query($sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1));
     foreach my $v (@$victims) {
-        my $r = $sql->query("DELETE FROM report WHERE id=?");
+        my $r = $sql->query(
+            $sql->grammar->delete_from( 'report' ).$sql->grammar->and_arg( 'id' ),
+            [ $v ]
+        );
         ok( $r, "query_delete" );
     }
 
     # neg
-    eval { $sql->query("DELETE FROM repor WHERE id=?"); };
+    eval { $sql->query(
+        $sql->grammar->delete_from( 'repor' ).$sql->grammar->and_arg( 'id' ),
+        [ 1 ]
+    ); };
     chomp $@;
     ok( $@, "delete, negative, $@" );
 }
