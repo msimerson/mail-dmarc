@@ -659,7 +659,8 @@ sub insert_policy_published {
 }
 
 sub grammar {
-    return $this->{grammar};
+    my $self = shift;
+    return $self->{grammar};
 }
 
 1;
