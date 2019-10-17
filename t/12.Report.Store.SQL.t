@@ -45,7 +45,8 @@ use_ok($mod);
 my $sql = $mod->new;
 isa_ok( $sql, $mod );
 
-opendir( my $dir, './t/travis/backends' ) || die 'Unable to view backends in ./t/travis/backends';
+my $backend_dir = './t/travis/backends';
+opendir( my $dir, $backend_dir ) || die "Unable to view backends in $backend_dir";
 # The general gist of the tests is:
 #  test query mechanisms
 #  build and store an aggregate report, as it would happen In Real Life
@@ -65,7 +66,7 @@ while ( my $file = readdir( $dir ) ) {
     } else {
         next;
     }
-    $sql->config($file);
+    $sql->config( "$backend_dir/$file" );
 
     test_db_connect();
     test_grammar_loaded();
