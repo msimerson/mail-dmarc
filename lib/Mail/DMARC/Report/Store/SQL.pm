@@ -536,6 +536,7 @@ sub query_insert {
     # If the table has no autoincrement field, last_insert_id is zero
     my ( undef, undef, $table ) = split /\s+/, $query;
     ($table) = split( /\(/, $table ) if $table =~ /\(/;
+    $table =~ s/^"|"$//g;
     croak "unable to determine table in query: $query" if !$table;
     return $self->dbix->last_insert_id( undef, undef, $table, undef );
 }
