@@ -12,17 +12,17 @@ require Mail::DMARC::Policy;
 
 eval "use DBD::SQLite 1.31";
 if ($@) {
-    plan( skip_all => 'DBD::SQLite not available' );
+    plan( skip_all => 'DBD::SQLite not available: '.$@ );
     exit;
 }
 eval "use DBD::Pg 3.10";
 if ($@) {
-    plan( skip_all => 'DBD::Pg not available' );
+    plan( skip_all => 'DBD::Pg not available: '.$@ );
     exit;
 }
-eval "use DBD::mysql";
+eval "use DBD::mysql 4.050";
 if ($@) {
-    plan( skip_all => 'DBD::mysql not available' );
+    plan( skip_all => 'DBD::mysql not available: '.$@ );
     exit;
 }
 
