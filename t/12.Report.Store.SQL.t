@@ -10,21 +10,6 @@ use lib 'lib';
 require Mail::DMARC::Report;
 require Mail::DMARC::Policy;
 
-eval "use DBD::SQLite 1.31";
-if ($@) {
-    plan( skip_all => 'DBD::SQLite not available: '.$@ );
-    exit;
-}
-eval "use DBD::Pg 3.10";
-if ($@) {
-    plan( skip_all => 'DBD::Pg not available: '.$@ );
-    exit;
-}
-eval "use DBD::mysql 4.050";
-if ($@) {
-    plan( skip_all => 'DBD::mysql not available: '.$@ );
-    exit;
-}
 
 my $test_domain = 'example.com';
 my $dkim = [
@@ -70,6 +55,16 @@ opendir( DIR, 't/backends/' );
 #  This includes all Grammars for SQL, but it also could mean other backends
 #  that aren't currently supported.
 while ( my $file = readdir( DIR ) ) {
+    if ( $file =~ /mail-dmarc\.sql\.(\w+)\.ini)/i ) {
+        my $provider = $1;
+        eval "use DBD::$provider";
+        if ($@) {
+            ok( 1, "Skipping $file; DBD::$provider not available: $@" );
+            next;
+        }
+    } else {
+        next;
+    }
     $sql->config($file);
 
     test_db_connect();
