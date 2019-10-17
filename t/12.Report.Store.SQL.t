@@ -392,8 +392,7 @@ sub test_ip_store_and_fetch {
 }
 
 sub test_query {
-    my $query = $sql->grammar->select_from( 'report', [ 'id' ] );
-    ok( $sql->query( $query ), "query" );
+    ok( $sql->query( $sql->grammar->select_from( [ 'id' ], 'report' ) ), "query" );
 }
 
 sub test_query_insert {
