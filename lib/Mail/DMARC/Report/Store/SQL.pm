@@ -276,8 +276,7 @@ sub get_report {
 
 sub get_report_policy_published {
     my ($self, $rid) = @_;
-    my $pp_query = $self->{grammar}->select_report_policy_published;
-    my $pp = $self->query($pp_query, [ $rid ] )->[0];
+    my $pp = $self->query($self->{grammar}->select_report_policy_published, [ $rid ] )->[0];
     $pp->{p} ||= 'none';
     $pp = Mail::DMARC::Policy->new( v=>'DMARC1', %$pp );
     return $pp;
@@ -344,10 +343,10 @@ sub populate_agg_records {
         $pe{$key}{dkim}   ||= $rec->{dkim};
         $pe{$key}{spf}    ||= $rec->{spf};
 
-        $auth{$key}{spf } ||= $self->{grammar}->select_row_spf($rec->{id});
-        $auth{$key}{dkim} ||= $self->{grammar}->select_row_dkim($rec->{id});
+        $auth{$key}{spf } ||= $self->get_row_spf($rec->{id});
+        $auth{$key}{dkim} ||= $self->get_row_dkim($rec->{id});
 
-        my $reasons = $self->{grammar}->select_row_reason( $rec->{id} );
+        my $reasons = $self->get_row_reason( $rec->{id} );
         foreach my $reason ( @$reasons ) {
             my $type = $reason->{type} or next;
             $reasons{$key}{$type} = $reason->{comment};   # flatten reasons
@@ -603,7 +602,7 @@ sub insert_rr_dkim {
         next if ! $dkim->{$_};
         if ( 'domain' eq $_ ) {
             push @fields, 'domain_id';
-            push @values, $self->{grammar}->select_domain_id( $dkim->{domain} );
+            push @values, $self->get_domain_id( $dkim->{domain} );
             next;
         };
         push @fields, $_;
@@ -621,7 +620,7 @@ sub insert_rr_spf {
         next if ! $spf->{$_};
         if ( 'domain' eq $_ ) {
             push @fields, 'domain_id';
-            push @values, $self->{grammar}->select_domain_id( $spf->{domain} );
+            push @values, $self->get_domain_id( $spf->{domain} );
             next;
         };
         push @fields, $_;
@@ -643,7 +642,7 @@ sub insert_rr {
     );
     foreach my $f ( qw/ header_from envelope_to envelope_from / ) {
         push @args, $rec->identifiers->$f ?
-            $self->{grammar}->select_domain_id( $rec->identifiers->$f ) : undef;
+            $self->get_domain_id( $rec->identifiers->$f ) : undef;
     };
     push @args, map { $rec->row->policy_evaluated->$_ } qw/ disposition dkim spf /;
     my $rr_id = $self->query( $query, \@args ) or croak;
