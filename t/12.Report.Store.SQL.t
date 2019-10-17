@@ -55,7 +55,7 @@ opendir( DIR, 't/backends/' );
 #  This includes all Grammars for SQL, but it also could mean other backends
 #  that aren't currently supported.
 while ( my $file = readdir( DIR ) ) {
-    if ( $file =~ /mail-dmarc\.sql\.(\w+)\.ini)/i ) {
+    if ( $file =~ /mail-dmarc\.sql\.(\w+)\.ini/i ) {
         my $provider = $1;
         eval "use DBD::$provider";
         if ($@) {
