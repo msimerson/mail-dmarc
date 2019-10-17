@@ -401,9 +401,13 @@ sub test_query_insert {
     my $from_did  = $sql->query(
         $sql->grammar->insert_domain, [ 'ignore.test.com' ]
     );
+    my $author_id = $sql->query(
+        $sql->grammar->insert_into( 'author', [ org_name ] ),
+        [ 'test' ]
+    );
     my $rid = $sql->query(
         $sql->grammar->insert_into( 'report', [ 'from_domain_id', 'begin', 'end', 'author_id' ] ),
-        [ $from_did, $begin, $end, 0 ]
+        [ $from_did, $begin, $end, $author_id ]
     );
     ok( $rid, "query_insert, report, $rid" );
     my $query = $sql->grammar->delete_from('report').$sql->grammar->and_arg('id');
