@@ -443,11 +443,11 @@ sub db_connect {
                 or croak
                 "can't locate DB $db AND can't find $schema! Create $db manually.\n";
         }
-        $self->grammar = Mail::DMARC::Report::Store::SQL::Grammars::SQLite->new();
+        $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::SQLite->new();
     } elsif ($dsn =~ /mysql/i) {
-        $self->grammar = Mail::DMARC::Report::Store::SQL::Grammars::MySQL->new();
+        $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::MySQL->new();
     } elsif ($dsn =~ /pgsql/i) {
-        $self->grammar = Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL->new();
+        $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL->new();
     } else {
         croak "can't determine database type, so unable to load grammar.\n";
     }
