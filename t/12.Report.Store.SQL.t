@@ -438,7 +438,7 @@ sub test_query_replace {
     
     my $snafus = $sql->query(
         $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->and_arg('begin'),
-        [ 'yellow' ]
+        [ $begin ]
     );
     foreach my $s (@$snafus) {
         ok( $sql->query(
