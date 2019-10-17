@@ -94,7 +94,7 @@ sub next_todo {
     my $agg = Mail::DMARC::Report::Aggregate->new();
     $self->populate_agg_metadata( \$agg, \$next_todo );
 
-    my $pp = $self->select_report_policy_published( $next_todo->{rid} );
+    my $pp = $self->get_report_policy_published( $next_todo->{rid} );
     $pp->{domain} = $next_todo->{from_domain};
     $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
 
@@ -117,7 +117,7 @@ sub retrieve_todo {
         my $agg = Mail::DMARC::Report::Aggregate->new();
         $self->populate_agg_metadata( \$agg, \$report );
 
-        my $pp = $self->select_report_policy_published( $report->{rid} );
+        my $pp = $self->get_report_policy_published( $report->{rid} );
         $pp->{domain} = $report->{from_domain};
         $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
 
@@ -184,8 +184,8 @@ sub get_report_id {
     my $pol  = $aggr->policy_published;
 
     # check if report exists
-    my $author_id   = $self->select_author_id( $meta )         or croak;
-    my $from_dom_id = $self->select_domain_id( $pol->domain )  or croak;
+    my $author_id   = $self->get_author_id( $meta )         or croak;
+    my $from_dom_id = $self->get_domain_id( $pol->domain )  or croak;
 
     my $ids;
     if ( $meta->report_id ) {
@@ -438,7 +438,7 @@ sub db_connect {
         my ($db) = ( split /=/, $dsn )[-1];
         if ( !$db || $db eq ':memory:' || !-e $db ) {
             my $schema = 'mail_dmarc_schema.sqlite';
-            $needs_tables = $self->select_db_schema($schema)
+            $needs_tables = $self->get_db_schema($schema)
                 or croak
                 "can't locate DB $db AND can't find $schema! Create $db manually.\n";
         }
