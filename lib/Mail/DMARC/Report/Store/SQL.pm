@@ -215,7 +215,7 @@ sub get_report_id {
         [ $from_dom_id, $meta->begin, $meta->end, $author_id, $meta->uuid ]
     ) or return;
 
-    $self->grammar->insert_policy_published( $rid, $pol );
+    $self->insert_policy_published( $rid, $pol );
     return $rid;
 }
 
@@ -394,21 +394,21 @@ sub insert_agg_record {
 
     return 1 if $self->row_exists( $row_id, $rec);
 
-    $row_id = $self->grammar->insert_rr( $row_id, $rec )
+    $row_id = $self->insert_rr( $row_id, $rec )
         or croak "failed to insert report row";
 
     my $reasons = $rec->row->policy_evaluated->reason;
     if ( $reasons ) {
         foreach my $reason ( @$reasons ) {
             next if !$reason || !$reason->{type};
-            $self->grammar->insert_rr_reason( $row_id, $reason->{type}, $reason->{comment} );
+            $self->insert_rr_reason( $row_id, $reason->{type}, $reason->{comment} );
         };
     }
 
     my $spf_ref = $rec->auth_results->spf;
     if ( $spf_ref ) {
         foreach my $spf (@$spf_ref) {
-            $self->grammar->insert_rr_spf( $row_id, $spf );
+            $self->insert_rr_spf( $row_id, $spf );
         }
     }
 
@@ -416,7 +416,7 @@ sub insert_agg_record {
     if ($dkim) {
         foreach my $sig (@$dkim) {
             next if ! $sig || ! $sig->{domain};
-            $self->grammar->insert_rr_dkim( $row_id, $sig );
+            $self->insert_rr_dkim( $row_id, $sig );
         }
     }
     return 1;
