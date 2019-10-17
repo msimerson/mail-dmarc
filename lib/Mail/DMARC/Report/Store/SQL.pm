@@ -446,7 +446,7 @@ sub db_connect {
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::SQLite->new();
     } elsif ($dsn =~ /mysql/i) {
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::MySQL->new();
-    } elsif ($dsn =~ /pgsql/i) {
+    } elsif ($dsn =~ /pg/i) {
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL->new();
     } else {
         croak "can't determine database type, so unable to load grammar.\n";
