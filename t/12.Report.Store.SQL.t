@@ -325,7 +325,7 @@ sub test_insert_rr {
 }
 
 sub test_insert_policy_published {
-    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=none');
+    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject');
     $pol->apply_defaults;
     $pol->rua( 'mailto:' . $sql->config->{organization}{email} );
 #   warn Dumper($policy);
