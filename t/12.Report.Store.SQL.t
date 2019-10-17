@@ -402,7 +402,7 @@ sub test_query_insert {
         $sql->grammar->insert_domain, [ 'ignore.test.com' ]
     );
     my $author_id = $sql->query(
-        $sql->grammar->insert_into( 'author', [ org_name ] ),
+        $sql->grammar->insert_into( 'author', [ 'org_name' ] ),
         [ 'test' ]
     );
     my $rid = $sql->query(
