@@ -44,6 +44,21 @@ sub select_domain_id {
     return 'SELECT "id" FROM "domain" WHERE "domain"=?';
 }
 
+sub select_report_id {
+    return 'SELECT "id" FROM "report" WHERE "uuid"=? AND "author_id"=?';
+}
+
+sub select_id_with_end {
+    return 'SELECT "id" FROM "report" WHERE "from_domain_id"=? AND "end" > ? AND "author_id"=?';
+}
+
+sub select_from {
+    my ($self, $columns, $table) = @_;
+    my $colStr = '*';
+    $colStr = '"' . join( '", "', @$columns ) . '"' if ( @{$columns}[0] ne '*' );
+    return "SELECT $colStr FROM \"$table\" WHERE 1=1";
+}
+
 sub insert_domain {
     return 'INSERT INTO "domain" ("domain") VALUES (?)';
 }
@@ -54,14 +69,6 @@ sub select_author_id {
 
 sub insert_author {
     return 'INSERT INTO "author" ("org_name,email","extra_contact") VALUES (?,?,?)';
-}
-
-sub select_report_id {
-    return 'SELECT "id" FROM "report" WHERE "uuid"=? AND "author_id"=?';
-}
-
-sub select_id_with_end {
-    return 'SELECT "id" FROM "report" WHERE "from_domain_id"=? AND "end" > ? AND "author_id"=?';
 }
 
 sub insert_report {
@@ -79,11 +86,16 @@ sub count_reports {
 
 sub limit {
     my ($self, $number_of_entries) = @_;
-    my $return = ' LIMIT ';
     $number_of_entries //= 1;
-    for (my $i = 1; $i <= $number_of_entries; $i++) {
-        $return .= '?';
-        $return .= ',' if $i < $number_of_entries;
+    return " LIMIT $number_of_entries";
+}
+
+sub limit_args {
+    my ($self, $number_of_entries) = @_;
+    my $return = ' LIMIT ?';
+    $number_of_entries //= 1;
+    if ($number_of_entries > 1) {
+        $return = " OFFSET ? $return";
     }
     return $return;
 }
@@ -239,6 +251,41 @@ VALUES (??)
 EO_RPP
     ;
 }
+
+sub insert_into {
+    my ($self, $table, $cols) = @_;
+    my $columns = '"' . join( '", "', @$cols ) . '"';
+    return "INSERT INTO \"$table\" ($columns) VALUES (??)";
+}
+
+sub update {
+    my ($self, $table, $cols) = @_;
+    my $columns = '"' . join( '" = ?, "') . '" = ?';
+    return "UPDATE \"$table\" SET $columns WHERE 1=1";
+}
+
+sub delete_from {
+    my ($self, $table) = @_;
+    return "DELETE FROM \"$table\" WHERE 1=1";
+}
+
+sub replace_into {
+    my ($self, $table, $cols) = @_;
+    my $insertColumns = '"' . join( '", "', @$cols ) . '"';
+    my @ucols;
+    foreach my $col (@$cols) {
+        push @ucols, "\"$col\" = EXCLUDED.\"$col\""
+    }
+    my $updateColumns = join ', ', @ucols;
+    return "INSERT INTO \"$table\" ($insertColumns) VALUES (??)
+        ON CONFLICT ($insertColumns) DO UPDATE SET $updateColumns";
+}
+
+# INSERT INTO tablename (id, username, password, level, email) 
+#                 VALUES (1, 'John', 'qwerty', 5, 'john@mail.com') 
+# ON CONFLICT (id) DO UPDATE SET 
+#   id=EXCLUDED.id, username=EXCLUDED.username,
+#   password=EXCLUDED.password, level=EXCLUDED.level,email=EXCLUDED.email
 
 1;
 

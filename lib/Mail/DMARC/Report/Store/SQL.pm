@@ -252,11 +252,11 @@ sub get_report {
             $total_pages = POSIX::ceil($total_recs / $args{rows});
             my $start = ($args{rows} * $args{page}) - $args{rows};
             $start = 0 if $start < 0;
-            $query .= $self->grammar->limit(2);
+            $query .= $self->grammar->limit_args(2);
             push @params, $start, $args{rows};
         }
         else {
-            $query .= $self->grammar->limit;
+            $query .= $self->grammar->limit_args;
             push @params, $args{rows};
         };
     };

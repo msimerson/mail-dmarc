@@ -190,6 +190,12 @@ EO_REPORTS
     ;
 }
 
+sub select_from {
+    my ($self, $columns, $table) = @_;
+    my $colStr = join( ', ', @$columns );
+    return "SELECT $colStr FROM $table WHERE 1=1";
+}
+
 sub insert_error {
     my ( $self, $which ) = @_;
     if ( $which == 0 ) {
@@ -237,6 +243,24 @@ INSERT INTO report_policy_published
 VALUES (??)
 EO_RPP
     ;
+}
+
+sub insert_into {
+    my ($self, $table, $cols) = @_;
+    $columns = join ', ', @$cols;
+    return "INSERT INTO $table ($columns) VALUES (??)";
+}
+
+sub update {
+    my ($self, $table, $cols) = @_;
+    my $columns = join( ' = ?, ') . ' = ?';
+    return "UPDATE $table SET $columns WHERE 1=1";
+}
+
+sub replace_into {
+    my ($self, $table, $cols) = @_;
+    my $columns = join ', ', @$cols;
+    return "REPLACE INTO $table ($columns) VALUES (??)";
 }
 
 1;
