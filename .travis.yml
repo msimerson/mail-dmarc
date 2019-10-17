@@ -23,7 +23,7 @@ before_script:
   - psql -c 'CREATE DATABASE dmarc_report;' -U postgres
   - psql -U postgres dmarc_report < share/mail_dmarc_schema.pgsql
   - mysql -e 'CREATE DATABASE IF NOT EXISTS dmarc_report;'
-  - mysql -p dmarc_report < share/mail_dmarc_schema.mysql
+  - mysql -u travis -p dmarc_report < share/mail_dmarc_schema.mysql
 
 script:
    - HARNESS_IS_VERBOSE=1 prove -v -Ilib t
