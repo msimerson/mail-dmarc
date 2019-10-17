@@ -56,8 +56,9 @@ opendir( my $dir, $backend_dir ) || die "Unable to view backends in $backend_dir
 #  This includes all Grammars for SQL, but it also could mean other backends
 #  that aren't currently supported.
 while ( my $file = readdir( $dir ) ) {
+    my $provider;
     if ( $file =~ /mail-dmarc\.sql\.(\w+)\.ini/i ) {
-        my $provider = $1;
+        $provider = $1;
         eval "use DBD::$provider";
         if ($@) {
             ok( 1, "Skipping $file; DBD::$provider not available: $@" );
@@ -67,9 +68,14 @@ while ( my $file = readdir( $dir ) ) {
         next;
     }
     $sql->config( "$backend_dir/$file" );
+    if ( $provider eq 'Pg' ) {
+        $provider = 'PostgreSQL';
+    } elsif ( $provider eq 'mysql' ) {
+        $provider = 'MySQL';
+    }
 
     test_db_connect();
-    test_grammar_loaded();
+    test_grammar_loaded( $provider );
     stderr_is { test_query_insert() } 'DBI error: no such table: reporting
     DBI error: table report has no column named domin
     ', 'STDERR has expected warning';
@@ -483,7 +489,8 @@ sub test_db_connect {
 }
 
 sub test_grammar_loaded {
-    isa_ok( $sql->grammar(), 'Mail::DMARC::Report::Store::SQL::Grammars::SQLite' );
+    my $grammarName = shift;
+    isa_ok( $sql->grammar(), "Mail::DMARC::Report::Store::SQL::Grammars::$grammarName" );
 }
 
 sub compare_any_inet_round_trip {
