@@ -26,7 +26,7 @@ sub save_aggregate {
         croak "meta field $f required" if ! $agg->metadata->$f;
     }
 
-    my $rid = $self->{grammar}->select_report_id( $agg )
+    my $rid = $self->select_report_id( $agg )
         or croak "failed to create report!";
 
 # on 6/8/2013, Microsoft spat out a bunch of reports with zero records.
@@ -36,7 +36,7 @@ sub save_aggregate {
     };
 
     foreach my $rec ( @{ $agg->record } ) {
-        $self->{grammar}->insert_agg_record($rid, $rec);
+        $self->insert_agg_record($rid, $rec);
     };
 
     return $rid;
@@ -94,7 +94,7 @@ sub next_todo {
     my $agg = Mail::DMARC::Report::Aggregate->new();
     $self->populate_agg_metadata( \$agg, \$next_todo );
 
-    my $pp = $self->{grammar}->select_report_policy_published( $next_todo->{rid} );
+    my $pp = $self->select_report_policy_published( $next_todo->{rid} );
     $pp->{domain} = $next_todo->{from_domain};
     $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
 
@@ -117,7 +117,7 @@ sub retrieve_todo {
         my $agg = Mail::DMARC::Report::Aggregate->new();
         $self->populate_agg_metadata( \$agg, \$report );
 
-        my $pp = $self->{grammar}->select_report_policy_published( $report->{rid} );
+        my $pp = $self->select_report_policy_published( $report->{rid} );
         $pp->{domain} = $report->{from_domain};
         $agg->policy_published( Mail::DMARC::Policy->new( %$pp ) );
 
@@ -184,8 +184,8 @@ sub select_report_id {
     my $pol  = $aggr->policy_published;
 
     # check if report exists
-    my $author_id   = $self->{grammar}->select_author_id( $meta )         or croak;
-    my $from_dom_id = $self->{grammar}->select_domain_id( $pol->domain )  or croak;
+    my $author_id   = $self->select_author_id( $meta )         or croak;
+    my $from_dom_id = $self->select_domain_id( $pol->domain )  or croak;
 
     my $ids;
     if ( $meta->report_id ) {
