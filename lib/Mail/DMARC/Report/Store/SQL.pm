@@ -553,9 +553,8 @@ sub query_delete {
     if ($self->{grammar}->language eq 'mysql')  {
         eval { $affected = $self->dbix->query("SELECT ROW_COUNT()")->list }; ## no critic (Eval)
         return $affected;
-    } else {
-        return 1 if $@;
     }
+    return 1;
 }
 
 
