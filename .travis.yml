@@ -6,11 +6,16 @@ perl:
 # - "5.14"
 # - "5.10"
 
+services:
+  - mysql
+  - postgresql
+
 before_install:
 
 install:
    - cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
-   - cpanm --quiet --notest Net::IP Socket6 Email::MIME DBD::SQLite Net::SMTPS XML::LibXML
+   - cpanm --quiet --notest DBD::SQLite DBD::Pg DBD::mysql
+   - cpanm --quiet --notest Net::IP Socket6 Email::MIME Net::SMTPS XML::LibXML
    - cpanm --quiet --notest DBIx::Simple HTTP::Tiny Test::File::ShareDir Test::Output
    - cpanm --quiet --notest Net::IDN::Encode CGI
 

@@ -15,6 +15,16 @@ if ($@) {
     plan( skip_all => 'DBD::SQLite not available' );
     exit;
 }
+eval "use DBD::Pg 3.10";
+if ($@) {
+    plan( skip_all => 'DBD::Pg not available' );
+    exit;
+}
+eval "use DBD::mysql";
+if ($@) {
+    plan( skip_all => 'DBD::mysql not available' );
+    exit;
+}
 
 my $test_domain = 'example.com';
 my $dkim = [
@@ -50,43 +60,48 @@ use_ok($mod);
 my $sql = $mod->new;
 isa_ok( $sql, $mod );
 
-$sql->config('t/mail-dmarc.ini');
-
+opendir( DIR, 't/backends/' );
 # The general gist of the tests is:
 #  test query mechanisms
 #  build and store an aggregate report, as it would happen In Real Life
 #  retrieve an aggregate report, as if reporting it
 #  validate the consistency of what was stored and retrieved
-test_db_connect();
-test_grammar_loaded();
-stderr_is { test_query_insert() } 'DBI error: no such table: reporting
-DBI error: table report has no column named domin
-', 'STDERR has expected warning';
-test_query_replace();
-test_query_update();
-test_query_delete();
-test_query();
-test_query_any();
-test_ip_store_and_fetch();
+# We need to run the tests for every back-end type.
+#  This includes all Grammars for SQL, but it also could mean other backends
+#  that aren't currently supported.
+while ( my $file = readdir( DIR ) ) {
+    $sql->config($file);
 
-test_get_report_id();   # creates a test report
-test_insert_policy_published();
-test_get_report_policy_published();
-test_insert_rr();
-test_insert_rr_spf();
-test_insert_rr_dkim();
-test_insert_rr_reason();
+    test_db_connect();
+    test_grammar_loaded();
+    stderr_is { test_query_insert() } 'DBI error: no such table: reporting
+    DBI error: table report has no column named domin
+    ', 'STDERR has expected warning';
+    test_query_replace();
+    test_query_update();
+    test_query_delete();
+    test_query();
+    test_query_any();
+    test_ip_store_and_fetch();
 
-test_retrieve();
-test_retrieve_todo();
-test_get_author_id(3);
-test_get_report();
-test_get_row_reason();
-test_get_row_spf();
-test_get_row_dkim();
-test_populate_agg_metadata();
-test_populate_agg_records();
+    test_get_report_id();   # creates a test report
+    test_insert_policy_published();
+    test_get_report_policy_published();
+    test_insert_rr();
+    test_insert_rr_spf();
+    test_insert_rr_dkim();
+    test_insert_rr_reason();
 
+    test_retrieve();
+    test_retrieve_todo();
+    test_get_author_id(3);
+    test_get_report();
+    test_get_row_reason();
+    test_get_row_spf();
+    test_get_row_dkim();
+    test_populate_agg_metadata();
+    test_populate_agg_records();
+}
 done_testing();
 exit;
 
