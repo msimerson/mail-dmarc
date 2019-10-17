@@ -26,7 +26,7 @@ sub save_aggregate {
         croak "meta field $f required" if ! $agg->metadata->$f;
     }
 
-    my $rid = $self->select_report_id( $agg )
+    my $rid = $self->get_report_id( $agg )
         or croak "failed to create report!";
 
 # on 6/8/2013, Microsoft spat out a bunch of reports with zero records.
@@ -152,7 +152,7 @@ sub delete_report {
     return 1;
 }
 
-sub select_domain_id {
+sub get_domain_id {
     my ( $self, $domain ) = @_;
     croak "missing domain calling " . ( caller(0) )[3] if !$domain;
     my $r = $self->query( $self->{grammar}->select_domain_id, [$domain] );
@@ -162,7 +162,7 @@ sub select_domain_id {
     return $self->query( $self->{grammar}->insert_domain, [$domain]);
 }
 
-sub select_author_id {
+sub get_author_id {
     my ( $self, $meta ) = @_;
     croak "missing author name" if !$meta->org_name;
     my $r = $self->query( $self->{grammar}->select_author_id,
@@ -177,7 +177,7 @@ sub select_author_id {
     );
 }
 
-sub select_report_id {
+sub get_report_id {
     my ( $self, $aggr ) = @_;
 
     my $meta = $aggr->metadata;
@@ -191,7 +191,7 @@ sub select_report_id {
     if ( $meta->report_id ) {
     # reports arriving via the wire will have an author ID & report ID
         $ids = $self->query(
-        $self->{grammar}->select_report_id,
+        $self->{grammar}->get_report_id,
         [ $meta->report_id, $author_id ]
         );
     }
@@ -217,7 +217,7 @@ sub select_report_id {
     return $rid;
 }
 
-sub select_report {
+sub get_report {
     my ($self,@args) = @_;
     croak "invalid parameters" if @args % 2;
     my %args = @args;
@@ -274,7 +274,7 @@ sub select_report {
     };
 }
 
-sub select_report_policy_published {
+sub get_report_policy_published {
     my ($self, $rid) = @_;
     my $pp_query = $self->{grammar}->select_report_policy_published;
     my $pp = $self->query($pp_query, [ $rid ] )->[0];
@@ -283,7 +283,7 @@ sub select_report_policy_published {
     return $pp;
 }
 
-sub select_rr {
+sub get_rr {
     my ($self,@args) = @_;
     croak "invalid parameters" if @args % 2;
     my %args = @args;
@@ -481,7 +481,7 @@ sub apply_db_schema {
     return;
 }
 
-sub select_db_schema {
+sub get_db_schema {
     my ( $self, $file ) = @_;
     return "share/$file" if -f "share/$file";    # when testing
     return File::ShareDir::dist_file( 'Mail-DMARC', $file );  # when installed
@@ -560,18 +560,18 @@ sub query_delete {
 }
 
 
-sub select_row_spf {
+sub get_row_spf {
     my ($self, $rowid) = @_;
     return $self->query( $self->{grammar}->select_row_spf, [ $rowid ] );
 }
 
 
-sub select_row_dkim {
+sub get_row_dkim {
     my ($self, $rowid) = @_;
     return $self->query( $self->{grammar}->select_row_dkim, [ $rowid ] );
 }
 
-sub select_row_reason {
+sub get_row_reason {
     my ($self, $rowid) = @_;
     return $self->query( $self->{grammar}->select_row_reason, [ $rowid ] );
 }
