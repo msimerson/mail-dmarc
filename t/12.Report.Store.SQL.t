@@ -45,7 +45,7 @@ use_ok($mod);
 my $sql = $mod->new;
 isa_ok( $sql, $mod );
 
-opendir( my $dir, 't/backends/' );
+opendir( my $dir, './t/travis/backends' ) || die 'Unable to view backends in ./t/travis/backends';
 # The general gist of the tests is:
 #  test query mechanisms
 #  build and store an aggregate report, as it would happen In Real Life
