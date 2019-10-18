@@ -293,8 +293,8 @@ sub get_rr {
 
     my $rows = $self->query( $self->grammar->select_rr_query, [ $args{rid} ] );
     foreach ( @$rows ) {
+        $_->{source_ip} = $self->any_inet_ntop( $_->{source_ip} ) if $self->grammar->language ne 'postgresql';
         $_->{reasons} = $self->query($self->grammar->select_report_reason, [ $_->{id} ] );
-        $_->{source_ip} = $self->any_inet_ntop( $_->{source_ip} );
     };
     return {
         cur_page    => 1,
@@ -333,7 +333,9 @@ sub populate_agg_records {
     # aggregate the connections per IP-Disposition-DKIM-SPF uniqueness
     my (%ips, %uniq, %pe, %auth, %ident, %reasons, %other);
     foreach my $rec ( @$recs ) {
-        my $key = join('-', $self->any_inet_ntop($rec->{source_ip}),
+        my $ip = $self->any_inet_ntop($rec->{source_ip};
+        $ip = $rec->{source_ip} if $self->grammar->language eq 'postgresql';
+        my $key = join('-', $ip),
                 @$rec{ qw/ disposition dkim spf / }); # hash slice
         $uniq{ $key }++;
         $ips{$key} = $rec->{source_ip};
@@ -356,11 +358,13 @@ sub populate_agg_records {
     }
 
     foreach my $u ( keys %uniq ) {
+        my $ip = $self->any_inet_ntop( $ips{$u} );
+        $ip = $ips{$u} if $self->grammar->language eq 'postgresql';
         my $record = Mail::DMARC::Report::Aggregate::Record->new(
             identifiers  => $ident{$u},
             auth_results => $auth{$u},
             row => {
-                source_ip => $self->any_inet_ntop( $ips{$u} ),
+                source_ip => $ip,
                 count     => $uniq{ $u },
                 policy_evaluated => {
                     %{ $pe{$u} },

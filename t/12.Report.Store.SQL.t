@@ -377,17 +377,17 @@ sub test_ip_store_and_fetch {
     );
 
     foreach my $ip (@test_ips) {
-        my ($ipbin, $pres);
-        if ( $sql->grammar->language ne 'postgresql' ) {
+        my $ipbin;
+        if ( $sql->grammar->language eq 'postgresql' ) {
+            $ipbin = $ip;
+        } else {
             $ipbin = $sql->any_inet_pton($ip);
             ok( $ipbin, "any_inet_pton, $ip" );
 
-            $pres = $sql->any_inet_ntop($ipbin);
+            my $pres = $sql->any_inet_ntop($ipbin);
             ok( $pres, "any_inet_ntop, $ip" );
 
             compare_any_inet_round_trip( $ip, $pres );
-        } else {
-            $ipbin = $ip;
         }
 
         my $r_id = $sql->query(
