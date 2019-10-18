@@ -369,8 +369,9 @@ sub test_ip_store_and_fetch {
         '2002:4c79:6240::1610:9fff:fee5:fb5', '2607:f060:b008:feed::6',
     );
 
-    my $report_ref = $sql->query( $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1) );
-    ok( $report_ref->[0], 'get_report_id ' . $report_ref->[0]{id} ) or Dumper($report_ref);
+    my $query = $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1);
+    my $report_ref = $sql->query( $query );
+    ok( $report_ref->[0]{id}, 'get_report_id ' . $report_ref->[0]{id} ) or Dumper($report_ref, $query);
 
     foreach my $ip (@test_ips) {
 
