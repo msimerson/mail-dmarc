@@ -371,7 +371,7 @@ sub test_ip_store_and_fetch {
 
     my $query = $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1);
     my $report_ref = $sql->query( $query );
-    ok( $report_ref->[0]{id}, 'get_report_id ' . $report_ref->[0]{id} ) or Dumper($report_ref, $query);
+    ok( $report_ref->[0]{id}, 'get_report_id' ) or diag Dumper($report_ref, $query);
 
     foreach my $ip (@test_ips) {
 
