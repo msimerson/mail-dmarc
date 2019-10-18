@@ -76,13 +76,16 @@ while ( my $file = readdir( $dir ) ) {
 
     test_db_connect();
     test_grammar_loaded( $provider );
-    if ($provider eq 'Postgresql') {
+    if ($provider eq 'PostgreSQL') {
         stderr_is { test_query_insert() } 'DBI error: ERROR:  relation "reporting" does not exist
-        DBI error: ERROR:  column "domin" of relation "report" does not exist
-        ', 'STDERR has expected warning';
+LINE 1: INSERT INTO "reporting" ("domain", "begin", "end") VALUES ($...
+                    ^
+DBI error: ERROR:  column "domin" of relation "report" does not exist
+LINE 1: INSERT INTO "report" ("domin", "begin", "end") VALUES ($1, $...
+                              ^', 'STDERR has expected warning';
     } else {
         stderr_is { test_query_insert() } 'DBI error: no such table: reporting
-        DBI error: table report has no column named domin
+DBI error: table report has no column named domin
         ', 'STDERR has expected warning';
     }
     test_query_replace();
