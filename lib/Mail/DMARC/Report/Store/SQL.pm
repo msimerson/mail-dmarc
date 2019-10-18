@@ -226,7 +226,7 @@ sub get_report {
 
     my $query = $self->grammar->select_report_query;
     my @params;
-    my @known = qw/ rid author from_domain begin end /;
+    my @known = qw/ r.id a.org_name fd.domain r.begin r.end /;
     my %known = map { $_ => 1 } @known;
 
     # TODO: allow custom search ops?  'searchOper' => 'eq',
