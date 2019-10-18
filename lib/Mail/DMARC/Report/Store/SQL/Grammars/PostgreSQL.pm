@@ -123,7 +123,7 @@ LEFT JOIN "domain" "fd" ON "r"."from_domain_id"="fd"."id"
 WHERE "rr"."count" IS NULL
   AND "rr"."report_id" IS NOT NULL
   AND "r"."end" < ?
-GROUP BY "r"."id"
+GROUP BY "r"."id", "r"."begin", "r"."end", "a"."org_name", "fd"."domain"
 ORDER BY "r"."id"
 EO_TODO_QUERY
     ;
