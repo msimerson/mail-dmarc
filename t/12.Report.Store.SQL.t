@@ -10,6 +10,9 @@ use lib 'lib';
 require Mail::DMARC::Report;
 require Mail::DMARC::Policy;
 
+my ($report_id, $rr_id, $policy, $reasons);
+my $begin = time - 10000;
+my $end = time - 100;
 
 my $test_domain = 'example.com';
 my $dkim = [
@@ -36,9 +39,6 @@ my $spf = [
     { 'domain' => 'from.com',    'result' => 'pass', 'scope' => 'mfrom' },
     { 'domain' => 'example.com', 'result' => 'fail', 'scope' => 'mfrom' }
 ];
-my ($report_id, $rr_id, $policy, $reasons);
-my $begin = time - 10000;
-my $end = time - 100;
 
 my $mod = 'Mail::DMARC::Report::Store::SQL';
 use_ok($mod);
@@ -87,16 +87,19 @@ LINE 1: INSERT INTO "report" ("domin", "begin", "end") VALUES ($1, $...
     } else {
         stderr_is { test_query_insert() } 'DBI error: no such table: reporting
 DBI error: table report has no column named domin
-        ', 'STDERR has expected warning';
+', 'STDERR has expected warning';
     }
     test_query_replace();
     test_query_update();
     test_query_delete();
     test_query();
     test_query_any();
-    test_ip_store_and_fetch();
 
     test_get_report_id();   # creates a test report
+    # we need to run get_report_id before ip_store_and_fetch
+    #  so that ip_store_and_fetch has a report to work with.
+    test_ip_store_and_fetch();
+
     test_insert_policy_published();
     test_get_report_policy_published();
     test_insert_rr();
@@ -148,14 +151,14 @@ sub test_populate_agg_records {
             },
         );
     $expected->auth_results->dkim->[2]{human_result} = undef;
-    is_deeply( $r, [$expected], "populate_agg_records, deeply");
+    is_deeply( $r, [$expected], "populate_agg_records, deeply")
+        or diag Dumper($r, [$expected]);
 };
 
 sub test_populate_agg_metadata {
-
-    my @cols = qw(rid begin end);
-    my $query = $sql->grammar->select_from( \@cols, 'report' );
+    my $query = $sql->grammar->select_from( [ 'id AS rid', 'begin', 'end' ], 'report' );
     $query .= $sql->grammar->and_arg( 'id' );
+
     my $report = $sql->query( $query, [ $report_id ] )->[0];
 
     my $agg = Mail::DMARC::Report::Aggregate->new();
@@ -313,6 +316,7 @@ sub test_get_report_id {
 }
 
 sub test_insert_rr_reason {
+    ok ( $rr_id, "at_test_insert_rr_reason with $rr_id");
     my @reasons = qw/ forwarded local_policy mailing_list other sampled_out trusted_forwarder /;
     foreach my $r ( @reasons) {
         push @$reasons, bless { type => $r, comment => "test $r comment" }, 'Mail::DMARC';
@@ -321,12 +325,14 @@ sub test_insert_rr_reason {
 }
 
 sub test_insert_rr_dkim {
+    ok ( $rr_id, "at_test_insert_rr_dkim with $rr_id");
     ok( $sql->insert_rr_dkim( $rr_id, $dkim->[0] ), 'insert_rr_dkim' );
     ok( $sql->insert_rr_dkim( $rr_id, $dkim->[1] ), 'insert_rr_dkim' );
     ok( $sql->insert_rr_dkim( $rr_id, $dkim->[2] ), 'insert_rr_dkim' );
 }
 
 sub test_insert_rr_spf {
+    ok ( $rr_id, "at_test_insert_rr_spf with $rr_id");
     foreach ( @$spf ) {
         ok( $sql->insert_rr_spf( $rr_id, $_ ), 'insert_rr_spf' );
     };
@@ -369,10 +375,6 @@ sub test_ip_store_and_fetch {
         '2002:4c79:6240::1610:9fff:fee5:fb5', '2607:f060:b008:feed::6',
     );
 
-    my $query = $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1);
-    my $report_ref = $sql->query( $query );
-    ok( $report_ref->[0]{id}, 'get_report_id' ) or diag Dumper($report_ref, $query);
-
     foreach my $ip (@test_ips) {
 
         my $ipbin = $sql->any_inet_pton($ip);
@@ -383,17 +385,22 @@ sub test_ip_store_and_fetch {
 
         compare_any_inet_round_trip( $ip, $pres );
 
-        my $rr_id = $sql->query(
+        my $r_id = $sql->query(
             $sql->grammar->insert_into('report_record', [ 'report_id', 'source_ip', 'disposition', 'dkim', 'spf', 'header_from_did' ]),
-            [ $report_ref->[0]{id}, $ipbin, 'none', 'pass', 'pass', 1 ]
+            [ $report_id, $ipbin, 'none', 'pass', 'pass', 1 ]
         ) or die "failed to insert?";
 
         my $rr_ref = $sql->query(
             $sql->grammar->select_from( [ 'id', 'source_ip' ], 'report_record') . $sql->grammar->and_arg('id'),
-            [$rr_id]
+            [ $r_id ]
         );
         compare_any_inet_round_trip( $ip,
             $sql->any_inet_ntop( $rr_ref->[0]{source_ip} ),
+        );
+
+        $sql->query(
+            $sql->grammar->delete_from( 'report_record' ).$sql->grammar->and_arg( 'id' ),
+            [ $r_id ]
         );
     }
 }
