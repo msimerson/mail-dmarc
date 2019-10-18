@@ -370,7 +370,7 @@ sub test_ip_store_and_fetch {
     );
 
     my $report_ref = $sql->query( $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1) );
-    ok( $report_ref->[0]{id}, 'get_report_id ' . $report_ref->[0]{id} );
+    ok( $report_ref->[0], 'get_report_id ' . $report_ref->[0]{id} ) or Dumper($report_ref);
 
     foreach my $ip (@test_ips) {
 
