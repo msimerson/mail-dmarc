@@ -14,6 +14,10 @@ sub language {
     return 'mysql';
 }
 
+sub dsn {
+    return 'mysql';
+}
+
 sub and_arg {
     my ($self, $column, $operator) = @_;
     $operator //= '=';
@@ -124,7 +128,7 @@ WHERE rr.count IS NULL
   AND rr.report_id IS NOT NULL
   AND r.end < ?
 GROUP BY r.id
-ORDER BY r.id
+ORDER BY r.id ASC
 EO_TODO_QUERY
     ;
 }
@@ -137,6 +141,7 @@ SELECT d.domain AS domain,
 FROM report_record_spf s
 LEFT JOIN domain d ON s.domain_id=d.id
 WHERE s.report_record_id=?
+ORDER BY s.id ASC
 EO_SPF_ROW
     ;
 }
@@ -151,6 +156,7 @@ SELECT d.domain       AS domain,
 FROM report_record_dkim k
 LEFT JOIN domain d ON k.domain_id=d.id
 WHERE report_record_id=?
+ORDER BY k.id ASC
 EO_DKIM_ROW
     ;
 }

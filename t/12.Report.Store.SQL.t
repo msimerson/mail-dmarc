@@ -116,6 +116,14 @@ DBI error: table report has no column named domin
     test_get_row_dkim();
     test_populate_agg_metadata();
     test_populate_agg_records();
+    if ( $provider eq 'PostgreSQL' ) {
+        ok ( $sql->query( 
+            'TRUNCATE author, domain, report, 
+                report_error, report_policy_published, 
+                report_record, report_record_dkim, report_record_reason, 
+                report_record_spf RESTART IDENTITY;'
+        ), 'truncate_testing_pg_database' );
+    }
 }
 closedir( $dir );
 done_testing();
@@ -377,10 +385,8 @@ sub test_ip_store_and_fetch {
     );
 
     foreach my $ip (@test_ips) {
-        my $ipbin;
-        if ( $sql->grammar->language eq 'postgresql' ) {
-            $ipbin = $ip;
-        } else {
+        my $ipbin = $ip;
+        if ( $sql->grammar->language ne 'postgresql' ) {
             $ipbin = $sql->any_inet_pton($ip);
             ok( $ipbin, "any_inet_pton, $ip" );
 
@@ -391,14 +397,15 @@ sub test_ip_store_and_fetch {
         }
 
         my $r_id = $sql->query(
-            $sql->grammar->insert_into('report_record', [ 'report_id', 'source_ip', 'disposition', 'dkim', 'spf', 'header_from_did' ]),
+            $sql->grammar->insert_into( 'report_record', [ 'report_id', 'source_ip', 'disposition', 'dkim', 'spf', 'header_from_did' ] ),
             [ $report_id, $ipbin, 'none', 'pass', 'pass', 1 ]
         ) or die "failed to insert?";
-
+        
         my $rr_ref = $sql->query(
             $sql->grammar->select_from( [ 'id', 'source_ip' ], 'report_record') . $sql->grammar->and_arg('id'),
             [ $r_id ]
         );
+        ok( $rr_ref->[0], 'records_retrieved' );
         if ( $sql->grammar->language eq 'postgresql' ) {
             compare_any_inet_round_trip( $ip, $rr_ref->[0]{source_ip} );
         } else {

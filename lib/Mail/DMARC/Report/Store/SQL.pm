@@ -15,12 +15,6 @@ use Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL;
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate;
 
-sub config {
-    my ( $self, $file, @too_many ) = @_;
-    $self->{grammar} = undef if $file;
-    return $self->SUPER::config($file);
-}
-
 sub save_aggregate {
     my ( $self, $agg ) = @_;
 
@@ -519,15 +513,17 @@ sub insert_policy_published {
 sub db_connect {
     my $self = shift;
 
-    return $self->{dbix} if $self->{dbix};    # caching
-
     my $dsn  = $self->config->{report_store}{dsn} or croak;
     my $user = $self->config->{report_store}{user};
     my $pass = $self->config->{report_store}{pass};
 
+    if ($self->{grammar} and $self->{grammar}->dsn =~ /$dsn/i) {
+        return $self->{dbix} if $self->{dbix};    # caching
+    }
 
     my $needs_tables;
 
+    $self->{grammar} = undef;
     if ($dsn =~ /sqlite/i) {
         my ($db) = ( split /=/, $dsn )[-1];
         if ( !$db || $db eq ':memory:' || !-e $db ) {
@@ -604,13 +600,13 @@ sub query {
     return $self->query_replace( $query, $err, @params )
         if $query =~ /^(?:REPLACE|UPDATE)/ix;
     return $self->query_delete( $query, $err, @params )
-        if $query =~ /^DELETE/ix;
+        if $query =~ /^(?:DELETE|TRUNCATE)/ix;
     return $self->query_any( $query, $err, @params );
 }
 
 sub query_any {
     my ( $self, $query, $err, @params ) = @_;
-    #warn "query: $query\n" . join(", ", @params) . "\n";
+    # warn "query: $query\n" . join(", ", @params) . "\n";
     my $r;
     eval { $r = $self->dbix->query( $query, @params )->hashes; } or print '';
     $self->db_check_err($err);
