@@ -309,7 +309,7 @@ sub is_whitelisted {
             ($comment && $comment =~ /\S/ ? ('comment' => $comment) : () ),
             );
     return $type;
-};
+}
 
 sub has_valid_reporting_uri {
     my ( $self, $rua ) = @_;
