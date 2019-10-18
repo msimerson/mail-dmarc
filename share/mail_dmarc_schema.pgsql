@@ -70,7 +70,7 @@ DROP TABLE IF EXISTS report_record CASCADE;
 CREATE TABLE report_record (
   id serial unique,
   report_id int NOT NULL REFERENCES report (id) ON DELETE CASCADE,
-  source_ip varchar(255) NOT NULL,
+  source_ip BYTEA NOT NULL,
   count int DEFAULT NULL,
   disposition varchar(10) NOT NULL,
   dkim varchar(4) NOT NULL DEFAULT '',
