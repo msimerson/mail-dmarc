@@ -65,7 +65,7 @@ sub is_valid {
     my $self = shift;
 
     foreach my $f (qw/ domain result /) {
-        if ( !$self->{$f} ) {
+        if ( ! defined $self->{$f} ) {
             croak "DKIM value $f is required!";
         }
     }

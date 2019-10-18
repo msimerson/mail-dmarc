@@ -25,7 +25,7 @@ my %mimes  = (
 sub new {
     my $class = shift;
     return bless {}, $class;
-};
+}
 
 sub dmarc_httpd {
     my $self = shift;
@@ -47,7 +47,7 @@ sub dmarc_httpd {
         syslog_facility => 'MAIL',
     );
     return;
-};
+}
 
 sub dmarc_dispatch {
     my $self = shift;
@@ -64,7 +64,7 @@ sub dmarc_dispatch {
     };
 
     return serve_file('/dmarc/index.html');
-};
+}
 
 sub serve_pretty_error {
     my $error = shift || 'Sorry, that operation is not supported.';
@@ -75,15 +75,15 @@ Content-Type: text/html
 
 EO_ERROR
 ;
-};
+}
 
 sub return_json_error {
     my ($err) = @_;
-#   warn $err;
+    #warn $err;
     print JSON->new->utf8->encode( { err => $err } );  # to HTTP client
     print "\n";
     return $err;  # to caller
-};
+}
 
 sub serve_validator {
     my $cgi  = shift || CGI->new();  # passed in $cgi for testing
@@ -111,7 +111,7 @@ sub serve_validator {
     my $return = $json->allow_blessed->convert_blessed->encode( $res );
     print "$return\n";
     return $return;
-};
+}
 
 sub serve_file {
     my ($path) = @_;
@@ -142,7 +142,7 @@ sub serve_file {
     print <$FH>;
     close $FH;
     return 1;
-};
+}
 
 sub serve_gzip {
     my $file = shift;
@@ -155,7 +155,7 @@ sub serve_gzip {
     my $decomp = substr($file, 0, -3);  # remove .gz suffix
     my ($extension) = (split /\./, $decomp)[-1];
 
-# browser accepts gz encoding, serve compressed
+    # browser accepts gz encoding, serve compressed
     if ( grep {/gzip/} $ENV{HTTP_ACCEPT_ENCODING} ) {
         my $length = length $contents;
         return print <<"EO_GZ"
@@ -166,7 +166,7 @@ Content-Encoding: gzip
 $contents
 EO_GZ
 ;
-    };
+    }
 
     # browser doesn't support gzip, decompress and serve
     my $out;
@@ -181,22 +181,22 @@ Content-Type: $mimes{$extension}
 $out
 EO_UNGZ
 ;
-};
+}
 
 sub report_json_report {
     print "Content-type: application/json\n\n";
     my $reports = $report->store->backend->get_report( CGI->new->Vars );
     print encode_json $reports;
     return;
-};
+}
 
 sub report_json_rr {
     print "Content-type: application/json\n\n";
     my $row = $report->store->backend->get_rr( CGI->new->Vars );
     print encode_json $row;
-#   warn Dumper($row);
+    # warn Dumper($row);
     return;
-};
+}
 
 1;
 
