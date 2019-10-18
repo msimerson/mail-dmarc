@@ -369,10 +369,7 @@ sub test_ip_store_and_fetch {
         '2002:4c79:6240::1610:9fff:fee5:fb5', '2607:f060:b008:feed::6',
     );
 
-    my $query; my @cols;
-
-    $query = $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1);
-    my $report_id = $sql->query( $query )->[0];
+    my $report_ref = $sql->query( $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1) );
 
     foreach my $ip (@test_ips) {
 
@@ -384,19 +381,14 @@ sub test_ip_store_and_fetch {
 
         compare_any_inet_round_trip( $ip, $pres );
 
-        @cols = qw(report_id source_ip disposition dkim spf header_from_did);
-        $query = $sql->grammar->insert_into('report_record', \@cols);
         my $rr_id = $sql->query(
-            $query,
-            [ $report_id, $ipbin, 'none', 'pass', 'pass', 1 ]
+            $sql->grammar->insert_into('report_record', [ 'report_id', 'source_ip', 'disposition', 'dkim', 'spf', 'header_from_did' ]),
+            [ $report_ref->[0]{id}, $ipbin, 'none', 'pass', 'pass', 1 ]
         ) or die "failed to insert?";
 
-        @cols = qw(id source_ip);
-        $query = $sql->grammar->select_from(\@cols, 'report_record');
-        $query .= $sql->grammar->and_arg('id');
         my $rr_ref
             = $sql->query(
-            $query,
+            $sql->grammar->select_from( [ 'id', 'source_ip' ], 'report_record') . $sql->grammar->and_arg('id'),
             [$rr_id] );
         compare_any_inet_round_trip( $ip,
             $sql->any_inet_ntop( $rr_ref->[0]{source_ip} ),
