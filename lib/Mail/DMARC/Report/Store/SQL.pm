@@ -15,6 +15,12 @@ use Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL;
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate;
 
+sub config {
+    my ( $self, $file, @too_many ) = @_;
+    $self->{grammar} = undef if $file;
+    return $self->SUPER::config($file);
+}
+
 sub save_aggregate {
     my ( $self, $agg ) = @_;
 
@@ -167,8 +173,10 @@ sub get_domain_id {
 sub get_author_id {
     my ( $self, $meta ) = @_;
     croak "missing author name" if !$meta->org_name;
-    my $r = $self->query( $self->grammar->select_author_id,
-        [ $meta->org_name ] );
+    my $r = $self->query( 
+        $self->grammar->select_author_id,
+        [ $meta->org_name ]
+    );
     if ( $r && scalar @$r ) {
         return $r->[0]{id};
     }
@@ -358,13 +366,11 @@ sub populate_agg_records {
     }
 
     foreach my $u ( keys %uniq ) {
-        my $ip = $ips{$u};
-        $ip = $self->any_inet_ntop( $ips{$u} ) if $self->grammar->language ne 'postgresql';
         my $record = Mail::DMARC::Report::Aggregate::Record->new(
             identifiers  => $ident{$u},
             auth_results => $auth{$u},
             row => {
-                source_ip => $ip,
+                source_ip => $self->grammar->language eq 'postgresql' ? $ips{$u} : $self->any_inet_ntop( $ips{$u} ),
                 count     => $uniq{ $u },
                 policy_evaluated => {
                     %{ $pe{$u} },

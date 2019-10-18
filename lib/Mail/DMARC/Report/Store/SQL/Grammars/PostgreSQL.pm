@@ -175,7 +175,7 @@ LEFT JOIN "domain" "etd" ON "etd"."id"="rr"."envelope_to_did"
 LEFT JOIN "domain" "efd" ON "efd"."id"="rr"."envelope_from_did"
 LEFT JOIN "domain" "hfd" ON "hfd"."id"="rr"."header_from_did"
 WHERE "report_id" = ?
-ORDER BY "id"
+ORDER BY "id" ASC
 EO_ROW_QUERY
     ;
 }
