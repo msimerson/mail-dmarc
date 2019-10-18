@@ -376,14 +376,18 @@ sub test_ip_store_and_fetch {
     );
 
     foreach my $ip (@test_ips) {
+        my $ipbin;
+        if ( $sql->grammar->language ne 'postgresql' ) {
+            my $ipbin = $sql->any_inet_pton($ip);
+            ok( $ipbin, "any_inet_pton, $ip" );
 
-        my $ipbin = $sql->any_inet_pton($ip);
-        ok( $ipbin, "any_inet_pton, $ip" );
+            my $pres = $sql->any_inet_ntop($ipbin);
+            ok( $pres, "any_inet_ntop, $ip" );
 
-        my $pres = $sql->any_inet_ntop($ipbin);
-        ok( $pres, "any_inet_ntop, $ip" );
-
-        compare_any_inet_round_trip( $ip, $pres );
+            compare_any_inet_round_trip( $ip, $pres );
+        } else {
+            $ipbin = $ip;
+        }
 
         my $r_id = $sql->query(
             $sql->grammar->insert_into('report_record', [ 'report_id', 'source_ip', 'disposition', 'dkim', 'spf', 'header_from_did' ]),
@@ -394,9 +398,13 @@ sub test_ip_store_and_fetch {
             $sql->grammar->select_from( [ 'id', 'source_ip' ], 'report_record') . $sql->grammar->and_arg('id'),
             [ $r_id ]
         );
-        compare_any_inet_round_trip( $ip,
-            $sql->any_inet_ntop( $rr_ref->[0]{source_ip} ),
-        );
+        if ( $sql->grammar->language eq 'postgresql' ) {
+            compare_any_inet_round_trip( $ip, $rr_ref->[0]{source_ip} );
+        } else {
+            compare_any_inet_round_trip( $ip,
+                $sql->any_inet_ntop( $rr_ref->[0]{source_ip} ),
+            );
+        }
 
         $sql->query(
             $sql->grammar->delete_from( 'report_record' ).$sql->grammar->and_arg( 'id' ),

@@ -482,8 +482,10 @@ sub insert_rr {
     $report_id or croak "report ID required?!";
     my $query = $self->grammar->insert_rr;
 
+    my $ip = $rec->row->source_ip;
+    $ip = $self->any_inet_pton( $ip ) if $self->grammar->language ne 'postgresql';
     my @args = ( $report_id,
-        $self->any_inet_pton( $rec->row->source_ip ),
+        $ip,
         $rec->{row}{count},
     );
     foreach my $f ( qw/ header_from envelope_to envelope_from / ) {
