@@ -193,7 +193,7 @@ sub get_report_id {
     if ( $meta->report_id ) {
     # reports arriving via the wire will have an author ID & report ID
         $ids = $self->query(
-        $self->grammar->get_report_id,
+        $self->grammar->select_report_id,
         [ $meta->report_id, $author_id ]
         );
     }
@@ -288,7 +288,7 @@ sub get_rr {
     my ($self,@args) = @_;
     croak "invalid parameters" if @args % 2;
     my %args = @args;
-    #warn Dumper(\%args);
+    # warn Dumper(\%args);
     croak "missing report ID (rid)!" if ! defined $args{rid};
 
     my $rows = $self->query( $self->grammar->select_rr_query, [ $args{rid} ] );
@@ -331,9 +331,9 @@ sub populate_agg_records {
     my $recs = $self->query( $self->grammar->select_rr_query, [ $rid ] );
 
     # aggregate the connections per IP-Disposition-DKIM-SPF uniqueness
-    my (%ips, %uniq, %pe, %auth, %ident, %reasons);
+    my (%ips, %uniq, %pe, %auth, %ident, %reasons, %other);
     foreach my $rec ( @$recs ) {
-        my $key = join('-', $rec->{source_ip},
+        my $key = join('-', $self->any_inet_ntop($rec->{source_ip}),
                 @$rec{ qw/ disposition dkim spf / }); # hash slice
         $uniq{ $key }++;
         $ips{$key} = $rec->{source_ip};
@@ -345,7 +345,7 @@ sub populate_agg_records {
         $pe{$key}{dkim}   ||= $rec->{dkim};
         $pe{$key}{spf}    ||= $rec->{spf};
 
-        $auth{$key}{spf } ||= $self->get_row_spf($rec->{id});
+        $auth{$key}{spf}  ||= $self->get_row_spf($rec->{id});
         $auth{$key}{dkim} ||= $self->get_row_dkim($rec->{id});
 
         my $reasons = $self->get_row_reason( $rec->{id} );
@@ -422,6 +422,87 @@ sub insert_agg_record {
     return 1;
 }
 
+sub insert_error {
+    my ( $self, $rid, $error ) = @_;
+    # wait >5m before trying to deliver this report again
+    $self->query($self->grammar->insert_error(0), [time + (5*60), $rid]);
+
+    return $self->query(
+        $self->grammar->insert_error(1),
+        [ $rid, $error ]
+    );
+}
+
+sub insert_rr_reason {
+    my ( $self, $row_id, $type, $comment ) = @_;
+    return $self->query(
+        $self->grammar->insert_rr_reason,
+        [ $row_id, $type, ($comment || '') ]
+    );
+}
+
+sub insert_rr_dkim {
+    my ( $self, $row_id, $dkim ) = @_;
+    my (@fields, @values);
+    foreach ( qw/ domain selector result human_result / ) {
+        next if ! $dkim->{$_};
+        if ( 'domain' eq $_ ) {
+            push @fields, 'domain_id';
+            push @values, $self->get_domain_id( $dkim->{domain} );
+            next;
+        };
+        push @fields, $_;
+        push @values, $dkim->{$_};
+    };
+    my $query = $self->grammar->insert_rr_dkim(\@fields);
+    $self->query( $query, [ $row_id, @values ] );
+    return 1;
+}
+
+sub insert_rr_spf {
+    my ( $self, $row_id, $spf ) = @_;
+    my (@fields, @values);
+    for ( qw/ domain scope result / ) {
+        next if ! $spf->{$_};
+        if ( 'domain' eq $_ ) {
+            push @fields, 'domain_id';
+            push @values, $self->get_domain_id( $spf->{domain} );
+            next;
+        };
+        push @fields, $_;
+        push @values, $spf->{$_};
+    };
+    my $query = $self->grammar->insert_rr_spf(\@fields);
+    $self->query( $query, [ $row_id, @values ]);
+    return 1;
+}
+
+sub insert_rr {
+    my ( $self, $report_id, $rec ) = @_;
+    $report_id or croak "report ID required?!";
+    my $query = $self->grammar->insert_rr;
+
+    my @args = ( $report_id,
+        $self->any_inet_pton( $rec->row->source_ip ),
+        $rec->{row}{count},
+    );
+    foreach my $f ( qw/ header_from envelope_to envelope_from / ) {
+        push @args, $rec->identifiers->$f ?
+            $self->get_domain_id( $rec->identifiers->$f ) : undef;
+    };
+    push @args, map { $rec->row->policy_evaluated->$_ } qw/ disposition dkim spf /;
+    my $rr_id = $self->query( $query, \@args ) or croak;
+    return $self->{report_row_id} = $rr_id;
+}
+
+sub insert_policy_published {
+    my ( $self, $id, $pub ) = @_;
+    my $query = $self->grammar->insert_policy_published;
+    $self->query( $query,
+        [ $id, @$pub{ qw/ adkim aspf p sp pct rua /} ]
+    );
+    return 1;
+}
 
 sub db_connect {
     my $self = shift;
@@ -566,7 +647,6 @@ sub get_row_spf {
     return $self->query( $self->grammar->select_row_spf, [ $rowid ] );
 }
 
-
 sub get_row_dkim {
     my ($self, $rowid) = @_;
     return $self->query( $self->grammar->select_row_dkim, [ $rowid ] );
@@ -575,89 +655,6 @@ sub get_row_dkim {
 sub get_row_reason {
     my ($self, $rowid) = @_;
     return $self->query( $self->grammar->select_row_reason, [ $rowid ] );
-}
-
-
-sub insert_error {
-    my ( $self, $rid, $error ) = @_;
-    # wait >5m before trying to deliver this report again
-    $self->query($self->grammar->insert_error(0), [time + (5*60), $rid]);
-
-    return $self->query(
-        $self->grammar->insert_error(1),
-        [ $rid, $error ]
-    );
-}
-
-sub insert_rr_reason {
-    my ( $self, $row_id, $type, $comment ) = @_;
-    return $self->query(
-        $self->grammar->insert_rr_reason,
-        [ $row_id, $type, ($comment || '') ]
-    );
-}
-
-sub insert_rr_dkim {
-    my ( $self, $row_id, $dkim ) = @_;
-    my (@fields, @values);
-    foreach ( qw/ domain selector result human_result / ) {
-        next if ! $dkim->{$_};
-        if ( 'domain' eq $_ ) {
-            push @fields, 'domain_id';
-            push @values, $self->get_domain_id( $dkim->{domain} );
-            next;
-        };
-        push @fields, $_;
-        push @values, $dkim->{$_};
-    };
-    my $query = $self->grammar->insert_rr_dkim(\@fields);
-    $self->query( $query, [ $row_id, @values ] );
-    return 1;
-}
-
-sub insert_rr_spf {
-    my ( $self, $row_id, $spf ) = @_;
-    my (@fields, @values);
-    for ( qw/ domain scope result / ) {
-        next if ! $spf->{$_};
-        if ( 'domain' eq $_ ) {
-            push @fields, 'domain_id';
-            push @values, $self->get_domain_id( $spf->{domain} );
-            next;
-        };
-        push @fields, $_;
-        push @values, $spf->{$_};
-    };
-    my $query = $self->grammar->insert_rr_spf(\@fields);
-    $self->query( $query, [ $row_id, @values ]);
-    return 1;
-}
-
-sub insert_rr {
-    my ( $self, $report_id, $rec ) = @_;
-    $report_id or croak "report ID required?!";
-    my $query = $self->grammar->insert_rr;
-
-    my @args = ( $report_id,
-        $self->any_inet_pton( $rec->row->source_ip ),
-        $rec->{row}{count},
-    );
-    foreach my $f ( qw/ header_from envelope_to envelope_from / ) {
-        push @args, $rec->identifiers->$f ?
-            $self->get_domain_id( $rec->identifiers->$f ) : undef;
-    };
-    push @args, map { $rec->row->policy_evaluated->$_ } qw/ disposition dkim spf /;
-    my $rr_id = $self->query( $query, \@args ) or croak;
-    return $self->{report_row_id} = $rr_id;
-}
-
-sub insert_policy_published {
-    my ( $self, $id, $pub ) = @_;
-    my $query = $self->grammar->insert_policy_published;
-    $self->query( $query,
-        [ $id, @$pub{ qw/ adkim aspf p sp pct rua /} ]
-    );
-    return 1;
 }
 
 sub grammar {
