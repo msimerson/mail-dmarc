@@ -31,7 +31,7 @@ sub save_aggregate {
     my $rid = $self->get_report_id( $agg )
         or croak "failed to create report!";
 
-# on 6/8/2013, Microsoft spat out a bunch of reports with zero records.
+    # on 6/8/2013, Microsoft spat out a bunch of reports with zero records.
     if ( ! $agg->record ) {
         warn "\ta report with ZERO records! Illegal.\n"; ## no critic (Carp)
         return $rid;
@@ -288,7 +288,7 @@ sub get_rr {
     my ($self,@args) = @_;
     croak "invalid parameters" if @args % 2;
     my %args = @args;
-#warn Dumper(\%args);
+    #warn Dumper(\%args);
     croak "missing report ID (rid)!" if ! defined $args{rid};
 
     my $rows = $self->query( $self->grammar->select_rr_query, [ $args{rid} ] );
@@ -580,7 +580,7 @@ sub get_row_reason {
 
 sub insert_error {
     my ( $self, $rid, $error ) = @_;
-# wait >5m before trying to deliver this report again
+    # wait >5m before trying to deliver this report again
     $self->query($self->grammar->insert_error(0), [time + (5*60), $rid]);
 
     return $self->query(
