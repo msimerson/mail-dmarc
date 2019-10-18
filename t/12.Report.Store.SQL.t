@@ -372,7 +372,7 @@ sub test_ip_store_and_fetch {
     my $query; my @cols;
 
     $query = $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1);
-    my $report_id = $sql->query( $query );
+    my $report_id = $sql->query( $query )->[0];
 
     foreach my $ip (@test_ips) {
 
