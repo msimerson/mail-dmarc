@@ -61,7 +61,7 @@ sub select_author_id {
 }
 
 sub insert_author {
-    return 'INSERT INTO "author" ("org_name,email","extra_contact") VALUES (?,?,?)';
+    return 'INSERT INTO "author" ("org_name", "email", "extra_contact") VALUES (?,?,?)';
 }
 
 sub insert_report {
