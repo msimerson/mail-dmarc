@@ -52,13 +52,6 @@ sub select_id_with_end {
     return 'SELECT "id" FROM "report" WHERE "from_domain_id"=? AND "end" > ? AND "author_id"=?';
 }
 
-sub select_from {
-    my ($self, $columns, $table) = @_;
-    my $colStr = '*';
-    $colStr = '"' . join( '", "', @$columns ) . '"' if ( @{$columns}[0] ne '*' );
-    return "SELECT $colStr FROM \"$table\" WHERE 1=1";
-}
-
 sub insert_domain {
     return 'INSERT INTO "domain" ("domain") VALUES (?)';
 }
@@ -252,6 +245,23 @@ EO_RPP
     ;
 }
 
+sub select_from {
+    my ($self, $columns, $table) = @_;
+    my $colStr = '*';
+    if ( @{$columns}[0] ne '*' ) {
+        my @cols;
+        foreach my $col (@$columns) {
+            if ( $col =~ /(\w+)(?:\s+as\s+(\w+))/i ) {
+                $col = "$1\" AS \"$2";
+            }
+            $col = "\"$col\"";
+            push @cols, $col;
+        }
+        $colStr = join( ', ', @cols );
+    }
+    return "SELECT $colStr FROM \"$table\" WHERE 1=1";
+}
+
 sub insert_into {
     my ($self, $table, $cols) = @_;
     my $columns = '"' . join( '", "', @$cols ) . '"';
@@ -280,12 +290,6 @@ sub replace_into {
     return "INSERT INTO \"$table\" ($insertColumns) VALUES (??)
         ON CONFLICT ($insertColumns) DO UPDATE SET $updateColumns";
 }
-
-# INSERT INTO tablename (id, username, password, level, email) 
-#                 VALUES (1, 'John', 'qwerty', 5, 'john@mail.com') 
-# ON CONFLICT (id) DO UPDATE SET 
-#   id=EXCLUDED.id, username=EXCLUDED.username,
-#   password=EXCLUDED.password, level=EXCLUDED.level,email=EXCLUDED.email
 
 1;
 

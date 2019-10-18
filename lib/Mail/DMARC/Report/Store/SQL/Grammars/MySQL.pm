@@ -78,6 +78,12 @@ sub count_reports {
 
 sub limit {
     my ($self, $number_of_entries) = @_;
+    $number_of_entries //= 1;
+    return " LIMIT $number_of_entries";
+}
+
+sub limit_args {
+    my ($self, $number_of_entries) = @_;
     my $return = ' LIMIT ';
     $number_of_entries //= 1;
     for (my $i = 1; $i <= $number_of_entries; $i++) {
@@ -196,12 +202,6 @@ sub select_from {
     return "SELECT $colStr FROM $table WHERE 1=1";
 }
 
-sub insert_into {
-    my ($self, $table, $cols) = @_;
-    my $columns = join ', ', @$cols;
-    return "INSERT INTO $table ($columns) VALUES (??)";
-}
-
 sub insert_error {
     my ( $self, $which ) = @_;
     if ( $which == 0 ) {
@@ -251,6 +251,12 @@ EO_RPP
     ;
 }
 
+sub insert_into {
+    my ($self, $table, $cols) = @_;
+    my $columns = join ', ', @$cols;
+    return "INSERT INTO $table ($columns) VALUES (??)";
+}
+
 sub replace_into {
     my ($self, $table, $cols) = @_;
     my $columns = join ', ', @$cols;
@@ -261,6 +267,11 @@ sub update {
     my ($self, $table, $cols) = @_;
     my $columns = join( ' = ?, ') . ' = ?';
     return "UPDATE $table SET $columns WHERE 1=1";
+}
+
+sub delete_from {
+    my ($self, $table) = @_;
+    return "DELETE FROM $table WHERE 1=1";
 }
 
 1;
