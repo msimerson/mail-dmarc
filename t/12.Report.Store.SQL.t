@@ -188,6 +188,7 @@ sub test_get_report_policy_published {
     };
     delete $pp->{report_id};
     delete $policy->{uri};
+    delete $pp->{id};
     ok( $pp, "get_report_policy_published");
     is_deeply( $pp, $policy, "get_report_policy_published, deeply" )
         or diag Dumper( $pp, $policy );
@@ -376,12 +377,12 @@ sub test_ip_store_and_fetch {
     );
 
     foreach my $ip (@test_ips) {
-        my $ipbin;
+        my ($ipbin, $pres);
         if ( $sql->grammar->language ne 'postgresql' ) {
-            my $ipbin = $sql->any_inet_pton($ip);
+            $ipbin = $sql->any_inet_pton($ip);
             ok( $ipbin, "any_inet_pton, $ip" );
 
-            my $pres = $sql->any_inet_ntop($ipbin);
+            $pres = $sql->any_inet_ntop($ipbin);
             ok( $pres, "any_inet_ntop, $ip" );
 
             compare_any_inet_round_trip( $ip, $pres );
