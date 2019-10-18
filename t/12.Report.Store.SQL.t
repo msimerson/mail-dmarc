@@ -370,14 +370,15 @@ sub test_ip_store_and_fetch {
     );
 
     my $report_ref = $sql->query( $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1) );
+    ok( $report_ref->[0]{id}, 'get_report_id ' . $report_ref->[0]{id} );
 
     foreach my $ip (@test_ips) {
 
         my $ipbin = $sql->any_inet_pton($ip);
-        ok( $ipbin, "any_inet_pton, $ip" );
+        ok( $ipbin, "any_inet_pton, $ip:$ipbin" );
 
         my $pres = $sql->any_inet_ntop($ipbin);
-        ok( $pres, "any_inet_ntop, $ip" );
+        ok( $pres, "any_inet_ntop, $ip:$pres" );
 
         compare_any_inet_round_trip( $ip, $pres );
 
@@ -386,10 +387,10 @@ sub test_ip_store_and_fetch {
             [ $report_ref->[0]{id}, $ipbin, 'none', 'pass', 'pass', 1 ]
         ) or die "failed to insert?";
 
-        my $rr_ref
-            = $sql->query(
+        my $rr_ref = $sql->query(
             $sql->grammar->select_from( [ 'id', 'source_ip' ], 'report_record') . $sql->grammar->and_arg('id'),
-            [$rr_id] );
+            [$rr_id]
+        );
         compare_any_inet_round_trip( $ip,
             $sql->any_inet_ntop( $rr_ref->[0]{source_ip} ),
         );
