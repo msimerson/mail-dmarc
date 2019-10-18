@@ -76,9 +76,15 @@ while ( my $file = readdir( $dir ) ) {
 
     test_db_connect();
     test_grammar_loaded( $provider );
-    stderr_is { test_query_insert() } 'DBI error: no such table: reporting
-    DBI error: table report has no column named domin
-    ', 'STDERR has expected warning';
+    if ($provider eq 'Postgresql') {
+        stderr_is { test_query_insert() } 'DBI error: ERROR:  relation "reporting" does not exist
+        DBI error: ERROR:  column "domin" of relation "report" does not exist
+        ', 'STDERR has expected warning';
+    } else {
+        stderr_is { test_query_insert() } 'DBI error: no such table: reporting
+        DBI error: table report has no column named domin
+        ', 'STDERR has expected warning';
+    }
     test_query_replace();
     test_query_update();
     test_query_delete();
@@ -359,9 +365,9 @@ sub test_ip_store_and_fetch {
         '2002:4c79:6240::1610:9fff:fee5:fb5', '2607:f060:b008:feed::6',
     );
 
-    foreach my $ip (@test_ips) {
+    my $query; my @cols;
 
-        my $query; my @cols;
+    foreach my $ip (@test_ips) {
 
         my $ipbin = $sql->any_inet_pton($ip);
         ok( $ipbin, "any_inet_pton, $ip" );
@@ -423,7 +429,7 @@ sub test_query_insert {
 
     eval {
         $rid = $sql->query(
-            $sql->grammar->insert_into( 'report', [ 'domain', 'begin', 'end' ] ),
+            $sql->grammar->insert_into( 'report', [ 'domin', 'begin', 'end' ] ),
             [ 'a' x 257, 'yellow', $end ]
         );
     };
