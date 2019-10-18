@@ -333,9 +333,9 @@ sub populate_agg_records {
     # aggregate the connections per IP-Disposition-DKIM-SPF uniqueness
     my (%ips, %uniq, %pe, %auth, %ident, %reasons, %other);
     foreach my $rec ( @$recs ) {
-        my $ip = $self->any_inet_ntop($rec->{source_ip};
+        my $ip = $self->any_inet_ntop($rec->{source_ip});
         $ip = $rec->{source_ip} if $self->grammar->language eq 'postgresql';
-        my $key = join('-', $ip),
+        my $key = join('-', $ip,
                 @$rec{ qw/ disposition dkim spf / }); # hash slice
         $uniq{ $key }++;
         $ips{$key} = $rec->{source_ip};
