@@ -327,6 +327,7 @@ sub test_get_report_id {
 sub test_insert_rr_reason {
     ok ( $rr_id, "at_test_insert_rr_reason with $rr_id");
     my @reasons = qw/ forwarded local_policy mailing_list other sampled_out trusted_forwarder /;
+    $reasons = undef;
     foreach my $r ( @reasons) {
         push @$reasons, bless { type => $r, comment => "test $r comment" }, 'Mail::DMARC';
         ok( $sql->insert_rr_reason( $rr_id, $r, "test $r comment" ), "insert_rr_reason, $r" );
@@ -400,12 +401,12 @@ sub test_ip_store_and_fetch {
             $sql->grammar->insert_into( 'report_record', [ 'report_id', 'source_ip', 'disposition', 'dkim', 'spf', 'header_from_did' ] ),
             [ $report_id, $ipbin, 'none', 'pass', 'pass', 1 ]
         ) or die "failed to insert?";
-        
+
         my $rr_ref = $sql->query(
-            $sql->grammar->select_from( [ 'id', 'source_ip' ], 'report_record') . $sql->grammar->and_arg('id'),
+            $sql->grammar->select_from( [ 'id', 'source_ip' ], 'report_record' ) . $sql->grammar->and_arg('id'),
             [ $r_id ]
         );
-        ok( $rr_ref->[0], 'records_retrieved' );
+        ok( scalar @$rr_ref, 'records_retrieved' );
         if ( $sql->grammar->language eq 'postgresql' ) {
             compare_any_inet_round_trip( $ip, $rr_ref->[0]{source_ip} );
         } else {
