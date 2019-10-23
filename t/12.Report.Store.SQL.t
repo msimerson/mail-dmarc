@@ -84,10 +84,15 @@ DBI error: ERROR:  column "domin" of relation "report" does not exist
 LINE 1: INSERT INTO "report" ("domin", "begin", "end") VALUES ($1, $...
                               ^
 ', 'STDERR has expected warning';
-    } else {
+    } elsif ($provider eq 'SQLite') {
         stderr_is { test_query_insert() } 'DBI error: no such table: reporting
 DBI error: table report has no column named domin
 ', 'STDERR has expected warning';
+    } elsif ($provider eq 'MySQL') {
+        stderr_is { test_query_insert() } 'DBI error: Table \'dmarc_report.reporting\' doesn\'t exist
+DBI error: Unknown column \'domin\' in \'field list\'
+', 'STDERR has expected warning';
+
     }
     test_query_replace();
     test_query_update();
@@ -330,7 +335,8 @@ sub test_insert_rr_reason {
     $reasons = undef;
     foreach my $r ( @reasons) {
         push @$reasons, bless { type => $r, comment => "test $r comment" }, 'Mail::DMARC';
-        ok( $sql->insert_rr_reason( $rr_id, $r, "test $r comment" ), "insert_rr_reason, $r" );
+        my $rrid = $sql->insert_rr_reason( $rr_id, $r, "test $r comment" );
+        ok($rrid , "insert_rr_reason, $r" ) or diag Dumper($rrid);
     }
 }
 
@@ -440,8 +446,10 @@ sub test_query_insert {
         [ $from_did, $begin, $end, $author_id ]
     );
     ok( $rid, "query_insert, report, $rid" );
-    my $query = $sql->grammar->delete_from('report').$sql->grammar->and_arg('id');
-    ok( $sql->query( $query, [$rid] ), "query_delete" );
+    ok( $sql->query(
+        $sql->grammar->delete_from('report').$sql->grammar->and_arg('id'),
+        [$rid]
+    ), "query_delete, report, $rid" );
 
     # negative tests
     eval {
