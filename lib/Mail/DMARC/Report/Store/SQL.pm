@@ -385,9 +385,10 @@ sub row_exists {
         return;
     };
 
-    my $rows = $self->query($self->grammar->select_report_record,
-            [ $rid, $rec->{row}{source_ip}, $rec->{row}{count}, ]
-            );
+    my $rows = $self->query(
+        $self->grammar->select_report_record,
+        [ $rid, $rec->{row}{source_ip}, $rec->{row}{count}, ]
+    );
 
     return 1 if scalar @$rows;
     return;
@@ -639,14 +640,9 @@ sub query_replace {
 
 sub query_delete {
     my ( $self, $query, $err, @params ) = @_;
-    $self->dbix->query( $query, @params ) or croak $err;
+    my $affected = $self->dbix->query( $query, @params )->rows or croak $err;
     $self->db_check_err($err);
-    my $affected = 0;
-    if ($self->grammar->language eq 'mysql')  {
-        eval { $affected = $self->dbix->query("SELECT ROW_COUNT()")->list }; ## no critic (Eval)
-        return $affected;
-    }
-    return 1;
+    return $affected;
 }
 
 
