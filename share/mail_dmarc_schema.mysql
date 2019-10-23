@@ -51,9 +51,11 @@ CREATE TABLE `domain` (
 DROP TABLE IF EXISTS `report_error`;
 
 CREATE TABLE `report_error` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `report_id` int(11) unsigned NOT NULL,
   `error` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '',
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
   KEY `report_id` (`report_id`),
   CONSTRAINT `report_error_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `report` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -211,6 +213,7 @@ CREATE TABLE `report` (
 DROP TABLE IF EXISTS `report_policy_published`;
 
 CREATE TABLE `report_policy_published` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `report_id` int(11) unsigned NOT NULL,
   `adkim` char(1) DEFAULT NULL,
   `aspf` char(1) DEFAULT NULL,
@@ -218,6 +221,7 @@ CREATE TABLE `report_policy_published` (
   `sp` varchar(10) DEFAULT NULL,
   `pct` tinyint(1) unsigned DEFAULT NULL,
   `rua` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
   KEY `report_id` (`report_id`),
   CONSTRAINT `report_policy_published_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `report` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
@@ -255,9 +259,11 @@ CREATE TABLE `report_record` (
 DROP TABLE IF EXISTS `report_record_reason`;
 
 CREATE TABLE `report_record_reason` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `report_record_id` int(11) unsigned NOT NULL,
   `type` varchar(24) NOT NULL DEFAULT '',
   `comment` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
+  PRIMARY KEY (`id`),
   KEY `report_record_id` (`report_record_id`),
   KEY `type` (`type`),
   CONSTRAINT `report_record_reason_ibfk_3` FOREIGN KEY (`report_record_id`) REFERENCES `report_record` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -272,11 +278,13 @@ CREATE TABLE `report_record_reason` (
 DROP TABLE IF EXISTS `report_record_dkim`;
 
 CREATE TABLE `report_record_dkim` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `report_record_id` int(11) unsigned NOT NULL,
   `domain_id` int(11) unsigned NOT NULL,
   `selector` varchar(253) DEFAULT NULL,
   `result` varchar(9) NOT NULL DEFAULT '',
   `human_result` varchar(64) DEFAULT NULL,
+  PRIMARY KEY (`id`),
   KEY `report_record_id` (`report_record_id`),
   KEY `result` (`result`),
   CONSTRAINT `report_record_dkim_ibfk_2` FOREIGN KEY (`result`) REFERENCES `fk_dkim_result` (`result`),
@@ -291,10 +299,12 @@ CREATE TABLE `report_record_dkim` (
 DROP TABLE IF EXISTS `report_record_spf`;
 
 CREATE TABLE `report_record_spf` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `report_record_id` int(11) unsigned NOT NULL,
   `domain_id` int(11) unsigned NOT NULL,
   `scope` varchar(5) DEFAULT NULL,
   `result` varchar(9) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
   KEY `report_record_id` (`report_record_id`),
   KEY `scope` (`scope`),
   KEY `result` (`result`),
