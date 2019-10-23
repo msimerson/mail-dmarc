@@ -359,7 +359,7 @@ When a message arrives via SMTP, the MTA or filtering application can pass in a 
  d. does the message conform to the published policy?
  e. did the policy request reporting? If so, save details.
 
-The validation results are returned as a L<Mail::DMARC::Result> object. If the author domain requested a report, it was saved to the L<Report Store|Mail::DMARC::Report::Store>. The Store class includes a SQL implementation that is tested with SQLite and MySQL.
+The validation results are returned as a L<Mail::DMARC::Result> object. If the author domain requested a report, it was saved to the L<Report Store|Mail::DMARC::Report::Store>. The Store class includes a SQL implementation that is tested with SQLite, MySQL and PostgreSQL.
 
 There is more information available in the $result object. See L<Mail::DMARC::Result> for complete details.
 

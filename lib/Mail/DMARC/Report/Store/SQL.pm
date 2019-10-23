@@ -676,7 +676,7 @@ __END__
 
 Store and retrieve DMARC reports from SQL data store.
 
-Tested with SQLite and MySQL.
+Tested with SQLite, MySQL and PostgreSQL.
 
 =head1 DESCRIPTION
 
