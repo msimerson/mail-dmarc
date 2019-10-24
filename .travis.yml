@@ -6,11 +6,20 @@ perl:
 # - "5.14"
 # - "5.10"
 
-before_install:
+services:
+  - mysql
+  - postgresql
 
+before_install:
+  - psql -c 'CREATE DATABASE dmarc_report;' -U postgres
+  - psql -U postgres dmarc_report < share/mail_dmarc_schema.pgsql
+  - mysql -e 'CREATE DATABASE IF NOT EXISTS dmarc_report;'
+  - mysql -u root --password="" dmarc_report < share/mail_dmarc_schema.mysql
+  
 install:
    - cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
-   - cpanm --quiet --notest Net::IP Socket6 Email::MIME DBD::SQLite Net::SMTPS XML::LibXML
+   - cpanm --quiet --notest DBD::SQLite DBD::Pg DBD::mysql
+   - cpanm --quiet --notest Net::IP Socket6 Email::MIME Net::SMTPS XML::LibXML
    - cpanm --quiet --notest DBIx::Simple HTTP::Tiny Test::File::ShareDir Test::Output
    - cpanm --quiet --notest Net::IDN::Encode CGI
 
