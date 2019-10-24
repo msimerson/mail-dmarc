@@ -102,7 +102,6 @@ sub next_todo {
 
     $self->populate_agg_records( \$agg, $next_todo->{rid} );
     return $agg;
-
 }
 
 sub retrieve_todo {

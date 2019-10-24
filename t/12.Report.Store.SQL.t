@@ -121,18 +121,25 @@ DBI error: Unknown column \'domin\' in \'field list\'
     test_get_row_dkim();
     test_populate_agg_metadata();
     test_populate_agg_records();
-    if ( $provider eq 'PostgreSQL' ) {
-        ok ( $sql->query( 
-            'TRUNCATE author, domain, report, 
-                report_error, report_policy_published, 
-                report_record, report_record_dkim, report_record_reason, 
-                report_record_spf RESTART IDENTITY;'
-        ), 'truncate_testing_pg_database' );
-    }
+
+    test_cleanup($provider);
 }
 closedir( $dir );
 done_testing();
 exit;
+
+sub test_cleanup {
+    my ($provider) = @_;
+
+    if ( $provider eq 'PostgreSQL' ) {
+        ok ( $sql->query(
+            'TRUNCATE author, domain, report,
+                report_error, report_policy_published,
+                report_record, report_record_dkim, report_record_reason,
+                report_record_spf RESTART IDENTITY;'
+        ), 'truncate_testing_pg_database' );
+    }
+}
 
 sub test_populate_agg_records {
     my $agg = Mail::DMARC::Report::Aggregate->new();
