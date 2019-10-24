@@ -46,11 +46,8 @@ sub setup_dmarc_result {
     ok( $dmarc->header_from($test_dom),       "header_from" );
     ok( $dmarc->envelope_to('recipient.com'), 'envelope_to' );
     ok( $dmarc->source_ip('192.2.1.1'),       'source_ip' );
-    $dmarc->dkim(
-        [ { domain => $test_dom, result => 'pass', selector => 'apr2013' } ]
-    );
-    $dmarc->spf(
-        { domain => $test_dom, scope => 'mfrom', result => 'pass' } );
+    $dmarc->dkim([ { domain => $test_dom, result => 'pass', selector => 'apr2013' } ]);
+    $dmarc->spf({ domain => $test_dom, scope => 'mfrom', result => 'pass' } );
     $dmarc->validate() or diag Dumper($dmarc) and return;
     my $pub = delete $dmarc->result->{published};
     ok( $pub, "pub" );

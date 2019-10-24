@@ -14,7 +14,7 @@ if ($@) {
     plan( skip_all => 'DBD::SQLite not available' );
     exit;
 }
-            
+
 eval "use XML::SAX::ParserFactory;";
 if ($@) {
     plan( skip_all => 'XML::SAX::ParserFactory not available' );
