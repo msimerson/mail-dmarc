@@ -166,7 +166,7 @@ sub test_populate_agg_records {
     $expected->auth_results->dkim->[2]{human_result} = undef;
     is_deeply( $r, [$expected], "populate_agg_records, deeply")
         or diag Dumper($r, [$expected]);
-};
+}
 
 sub test_populate_agg_metadata {
     my $query = $sql->grammar->select_from( [ 'id AS rid', 'begin', 'end' ], 'report' );
@@ -190,7 +190,7 @@ sub test_populate_agg_metadata {
             'report_id' => 2,
         },
         "populate_agg_metadata, deeply" ) or diag Dumper($agg);
-};
+}
 
 sub test_get_report_policy_published {
     my $pp = $sql->get_report_policy_published( $report_id );
@@ -205,7 +205,7 @@ sub test_get_report_policy_published {
     ok( $pp, "get_report_policy_published");
     is_deeply( $pp, $policy, "get_report_policy_published, deeply" )
         or diag Dumper( $pp, $policy );
-};
+}
 
 sub test_retrieve {
     my $r = $sql->retrieve;
@@ -223,26 +223,26 @@ sub test_retrieve {
         my $r = $sql->retrieve( $_ => $tests{$_} );
         ok( @$r, "retrieve, $_, " . scalar @$r );
     };
-};
+}
 
 sub test_retrieve_todo {
     my $r = $sql->retrieve_todo();
     ok( $r, "retrieve_todo");
-#   warn Dumper($r);
-#   die $r->as_xml;
-};
+    # warn Dumper($r);
+    # die $r->as_xml;
+}
 
 sub test_get_row_reason {
     ok( $sql->get_row_reason( $rr_id ), 'get_row_reason');
-};
+}
 
 sub test_get_row_spf {
     ok( $sql->get_row_spf( $rr_id ), 'get_row_spf');
-};
+}
 
 sub test_get_row_dkim {
     ok( $sql->get_row_dkim( $rr_id ), 'get_row_dkim');
-};
+}
 
 sub test_get_report {
     my $reports = $sql->get_report( rid => $report_id )->{rows};
@@ -274,7 +274,7 @@ sub test_get_report {
     };
     $reports = $sql->get_report( rows => 1, sord => 'desc', sidx => 'rid'  );
     ok( $reports->{rows}, "get_report, multisearch");
-};
+}
 
 sub test_get_author_id {
     my $times = shift or return;
@@ -299,7 +299,7 @@ sub test_get_author_id {
     ok( $policy->domain( 'recip.example.com'), "policy, domain, set");
     ok( $report->aggregate->policy_published( $policy ), "policy published, set");
 
-# find a matching report, or create a new one
+    # find a matching report, or create a new one
     my $rid = $sql->get_report_id( $report->aggregate );
     ok( $rid, "get_report_id, $rid" );
 
@@ -324,7 +324,7 @@ sub test_get_report_id {
     ok( $policy->domain( 'recip.example.com'), "policy, domain, set");
     ok( $report->aggregate->policy_published( $policy ), "policy published, set");
 
-# find a matching report, or create a new one
+    # find a matching report, or create a new one
     $report_id = $sql->get_report_id( $report->aggregate );
     ok( $report_id, "get_report_id, $report_id" );
 }
@@ -380,7 +380,7 @@ sub test_insert_policy_published {
     my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject');
     $pol->apply_defaults;
     $pol->rua( 'mailto:' . $sql->config->{organization}{email} );
-#   warn Dumper($policy);
+    # warn Dumper($policy);
     my $r = $sql->insert_policy_published( $report_id, $pol );
     ok( $r, 'insert_policy_published' );
 }

@@ -312,26 +312,26 @@ DMARC: Domain-based Message Authentication, Reporting and Conformance
 
   my $result = $dmarc->validate();
 
- if ( $result->result eq 'pass' ) {
+  if ( $result->result eq 'pass' ) {
      ...continue normal processing...
      return;
- };
+  };
 
- # any result that did not pass is a fail. Now for disposition
+  # any result that did not pass is a fail. Now for disposition
 
- if ( $result->evalated->disposition eq 'reject' ) {
+  if ( $result->evalated->disposition eq 'reject' ) {
      ...treat the sender to a 550 ...
- };
- if ( $result->evalated->disposition eq 'quarantine' ) {
+  };
+  if ( $result->evalated->disposition eq 'quarantine' ) {
      ...assign a bunch of spam points...
- };
- if ( $result->evalated->disposition eq 'none' ) {
+  };
+  if ( $result->evalated->disposition eq 'none' ) {
      ...continue normal processing...
- };
+  };
 
 =head1 DESCRIPTION
 
-This module is a suite of tools for implementing DMARC. It adheres very tightly to the 2013 DMARC draft, intending to implement every MUST and every SHOULD.
+This module is a suite of tools for implementing DMARC. It adheres to the 2013 DMARC draft, intending to implement every MUST and every SHOULD.
 
 This module can be used by...
 
@@ -355,7 +355,7 @@ When a message arrives via SMTP, the MTA or filtering application can pass in a 
 
  a. the header_from domain exists
  b. the header_from domain publishes a DMARC policy
- c. if not, end processing
+ c. if a policy is published...
  d. does the message conform to the published policy?
  e. did the policy request reporting? If so, save details.
 
@@ -462,7 +462,7 @@ The domain portion of the RFC5321.RcptTo, (aka, the envelope recipient), and the
 
 =over 8
 
-RCPT TO:<user@B<example.com>>
+RCPT TO:&lt;user@B<example.com>>
 
 =back
 
@@ -472,7 +472,7 @@ The domain portion of the RFC5321.MailFrom, (aka, the envelope sender). That is 
 
 =over 8
 
-MAIL FROM:<user@B<example.com>>
+MAIL FROM:&lt;user@B<example.com>>
 
 =back
 
@@ -482,7 +482,7 @@ The domain portion of the RFC5322.From, aka, the From message header.
 
 =over 8
 
-From: Ultimate Vacation <sweepstakes@B<example.com>>
+From: Ultimate Vacation &lt;sweepstakes@B<example.com>>
 
 =back
 
@@ -572,15 +572,15 @@ The DMARC spec is lengthy and evolving, making correctness a moving target. In c
 
 =head2 Easy to use
 
-The effectiveness of DMARC will improve significantly as adoption increases. Proving an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
+Providing an implementation of DMARC that SMTP utilities can utilize will aid DMARC adoption.
 
 The list of dependencies appears long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is about 5. See the [Prereq] versus [Prereq / Recommends] sections in dist.ini.
 
 =head2 Maintainable
 
-Since DMARC is evolving, this implementation aims to be straight forward and dare I say, easy, to alter and extend. The programming style is primarily OO, which carries a small performance penalty but large dividends in maintainability.
+Since DMARC is evolving, this implementation aims to be straight forward and easy to alter and extend. The programming style is primarily OO, which carries a small performance penalty but dividends in maintainability.
 
-When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class, to broker the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than the many provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
+When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class to broker the request. When storing reports, calls are made to the Store class which dispatches to the SQL class. The idea is that if someone desired a data store other than those provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
 
 =head2 Fast
 
@@ -588,16 +588,14 @@ If you deploy this in an environment where performance is insufficient, please p
 
 =head1 SEE ALSO
 
-Mail::DMARC on GitHub: https://github.com/msimerson/mail-dmarc
+L<Mail::DMARC on GitHub|https://github.com/msimerson/mail-dmarc>
 
-2015-03 RFC 7489: https://tools.ietf.org/html/rfc7489
+2015-03 L<RFC 7489|https://tools.ietf.org/html/rfc7489>
 
-Best Current Practices: http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03
+DMARC L<Best Current Practices|http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03>
 
 =head1 HISTORY
 
-The daddy of this perl module was a DMARC module for the qpsmtpd MTA.
-
-Qpsmtpd plugin: https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc
+The daddy of this perl module was a L<DMARC module for the qpsmtpd MTA|https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc>.
 
 =cut
