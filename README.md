@@ -4,50 +4,50 @@ Mail::DMARC - Perl implementation of DMARC
 
 # VERSION
 
-version 1.20180917
+version 1.20191023
 
 # SYNOPSIS
 
 DMARC: Domain-based Message Authentication, Reporting and Conformance
 
-     my $dmarc = Mail::DMARC::PurePerl->new(
-       ... # see the documentation for the "new" method for required args
-     );
+    my $dmarc = Mail::DMARC::PurePerl->new(
+      ... # see the documentation for the "new" method for required args
+    );
 
-     my $result = $dmarc->validate();
+    my $result = $dmarc->validate();
 
     if ( $result->result eq 'pass' ) {
-        ...continue normal processing...
-        return;
+       ...continue normal processing...
+       return;
     };
 
     # any result that did not pass is a fail. Now for disposition
 
     if ( $result->evalated->disposition eq 'reject' ) {
-        ...treat the sender to a 550 ...
+       ...treat the sender to a 550 ...
     };
     if ( $result->evalated->disposition eq 'quarantine' ) {
-        ...assign a bunch of spam points...
+       ...assign a bunch of spam points...
     };
     if ( $result->evalated->disposition eq 'none' ) {
-        ...continue normal processing...
+       ...continue normal processing...
     };
 
 # DESCRIPTION
 
-This module is a suite of tools for implementing DMARC. It adheres very tightly to the 2013 DMARC draft, intending to implement every MUST and every SHOULD.
+This module is a suite of tools for implementing DMARC. It adheres to the 2013 DMARC draft, intending to implement every MUST and every SHOULD.
 
-This module can be used...
+This module can be used by...
 
-- by MTAs and filtering tools like SpamAssassin to validate that incoming messages are aligned with the purported sender's policy.
-- by email senders, to receive DMARC reports from other mail servers and display them via CLI and web interfaces.
-- by MTA operators to send DMARC reports to DMARC author domains.
+- MTAs and filtering tools like SpamAssassin to validate that incoming messages are aligned with the purported sender's policy.
+- email senders, to receive DMARC reports from other mail servers and display them via CLI and web interfaces.
+- MTA operators to send DMARC reports to DMARC author domains.
 
 When a message arrives via SMTP, the MTA or filtering application can pass in a small amount of metadata about the connection (envelope details, SPF and DKIM results) to Mail::DMARC. When the **validate** method is called, Mail::DMARC will determine if:
 
     a. the header_from domain exists
     b. the header_from domain publishes a DMARC policy
-    c. if not, end processing
+    c. if a policy is published...
     d. does the message conform to the published policy?
     e. did the policy request reporting? If so, save details.
 
@@ -245,15 +245,15 @@ The DMARC spec is lengthy and evolving, making correctness a moving target. In c
 
 ## Easy to use
 
-The effectiveness of DMARC will improve significantly as adoption increases. Providing an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
+The effectiveness of DMARC will improve significantly as adoption increases. Proving an implementation of DMARC that SMTP utilities like SpamAssassin, amavis, and qpsmtpd can consume will aid adoption.
 
 The list of dependencies appears long because of reporting. If this module is used without reporting, the number of dependencies not included with perl is about 5. See the \[Prereq\] versus \[Prereq / Recommends\] sections in dist.ini.
 
 ## Maintainable
 
-Since DMARC is evolving, this implementation aims to be straight forward and easy to alter and extend. The programming style is primarily OO, which carries a small performance penalty but large dividends in maintainability.
+Since DMARC is evolving, this implementation aims to be straight forward and dare I say, easy, to alter and extend. The programming style is primarily OO, which carries a small performance penalty but large dividends in maintainability.
 
-When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class to broker the request. When storing reports, calls are made to the Store class which dispatches to the SQL class. The idea is that if someone desired a data store other than those provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
+When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class, to broker the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than the many provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
 
 ## Fast
 
@@ -261,17 +261,15 @@ If you deploy this in an environment where performance is insufficient, please p
 
 # SEE ALSO
 
-Mail::DMARC on [GitHub](https://github.com/msimerson/mail-dmarc)
+[Mail::DMARC on GitHub](https://github.com/msimerson/mail-dmarc)
 
-2015-03: [RFC 7489](https://tools.ietf.org/html/rfc7489)
+2015-03 [RFC 7489](https://tools.ietf.org/html/rfc7489)
 
 DMARC [Best Current Practices](http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03)
 
 # HISTORY
 
-The daddy of this perl module was a DMARC module for the qpsmtpd MTA.
-
-[Qpsmtpd plugin](https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc)
+The daddy of this perl module was a [DMARC module for the qpsmtpd MTA](https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc)
 
 # AUTHORS
 
@@ -289,7 +287,7 @@ The daddy of this perl module was a DMARC module for the qpsmtpd MTA.
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2017 by Matt Simerson.
+This software is copyright (c) 2018 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
