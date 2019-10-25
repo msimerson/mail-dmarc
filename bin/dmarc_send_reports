@@ -90,8 +90,6 @@ syslog( LOG_INFO, 'dmarc_send_reports done' ) if $syslog;
 closelog() if $syslog;
 
 exit;
-# PODNAME: dmarc_send_reports
-# ABSTRACT: send aggregate reports
 
 sub send_single_report {
 
@@ -452,6 +450,10 @@ sub log_to_syslog {
 __END__
 
 =pod
+
+=head1 NAME
+
+dmarc_send_reports: send aggregate reports
 
 =head1 AUTHORS
 
