@@ -1,7 +1,8 @@
 package Mail::DMARC;
-our $VERSION = '1.20191024';
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
 
 use Carp;
 our $psl_loads = 0;
@@ -296,6 +297,12 @@ __END__
 
 =pod
 
+=head1 Status Badges
+
+=for markdown [![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
+
+=for markdown [![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
+
 =head1 NAME
 
 Mail::DMARC - Perl implementation of DMARC
@@ -384,12 +391,6 @@ received reports will have a null value for report_policy_published.rua
 outgoing reports will have null values for report.uuid and report_record.count
 
 =back
-
-=head1 Code Climate
-
-=for markdown [![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
-
-=for markdown [![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
 
 =head1 CLASSES
 
