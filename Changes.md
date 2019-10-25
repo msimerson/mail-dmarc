@@ -1,42 +1,48 @@
 
 {{$NEXT}}
 
-1.20191004 2019-10-04 America/Los_Angeles
+### 1.20191004
+
  - updated PSL
  - update jQuery, jQuery grid
  - empty ENV FROM when missing #144
 
-1.20190831 2019-08-31 America/Los_Angeles
+### 1.20190831
+
  - improve aggregate report docs #142
  - added dmarc_whitelist hosts #119
 
-1.20190308 2019-03-08 Australia/Melbourne
+### 1.20190308
+
  - Lower memory usage when sending reports
 
-1.20181001 2018-10-01 Australia/Melbourne
+### 1.20181001
+
  - Check author when saving a new report record
  - Fix bug in RUA filtering when recipient had a size filter
  - Fix TLS fails for report sending to certain domains
  - Fix report sending loop problem
 
-1.20180125 2018-01-25 Australia/Melbourne
+### 1.20180125
 
  - Allow domains listed in the public suffix list to align.
 
-1.20170911 2017009011 Australia/Melbourne
+### 1.20170911
+
  - STARTTLS workaround for Net::SMTPS issue.
 
-1.20170906 2017-09-06 Australia/Melbourne
+### 1.20170906
+
  - Ignore the case of tag keys when parsing DMARC records
 
-1.20170222 2017-02-21 America/Los_Angeles
+### 1.20170222
 
  - Ensure entities in XML agg reports are properly escaped #104
  - geoip v6 support and field selection #103
  - use a larger integer type for report_record.count #102
  - improved apt package lookups in install_deps.pl #98
 
-1.20160612 2016-06-11 America/Los_Angeles
+### 1.20160612
 
  - fix aggregrate schema test #96
  - Do not reject NXDOMAIN as per rfc #94
@@ -44,41 +50,42 @@
  - avoid deadlock with some invalid rua data #92
  - avoid loop when sending reports via http #92
 
-1.20150908 2015-09-08 America/Los_Angeles
+### 1.20150908
 
  - Optionally log sending of reports to syslog
 
-1.20150527 2015-05-26 America/Los_Angeles
+### 1.20150527
 
  - check for an updated PSL file and load if necessary
  - handle domains with missing rua/ruf
  - add timeout to sending script
 
-1.20150317 2015-03-17 America/Los_Angeles
+### 1.20150317
 
  - squash subdomains w/o DMARC records into parent report (#59)
  - add batch reporting (suppress throttling until...)
  - align reports with hour/UTC day
  - swap git contributors plugin
 
-1.20150310 2015-03-10 America/Los_Angeles
+### 1.20150310
+
  - lower case domain names at entry points (resolves #53)
  - tolerate substitution of = with : in DMARC DNS rec
 
-1.20150228 2015-02-27 America/Los_Angeles
+### 1.20150228
 
  - fix the policy_evaluated fields in outbound reports
  - accommodate a common DMARC error substiting = with :
  - initialized config file first (was non-deterministic)
  - tolerate missing SPF auth type scope
 
-1.20150222 2015-02-22 America/Los_Angeles
+### 1.20150222
 
  - remove ./mail-dmarc.ini (sample in share/mail-dmarc.ini)
  - load PSL before dmarc_httpd forks, so we only load it once
  - quieter report sending output unless --verbose
 
-1.20150211 2015-02-10 America/Los_Angeles
+### 1.20150211
 
  - optionally DKIM sign sent reports
  - warn when DMARC record format is invalid
@@ -87,7 +94,7 @@
  - rewrite DKIM result invalid -> temperror
  - capture test warnings, so 'make test' is prettier
 
-1.20150123 2015-01-22 America/Los_Angeles
+### 1.20150123
 
  - enable lazy evaluation of SPF & DKIM (Ricardo Signes)
  - check ShareDir for mail-dmarc.ini, if not in a standard location
@@ -101,11 +108,11 @@
  - Show "new record" output only in verbose mode. (Marc Bradshaw)
  - require DBIx::Simple 1.35 (was any)
 
-1.20141230 2014-12-29 America/Los_Angeles
+### 1.20141230
 
  - Add script to update the public suffix list file (Marc Bradshaw)
 
-1.20141206 2014-12-05 America/Los_Angeles
+### 1.20141206
 
  - Delete reports with no valid rua (Marc Bradshaw)
  - Ignore DomainKeys signatures (Marc Bradshaw)
@@ -113,17 +120,17 @@
  - permit absolute paths for public suffix list file location (Marc Bradshaw)
  - fix lookup for *.foo entries (Marc Bradshaw)
 
-1.20141119 2014-11-18 America/Los_Angeles
+### 1.20141119
 
  - added auto_save option for validation reports
  - updated bin/install_deps.pl
 
-1.20141030 2014-10-30 America/Los_Angeles
+### 1.20141030
 
  - percent policy logic wasn't being applied correctly
  - fix for reasons not stored in SQL
 
-1.20140711 2014-07-10 America/Los_Angeles
+### 1.20140711
 
  - Store/SQL: use full sql name in WHERE clause
  - DMARC/HTTP: added error handling and tests
@@ -132,11 +139,11 @@
  - try IMAP fetch without SORT if no results, for IMAP servers like Gmail that don't support SORT
  - warn but still pass test if DNS query fails
 
-1.20140623 2014-06-23 America/Los_Angeles
+### 1.20140623
 
  - updated tests to accomodate the cached PSL
 
-1.20140622 2014-06-22 America/Los_Angeles
+### 1.20140622
 
  - load PSL into hash to speed subsequent lookups (esp for daemon)
  - uncommented Net::Server in Prereqs/Recommended section
@@ -144,7 +151,7 @@
  - updated dmarc_httpd description to note validation feature
  - updated public_suffix_list
 
-1.20140210 2014-02-09 America/Los_Angeles
+### 1.20140210
 
  - NEW FEATURE: added HTTP validation service (see dmarc_httpd)
  - install_deps: install optional prereqs by default
@@ -154,7 +161,7 @@
     when message has multiple-address format used in the From header
  - updated public_suffix_list
 
-1.20130906 2013-09-06 America/Los_Angeles
+### 1.20130906
 
  - handle errors encountered when reporting address is illegal
  - delete reports that return a SMTP 5XX code for the recipient
@@ -162,23 +169,23 @@
  - added 'too big' notices when report size exceeds limit
  - updated install_deps.pl
 
-1.20130625 2013-06-24 America/Los_Angeles
+### 1.20130625
 
  - added a bunch of tests from http://dmarc-qa.com
  - URI: supress undef error if URI scheme not defined
  - policy->parse: properly parse records with unnecessary trailing ;
  - reporting is 'external' based on Org Domain (was email domain)
 
-1.20130616 2013-06-16 America/Los_Angeles
+### 1.20130616
 
  - combined update/replace SQL methods
  - dmarc_view_reports: fix duplicated variable name
 
-1.20130615 2013-06-15 America/Los_Angeles
+### 1.20130615
 
  - bug fixes and purge unused classes
 
-1.20130614 2013-06-13 America/Los_Angeles
+### 1.20130614
 
  - Added whitelist feature
  - SMTP: remove Subject: Report-ID <braces>
@@ -186,12 +193,12 @@
  - dmarc_send_reports: added verbose option
  - dmarc_view_reports: fix for searches with MySQL backend
 
-1.20130612 2013-06-11
+### 1.20130612
 
  -  dmarc_view_reports: improve gentoo support by adding /usr
     to search path for GeoIP DBs on gentoo - Benny Pedersen
 
-1.20130610 2013-06-10
+### 1.20130610
 
  - tolerate receiving reports with no records (ahem, hotmail.com)
  - simplify SMTP flow-of-control, additional SMTP tests
@@ -199,13 +206,13 @@
  - replace carp with warn in several places (more legible warning)
  - added RUA validity checks to dmarc_lookup
 
-1.20130605 2013-06-05
+### 1.20130605
 
  - in aggregate reports, group by IP and auth results (was only IP)
  - refactored SQL::retrieve_todo into 3 methods, added tests
  - SQL: added unique constraint on domain.domain
 
-1.20130604 2013-06-04
+### 1.20130604
 
  - main branches are master (devel) and releases (more obvious)
  - added mailing list impact FAQ
@@ -217,13 +224,13 @@
     - corrected subgrid row_id
  - additional validation of aggregate reports
 
-1.20130601 2013-05-31
+### 1.20130601
 
  - make sure a report record exists when fetching SMTP todo
  - added insecure SMTP fallback if STARTTLS fails
  - added color coded results to HTTP grid
 
-1.20130531 2013-05-30
+### 1.20130531
 
  - added gzip support to HTTP server, compressed JS files
  - reason is internally an arrayref of hashrefs (was a single hashref)
@@ -232,7 +239,7 @@
  - add validation and fixup of SPF result for incoming reports
  - normalized domain columns in spf & dkim tables
 
-1.20130528 2013-05-28
+### 1.20130528
 
  - bump major version to 1
  - normalized domain columns in report_record
@@ -241,19 +248,19 @@
  - made internal represention of Mail::DMARC::dkim & spf consistent
    with their aggregate report representation
 
-0.20130528 2013-05-27
+### 0.20130528
 
  - updated Send/SMTP to use report::aggregate
  - switched back to gzip reports (instead of zip)
  - dmarc_view_reports, added filtering ability, GeoIP location
 
-0.20130524 2013-05-23
+### 0.20130524
 
  - added bin/dmarc_httpd
  - added bin/dmarc_view_reports
  - renamed: dmarc_report -> dmarc_send_reports
 
-0.20130521 2013-05-21
+### 0.20130521
 
  - check for report_record existence before insertion
  - SQL: added report_record.count column
@@ -262,7 +269,7 @@
  - SQL: added table report_error
  - updated SQLite schema with native column types
 
-0.20130520 2013-05-19
+### 0.20130520
 
  - added bin/dmarc_receive (via IMAP, mbox, or message file)
  - added report retrieval via IMAP
@@ -271,7 +278,7 @@
  - SQL: removed 'NOT NULL' requirements for values often missing from incoming
         reports.
 
-0.20130517 2013-05-17
+### 0.20130517
 
  - send reports with zip until 7/1, gzip after
  - replace Socket 2 with Socket6 (better Windows compatibility)
@@ -281,12 +288,12 @@
  - add email hostname to MX list when attempting SMTP delivery
  - during report delivery, check report URI max size
 
-0.20130515 2013-05-15
+### 0.20130515
 
  - use File::ShareDir to access share/*
  - added external reporting verification
 
-0.20130514 2013-05-14
+### 0.20130514
 
  - moved DNS settings into config file
  - fixed a case where disposition was not set
@@ -297,9 +304,9 @@
  - several SQL schema changes
  - has_valid_reporting_uri does validation now
 
-0.20130510 2013-05-09
+### 0.20130510
 
-0.20130507 2013-05-07
+### 0.20130507
 
  - added sql and MySQL schema
  - added bin/dmarc_lookup
@@ -307,11 +314,10 @@
  - added Results.pm tests
  - added full section numbers to Draft quotes
 
-0.20130506 2013-05-06
+### 0.20130506
 
  - added Result and Result/Evaluated.pm
  - consolidated DNS functions into DNS.pm
    - uses Regexp::Common, requiring perl 5.10.
  - Mail::DMARC::Policy is well defined and tested
  - setting up package
-
