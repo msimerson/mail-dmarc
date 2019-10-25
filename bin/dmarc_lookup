@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# VERSION
 use strict;
 use warnings;
 
@@ -35,11 +34,16 @@ if ( $policy->rua ) {
     print "valid report URI: ";
     print $uri_count ? "yes\n" : "no\n";
 };
+
 exit;
 
-# PODNAME: dmarc_lookup
-# ABSTRACT: look up DMARC policy for a domain
 __END__
+
+=pod
+
+=head1 NAME
+
+dmarc_lookup: look up DMARC policy for a domain
 
 =head1 SYNOPSIS
 
@@ -69,5 +73,23 @@ Other ways to retrieve a DMARC record for a domain are:
 =head1 SEE ALSO
 
 L<Mail::DMARC::Policy>
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
 
 =cut

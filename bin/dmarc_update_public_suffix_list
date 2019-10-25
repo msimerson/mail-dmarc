@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# VERSION
 use strict;
 use warnings;
 
@@ -29,13 +28,27 @@ Mail::DMARC->new(
     (defined $config_file ? (config_file => $config_file) : ())
 )->update_psl_file($dryrun);
 
-# PODNAME: dmarc_update_public_suffix_list
-# ABSTRACT: command line tool to download updated public suffix list
 __END__
+
+=pod
+
+=head1 NAME
+
+dmarc_update_public_suffix_list: command line tool to download updated public suffix list
 
 =head1 SYNOPSIS
 
   dmarc_update_public_suffix_list [ --option=value ]
+
+=head1 DESCRIPTION
+
+Downloads a new Public Suffix List to the location specified by /etc/mail-dmarc.ini
+
+The PSL is maintained by the Mozilla Foundation. It is updated a few times per
+month, you are requested to download no more than once per day.
+
+The URL of the file is https://publicsuffix.org/list/effective_tld_names.dat
+More details can be found at https://publicsuffix.org/
 
 =head2 Options
 
@@ -57,15 +70,22 @@ To download a new Public Suffix List to the location specified my mail-dmarc.ini
 
   dmarc_update_public_suffix_list
 
-=head1 DESCRIPTION
+=head1 AUTHORS
 
-Downloads a new Public Suffix List to the location specified by /etc/mail-dmarc.ini
+=over 4
 
-The PSL is maintained by the Mozilla Foundation. It is updated a few times per
-month, you are requested to download no more than once per day.
+=item *
 
-The URL of the file is https://publicsuffix.org/list/effective_tld_names.dat
-More details can be found at https://publicsuffix.org/
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
 
 =cut
-

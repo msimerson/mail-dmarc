@@ -446,10 +446,10 @@ sub get_cpan_config {
 
 sub name_overrides {
     my $mod = shift;
-# Package and port managers have naming conventions for perl modules. The
-# methods will typically work out the name based on the module name and a
-# couple rules. When that doesn't work, add entries here for FreeBSD (port),
-# MacPorts ($dport), yum, and apt.
+    # Package and port managers have naming conventions for perl modules. The
+    # methods will typically work out the name based on the module name and a
+    # couple rules. When that doesn't work, add entries here for FreeBSD (port),
+    # MacPorts ($dport), yum, and apt.
     my @modules = (
         { module=>'LWP::UserAgent'    , info => { cat=>'www', port=>'p5-libwww', dport=>'p5-libwww-perl', yum=>'perl-libwww-perl' }, },
         { module=>'Mail::Send'        , info => { port => 'Mail::Tools', }  },
@@ -463,5 +463,22 @@ sub name_overrides {
     return { module=>$mod, info => { } };
 };
 
-# PODNAME: install_deps.pl
-# ABSTRACT: install dependencies with package manager or CPAN
+__END__
+
+=pod
+
+=head1 NAME
+
+install_deps.pl: install dependencies with package manager or CPAN
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=back
+
+=cut

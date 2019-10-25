@@ -4,6 +4,7 @@ use warnings;
 use Data::Dumper;
 use Test::Exception;
 use Test::More;
+use Test::File::ShareDir -share => { -dist => { 'Mail-DMARC' => 'share' } };
 
 use lib 'lib';
 use Mail::DMARC::PurePerl;
