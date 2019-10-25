@@ -1,6 +1,11 @@
 #!/bin/sh
 
-TAGNAME="v1.$(date '+%Y%M%d')"
+. .release/base.sh || exit
+
+repo_is_clean || exit
+
+TAGNAME="v$(get_version)"
 echo "tag $TAGNAME"
 
 git tag "$TAGNAME"
+git push --tags
