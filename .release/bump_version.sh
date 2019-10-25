@@ -11,5 +11,7 @@ sed -i '' \
     -e "/^version / s/.*/version $NEWVER/" \
     $(find lib -type f -name '*.pm')
 
-git add .
-git commit -m "bump version to $NEWVER"
+if ! repo_is_clean; then
+    git add .
+    git commit -m "bump version to $NEWVER"
+fi
