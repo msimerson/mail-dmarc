@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-our $VERSION = '1.20191024'; # VERSION
+our $VERSION = '1.20191024';
 use strict;
 use warnings;
 
@@ -70,6 +70,7 @@ sub retrieve {
         $query .= $self->grammar->and_arg('fd.domain');
         push @params, $args{from_domain};
     };
+
     my $reports = $self->query( $query, \@params );
 
     foreach (@$reports ) {
@@ -110,8 +111,9 @@ sub retrieve_todo {
     # this method extracts the data from the SQL tables and populates a
     # list of Aggregate report objects with them.
     my $reports = $self->query( $self->grammar->select_todo_query, [ time ] );
-    return if ! @$reports;
+
     my @reports_todo;
+    return \@reports_todo if ! scalar @$reports;
 
     foreach my $report ( @{ $reports } ) {
 

@@ -29,6 +29,12 @@ if ($@) {
 }
 
 my $dmarc = Mail::DMARC::PurePerl->new();
+my $store = $dmarc->report->store;
+
+$store->config('t/mail-dmarc.ini');
+$store->backend->config('t/mail-dmarc.ini');
+
+die 'Not using test store' if $store->backend->config->{'report_store'}->{'dsn'} ne 'dbi:SQLite:dbname=t/reports-test.sqlite';
 
 $dmarc->source_ip('66.128.51.165');
 $dmarc->envelope_to('recipient.example.com');
@@ -56,15 +62,12 @@ $dmarc->spf([
 
 my $policy = $dmarc->discover_policy;
 my $result = $dmarc->validate($policy);
-$dmarc->save_aggregate();
 
-my $store = $dmarc->{'report'}->{'store'};
-$store->{SQL}->config('t/mail-dmarc.ini');
+my $report_id = $dmarc->save_aggregate();
+ok( $report_id, "saved report $report_id");
 
-die 'Not using test store' if $store->{'SQL'}->{'config'}->{'report_store'}->{'dsn'} ne 'dbi:SQLite:dbname=:memory:';
-
-my $a = $store->{'SQL'}->query('UPDATE report SET begin=begin-86400, end=end-86400 WHERE id=1');
-   $a = $store->{'SQL'}->query('INSERT INTO report_error(report_id,error,time) VALUES(1,"<ERROR> Test error & encoding",100)');
+my $a = $store->backend->query('UPDATE report SET begin=begin-86400, end=end-86400 WHERE id=1');
+   $a = $store->backend->query('INSERT INTO report_error(report_id,error,time) VALUES(1,"<ERROR> Test error & encoding",100)');
 
 my $agg = $store->retrieve_todo()->[0];
 
@@ -84,6 +87,4 @@ sub test_against_schema {
         $parser->parse_string( $xml );
     }, 'Check schema' );
     # print $xml;
-
-};
-
+}

@@ -151,7 +151,6 @@ sub test_cleanup {
     }
     elsif ($provider eq 'SQLite') {
         unlink "t/reports-test.sqlite";
-        unlink "dmarc_reports.sqlite";
     }
 }
 

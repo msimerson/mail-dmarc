@@ -120,7 +120,6 @@ sub any_inet_pton {
         }
         return 0;
      }
-
  }
 
 sub is_public_suffix {
@@ -176,8 +175,7 @@ sub update_psl_file {
 sub find_psl_file {
     my ($self) = @_;
 
-    my $file = $self->config->{dns}{public_suffix_list}
-        || 'share/public_suffix_list';
+    my $file = $self->config->{dns}{public_suffix_list} || 'share/public_suffix_list';
     if ( $file =~ /^\// && -f $file && -r $file ) {
         print "using $file for Public Suffix List\n" if $self->verbose;
         return $file;

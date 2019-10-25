@@ -1,5 +1,5 @@
 package Mail::DMARC;
-our $VERSION = '1.20191024'; # VERSION
+our $VERSION = '1.20191024';
 use strict;
 use warnings;
 
@@ -626,7 +626,7 @@ Marc Bradshaw <marc@marcbradshaw.net>
 
 =head1 CONTRIBUTORS
 
-=for stopwords Benny Pedersen Jean Paul Galea Making GitHub Delicious. Marc Bradshaw Marisa Clardy Mohammad S Anwar Priyadi Iman Nurcahyo Ricardo Signes
+=for stopwords Benny Pedersen Jean Paul Galea Marisa Clardy Priyadi Iman Nurcahyo Ricardo Signes
 
 =over 4
 
@@ -640,15 +640,7 @@ Jean Paul Galea <jeanpaul@yubico.com>
 
 =item *
 
-Marc Bradshaw <marc@marcbradshaw.net>
-
-=item *
-
 Marisa Clardy <marisa@clardy.eu>
-
-=item *
-
-Mohammad S Anwar <Mohammad.Anwar@yahoo.com>
 
 =item *
 

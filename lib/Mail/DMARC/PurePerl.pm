@@ -578,7 +578,7 @@ sub verify_external_reporting {
 
 1;
 
-# ABSTRACT: Pure Perl implementation of DMARC
+__END__
 
 =pod
 
@@ -759,7 +759,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-__END__
-sub {}
-
