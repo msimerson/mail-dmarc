@@ -2,7 +2,7 @@ package Mail::DMARC::Report::URI;
 use strict;
 use warnings;
 
-our $VERSION = '1.1.20191025';
+our $VERSION = '1.20191025';
 
 use Carp;
 use URI;
@@ -69,7 +69,7 @@ Mail::DMARC::Report::URI - a DMARC report URI
 
 =head1 VERSION
 
-version 1.1.20191025
+version 1.20191025
 
 =head1 SYNOPSIS
 
