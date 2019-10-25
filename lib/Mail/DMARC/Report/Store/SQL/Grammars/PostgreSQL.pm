@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL;
-# VERSION
+our $VERSION = '1.20191024';
 use strict;
 use warnings;
 
@@ -299,8 +299,17 @@ sub replace_into {
 
 1;
 
-# ABSTRACT: Grammar for working with pgsql databases.
 __END__
+
+=pod
+
+=head1 NAME
+
+Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL - Grammar for working with pgsql databases.
+
+=head1 VERSION
+
+version 1.20191024
 
 =head1 SYPNOSIS
 
@@ -308,8 +317,30 @@ Allow DMARC to be able to speak to PostgreSQL databases.
 
 =head1 DESCRIPTION
 
-Uses ANSI SQL syntax, keeping the SQL as portable as possible.
 
-DB engine specific features are to be avoided.
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2018 by Matt Simerson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut

@@ -275,12 +275,12 @@ The daddy of this perl module was a [DMARC module for the qpsmtpd MTA](https://g
 
 - Matt Simerson <msimerson@cpan.org>
 - Davide Migliavacca <shari@cpan.org>
+- Marc Bradshaw <marc@marcbradshaw.net>
 
 # CONTRIBUTORS
 
 - Benny Pedersen <me@junc.eu>
 - Jean Paul Galea <jeanpaul@yubico.com>
-- Marc Bradshaw <marc@marcbradshaw.net>
 - Marisa Clardy <marisa@clardy.eu>
 - Priyadi Iman Nurcahyo <priyadi@priyadi.net>
 - Ricardo Signes <rjbs@cpan.org>
@@ -291,3 +291,4 @@ This software is copyright (c) 2018 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
+

@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Send;
-# VERSION
+our $VERSION = '1.20191024'; # VERSION
 use strict;
 use warnings;
 
@@ -52,8 +52,16 @@ EO_TOO_BIG
 1;
 
 # ABSTRACT: report sending dispatch class
-__END__
-sub {}
+
+=pod
+
+=head1 NAME
+
+Mail::DMARC::Report::Send - report sending dispatch class
+
+=head1 VERSION
+
+version 1.20191024
 
 =head1 DESCRIPTION
 
@@ -83,4 +91,33 @@ L<Mail::DMARC::Report::Send::HTTP>
 
 Other registered URI schemes may be explicitly supported in later versions.
 
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2018 by Matt Simerson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
 =cut
+
+__END__
+sub {}
+

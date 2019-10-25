@@ -1,0 +1,135 @@
+{
+   "abstract" : "Perl implementation of DMARC",
+   "author" : [
+      "Matt Simerson <msimerson@cpan.org>",
+      "Davide Migliavacca <shari@cpan.org>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "Dist::Zilla version 5.029, CPAN::Meta::Converter version 2.143240",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : 2
+   },
+   "name" : "Mail-DMARC",
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "Module::Build" : "0.3601"
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "ExtUtils::MakeMaker" : "0",
+            "File::ShareDir::Install" : "0.06",
+            "Module::Build" : "0.3601"
+         }
+      },
+      "develop" : {
+         "requires" : {
+            "Test::Pod" : "1.41"
+         }
+      },
+      "runtime" : {
+         "recommends" : {
+            "CGI" : "0",
+            "Email::Simple" : "0",
+            "IO::Compress::Gzip" : "0",
+            "IO::Compress::Zip" : "0",
+            "IO::Uncompress::Gunzip" : "0",
+            "IO::Uncompress::Unzip" : "0",
+            "Mail::DKIM" : "0",
+            "Net::HTTP" : "0",
+            "Net::IMAP::Simple" : "0",
+            "Net::Server" : "2"
+         },
+         "requires" : {
+            "CGI" : "0",
+            "CPAN" : "0",
+            "Carp" : "0",
+            "Config::Tiny" : "0",
+            "DBD::SQLite" : "1.31",
+            "DBIx::Simple" : "1.35",
+            "Data::Dumper" : "0",
+            "Email::MIME" : "0",
+            "Email::Simple" : "0",
+            "Encode" : "0",
+            "English" : "0",
+            "File::ShareDir" : "0",
+            "Getopt::Long" : "0",
+            "HTTP::Request" : "0",
+            "HTTP::Tiny" : "0",
+            "IO::Compress::Gzip" : "0",
+            "IO::Compress::Zip" : "0",
+            "IO::File" : "0",
+            "IO::Socket::SSL" : "0",
+            "IO::Uncompress::Gunzip" : "0",
+            "IO::Uncompress::Unzip" : "0",
+            "JSON" : "0",
+            "LWP::UserAgent" : "0",
+            "Mail::DKIM::PrivateKey" : "0",
+            "Mail::DKIM::Signer" : "0",
+            "Mail::DKIM::TextWrap" : "0",
+            "Net::DNS::Resolver" : "0",
+            "Net::HTTP" : "0",
+            "Net::IDN::Encode" : "0",
+            "Net::IP" : "0",
+            "Net::SMTPS" : "0",
+            "Net::SSLeay" : "0",
+            "Net::Server::HTTP" : "0",
+            "POSIX" : "0",
+            "Pod::Usage" : "0",
+            "Regexp::Common" : "2013031301",
+            "Socket" : "0",
+            "Socket6" : "0.23",
+            "Sys::Hostname" : "0",
+            "Sys::Syslog" : "0",
+            "Test::File::ShareDir" : "0",
+            "URI" : "0",
+            "XML::LibXML" : "0",
+            "lib" : "0",
+            "parent" : "0",
+            "perl" : "5.008",
+            "strict" : "0",
+            "warnings" : "0"
+         }
+      },
+      "test" : {
+         "recommends" : {
+            "Test::Output" : "0",
+            "XML::SAX::ParserFactory" : "0",
+            "XML::Validator::Schema" : "0"
+         },
+         "requires" : {
+            "Test::Exception" : "0",
+            "Test::File::ShareDir" : "0",
+            "Test::More" : "0",
+            "Test::Output" : "0"
+         }
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/msimerson/mail-dmarc/issues"
+      },
+      "homepage" : "https://github.com/msimerson/mail-dmarc/wiki",
+      "repository" : {
+         "type" : "git",
+         "url" : "git://github.com/msimerson/mail-dmarc.git",
+         "web" : "https://github.com/msimerson/mail-dmarc"
+      }
+   },
+   "version" : "1.20191024",
+   "x_contributors" : [
+      "Benny Pedersen <me@junc.eu>",
+      "Jean Paul Galea <jeanpaul@yubico.com>",
+      "Marc Bradshaw <marc@marcbradshaw.net>",
+      "Marisa Clardy <marisa@clardy.eu>",
+      "Priyadi Iman Nurcahyo <priyadi@priyadi.net>",
+      "Ricardo Signes <rjbs@cpan.org>"
+   ]
+}
+

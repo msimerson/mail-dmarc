@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::URI;
-# VERSION
+our $VERSION = '1.20191024'; # VERSION
 use strict;
 use warnings;
 
@@ -59,8 +59,16 @@ sub get_size_limit {
 1;
 
 # ABSTRACT: a DMARC report URI
-__END__
-sub {}
+
+=pod
+
+=head1 NAME
+
+Mail::DMARC::Report::URI - a DMARC report URI
+
+=head1 VERSION
+
+version 1.20191024
 
 =head1 SYNOPSIS
 
@@ -72,30 +80,6 @@ sub {}
       my $max    = $u->{max_bytes};
       ... do some URI stuff ...
   };
-
-=head1 ABNF
-
-  dmarc-uri = URI [ "!" 1*DIGIT [ "k" / "m" / "g" / "t" ] ]
-            ; "URI" is imported from [URI]; commas (ASCII 0x2c)
-            ; and exclamation points (ASCII 0x21) MUST be encoded
-
-URI is imported from RFC 3986: https://www.ietf.org/rfc/rfc3986.txt
-
-Only mailto, http, and https URIs are currently supported, examples:
-
-    https://www.ietf.org/rfc/rfc3986.txt
-    mailto:John.Doe@example.com
-
-With an optional size limit (see SIZE LIMIT).
-
-=head1 SIZE LIMIT
-
-A size limitation in a dmarc-uri, if provided, is interpreted as a
-count of units followed by an OPTIONAL unit size ("k" for kilobytes,
-"m" for megabytes, "g" for gigabytes, "t" for terabytes).  Without a
-unit, the number is presumed to be a basic byte count.  Note that the
-units are considered to be powers of two; a kilobyte is 2^10, a
-megabyte is 2^20, etc.
 
 =head1 DESCRIPTION
 
@@ -125,4 +109,57 @@ report payload does not exceed 50 megabytes.
 
 A formal definition is provided in Section 6.3.
 
+=head1 ABNF
+
+  dmarc-uri = URI [ "!" 1*DIGIT [ "k" / "m" / "g" / "t" ] ]
+            ; "URI" is imported from [URI]; commas (ASCII 0x2c)
+            ; and exclamation points (ASCII 0x21) MUST be encoded
+
+URI is imported from RFC 3986: https://www.ietf.org/rfc/rfc3986.txt
+
+Only mailto, http, and https URIs are currently supported, examples:
+
+    https://www.ietf.org/rfc/rfc3986.txt
+    mailto:John.Doe@example.com
+
+With an optional size limit (see SIZE LIMIT).
+
+=head1 SIZE LIMIT
+
+A size limitation in a dmarc-uri, if provided, is interpreted as a
+count of units followed by an OPTIONAL unit size ("k" for kilobytes,
+"m" for megabytes, "g" for gigabytes, "t" for terabytes).  Without a
+unit, the number is presumed to be a basic byte count.  Note that the
+units are considered to be powers of two; a kilobyte is 2^10, a
+megabyte is 2^20, etc.
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2018 by Matt Simerson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
 =cut
+
+__END__
+sub {}
+
