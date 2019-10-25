@@ -4,7 +4,7 @@
 
 assure_repo_is_clean || exit
 
-NEWVER="1.$(get_version)"
+NEWVER="$(get_version)"
 
 sed -i '' \
     -e "/VERSION =/ s/= .*$/= '$NEWVER';/" \
