@@ -17,7 +17,8 @@ my %module_build_args = (
   "dist_abstract" => "Perl implementation of DMARC",
   "dist_author" => [
     "Matt Simerson <msimerson\@cpan.org>",
-    "Davide Migliavacca <shari\@cpan.org>"
+    "Davide Migliavacca <shari\@cpan.org>",
+    "Marc Bradshaw <marc\@marcbradshaw.net>"
   ],
   "dist_name" => "Mail-DMARC",
   "dist_version" => "1.20191024",
