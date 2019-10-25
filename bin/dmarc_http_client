@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# VERSION
 use strict;
 use warnings;
 

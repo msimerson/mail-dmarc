@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate::Record::Auth_Results;
-our $VERSION = '1.20191024'; # VERSION
+our $VERSION = '1.20191024';
 use strict;
 use warnings;
 
