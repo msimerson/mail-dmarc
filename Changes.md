@@ -1,4 +1,14 @@
 
+### 1.20191025
+
+- NEW FEATURE: Postgres support #150
+- removed dist::zilla
+- additional tests enabled
+- html UI: use https URLS everywhere
+- SPF: don't warn when scope is missing from reports
+- receive: permit other MIME types that have xml.gz filename
+- DKIM: when message has no result, add "none"
+
 ### 1.20191004
 
 - updated PSL
