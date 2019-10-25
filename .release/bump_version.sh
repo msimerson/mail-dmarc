@@ -2,7 +2,7 @@
 
 . .release/base.sh || exit
 
-if ! repo_is_clean; then exit; fi
+assure_repo_is_clean || exit
 
 NEWVER="1.$(get_version)"
 

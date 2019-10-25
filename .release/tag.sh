@@ -2,7 +2,7 @@
 
 . .release/base.sh || exit
 
-repo_is_clean || exit
+assure_repo_is_clean || exit
 
 TAGNAME="v$(get_version)"
 echo "tag $TAGNAME"
