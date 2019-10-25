@@ -137,7 +137,6 @@ t/travis/backends/mail-dmarc.sql.Pg.ini
 t/travis/backends/mail-dmarc.sql.SQLite.ini
 t/whitelist
 TODO.md
-weaver.ini
 xt/author-critic.t
 xt/perlcritic.rc
 xt/release-pod-syntax.t

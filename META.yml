@@ -3,6 +3,7 @@ abstract: 'Perl implementation of DMARC'
 author:
   - 'Matt Simerson <msimerson@cpan.org>'
   - 'Davide Migliavacca <shari@cpan.org>'
+  - 'Marc Bradshaw <marc\@marcbradshaw.net>'
 build_requires:
   Module::Build: '0.3601'
   Test::Exception: '0'
@@ -14,7 +15,6 @@ configure_requires:
   File::ShareDir::Install: '0.06'
   Module::Build: '0.3601'
 dynamic_config: 0
-generated_by: 'Dist::Zilla version 5.029, CPAN::Meta::Converter version 2.143240'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -88,7 +88,6 @@ version: '1.20191024'
 x_contributors:
   - 'Benny Pedersen <me@junc.eu>'
   - 'Jean Paul Galea <jeanpaul@yubico.com>'
-  - 'Marc Bradshaw <marc@marcbradshaw.net>'
   - 'Marisa Clardy <marisa@clardy.eu>'
   - 'Priyadi Iman Nurcahyo <priyadi@priyadi.net>'
   - 'Ricardo Signes <rjbs@cpan.org>'

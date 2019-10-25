@@ -2,10 +2,10 @@
    "abstract" : "Perl implementation of DMARC",
    "author" : [
       "Matt Simerson <msimerson@cpan.org>",
-      "Davide Migliavacca <shari@cpan.org>"
+      "Davide Migliavacca <shari@cpan.org>",
+      "Marc Bradshaw <marc@marcbradshaw.net>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 5.029, CPAN::Meta::Converter version 2.143240",
    "license" : [
       "perl_5"
    ],
@@ -126,7 +126,6 @@
    "x_contributors" : [
       "Benny Pedersen <me@junc.eu>",
       "Jean Paul Galea <jeanpaul@yubico.com>",
-      "Marc Bradshaw <marc@marcbradshaw.net>",
       "Marisa Clardy <marisa@clardy.eu>",
       "Priyadi Iman Nurcahyo <priyadi@priyadi.net>",
       "Ricardo Signes <rjbs@cpan.org>"
