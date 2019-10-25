@@ -1,5 +1,5 @@
 package Mail::DMARC::HTTP;
-# VERSION
+our $VERSION = '1.20191024';
 use strict;
 use warnings;
 
@@ -200,11 +200,46 @@ sub report_json_rr {
 
 1;
 
-# ABSTRACT: view stored reports via HTTP
 __END__
+
+=pod
+
+=head1 NAME
+
+Mail::DMARC::HTTP - view stored reports via HTTP
+
+=head1 VERSION
+
+version 1.20191024
 
 =head1 SYNOPSIS
 
 See the POD docs / man page for L<dmarc_httpd>.
 
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2019 by Matt Simerson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
 =cut
+

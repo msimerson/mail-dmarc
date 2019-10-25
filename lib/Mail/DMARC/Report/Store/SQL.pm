@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-# VERSION
+our $VERSION = '1.20191024';
 use strict;
 use warnings;
 
@@ -70,6 +70,7 @@ sub retrieve {
         $query .= $self->grammar->and_arg('fd.domain');
         push @params, $args{from_domain};
     };
+
     my $reports = $self->query( $query, \@params );
 
     foreach (@$reports ) {
@@ -102,7 +103,6 @@ sub next_todo {
 
     $self->populate_agg_records( \$agg, $next_todo->{rid} );
     return $agg;
-
 }
 
 sub retrieve_todo {
@@ -111,8 +111,9 @@ sub retrieve_todo {
     # this method extracts the data from the SQL tables and populates a
     # list of Aggregate report objects with them.
     my $reports = $self->query( $self->grammar->select_todo_query, [ time ] );
-    return if ! @$reports;
+
     my @reports_todo;
+    return \@reports_todo if ! scalar @$reports;
 
     foreach my $report ( @{ $reports } ) {
 
@@ -669,14 +670,17 @@ sub grammar {
 
 1;
 
-# ABSTRACT: store and retrieve reports from a SQL RDBMS
 __END__
 
-=head1 SYPNOSIS
+=pod
 
-Store and retrieve DMARC reports from SQL data store.
+=head1 NAME
 
-Tested with SQLite, MySQL and PostgreSQL.
+Mail::DMARC::Report::Store::SQL - store and retrieve reports from a SQL RDBMS
+
+=head1 VERSION
+
+version 1.20191024
 
 =head1 DESCRIPTION
 
@@ -684,4 +688,36 @@ Uses ANSI SQL syntax, keeping the SQL as portable as possible.
 
 DB engine specific features are to be avoided.
 
+=head1 SYPNOSIS
+
+Store and retrieve DMARC reports from SQL data store.
+
+Tested with SQLite, MySQL and PostgreSQL.
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2019 by Matt Simerson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
 =cut
+

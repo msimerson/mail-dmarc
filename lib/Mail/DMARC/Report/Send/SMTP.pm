@@ -1,7 +1,8 @@
 package Mail::DMARC::Report::Send::SMTP;
-# VERSION
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
 
 use Carp;
 use English '-no_match_vars';
@@ -116,26 +117,6 @@ sub get_smtp_hosts {
 sub get_subject {
     my ( $self, $agg_ref ) = @_;
 
-=head2 SUBJECT FIELD
-
-The RFC5322.Subject field for individual report submissions SHOULD conform to the following ABNF:
-
-   dmarc-subject = %x52.65.70.6f.72.74 1*FWS    ; "Report"
-                   %x44.6f.6d.61.69.6e.3a 1*FWS ; "Domain:"
-                   domain-name 1*FWS            ; from RFC6376
-                   %x53.75.62.6d.69.74.74.65.72.3a ; "Submitter:"
-                   1*FWS domain-name 1*FWS
-                   %x52.65.70.6f.72.74.2d.49.44.3a ; "Report-ID:"
-                   msg-id                       ; from RFC5322
-
-The first domain-name indicates the DNS domain name about which the
-report was generated.  The second domain-name indicates the DNS
-domain name representing the Mail Receiver generating the report.
-The purpose of the Report-ID: portion of the field is to enable the
-Domain Owner to identify and ignore duplicate reports that might be
-sent by a Mail Receiver.
-
-=cut
 
     my $rid = $$agg_ref->metadata->report_id || time;
     my $id = POSIX::strftime( "%Y.%m.%d.", localtime ) . $rid;
@@ -254,9 +235,36 @@ sub get_helo_hostname {
 
 1;
 
-# ABSTRACT: utility methods for sending reports via SMTP
 __END__
-sub {}
+
+=pod
+
+=head1 NAME
+
+Mail::DMARC::Report::Send::SMTP - utility methods for sending reports via SMTP
+
+=head1 VERSION
+
+version 1.20191024
+
+=head2 SUBJECT FIELD
+
+The RFC5322.Subject field for individual report submissions SHOULD conform to the following ABNF:
+
+   dmarc-subject = %x52.65.70.6f.72.74 1*FWS    ; "Report"
+                   %x44.6f.6d.61.69.6e.3a 1*FWS ; "Domain:"
+                   domain-name 1*FWS            ; from RFC6376
+                   %x53.75.62.6d.69.74.74.65.72.3a ; "Submitter:"
+                   1*FWS domain-name 1*FWS
+                   %x52.65.70.6f.72.74.2d.49.44.3a ; "Report-ID:"
+                   msg-id                       ; from RFC5322
+
+The first domain-name indicates the DNS domain name about which the
+report was generated.  The second domain-name indicates the DNS
+domain name representing the Mail Receiver generating the report.
+The purpose of the Report-ID: portion of the field is to enable the
+Domain Owner to identify and ignore duplicate reports that might be
+sent by a Mail Receiver.
 
 =head1 12.2.1 Email
 
@@ -299,4 +307,30 @@ ABNF:
    For the GZIP file itself, the extension MUST be "gz"; for the XML
    report, the extension MUST be "xml".
 
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2019 by Matt Simerson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
 =cut
+

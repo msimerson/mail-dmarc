@@ -61,39 +61,24 @@ while ( my $file = readdir( $dir ) ) {
         $provider = $1;
         eval "use DBD::$provider";
         if ($@) {
-            ok( 1, "Skipping $file; DBD::$provider not available: $@" );
+            ok( 1, "Skipping $provider, DBD::$provider not available" );
             next;
         }
     } else {
         next;
     }
     $sql->config( "$backend_dir/$file" );
-    if ( $provider eq 'Pg' ) {
-        $provider = 'PostgreSQL';
-    } elsif ( $provider eq 'mysql' ) {
-        $provider = 'MySQL';
-    }
+    if ( $provider eq 'Pg' )    { $provider = 'PostgreSQL'; }
+    if ( $provider eq 'mysql' ) { $provider = 'MySQL';      }
 
-    test_db_connect();
+    test_db_connect( $provider ) or do {
+        ok(1, "Skipping $provider, unable to connect");
+        test_cleanup( $provider );
+        next;
+    };
     test_grammar_loaded( $provider );
-    if ($provider eq 'PostgreSQL') {
-        stderr_is { test_query_insert() } 'DBI error: ERROR:  relation "reporting" does not exist
-LINE 1: INSERT INTO "reporting" ("domain", "begin", "end") VALUES ($...
-                    ^
-DBI error: ERROR:  column "domin" of relation "report" does not exist
-LINE 1: INSERT INTO "report" ("domin", "begin", "end") VALUES ($1, $...
-                              ^
-', 'STDERR has expected warning';
-    } elsif ($provider eq 'SQLite') {
-        stderr_is { test_query_insert() } 'DBI error: no such table: reporting
-DBI error: table report has no column named domin
-', 'STDERR has expected warning';
-    } elsif ($provider eq 'MySQL') {
-        stderr_is { test_query_insert() } 'DBI error: Table \'dmarc_report.reporting\' doesn\'t exist
-DBI error: Unknown column \'domin\' in \'field list\'
-', 'STDERR has expected warning';
+    test_insert_error( $provider );
 
-    }
     test_query_replace();
     test_query_update();
     test_query_delete();
@@ -121,18 +106,53 @@ DBI error: Unknown column \'domin\' in \'field list\'
     test_get_row_dkim();
     test_populate_agg_metadata();
     test_populate_agg_records();
-    if ( $provider eq 'PostgreSQL' ) {
-        ok ( $sql->query( 
-            'TRUNCATE author, domain, report, 
-                report_error, report_policy_published, 
-                report_record, report_record_dkim, report_record_reason, 
-                report_record_spf RESTART IDENTITY;'
-        ), 'truncate_testing_pg_database' );
-    }
+
+    test_cleanup( $provider );
 }
 closedir( $dir );
 done_testing();
 exit;
+
+sub test_insert_error {
+    my ($provider) = @_;
+    my $msg = "STDERR has expected warning ($provider)";
+
+    if ($provider eq 'PostgreSQL') {
+        stderr_is { test_query_insert() } 'DBI error: ERROR:  relation "reporting" does not exist
+LINE 1: INSERT INTO "reporting" ("domain", "begin", "end") VALUES ($...
+                    ^
+DBI error: ERROR:  column "domin" of relation "report" does not exist
+LINE 1: INSERT INTO "report" ("domin", "begin", "end") VALUES ($1, $...
+                              ^
+', $msg;
+    }
+    elsif ($provider eq 'SQLite') {
+        stderr_is { test_query_insert() } 'DBI error: no such table: reporting
+DBI error: table report has no column named domin
+', $msg;
+    }
+    elsif ($provider eq 'MySQL') {
+        stderr_is { test_query_insert() } 'DBI error: Table \'dmarc_report.reporting\' doesn\'t exist
+DBI error: Unknown column \'domin\' in \'field list\'
+', $msg;
+    }
+}
+
+sub test_cleanup {
+    my ($provider) = @_;
+
+    if ( $provider eq 'PostgreSQL' ) {
+        ok ( $sql->query(
+            'TRUNCATE author, domain, report,
+                report_error, report_policy_published,
+                report_record, report_record_dkim, report_record_reason,
+                report_record_spf RESTART IDENTITY;'
+        ), 'truncate_testing_pg_database' );
+    }
+    elsif ($provider eq 'SQLite') {
+        unlink "t/reports-test.sqlite";
+    }
+}
 
 sub test_populate_agg_records {
     my $agg = Mail::DMARC::Report::Aggregate->new();
@@ -550,13 +570,21 @@ sub test_query_any {
 }
 
 sub test_db_connect {
-    my $dbh = $sql->db_connect();
-    ok( $dbh, "db_connect" );
+    my ($grammar) = @_;
+    my $dbh;
+    eval { $dbh = $sql->db_connect(); };
+    if ($@) {
+        warn $@;
+        return 0;
+    }
+
+    ok( $dbh, "db_connect: $grammar" );
     isa_ok( $dbh, "DBIx::Simple" );
+    return 1;
 }
 
 sub test_grammar_loaded {
-    my $grammarName = shift;
+    my ($grammarName) = @_;
     isa_ok( $sql->grammar(), "Mail::DMARC::Report::Store::SQL::Grammars::$grammarName" );
 }
 

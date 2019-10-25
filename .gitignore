@@ -10,10 +10,11 @@ Build.bat
 Makefile
 Makefile.old
 MANIFEST.bak
-META.yml
+MYMETA.json
 MYMETA.yml
 nytprof.out
 pm_to_blib
 Mail-DMARC-*
 t/reports-test.sqlite
 dmarc_reports.sqlite
+*.bak

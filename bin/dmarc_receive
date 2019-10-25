@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# VERSION
 use strict;
 use warnings;
 
@@ -31,9 +30,11 @@ $recv->from_file($file)  if $file;
 
 exit;
 
-# PODNAME: dmarc_receive
-# ABSTRACT: receive aggregate reports via IMAP, mbox, or message file(s)
 __END__
+
+=head1 NAME
+
+dmarc_receive: receive aggregate reports via IMAP, mbox, or message file(s)
 
 =head1 USAGE
 
@@ -74,6 +75,4 @@ Accepts the filename of a file containing a mail message. The message is parsed 
 
 Accepts the filename of a mbox format file containing mail messages. The messages are parsed and stored.
 
-
 =cut
-

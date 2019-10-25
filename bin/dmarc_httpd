@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# VERSION
 use strict;
 use warnings;
 
@@ -14,9 +13,13 @@ my $http = Mail::DMARC::HTTP->new;
 $http->dmarc_httpd($report);
 exit;
 
-# ABSTRACT: a web server for DMARC validation and report viewing
-# PODNAME: dmarc_httpd
 __END__
+
+=pod
+
+=head1 NAME
+
+dmarc_httpd: a web server for DMARC validation and report viewing
 
 =head1 SYNOPSIS
 
@@ -77,5 +80,23 @@ Web server settings are in the [http] and [https] sections of mail-dmarc.ini.
 jQuery - http://www.jquery.com/
 
 jqGrid - http://www.trirand.com/blog/
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
 
 =cut

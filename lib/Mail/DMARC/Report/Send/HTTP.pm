@@ -1,7 +1,8 @@
 package Mail::DMARC::Report::Send::HTTP;
-# VERSION
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
 
 use Carp;
 
@@ -40,9 +41,17 @@ sub post {
 
 1;
 
-# ABSTRACT: utility methods to send reports by HTTP
 __END__
-sub {}
+
+=pod
+
+=head1 NAME
+
+Mail::DMARC::Report::Send::HTTP - utility methods to send reports by HTTP
+
+=head1 VERSION
+
+version 1.20191024
 
 =head1 12.2.2. HTTP
 
@@ -58,4 +67,30 @@ HTTP permits the use of Content-Transfer-Encoding to upload gzip
 content using the POST or PUT instruction after translating the
 content to 7-bit ASCII.
 
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2019 by Matt Simerson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
 =cut
+

@@ -1,7 +1,8 @@
 package Mail::DMARC::Report;
-# VERSION
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
 
 use Carp;
 use IO::Compress::Gzip;
@@ -79,9 +80,17 @@ sub save_aggregate {
 
 1;
 
-# ABSTRACT: A DMARC report interface
 __END__
-sub {}
+
+=pod
+
+=head1 NAME
+
+Mail::DMARC::Report - A DMARC report interface
+
+=head1 VERSION
+
+version 1.20191024
 
 =head1 DESCRIPTION
 
@@ -191,10 +200,7 @@ can be used to seek assistance.
 possible registration of a new media type, will be added here when
 more operational experience is acquired.]
 
-
 =head1 AFRF reports
-
-
 
 =head1 IODEF reports
 
@@ -204,4 +210,30 @@ Section 3.5 Out of Scope:
 
     This first version of DMARC supports only a single reporting format.
 
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2019 by Matt Simerson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
 =cut
+

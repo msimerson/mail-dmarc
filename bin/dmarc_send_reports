@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# VERSION
 use strict;
 use warnings;
 
@@ -91,8 +90,6 @@ syslog( LOG_INFO, 'dmarc_send_reports done' ) if $syslog;
 closelog() if $syslog;
 
 exit;
-# PODNAME: dmarc_send_reports
-# ABSTRACT: send aggregate reports
 
 sub send_single_report {
 
@@ -450,3 +447,30 @@ sub log_to_syslog {
     return;
 }
 
+__END__
+
+=pod
+
+=head1 NAME
+
+dmarc_send_reports: send aggregate reports
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=cut

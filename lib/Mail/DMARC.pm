@@ -1,7 +1,8 @@
 package Mail::DMARC;
-# VERSION
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
 
 use Carp;
 our $psl_loads = 0;
@@ -292,15 +293,23 @@ sub init {
 
 1;
 
-# ABSTRACT: Perl implementation of DMARC
 __END__
 
-=head1 Code Climate
+=pod
+
+=head1 Status Badges
 
 =for markdown [![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
 
 =for markdown [![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
 
+=head1 NAME
+
+Mail::DMARC - Perl implementation of DMARC
+
+=head1 VERSION
+
+version 1.20191024
 
 =head1 SYNOPSIS
 
@@ -597,5 +606,58 @@ DMARC L<Best Current Practices|http://tools.ietf.org/html/draft-crocker-dmarc-bc
 =head1 HISTORY
 
 The daddy of this perl module was a L<DMARC module for the qpsmtpd MTA|https://github.com/smtpd/qpsmtpd/blob/master/plugins/dmarc>.
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=head1 CONTRIBUTORS
+
+=for stopwords Benny Pedersen Jean Paul Galea Marisa Clardy Priyadi Iman Nurcahyo Ricardo Signes
+
+=over 4
+
+=item *
+
+Benny Pedersen <me@junc.eu>
+
+=item *
+
+Jean Paul Galea <jeanpaul@yubico.com>
+
+=item *
+
+Marisa Clardy <marisa@clardy.eu>
+
+=item *
+
+Priyadi Iman Nurcahyo <priyadi@priyadi.net>
+
+=item *
+
+Ricardo Signes <rjbs@cpan.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2019 by Matt Simerson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut

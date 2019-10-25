@@ -1,3 +1,9 @@
+# Status Badges
+
+[![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
+
+[![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
+
 # NAME
 
 Mail::DMARC - Perl implementation of DMARC
@@ -65,12 +71,6 @@ The report store can use the same database to store reports you have received as
 
 - received reports will have a null value for report\_policy\_published.rua
 - outgoing reports will have null values for report.uuid and report\_record.count
-
-# Code Climate
-
-[![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
-
-[![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
 
 # CLASSES
 
@@ -275,12 +275,12 @@ The daddy of this perl module was a [DMARC module for the qpsmtpd MTA](https://g
 
 - Matt Simerson <msimerson@cpan.org>
 - Davide Migliavacca <shari@cpan.org>
+- Marc Bradshaw <marc@marcbradshaw.net>
 
 # CONTRIBUTORS
 
 - Benny Pedersen <me@junc.eu>
 - Jean Paul Galea <jeanpaul@yubico.com>
-- Marc Bradshaw <marc@marcbradshaw.net>
 - Marisa Clardy <marisa@clardy.eu>
 - Priyadi Iman Nurcahyo <priyadi@priyadi.net>
 - Ricardo Signes <rjbs@cpan.org>

@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# VERSION
 use strict;
 use warnings;
 
@@ -158,14 +157,16 @@ sub get_dns_hostname {
 };
 
 exit;
-# PODNAME: dmarc_view_reports
-# ABSTRACT: command line report viewer
+
 __END__
-sub {}
 
 =head1 SYNOPSIS
 
   dmarc_view_reports [ --option=value ]
+
+=head1 DESCRIPTION
+
+Dumps the contents of the DMARC data store to your terminal. The most recent records are show first.
 
 =head2 Search Options
 
@@ -219,11 +220,6 @@ metro_code
   dmarc_view_reports --geoip=city,city,city              # repeat
 
 
-=head1 DESCRIPTION
-
-Dumps the contents of the DMARC data store to your terminal. The most recent records are show first.
-
-
 =head1 SAMPLE OUTPUT
 
 
@@ -260,5 +256,23 @@ Dumps the contents of the DMARC data store to your terminal. The most recent rec
  559           hotmail.com          lynboyer.com  2013-05-20 20:00:00
   | --   6                   208.75.177.101          none    pass    pass
 
-=cut
 
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Matt Simerson <msimerson@cpan.org>
+
+=item *
+
+Davide Migliavacca <shari@cpan.org>
+
+=item *
+
+Marc Bradshaw <marc@marcbradshaw.net>
+
+=back
+
+=cut
