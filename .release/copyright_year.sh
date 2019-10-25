@@ -10,4 +10,5 @@ sed -i '' \
     -e "/copyright/ s/20[[:digit:]][[:digit:]]/$YEAR/" \
     LICENSE $(find lib -type f -name '*.pm')
 
+git add .
 git commit -m "bump copyright to $YEAR"
