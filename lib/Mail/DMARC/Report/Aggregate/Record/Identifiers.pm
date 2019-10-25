@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate::Record::Identifiers;
-our $VERSION = '1.20191024';
+our $VERSION = '1.1.20191025';
 use strict;
 use warnings;
 
@@ -43,7 +43,7 @@ Mail::DMARC::Report::Aggregate::Record::Identifiers - identifiers section of a D
 
 =head1 VERSION
 
-version 1.20191024
+version 1.1.20191025
 
 =head1 AUTHORS
 
