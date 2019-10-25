@@ -1,3 +1,9 @@
+# Status Badges
+
+[![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
+
+[![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
+
 # NAME
 
 Mail::DMARC - Perl implementation of DMARC
@@ -65,12 +71,6 @@ The report store can use the same database to store reports you have received as
 
 - received reports will have a null value for report\_policy\_published.rua
 - outgoing reports will have null values for report.uuid and report\_record.count
-
-# Code Climate
-
-[![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
-
-[![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
 
 # CLASSES
 
@@ -291,4 +291,3 @@ This software is copyright (c) 2018 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
-
