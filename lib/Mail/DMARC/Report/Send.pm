@@ -1,7 +1,8 @@
 package Mail::DMARC::Report::Send;
-our $VERSION = '1.20191024';
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
 
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Send::SMTP;
@@ -51,7 +52,7 @@ EO_TOO_BIG
 
 1;
 
-# ABSTRACT: report sending dispatch class
+__END__
 
 =pod
 
@@ -117,7 +118,4 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-__END__
-sub {}
 

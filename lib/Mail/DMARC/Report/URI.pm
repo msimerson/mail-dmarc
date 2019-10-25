@@ -1,7 +1,8 @@
 package Mail::DMARC::Report::URI;
-our $VERSION = '1.20191024';
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
 
 use Carp;
 use URI;
@@ -58,7 +59,7 @@ sub get_size_limit {
 
 1;
 
-# ABSTRACT: a DMARC report URI
+__END__
 
 =pod
 
@@ -159,7 +160,4 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-__END__
-sub {}
 

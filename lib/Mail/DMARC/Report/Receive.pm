@@ -1,7 +1,8 @@
 package Mail::DMARC::Report::Receive;
-our $VERSION = '1.20191024';
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
 
 use Carp;
 use Data::Dumper;
@@ -410,6 +411,8 @@ sub do_node_record_reason {
 
 1;
 
+__END__
+
 =pod
 
 =head1 NAME
@@ -472,8 +475,4 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-__END__
-# ABSTRACT: process incoming DMARC reports
-sub {}
 

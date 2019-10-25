@@ -1,7 +1,9 @@
 package Mail::DMARC::Report::Aggregate::Metadata;
-our $VERSION = '1.20191024';
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
+
 use XML::LibXML;
 
 use parent 'Mail::DMARC::Base';
@@ -79,7 +81,8 @@ sub as_xml {
 }
 
 1;
-# ABSTRACT: metadata section of aggregate report
+
+__END__
 
 =pod
 
@@ -118,5 +121,3 @@ the same terms as the Perl 5 programming language system itself.
 
 =cut
 
-__END__
-sub {}

@@ -1,7 +1,8 @@
 package Mail::DMARC::Report;
-our $VERSION = '1.20191024';
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
 
 use Carp;
 use IO::Compress::Gzip;
@@ -79,7 +80,7 @@ sub save_aggregate {
 
 1;
 
-# ABSTRACT: A DMARC report interface
+__END__
 
 =pod
 
@@ -235,7 +236,4 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-__END__
-sub {}
 

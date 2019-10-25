@@ -1,7 +1,8 @@
 package Mail::DMARC::Report::Send::SMTP;
-our $VERSION = '1.20191024';
 use strict;
 use warnings;
+
+our $VERSION = '1.20191024';
 
 use Carp;
 use English '-no_match_vars';
@@ -234,7 +235,7 @@ sub get_helo_hostname {
 
 1;
 
-# ABSTRACT: utility methods for sending reports via SMTP
+__END__
 
 =pod
 
@@ -332,7 +333,4 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-__END__
-sub {}
 
