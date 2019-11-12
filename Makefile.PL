@@ -169,7 +169,7 @@ my %MM_ARGS = (
   "test" => {
     "TESTS" => "t/*.t"
   },
-  "clean" => { "FILES" => [ "dmarc_reports.sqlite", "t/reports-test.sqlite" ] },
+  "clean" => { "FILES" => [ "dmarc_reports.sqlite", "t/reports-test.sqlite", 'MANIFEST.bak' ] },
 );
 
 # some nifty boilerplate from local::lib
