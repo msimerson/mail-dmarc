@@ -1,8 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
 
-use Data::Dumper;
-
 use 5.008;
 use ExtUtils::MakeMaker;
 
@@ -142,7 +140,6 @@ my %META = (
   },
 );
 
-# print Data::Dumper::Dumper($META);
 my %MM_ARGS = (
   "NAME" => "Mail::DMARC",
   "ABSTRACT" => "Perl implementation of DMARC",
