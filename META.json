@@ -5,48 +5,33 @@
       "Davide Migliavacca <shari@cpan.org>",
       "Marc Bradshaw <marc@marcbradshaw.net>"
    ],
-   "dynamic_config" : 0,
+   "dynamic_config" : 1,
+   "generated_by" : "Module::Build version 0.4229, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "perl_5"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
-      "version" : 2
+      "version" : "2"
    },
    "name" : "Mail-DMARC",
    "prereqs" : {
       "build" : {
-         "requires" : {
-            "Module::Build" : "0.3601"
-         }
+         "requires" : {}
       },
       "configure" : {
          "requires" : {
             "ExtUtils::MakeMaker" : "0",
-            "File::ShareDir::Install" : "0.06",
-            "Module::Build" : "0.3601"
-         }
-      },
-      "develop" : {
-         "requires" : {
-            "Test::Pod" : "1.41"
+            "File::ShareDir::Install" : "0.06"
          }
       },
       "runtime" : {
          "recommends" : {
-            "CGI" : "0",
-            "Email::Simple" : "0",
-            "IO::Compress::Gzip" : "0",
-            "IO::Compress::Zip" : "0",
-            "IO::Uncompress::Gunzip" : "0",
-            "IO::Uncompress::Unzip" : "0",
             "Mail::DKIM" : "0",
-            "Net::HTTP" : "0",
             "Net::IMAP::Simple" : "0",
-            "Net::Server" : "2"
+            "Net::SMTPS" : "0"
          },
          "requires" : {
-            "CGI" : "0",
             "CPAN" : "0",
             "Carp" : "0",
             "Config::Tiny" : "0",
@@ -59,26 +44,19 @@
             "English" : "0",
             "File::ShareDir" : "0",
             "Getopt::Long" : "0",
-            "HTTP::Request" : "0",
-            "HTTP::Tiny" : "0",
             "IO::Compress::Gzip" : "0",
             "IO::Compress::Zip" : "0",
             "IO::File" : "0",
             "IO::Socket::SSL" : "0",
             "IO::Uncompress::Gunzip" : "0",
             "IO::Uncompress::Unzip" : "0",
-            "JSON" : "0",
-            "LWP::UserAgent" : "0",
             "Mail::DKIM::PrivateKey" : "0",
             "Mail::DKIM::Signer" : "0",
             "Mail::DKIM::TextWrap" : "0",
             "Net::DNS::Resolver" : "0",
-            "Net::HTTP" : "0",
             "Net::IDN::Encode" : "0",
             "Net::IP" : "0",
-            "Net::SMTPS" : "0",
             "Net::SSLeay" : "0",
-            "Net::Server::HTTP" : "0",
             "POSIX" : "0",
             "Pod::Usage" : "0",
             "Regexp::Common" : "2013031301",
@@ -86,22 +64,12 @@
             "Socket6" : "0.23",
             "Sys::Hostname" : "0",
             "Sys::Syslog" : "0",
-            "Test::File::ShareDir" : "0",
             "URI" : "0",
             "XML::LibXML" : "0",
-            "lib" : "0",
-            "parent" : "0",
-            "perl" : "5.008",
-            "strict" : "0",
-            "warnings" : "0"
+            "perl" : "5.008"
          }
       },
       "test" : {
-         "recommends" : {
-            "Test::Output" : "0",
-            "XML::SAX::ParserFactory" : "0",
-            "XML::Validator::Schema" : "0"
-         },
          "requires" : {
             "Test::Exception" : "0",
             "Test::File::ShareDir" : "0",
@@ -110,25 +78,136 @@
          }
       }
    },
+   "provides" : {
+      "Mail::DMARC" : {
+         "file" : "lib/Mail/DMARC.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Base" : {
+         "file" : "lib/Mail/DMARC/Base.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::HTTP" : {
+         "file" : "lib/Mail/DMARC/HTTP.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Policy" : {
+         "file" : "lib/Mail/DMARC/Policy.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::PurePerl" : {
+         "file" : "lib/Mail/DMARC/PurePerl.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report" : {
+         "file" : "lib/Mail/DMARC/Report.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Aggregate" : {
+         "file" : "lib/Mail/DMARC/Report/Aggregate.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Aggregate::Metadata" : {
+         "file" : "lib/Mail/DMARC/Report/Aggregate/Metadata.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Aggregate::Record" : {
+         "file" : "lib/Mail/DMARC/Report/Aggregate/Record.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Aggregate::Record::Auth_Results" : {
+         "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Auth_Results.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM" : {
+         "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Auth_Results/DKIM.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF" : {
+         "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Auth_Results/SPF.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Aggregate::Record::Identifiers" : {
+         "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Identifiers.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Aggregate::Record::Row" : {
+         "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Row.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated" : {
+         "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Row/Policy_Evaluated.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Receive" : {
+         "file" : "lib/Mail/DMARC/Report/Receive.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Send" : {
+         "file" : "lib/Mail/DMARC/Report/Send.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Send::HTTP" : {
+         "file" : "lib/Mail/DMARC/Report/Send/HTTP.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Send::SMTP" : {
+         "file" : "lib/Mail/DMARC/Report/Send/SMTP.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Store" : {
+         "file" : "lib/Mail/DMARC/Report/Store.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Store::SQL" : {
+         "file" : "lib/Mail/DMARC/Report/Store/SQL.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Store::SQL::Grammars::MySQL" : {
+         "file" : "lib/Mail/DMARC/Report/Store/SQL/Grammars/MySQL.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL" : {
+         "file" : "lib/Mail/DMARC/Report/Store/SQL/Grammars/PostgreSQL.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::Store::SQL::Grammars::SQLite" : {
+         "file" : "lib/Mail/DMARC/Report/Store/SQL/Grammars/SQLite.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Report::URI" : {
+         "file" : "lib/Mail/DMARC/Report/URI.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Result" : {
+         "file" : "lib/Mail/DMARC/Result.pm",
+         "version" : "1.20191025"
+      },
+      "Mail::DMARC::Result::Reason" : {
+         "file" : "lib/Mail/DMARC/Result/Reason.pm",
+         "version" : "1.20191025"
+      }
+   },
    "release_status" : "stable",
    "resources" : {
       "bugtracker" : {
          "web" : "https://github.com/msimerson/mail-dmarc/issues"
       },
       "homepage" : "https://github.com/msimerson/mail-dmarc/wiki",
+      "license" : [
+         "http://dev.perl.org/licenses/"
+      ],
       "repository" : {
-         "type" : "git",
-         "url" : "git://github.com/msimerson/mail-dmarc.git",
-         "web" : "https://github.com/msimerson/mail-dmarc"
+         "url" : "https://github.com/msimerson/mail-dmarc"
       }
    },
-   "version" : "1.20191024",
+   "version" : "1.20191025",
    "x_contributors" : [
       "Benny Pedersen <me@junc.eu>",
       "Jean Paul Galea <jeanpaul@yubico.com>",
       "Marisa Clardy <marisa@clardy.eu>",
       "Priyadi Iman Nurcahyo <priyadi@priyadi.net>",
       "Ricardo Signes <rjbs@cpan.org>"
-   ]
+   ],
+   "x_serialization_backend" : "JSON::PP version 2.27400_02"
 }
-
