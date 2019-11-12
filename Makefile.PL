@@ -109,7 +109,6 @@ my %META = (
       "prereqs" => {
         "runtime" => {
           "requires" => {
-            'DBI'        => '1.5',
             'DBD::mysql' => '4.001',
           }
         }
@@ -120,7 +119,6 @@ my %META = (
       "prereqs" => {
         "runtime" => {
           "requires" => {
-            'DBI'        => '1.5',
             'DBD::Pg' => '0'
           }
         }
@@ -161,8 +159,6 @@ my %MM_ARGS = (
   ],
   "META_MERGE" => {
     "meta-spec" => { version => 2 },
-    "resources" => {
-    },
     "x_contributors" => [
       "Benny Pedersen <me\@junc.eu>",
       "Jean Paul Galea <jeanpaul\@yubico.com>",
@@ -175,7 +171,8 @@ my %MM_ARGS = (
   "VERSION" => "1.20191025",
   "test" => {
     "TESTS" => "t/*.t"
-  }
+  },
+  "clean" => { "FILES" => [ "dmarc_reports.sqlite", "t/reports-test.sqlite" ] },
 );
 
 # some nifty boilerplate from local::lib

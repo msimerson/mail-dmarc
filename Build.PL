@@ -67,7 +67,6 @@ my $module_build_args = {
       "prereqs" => {
         "runtime" => {
           "requires" => {
-            'DBI'        => '1.5',
             'DBD::mysql' => '4.001',
           }
         }
@@ -78,7 +77,6 @@ my $module_build_args = {
       "prereqs" => {
         "runtime" => {
           "requires" => {
-            'DBI'        => '1.5',
             'DBD::Pg' => '0'
           }
         }
