@@ -40,10 +40,12 @@ my %META = (
         "HTTP::Tiny" => 0,
         "JSON" => 0,
         "LWP::UserAgent" => 0,
+        "Mail::DKIM::PrivateKey" => 0,
+        "Mail::DKIM::Signer" => 0,
+        "Mail::DKIM::TextWrap" => 0,
         "Net::HTTP" => 0,
         "Net::SMTPS" => 0,
         "Net::Server::HTTP" => 0,
-
       },
       "requires" => {
         "CPAN" => 0,
@@ -64,9 +66,6 @@ my %META = (
         "IO::Socket::SSL" => 0,
         "IO::Uncompress::Gunzip" => 0,
         "IO::Uncompress::Unzip" => 0,
-        "Mail::DKIM::PrivateKey" => 0,
-        "Mail::DKIM::Signer" => 0,
-        "Mail::DKIM::TextWrap" => 0,
         "Net::DNS::Resolver" => 0,
         "Net::IDN::Encode" => 0,
         "Net::IP" => 0,
@@ -122,7 +121,7 @@ my %META = (
         }
       }
     },
-    "web service" => {
+    "web_service" => {
       "description" => "HTTP web UI to DMARC reports",
       "prereqs" => {
         "runtime" => {
@@ -134,6 +133,25 @@ my %META = (
             "Net::HTTP" => 0,
             "Net::Server::HTTP" => 0,
           }
+        }
+      }
+    },
+    "smtp_sending" => {
+      "description" => "Send DMARC reports via SMTP",
+      "prereqs" => {
+        "runtime" => {
+          "Net::SMTPS" => 0,
+          "Mail::DKIM::PrivateKey" => 0,
+          "Mail::DKIM::Signer" => 0,
+          "Mail::DKIM::TextWrap" => 0,
+        }
+      }
+    },
+    "imap_fetch" => {
+      "description" => "Retrieve DMARC reports from an IMAP account",
+      "prereqs" => {
+        "runtime" => {
+          "Net::IMAP::Simple" => 0,
         }
       }
     }
