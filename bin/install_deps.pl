@@ -1,10 +1,11 @@
 #!/usr/bin/perl
-# VERSION 1.10
+# VERSION 1.11
 
 use strict;
 use warnings;
 
 use CPAN;
+use Data::Dumper;
 use English qw( -no_match_vars );
 
 my $apps = [
@@ -21,7 +22,6 @@ foreach ( @$apps ) {
 };
 
 foreach ( get_perl_modules() ) {
-#print Dumper($_);
     my $module = $_->{module} or die 'missing module name'; ## no critic (Carp)
     next if $module eq 'perl';
     my $info   = $_->{info};
@@ -55,31 +55,46 @@ sub get_perl_modules {
         return get_perl_modules_from_Makefile_PL();
     };
     die "unable to find module list. Run this script in the dist dir\n"; ## no critic (Carp)
-};
+}
 
 sub get_perl_modules_from_Makefile_PL {
     my $fh = IO::File->new( 'Makefile.PL', 'r' )
         or die "unable to read Makefile.PL\n"; ## no critic (Carp)
 
-    my $in = 0;
+    my $depth = 0;
     my @modules;
     while ( my $line = <$fh> ) {
-        if ( $line =~ /PREREQ_PM/ ) {
-            $in++;
+        chomp $line;
+        if ( $line =~ /"(PREREQ_PM|prereqs)"\s*=>\s*{/ ) {
+            $depth++;
+            # print "$depth: $line (" . scalar @modules . ")\n";
+            next;
+        }
+        next if $depth < 1;
+        if ($line =~ /(prereqs|configure|build|test|runtime|develop|requires|recommends|suggests).*{/){
+            $depth++;
+            # print "$depth: $line (" . scalar @modules . ")\n";
+            next;
+        }
+        if ($line =~ /}/) {
+            # print "$depth: $line (" . scalar @modules . ")\n";
+            $depth--;
+            last if $depth == 0;
             next;
         };
-        next if ! $in;
-        last if $line =~ /}/;
-        next if $line !~ /=/;  # no = char means not a module
-        my ($mod,$ver) = split /\s*=\s*/, $line;
+        if ($line !~ /=/) {  # no = char means not a module
+            print "$line\n";
+            next;
+        }
+        my ($mod, $ver) = split /\s*=\s*/, $line;
         $mod =~ s/[\s'"\#]*//xg; # strip whitespace & quotes ## no critic (Regex)
         next if ! $mod;
         push @modules, name_overrides($mod);
-#print "module: .$mod.\n";
+        # print "module: .$mod.\n";
     }
     $fh->close;
     return @modules;
-};
+}
 
 sub get_perl_modules_from_ini {
     my $fh = IO::File->new( 'dist.ini', 'r' )
@@ -96,7 +111,7 @@ sub get_perl_modules_from_ini {
             next;
         };
         next if ! $in;
-#       print "line: $line\n";
+        # print "line: $line\n";
         next if ';' eq substr($line,0,1); # comment
         last if '[' eq substr($line,0,1); # [...] starts a new section
         my ($mod,$ver) = split /\s*=\s*/, $line;
@@ -106,9 +121,9 @@ sub get_perl_modules_from_ini {
         print "module: $mod\n";
     }
     $fh->close;
-#print Dumper(\@modules);
+    # print Dumper(\@modules);
     return @modules;
-};
+}
 
 sub install_app {
     my ( $app, $info ) = @_;
@@ -123,7 +138,7 @@ sub install_app {
         install_app_linux( $app, $info );
     };
     return;
-};
+}
 
 sub install_app_darwin {
     my ($app, $info ) = @_;
@@ -161,7 +176,7 @@ sub install_app_freebsd {
 
     print "installing $app";
     return install_app_freebsd_port($app, $info);
-};
+}
 
 sub install_app_freebsd_port {
     my ( $app, $info ) = @_;
@@ -177,7 +192,7 @@ sub install_app_freebsd_port {
         };
     };
     return;
-};
+}
 
 sub install_app_freebsd_pkg {
     my ( $info, $app ) = @_;
@@ -192,7 +207,7 @@ sub install_app_freebsd_pkg {
     system "$pkg install -y $app";
     return 1 if is_freebsd_port_installed($app);
     return 0;
-};
+}
 
 sub install_app_linux {
     my ($app, $info ) = @_;
@@ -209,8 +224,7 @@ sub install_app_linux {
         warn "no Linux package manager detected\n"; ## no critic (Carp)
     };
     return;
-};
-
+}
 
 sub install_module {
 
@@ -231,7 +245,7 @@ sub install_module {
 
     install_module_cpan($module, $version);
     return;
-};
+}
 
 sub install_module_cpan {
 
@@ -318,7 +332,7 @@ sub install_module_freebsd_pkg {
     print "installing $module\n";
     system "$pkg install -y $module";
     return is_freebsd_port_installed($module);
-};
+}
 
 sub is_freebsd_port_installed {
     my ( $module, $portname ) = @_;
@@ -337,14 +351,14 @@ sub is_freebsd_port_installed {
     }
 
     return 0;
-};
+}
 
 sub get_freebsd_pkg_info {
     if ( -x '/usr/sbin/pkg_info' ) {
         return '/usr/sbin/pkg_info';
     };
     return;
-};
+}
 
 sub get_freebsd_pkgng {
     my $pkg = '/usr/local/sbin/pkg';  # port version is likely newest
@@ -354,7 +368,7 @@ sub get_freebsd_pkgng {
         return 0;
     }
     return $pkg;
-};
+}
 
 sub install_module_linux {
     my ($module, $info, $version) = @_;
@@ -368,7 +382,7 @@ sub install_module_linux {
     }
     warn "no Linux package manager detected\n"; ## no critic (Carp)
     return;
-};
+}
 
 sub install_module_linux_yum {
     my ($module, $info) = @_;
@@ -382,7 +396,7 @@ sub install_module_linux_yum {
     };
     system "/usr/bin/yum -y install $package";
     return;
-};
+}
 
 sub install_module_linux_apt {
     my ($module, $info) = @_;
@@ -396,7 +410,7 @@ sub install_module_linux_apt {
     };
     system "/usr/bin/apt-get -y install $package";
     return;
-};
+}
 
 sub get_cpan_config {
 
@@ -407,41 +421,45 @@ sub get_cpan_config {
     my $make = `which make`; chomp $make; ## no critic (Backtick)
     my $wget = `which wget`; chomp $wget; ## no critic (Backtick)
 
-    return
-{
-  'build_cache' => q[10],
-  'build_dir' => qq[$ENV{HOME}/.cpan/build],
-  'cache_metadata' => q[1],
-  'cpan_home' => qq[$ENV{HOME}/.cpan],
-  'ftp' => $ftp,
-  'ftp_proxy' => q[],
-  'getcwd' => q[cwd],
-  'gpg' => q[],
-  'gzip' => $gzip,
-  'histfile' => qq[$ENV{HOME}/.cpan/histfile],
-  'histsize' => q[100],
-  'http_proxy' => q[],
-  'inactivity_timeout' => q[5],
-  'index_expire' => q[1],
-  'inhibit_startup_message' => q[1],
-  'keep_source_where' => qq[$ENV{HOME}/.cpan/sources],
-  'lynx' => q[],
-  'make' => $make,
-  'make_arg' => q[],
-  'make_install_arg' => q[],
-  'makepl_arg' => q[],
-  'ncftp' => q[],
-  'ncftpget' => q[],
-  'no_proxy' => q[],
-  'pager' => q[less],
-  'prerequisites_policy' => q[follow],
-  'scan_cache' => q[atstart],
-  'shell' => q[/bin/csh],
-  'tar' => $tar,
-  'term_is_latin' => q[1],
-  'unzip' => $unzip,
-  'urllist' => [ 'http://www.perl.com/CPAN/', 'http://mirrors.kernel.org/pub/CPAN/', 'ftp://cpan.cs.utah.edu/pub/CPAN/', 'ftp://mirrors.kernel.org/pub/CPAN', 'ftp://osl.uoregon.edu/CPAN/', 'http://cpan.yahoo.com/', 'ftp://ftp.funet.fi/pub/languages/perl/CPAN/' ],
-  'wget' => $wget, };
+    return {
+        'build_cache' => q[10],
+        'build_dir' => qq[$ENV{HOME}/.cpan/build],
+        'cache_metadata' => q[1],
+        'cpan_home' => qq[$ENV{HOME}/.cpan],
+        'ftp' => $ftp,
+        'ftp_proxy' => q[],
+        'getcwd' => q[cwd],
+        'gpg' => q[],
+        'gzip' => $gzip,
+        'histfile' => qq[$ENV{HOME}/.cpan/histfile],
+        'histsize' => q[100],
+        'http_proxy' => q[],
+        'inactivity_timeout' => q[5],
+        'index_expire' => q[1],
+        'inhibit_startup_message' => q[1],
+        'keep_source_where' => qq[$ENV{HOME}/.cpan/sources],
+        'lynx' => q[],
+        'make' => $make,
+        'make_arg' => q[],
+        'make_install_arg' => q[],
+        'makepl_arg' => q[],
+        'ncftp' => q[],
+        'ncftpget' => q[],
+        'no_proxy' => q[],
+        'pager' => q[less],
+        'prerequisites_policy' => q[follow],
+        'scan_cache' => q[atstart],
+        'shell' => q[/bin/csh],
+        'tar' => $tar,
+        'term_is_latin' => q[1],
+        'unzip' => $unzip,
+        'urllist' => [ 'http://www.perl.com/CPAN/', 'http://mirrors.kernel.org/pub/CPAN/',
+          'ftp://cpan.cs.utah.edu/pub/CPAN/', 'ftp://mirrors.kernel.org/pub/CPAN',
+          'ftp://osl.uoregon.edu/CPAN/', 'http://cpan.yahoo.com/',
+          'ftp://ftp.funet.fi/pub/languages/perl/CPAN/'
+        ],
+        'wget' => $wget,
+    };
 }
 
 sub name_overrides {
@@ -461,7 +479,7 @@ sub name_overrides {
     my ($match) = grep { $_->{module} eq $mod } @modules;
     return $match if $match;
     return { module=>$mod, info => { } };
-};
+}
 
 __END__
 
