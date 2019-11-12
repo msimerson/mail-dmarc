@@ -8,7 +8,6 @@ my $module_build_args = {
     "Module::Build" => "0.3601"
   },
   "configure_requires" => {
-    "ExtUtils::MakeMaker" => 0,
     "File::ShareDir::Install" => "0.06",
     "Module::Build" => "0.3601"
   },
@@ -24,16 +23,12 @@ my $module_build_args = {
   "release_status" => "stable",
   "add_to_cleanup" => [ "dmarc_reports.sqlite", "t/reports-test.sqlite"],
   "recommends" => {
-    "CGI" => 0,
     "Mail::DKIM" => 0,
     # "MIME::Lite" => 0,
-    "Net::HTTP" => 0,
     "Net::IMAP::Simple" => 0,
-    "Net::Server" => 2,
     "Net::SMTPS" => 0,
   },
   "requires" => {
-    "CPAN" => 0,
     "Carp" => 0,
     "Config::Tiny" => 0,
     "DBD::SQLite" => "1.31",
@@ -51,10 +46,6 @@ my $module_build_args = {
     "IO::Socket::SSL" => 0,
     "IO::Uncompress::Gunzip" => 0,
     "IO::Uncompress::Unzip" => 0,
-    "LWP::UserAgent" => 0,
-    "Mail::DKIM::PrivateKey" => 0,
-    "Mail::DKIM::Signer" => 0,
-    "Mail::DKIM::TextWrap" => 0,
     "Net::DNS::Resolver" => 0,
     "Net::IDN::Encode" => 0,
     "Net::IP" => 0,
@@ -71,7 +62,7 @@ my $module_build_args = {
     "XML::LibXML" => 0,
   },
   "auto_features" => {
-    "MySQL" => {
+    "mysql" => {
       "description" => "MySQL backend storage",
       "prereqs" => {
         "runtime" => {
@@ -82,7 +73,7 @@ my $module_build_args = {
         }
       }
     },
-    "Postgres" => {
+    "postgres" => {
       "description" => "PostgresQL backend storage",
       "prereqs" => {
         "runtime" => {
@@ -93,8 +84,8 @@ my $module_build_args = {
         }
       }
     },
-    "web service" => {
-      "description" => "HTTP web UI to DMARC reports",
+    "web_services" => {
+      "description" => "HTTP API and web UI to DMARC reports",
       "prereqs" => {
         "runtime" => {
           "requires" => {
@@ -102,9 +93,30 @@ my $module_build_args = {
             "HTTP::Request" => 0,
             "HTTP::Tiny" => 0,
             "JSON" => 0,
+            "LWP::UserAgent" => 0,
             "Net::HTTP" => 0,
             "Net::Server::HTTP" => 0,
+            "Net::Server" => 2,
           }
+        }
+      }
+    },
+    "smtp_sending" => {
+      "description" => "Send DMARC reports via SMTP",
+      "prereqs" => {
+        "runtime" => {
+          "Net::SMTPS" => 0,
+          "Mail::DKIM::PrivateKey" => 0,
+          "Mail::DKIM::Signer" => 0,
+          "Mail::DKIM::TextWrap" => 0,
+        }
+      }
+    },
+    "imap_fetch" => {
+      "description" => "Retrieve DMARC reports from an IMAP account",
+      "prereqs" => {
+        "runtime" => {
+          "Net::IMAP::Simple" => 0,
         }
       }
     }
