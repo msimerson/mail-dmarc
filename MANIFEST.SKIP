@@ -1,0 +1,13 @@
+.DS_Store
+.git
+.release
+.tar.gz
+.travis.yml
+^_build
+^blib
+^Makefile$
+^Build$
+^MANIFEST\.bak$
+^MYMETA.
+dmarc_reports.sqlite
+t/reports-test.sqlite

@@ -8,7 +8,7 @@ bin/dmarc_update_public_suffix_list
 bin/dmarc_view_reports
 bin/install_deps.pl
 Build.PL
-Changes
+Changes.md
 DEVELOP.md
 example/report_cgi.png
 FAQ.md
@@ -43,6 +43,7 @@ lib/Mail/DMARC/Result/Reason.pm
 LICENSE
 Makefile.PL
 MANIFEST			This list of files
+MANIFEST.SKIP
 META.json
 META.yml
 README.md
