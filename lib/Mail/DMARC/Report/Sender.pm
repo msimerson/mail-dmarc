@@ -78,26 +78,51 @@ sub get_transports_for {
     }
 
     my @smtp_hosts = $report->sendit->smtp->get_smtp_hosts;
-    my $first_host = $smtp_hosts[0];
+
     my $log_data = $args->{log_data};
-    $log_data->{smtp_host} = $first_host;
     my @transports;
-    push @transports, Email::Sender::Transport::SMTP->new({
-        host => $first_host,
-        hosts => \@smtp_hosts,
-        ssl => 1,
-        port => 25,
-        helo => $report->sendit->smtp->get_helo_hostname,
-        timeout => 32,
-    });
-    push @transports, Email::Sender::Transport::SMTP->new({
-        host => $smtp_hosts[0],
-        hosts => \@smtp_hosts,
-        ssl => 0,
-        port => 25,
-        helo => $report->sendit->smtp->get_helo_hostname,
-        timeout => 32,
-    });
+    $log_data->{smtp_host} = join( ',', @smtp_hosts );
+
+    if ( Email::Sender::Transport::SMTP->can('hosts') ) {
+        push @transports, Email::Sender::Transport::SMTP->new({
+            hosts => \@smtp_hosts,
+            ssl => 1,
+            port => 25,
+            helo => $report->sendit->smtp->get_helo_hostname,
+            timeout => 32,
+        });
+        push @transports, Email::Sender::Transport::SMTP->new({
+            hosts => \@smtp_hosts,
+            ssl => 0,
+            port => 25,
+            helo => $report->sendit->smtp->get_helo_hostname,
+            timeout => 32,
+        });
+    }
+    else {
+        # We can't pass hosts to the transport, so pass a list of transports
+        # for each possible host.
+
+        foreach my $host ( @smtp_hosts ) {
+            push @transports, Email::Sender::Transport::SMTP->new({
+                host => $host,
+                ssl => 1,
+                port => 25,
+                helo => $report->sendit->smtp->get_helo_hostname,
+                timeout => 32,
+            });
+        }
+        foreach my $host ( @smtp_hosts ) {
+            push @transports, Email::Sender::Transport::SMTP->new({
+                host => $host,
+                ssl => 0,
+                port => 25,
+                helo => $report->sendit->smtp->get_helo_hostname,
+                timeout => 32,
+            });
+        }
+    }
+
     return @transports;
 }
 
