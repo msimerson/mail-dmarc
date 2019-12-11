@@ -136,18 +136,18 @@ sub delete_report {
     print "deleting report $report_id\n" if $self->verbose;
 
     # deletes with FK don't cascade in SQLite? Clean each table manually
-    my $rows = $self->query( $self->grammar->report_record_id,
-        [$report_id] );
-    my $row_ids = join( ',', map { $_->{id} } @$rows ) or return 1;
-    foreach my $table (
-        qw/ report_record_spf report_record_dkim report_record_reason /)
-    {
-        print "deleting $table rows $row_ids\n" if $self->verbose;
-        $self->query(
-            $self->grammar->delete_from_where_record_in($table, $row_ids));
+    my $rows = $self->query( $self->grammar->report_record_id, [$report_id] );
+    my @row_ids = map { $_->{id} } @$rows;
+
+    if (@row_ids) {
+        foreach my $table (qw/ report_record_spf report_record_dkim report_record_reason /) {
+            eval { $self->query( $self->grammar->delete_from_where_record_in($table), \@row_ids); };
+            warn $@ if $@;
+        }
     }
     foreach my $table (qw/ report_policy_published report_record report_error /) {
-        $self->query( $self->grammar->delete_from_where_report($table), [$report_id] );
+        eval { $self->query( $self->grammar->delete_from_where_report($table), [$report_id] ); };
+        warn $@ if $@;
     }
 
     # In MySQL, where FK constraints DO cascade, this is the only query needed
@@ -597,12 +597,9 @@ sub query {
 
     my $dbix = $self->db_connect() or croak DBIx::Simple->error;
 
-    return $self->query_insert( $query, $err, @params )
-        if $query =~ /^INSERT/ix;
-    return $self->query_replace( $query, $err, @params )
-        if $query =~ /^(?:REPLACE|UPDATE)/ix;
-    return $self->query_delete( $query, $err, @params )
-        if $query =~ /^(?:DELETE|TRUNCATE)/ix;
+    return $self->query_insert( $query, $err, @params )  if $query =~ /^INSERT/ix;
+    return $self->query_replace( $query, $err, @params ) if $query =~ /^(?:REPLACE|UPDATE)/ix;
+    return $self->query_delete( $query, $err, @params )  if $query =~ /^(?:DELETE|TRUNCATE)/ix;
     return $self->query_any( $query, $err, @params );
 }
 
@@ -645,7 +642,6 @@ sub query_delete {
     $self->db_check_err($err);
     return $affected;
 }
-
 
 sub get_row_spf {
     my ($self, $rowid) = @_;

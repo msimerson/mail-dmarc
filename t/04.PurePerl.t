@@ -152,9 +152,7 @@ sub test_external_report {
 
         # warn "path: " . $uri->path;
         ok( $uri, "new URI" );
-        ok( $dmarc->external_report($uri),
-            "external_report, $uri for $dom.com"
-        );
+        ok( $dmarc->external_report($uri), "external_report, $uri for $dom.com" );
     }
 }
 

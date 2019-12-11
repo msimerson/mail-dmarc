@@ -32,7 +32,7 @@ sub report_record_id {
 
 sub delete_from_where_record_in {
     my ($self, $table, $row_ids) = @_;
-    return "DELETE FROM \"$table\" WHERE \"report_record_id\" IN ($row_ids)"
+    return "DELETE FROM \"$table\" WHERE \"report_record_id\" IN (??)"
 }
 
 sub delete_from_where_report {
