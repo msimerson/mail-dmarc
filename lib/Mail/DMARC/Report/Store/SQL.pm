@@ -139,15 +139,15 @@ sub delete_report {
     my $rows = $self->query( $self->grammar->report_record_id, [$report_id] );
     my @row_ids = map { $_->{id} } @$rows;
 
-    if (@row_ids) {
+    if (scalar @row_ids) {
         foreach my $table (qw/ report_record_spf report_record_dkim report_record_reason /) {
-            eval { $self->query( $self->grammar->delete_from_where_record_in($table), \@row_ids); };
-            warn $@ if $@;
+            eval { $self->query( $self->grammar->delete_from_where_record_in($table, \@row_ids)); };
+            # warn $@ if $@;
         }
     }
     foreach my $table (qw/ report_policy_published report_record report_error /) {
-        eval { $self->query( $self->grammar->delete_from_where_report($table), [$report_id] ); };
-        warn $@ if $@;
+        eval { $self->query( $self->grammar->delete_from_where_report( $table, [$report_id] )); };
+        # warn $@ if $@;
     }
 
     # In MySQL, where FK constraints DO cascade, this is the only query needed
