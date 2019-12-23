@@ -141,11 +141,13 @@ sub delete_report {
 
     if (scalar @row_ids) {
         foreach my $table (qw/ report_record_spf report_record_dkim report_record_reason /) {
+            print "deleting $table rows " . join(',', @row_ids) . "\n" if $self->verbose;
             eval { $self->query( $self->grammar->delete_from_where_record_in($table, \@row_ids)); };
             # warn $@ if $@;
         }
     }
     foreach my $table (qw/ report_policy_published report_record report_error /) {
+        print "deleting $table rows for report $report_id\n" if $self->verbose;
         eval { $self->query( $self->grammar->delete_from_where_report( $table, [$report_id] )); };
         # warn $@ if $@;
     }
