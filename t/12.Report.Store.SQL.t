@@ -148,8 +148,21 @@ sub test_cleanup {
                 report_record, report_record_dkim, report_record_reason,
                 report_record_spf RESTART IDENTITY;'
         ), 'truncate_testing_pg_database' );
+        return;
     }
-    elsif ($provider eq 'SQLite') {
+
+    my $reports = $sql->get_report()->{rows};
+    foreach my $report (@$reports) {
+        # print Dumper($report);
+        $sql->delete_report($report->{rid});
+    }
+    $reports = $sql->get_report()->{rows};
+    if (scalar @$reports) {
+        # print Dumper($reports);
+        die "failed to delete reports!\n";
+    }
+
+    if ($provider eq 'SQLite') {
         unlink "t/reports-test.sqlite";
     }
 }
@@ -466,10 +479,8 @@ sub test_query_insert {
         [ $from_did, $begin, $end, $author_id ]
     );
     ok( $rid, "query_insert, report, $rid" );
-    ok( $sql->query(
-        $sql->grammar->delete_from('report').$sql->grammar->and_arg('id'),
-        [$rid]
-    ), "query_delete, report, $rid" );
+
+    ok( $sql->delete_report($rid), "delete_report, report, $rid");
 
     # negative tests
     eval {
@@ -493,7 +504,6 @@ sub test_query_insert {
 sub test_query_replace {
     my $end   = time + 86400;
 
-    
     my $snafus = $sql->query(
         $sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->and_arg('begin'),
         [ $begin ]
@@ -521,14 +531,14 @@ sub test_query_replace {
 sub test_query_update {
     my $victims = $sql->query($sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit);
     foreach my $v (@$victims) {
-        my $r = $sql->query( 
+        my $r = $sql->query(
             $sql->grammar->update( 'report', [ 'end' ] ).$sql->grammar->and_arg( 'id' ),
             [ time, $v->{id} ] );
         ok( $r, "query_update, $r" );
 
         # negative test
         eval {
-            $sql->query( 
+            $sql->query(
                 $sql->grammar->update( 'report', [ 'ed' ] ).$sql->grammar->and_arg( 'id' ),
                 [ time, $v->{id} ] );
         };
@@ -537,14 +547,15 @@ sub test_query_update {
 }
 
 sub test_query_delete {
-    
+
     my $victims = $sql->query($sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1));
     foreach my $v (@$victims) {
-        my $r = $sql->query(
-            $sql->grammar->delete_from( 'report' ).$sql->grammar->and_arg( 'id' ),
-            [ $v ]
-        );
-        ok( $r, "query_delete" );
+        # print "test_query_delete victim: $v->{id}\n";
+        eval {
+            my $r = $sql->delete_report($v->{id});
+            ok( $r, "query_delete $v->{id}" );
+        };
+        warn $@ if ($@);
     }
 
     # neg

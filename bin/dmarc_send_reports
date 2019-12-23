@@ -108,10 +108,10 @@ sub send_single_report {
     });
 
     my $xml = $aggregate->as_xml();
-#   warn $xml;  ## no critic (Carp)
-#   my $dom = XML::LibXML->load_xml( string => (\$xml) );
-#   eval { $xmlschema->validate( $dom ); };
-#   die "$@" if $@;
+    # warn $xml;  ## no critic (Carp)
+    # my $dom = XML::LibXML->load_xml( string => (\$xml) );
+    # eval { $xmlschema->validate( $dom ); };
+    # die "$@" if $@;
 
     my $shrunk = $report->compress(\$xml);
     my $bytes  = length Encode::encode_utf8($shrunk);
