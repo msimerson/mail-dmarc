@@ -550,12 +550,12 @@ sub test_query_delete {
 
     my $victims = $sql->query($sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1));
     foreach my $v (@$victims) {
-        print "test_query_delete victim: $v->{id}\n";
+        # print "test_query_delete victim: $v->{id}\n";
         eval {
             my $r = $sql->delete_report($v->{id});
             ok( $r, "query_delete $v->{id}" );
         };
-        print $@ if ($@);
+        warn $@ if ($@);
     }
 
     # neg
