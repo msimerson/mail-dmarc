@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# VERSION 1.11
+# VERSION 1.12
 
 use strict;
 use warnings;
@@ -405,7 +405,7 @@ sub install_module_linux_apt {
         $package = $info->{apt};
     }
     else {
-        $package = 'lib' . $module . '-perl';
+        $package = 'lib' . lc $module . '-perl';
         $package =~ s/::/-/g;
     };
     system "/usr/bin/apt-get -y install $package";
