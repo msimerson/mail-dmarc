@@ -140,10 +140,12 @@ my %META = (
       "description" => "Send DMARC reports via SMTP",
       "prereqs" => {
         "runtime" => {
-          "Net::SMTPS" => 0,
-          "Mail::DKIM::PrivateKey" => 0,
-          "Mail::DKIM::Signer" => 0,
-          "Mail::DKIM::TextWrap" => 0,
+          "requires" => {
+            "Net::SMTPS" => 0,
+            "Mail::DKIM::PrivateKey" => 0,
+            "Mail::DKIM::Signer" => 0,
+            "Mail::DKIM::TextWrap" => 0
+          }
         }
       }
     },
@@ -151,7 +153,9 @@ my %META = (
       "description" => "Retrieve DMARC reports from an IMAP account",
       "prereqs" => {
         "runtime" => {
-          "Net::IMAP::Simple" => 0,
+          "requires" => {
+            "Net::IMAP::Simple" => 0,
+          }
         }
       }
     }
