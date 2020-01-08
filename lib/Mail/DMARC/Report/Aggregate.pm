@@ -69,7 +69,7 @@ EO_XML
 sub get_record_as_xml {
     my $self = shift;
 
-    my $rec_xml;
+    my $rec_xml = '';
     foreach my $rec ( @{ $self->{record} } ) {
         $rec_xml .= "\t<record>\n";
         my $ip = $rec->{row}{source_ip} or croak "no source IP!?";
