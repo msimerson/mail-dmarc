@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated;
-our $VERSION = '1.20191025';
+our $VERSION = '1.20200108';
 use strict;
 use warnings;
 
@@ -56,7 +56,7 @@ Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated - row/policy_evalu
 
 =head1 VERSION
 
-version 1.20191025
+version 1.20200108
 
 =head1 AUTHORS
 
