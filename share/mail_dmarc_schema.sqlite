@@ -112,7 +112,7 @@ DROP TABLE IF EXISTS `report_error`;
 CREATE TABLE "report_error" (
   `report_id` INTEGER NOT NULL REFERENCES "report"("id") ON UPDATE CASCADE ON DELETE CASCADE,
   `error` TEXT NOT NULL,
-  `time` integer NOT NULL
+  `time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
