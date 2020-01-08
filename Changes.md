@@ -1,5 +1,5 @@
 
-### 1.20191025
+### 1.20200108
 
 - NEW FEATURE: Postgres support #150
 - removed dist::zilla
@@ -8,12 +8,16 @@
 - SPF: don't warn when scope is missing from reports
 - receive: permit other MIME types that have xml.gz filename
 - DKIM: when message has no result, add "none"
+- sqlite: add default current_timestamp
+- bin/install_deps.pl: apt improvements
+
 
 ### 1.20191004
 
 - updated PSL
 - update jQuery, jQuery grid
 - empty ENV FROM when missing #144
+
 
 ### 1.20190831
 

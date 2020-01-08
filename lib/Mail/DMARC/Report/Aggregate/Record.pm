@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate::Record;
-our $VERSION = '1.20191025';
+our $VERSION = '1.20200108';
 use strict;
 use warnings;
 
@@ -82,7 +82,7 @@ Mail::DMARC::Report::Aggregate::Record - record section of aggregate report
 
 =head1 VERSION
 
-version 1.20191025
+version 1.20200108
 
 =head1 DESCRIPTION
 
@@ -108,7 +108,7 @@ Marc Bradshaw <marc@marcbradshaw.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2019 by Matt Simerson.
+This software is copyright (c) 2020 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
