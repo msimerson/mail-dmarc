@@ -12,12 +12,13 @@ git push --tags
 
 # create a GitHub release
 # https://developer.github.com/v3/repos/releases/#create-a-release
+echo "hint: your OTP password"
 
-curl -u msimerson -X POST https://api.github.com/repos/msimerson/mail-dmarc/releases -H 'Content-Type: application/json' -d '{
-  "tag_name": "$TAGNAME",
-  "target_commitish": "master",
-  "name": "$TAGNAME",
-  "body": "Description of the release",
-  "draft": true,
-  "prerelease": false
-}'
+curl -u msimerson -X POST https://api.github.com/repos/msimerson/mail-dmarc/releases -H 'Content-Type: application/json' -d "{
+  \"tag_name\": \"$TAGNAME\",
+  \"target_commitish\": \"master\",
+  \"name\": \"$TAGNAME\",
+  \"body\": \"Description of the release\",
+  \"draft\": true,
+  \"prerelease\": false
+}"
