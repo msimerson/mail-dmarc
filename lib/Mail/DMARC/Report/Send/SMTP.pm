@@ -7,7 +7,6 @@ our $VERSION = '1.20200108';
 use Carp;
 use English '-no_match_vars';
 use Email::MIME;
-use Net::SMTPS;
 #use Mail::Sender;  # something to consider
 use Sys::Hostname;
 use POSIX;
@@ -59,6 +58,9 @@ sub connect_smtp {
 
 sub connect_smtp_tls {
     my ($self, $to) = @_;
+
+    # lazy load, so test can load this file w/o dep. installed
+    eval "require Net::SMTPS" or return;  ## no critic (Eval)
 
     my $smtp = Net::SMTPS->new(
         [ $self->get_smtp_hosts($to) ],
