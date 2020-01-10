@@ -1,3 +1,6 @@
 #!/bin/sh
 
-echo "publish to cpan, manually until you finish this."
+perl Build.PL
+./Build dist
+cpan-upload Mail-DMARC-*.tar.gz
+./Build distclean
