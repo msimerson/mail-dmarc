@@ -15,7 +15,6 @@ To make changes or submit patches, visit the GitHub URL and click the ***Fork***
 Use git in the normal way:
 
     cd mail-dmarc
-    
     .... make a change or two ...
     git status       ( see changes )
     git diff         ( show diffs  )
@@ -50,10 +49,8 @@ Visit your fork on the GitHub web site. On the main page of your fork is a ***Pu
 
 Travis automatically runs build tests when commits are pushed to GitHub, and sends notifications to the author(s) in case of failure. For everyone else, checking the build status after a push request is merged is a good idea.
 
-# Releases
-
-Before a release, update the PSL:
+# Release
 
 ````sh
-curl -o share/public_suffix_list https://publicsuffix.org/list/effective_tld_names.dat
+.release/do.sh
 ````
