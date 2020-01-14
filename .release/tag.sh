@@ -12,7 +12,7 @@ git push --tags
 
 # create a GitHub release
 # https://developer.github.com/v3/repos/releases/#create-a-release
-echo "hint: your OTP password"
+echo "hint: your GitHub OTP password"
 
 curl -u msimerson -X POST https://api.github.com/repos/msimerson/mail-dmarc/releases -H 'Content-Type: application/json' -d "{
   \"tag_name\": \"$TAGNAME\",
