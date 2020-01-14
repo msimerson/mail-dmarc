@@ -8,7 +8,7 @@ use Carp;
 
 #use Data::Dumper;
 #use HTTP::Tiny;     # a possibility
-use Net::HTTP;
+#use Net::HTTP;      # lazy loaded in 'post'
 
 use parent 'Mail::DMARC::Base';
 
@@ -18,8 +18,10 @@ sub post {
     carp "http send feature not complete!";
     return;
 
-    # TODO: test
 ## no critic (Unreachable)
+    # TODO: test against real HTTP server, validate HTTP response
+    eval "require Net::HTTP" or return;
+
     my $ver = $Mail::DMARC::Base::VERSION;
     my $s = Net::HTTP->new( Host => $uri->host ) or croak $@;
     $s->write_request(
