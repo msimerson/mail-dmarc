@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF;
-our $VERSION = '1.20200108';
+our $VERSION = '1.20200113';
 use strict;
 
 use Carp;
@@ -91,7 +91,7 @@ Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF - auth_results/spf sec
 
 =head1 VERSION
 
-version 1.20200108
+version 1.20200113
 
 =head1 AUTHORS
 
