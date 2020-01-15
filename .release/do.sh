@@ -10,3 +10,5 @@ assure_changes_has_entry || exit
 .release/update-psl.sh
 .release/tag.sh
 .release/publish-to-cpan.sh
+
+git checkout -- META.json META.yml
