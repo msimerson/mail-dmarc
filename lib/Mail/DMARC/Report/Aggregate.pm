@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Aggregate;
 use strict;
 use warnings;
 
-our $VERSION = '1.20200113';
+our $VERSION = '1.20200114';
 
 use Carp;
 use Data::Dumper;
@@ -199,7 +199,7 @@ Mail::DMARC::Report::Aggregate - aggregate report object
 
 =head1 VERSION
 
-version 1.20200113
+version 1.20200114
 
 =head1 DESCRIPTION
 
