@@ -138,7 +138,7 @@ sub from_email_simple {
 
     my $rep_type;
     foreach my $part ( Email::MIME->new( $email->as_string )->parts ) {
-        my ($c_type) = split /;/, $part->content_type;
+        my ($c_type) = split /;/, $part->content_type || '';
         next if $c_type eq 'text/plain';
         if ( $c_type eq 'text/rfc822-headers' ) {
             warn "TODO: handle forensic reports\n";  ## no critic (Carp)
@@ -151,7 +151,7 @@ sub from_email_simple {
             next;
         }
         my $bigger;
-        my $filename = $part->{ct}{attributes}{name};
+        my $filename = $part->{ct}{attributes}{name} || '';
 
         if ( $c_type eq 'application/zip' || $c_type eq 'application/x-zip-compressed' ) {
             $self->get_submitter_from_filename( $filename );
