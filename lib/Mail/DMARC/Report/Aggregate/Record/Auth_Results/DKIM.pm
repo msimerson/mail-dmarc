@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM;
-our $VERSION = '1.20200114';
+our $VERSION = '1.20200116';
 use strict;
 
 use Carp;
@@ -84,7 +84,7 @@ Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM - auth_results/dkim s
 
 =head1 VERSION
 
-version 1.20200114
+version 1.20200116
 
 =head1 AUTHORS
 
