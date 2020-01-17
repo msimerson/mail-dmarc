@@ -9,7 +9,7 @@ use Test::File::ShareDir
 
 use lib 'lib';
 
-foreach my $req ( 'CGI', 'DBD::SQLite 1.31', 'Net::Server::HTTP' ) {
+foreach my $req ( 'CGI', 'DBD::SQLite 1.31', 'JSON', 'Net::Server::HTTP' ) {
     eval "use $req";
     if ($@) {
         plan( skip_all => "$req not available" );

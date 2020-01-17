@@ -1,4 +1,8 @@
 
+### 1.20200116
+
+- skip HTTP tests when optional JSON not installed #171
+
 ### 1.20200114
 
 - skip HTTP tests when optional deps not installed #171
