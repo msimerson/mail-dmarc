@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store;
-our $VERSION = '1.20200116';
+our $VERSION = '1.20200212';
 use strict;
 use warnings;
 
@@ -60,7 +60,7 @@ Mail::DMARC::Report::Store - persistent storage broker for reports
 
 =head1 VERSION
 
-version 1.20200116
+version 1.20200212
 
 =head1 SYNOPSIS
 
