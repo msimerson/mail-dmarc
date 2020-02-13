@@ -1,4 +1,8 @@
 
+### 1.20200212
+
+- skip DB cleanup when unable to connect to DB #175
+
 ### 1.20200116
 
 - skip HTTP tests when optional JSON not installed #171
