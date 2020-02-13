@@ -56,15 +56,13 @@ opendir( my $dir, $backend_dir ) || die "Unable to view backends in $backend_dir
 #  This includes all Grammars for SQL, but it also could mean other backends
 #  that aren't currently supported.
 while ( my $file = readdir( $dir ) ) {
-    my $provider;
-    if ( $file =~ /mail-dmarc\.sql\.(\w+)\.ini/i ) {
-        $provider = $1;
-        eval "use DBD::$provider";
-        if ($@) {
-            ok( 1, "Skipping $provider, DBD::$provider not available" );
-            next;
-        }
-    } else {
+    my ($provider) = $file =~ /mail-dmarc\.sql\.(\w+)\.ini/i;
+    if ( ! $provider ) {
+        next;
+    }
+    eval "use DBD::$provider";
+    if ($@) {
+        ok( 1, "Skipping $provider, DBD::$provider not available" );
         next;
     }
     $sql->config( "$backend_dir/$file" );
@@ -73,7 +71,6 @@ while ( my $file = readdir( $dir ) ) {
 
     test_db_connect( $provider ) or do {
         ok(1, "Skipping $provider, unable to connect");
-        test_cleanup( $provider );
         next;
     };
     test_grammar_loaded( $provider );
