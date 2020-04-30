@@ -1,4 +1,8 @@
 
+### 1.20200214
+
+- move HTTP::Tiny into deps (used for PSL updates)
+
 ### 1.20200116
 
 - skip HTTP tests when optional JSON not installed #171

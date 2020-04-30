@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Send;
 use strict;
 use warnings;
 
-our $VERSION = '1.20200116';
+our $VERSION = '1.20200214';
 
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Send::SMTP;
@@ -62,7 +62,7 @@ Mail::DMARC::Report::Send - report sending dispatch class
 
 =head1 VERSION
 
-version 1.20200116
+version 1.20200214
 
 =head1 DESCRIPTION
 
