@@ -518,11 +518,18 @@ sub db_connect {
     my $self = shift;
 
     return $self->{dbix} if $self->{dbix};    # caching
-    return $Mail::DMARC::Report::Store::SQL::memory_db if $Mail::DMARC::Report::Store::SQL::memory_db;
 
     my $dsn  = $self->config->{report_store}{dsn} or croak;
     my $user = $self->config->{report_store}{user};
     my $pass = $self->config->{report_store}{pass};
+
+    # Package wide persistent in memory database for Sender tests
+    if ( $dsn eq 'dbi:SQLite:dbname=:memory:'
+         && $Mail::DMARC::Report::Store::SQL::memory_db
+         && ref $Mail::DMARC::Report::Store::SQL::memory_db eq 'HashRef' ) {
+      $self->{grammar} = $Mail::DMARC::Report::Store::SQL::memory_db->{grammar};
+      return $Mail::DMARC::Report::Store::SQL::memory_db->{dbix};
+    }
 
     if ($self->{grammar} and $self->{grammar}->dsn =~ /$dsn/i) {
         return $self->{dbix} if $self->{dbix};    # caching
@@ -557,7 +564,10 @@ sub db_connect {
 
     if ( $dsn eq 'dbi:SQLite:dbname=:memory:' ) {
       # In memory database, make persistent
-      $Mail::DMARC::Report::Store::SQL::memory_db = $self->{dbix};
+      $Mail::DMARC::Report::Store::SQL::memory_db = {
+        dbix => $self->{dbix},
+        grammar => $self->{grammar},
+      };
     }
 
     return $self->{dbix};

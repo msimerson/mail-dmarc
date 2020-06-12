@@ -15,7 +15,7 @@ foreach my $callback_type ( qw{ method object fail fallback } ) {
 
     subtest $callback_type => sub{
 
-        $Mail::DMARC::Report::Store::SQL::memory_db = undef;
+        $Mail::DMARC::Report::Store::SQL::memory_db = {};
         my $dmarc = Mail::DMARC::PurePerl->new;
         $dmarc->set_fake_time( time-86400);
         $dmarc->init();
