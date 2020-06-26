@@ -10,12 +10,13 @@ use Mail::DMARC::Test::Transport;
 use Email::Sender::Transport::Failable;
 use Email::Sender::Transport::Test;
 
+
 # We test both method and object type callbacks
 foreach my $callback_type ( qw{ method object fail fallback } ) {
 
     subtest $callback_type => sub{
+        unlink 't/reports-test.sqlite' if -e 't/reports-test.sqlite'; # Clear test database for each run
 
-        $Mail::DMARC::Report::Store::SQL::memory_db = {};
         my $dmarc = Mail::DMARC::PurePerl->new;
         $dmarc->set_fake_time( time-86400);
         $dmarc->init();
@@ -87,8 +88,8 @@ foreach my $callback_type ( qw{ method object fail fallback } ) {
         elsif ( $callback_type eq 'fallback' ) {
             my $transport = Email::Sender::Transport::Test->new;
             my $transport_fail = Email::Sender::Transport::Failable->new(
-                transport => $transport,
-                failure_conditions => [ sub{ return 1 } ],
+              transport => $transport,
+              failure_conditions => [ sub{ return 1 } ],
             );
             $sender->set_transports_method( sub{
                 my @transports;
