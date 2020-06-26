@@ -199,7 +199,7 @@ sub test_published {
 sub test_no_policy {
 
     $pp->init();
-    $pp->header_from( 'responsebeacon.com' );
+    $pp->header_from( 'nodmarcrecord.blogspot.com' );
     $pp->validate();
 
     my $skip_reason;
