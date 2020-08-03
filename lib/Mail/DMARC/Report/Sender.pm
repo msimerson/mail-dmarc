@@ -77,7 +77,7 @@ sub get_transports_for {
         return ($self->{smarthost});
     }
 
-    my @smtp_hosts = $report->sendit->smtp->get_smtp_hosts;
+    my @smtp_hosts = $report->sendit->smtp->get_smtp_hosts($args->{to});
 
     my $log_data = $args->{log_data};
     my @transports;
@@ -396,6 +396,7 @@ sub email {
     my @transports = $self->get_transports_for({
         report => $report,
         log_data => $log_data,
+        to => $to,
     });
     my $success;
     while ( my $transport = shift @transports ) {
