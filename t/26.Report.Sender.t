@@ -1,10 +1,12 @@
-#!/usr/bin/perl
-# VERSION
 use strict;
 use warnings;
 
 use Test::More;
+
+use lib 'lib';
 use Mail::DMARC::PurePerl;
+use Test::File::ShareDir
+  -share => { -dist => { 'Mail-DMARC' => 'share' } };
 
 use Mail::DMARC::Test::Transport;
 use Email::Sender::Transport::Failable;
