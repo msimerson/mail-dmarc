@@ -253,7 +253,7 @@ The list of dependencies appears long because of reporting. If this module is us
 
 Since DMARC is evolving, this implementation aims to be straight forward and easy to alter and extend. The programming style is primarily OO, which carries a small performance penalty but dividends in maintainability.
 
-When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class, to broker the request. When storing reports, calls are made to the Store class, which dispatches to the SQL class. The idea is that if someone desired a data store other than the many provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
+When multiple options are available, such as when sending reports via SMTP or HTTP, calls should be made to the parent Send class to broker the request. When storing reports, calls are made to the Store class which dispatches to the SQL class. The idea is that if someone desired a data store other than those provided by perl's DBI class, they could easily implement their own. If you do, please fork it on GitHub and share.
 
 ## Fast
 
@@ -265,9 +265,7 @@ If you deploy this in an environment where performance is insufficient, please p
 
 2015-03 [RFC 7489](https://tools.ietf.org/html/rfc7489)
 
-Mar 30, 2012 Draft: http://www.dmarc.org/draft-dmarc-base-00-02.txt
-
-Best Current Practices: http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03
+DMARC [Best Current Practices](http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03)
 
 # HISTORY
 
@@ -282,13 +280,10 @@ The daddy of this perl module was a [DMARC module for the qpsmtpd MTA](https://g
 # CONTRIBUTORS
 
 - Benny Pedersen <me@junc.eu>
-- ColocateUSA.net <company@colocateusa.net>
 - Jean Paul Galea <jeanpaul@yubico.com>
 - Marisa Clardy <marisa@clardy.eu>
 - Priyadi Iman Nurcahyo <priyadi@priyadi.net>
-- Priyadi Iman Nurcahyo <priyadi@users.noreply.github.com>
 - Ricardo Signes <rjbs@cpan.org>
-- Ricardo Signes <rjbs@users.noreply.github.com>
 
 # COPYRIGHT AND LICENSE
 
