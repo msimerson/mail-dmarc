@@ -12,21 +12,13 @@ services:
   - postgresql
 
 before_install:
-  - psql -c 'CREATE DATABASE dmarc_report;' -U postgres
-  - psql -U postgres dmarc_report < share/mail_dmarc_schema.pgsql
-  - mysql -e 'CREATE DATABASE IF NOT EXISTS dmarc_report;'
-  - mysql -u root --password="" dmarc_report < share/mail_dmarc_schema.mysql
+  - ./t/install-db.sh
 
 install:
-   - cpanm --quiet --notest Regexp::Common Config::Tiny File::ShareDir Net::DNS::Resolver
-   - cpanm --quiet --notest DBD::SQLite DBD::Pg DBD::mysql
-   - cpanm --quiet --notest Net::IP Socket6 Email::MIME Net::SMTPS XML::LibXML Email::Sender
-   - cpanm --quiet --notest DBIx::Simple HTTP::Tiny Test::File::ShareDir Test::Output
-   - cpanm --quiet --notest Net::IDN::Encode CGI
-   - cpanm --quiet --notest XML::Validator::Schema
+  - ./t/install-deps.sh
 
 script:
-   - HARNESS_IS_VERBOSE=1 prove -v -Ilib t
+  - HARNESS_IS_VERBOSE=1 prove -v -Ilib t
 
 after_success:
   - rm dmarc_reports.sqlite || echo "ok"
