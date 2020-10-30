@@ -513,7 +513,6 @@ sub insert_policy_published {
     return 1;
 }
 
-my $memory_db;
 sub db_connect {
     my $self = shift;
 
