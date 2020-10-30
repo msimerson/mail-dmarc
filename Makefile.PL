@@ -35,6 +35,7 @@ my %META = (
     },
     "runtime" => {
       "recommends" => {
+        "Email::Sender" => 0,
         "CGI" => 0,
         "HTTP::Request" => 0,
         "JSON" => 0,
@@ -140,6 +141,7 @@ my %META = (
       "prereqs" => {
         "runtime" => {
           "requires" => {
+            "Email::Sender" => 0,
             "Net::SMTPS" => 0,
             "Mail::DKIM::PrivateKey" => 0,
             "Mail::DKIM::Signer" => 0,
