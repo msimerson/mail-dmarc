@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Sender;
-# VERSION
+
 use strict;
 use warnings;
 
@@ -13,7 +13,6 @@ use Email::Sender::Simple qw{ sendmail };
 use Email::Sender::Transport::SMTP;
 use Email::Sender::Transport::SMTP::Persistent;
 use Module::Load;
-#use XML::LibXML;
 
 sub new {
     my $class = shift;
@@ -180,9 +179,6 @@ sub run {
         my $transports_object = $package->new();
         $self->set_transports_object( $transports_object );
     }
-
-    #my $schema = 'http://dmarc.org/dmarc-xml/0.1/rua.xsd';
-    #my $xmlschema = XML::LibXML::Schema->new( location => $schema );
 
     local $SIG{'ALRM'} = sub{ die "timeout\n" };
 
