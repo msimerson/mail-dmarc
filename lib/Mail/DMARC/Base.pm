@@ -24,6 +24,19 @@ sub new {
     }, $class;
 }
 
+my $_fake_time;
+sub time { ## no critic
+    # Ability to return a fake time for testing
+    my ( $self ) = @_;
+    my $time = defined $Mail::DMARC::Base::_fake_time ? $Mail::DMARC::Base::_fake_time : time;
+    return $time;
+}
+sub set_fake_time {
+    my ( $self, $time ) = @_;
+    $Mail::DMARC::Base::_fake_time = $time;
+    return;
+}
+
 sub config {
     my ( $self, $file, @too_many ) = @_;
     croak "invalid args" if scalar @too_many;
@@ -46,7 +59,7 @@ sub get_sharefile {
 
 sub get_config {
     my $self = shift;
-    my $file = shift || $self->{config_file} or croak;
+    my $file = shift || $ENV{MAIL_DMARC_CONFIG_FILE} || $self->{config_file} or croak;
     return Config::Tiny->read($file) if -r $file;  # fully qualified
     foreach my $d ($self->get_prefix('etc')) {
         next                              if !-d $d;
