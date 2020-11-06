@@ -3,6 +3,8 @@ use warnings;
 
 use Test::More;
 
+$ENV{MAIL_DMARC_CONFIG_FILE} = 't/mail-dmarc.ini';
+
 use lib 'lib';
 use Mail::DMARC::PurePerl;
 use Test::File::ShareDir
@@ -20,6 +22,7 @@ foreach my $callback_type ( qw{ method object fail fallback } ) {
         unlink 't/reports-test.sqlite' if -e 't/reports-test.sqlite'; # Clear test database for each run
 
         my $dmarc = Mail::DMARC::PurePerl->new;
+
         $dmarc->set_fake_time( time-86400);
         $dmarc->init();
         $dmarc->source_ip('66.128.51.165');
@@ -48,13 +51,10 @@ foreach my $callback_type ( qw{ method object fail fallback } ) {
 
         my $policy = $dmarc->discover_policy;
         my $result = $dmarc->validate($policy);
-
         $dmarc->save_aggregate;
-
         $dmarc->set_fake_time( time+86400);
         use Mail::DMARC::Report::Sender;
         my $sender = Mail::DMARC::Report::Sender->new;
-
         my @deliveries;
 
         if ( $callback_type eq 'method' ) {

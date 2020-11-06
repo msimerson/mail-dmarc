@@ -59,7 +59,7 @@ sub get_sharefile {
 
 sub get_config {
     my $self = shift;
-    my $file = shift || $self->{config_file} or croak;
+    my $file = shift || $ENV{MAIL_DMARC_CONFIG_FILE} || $self->{config_file} or croak;
     return Config::Tiny->read($file) if -r $file;  # fully qualified
     foreach my $d ($self->get_prefix('etc')) {
         next                              if !-d $d;
