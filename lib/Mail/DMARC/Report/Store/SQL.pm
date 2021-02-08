@@ -520,8 +520,12 @@ sub db_connect {
     my $user = $self->config->{report_store}{user};
     my $pass = $self->config->{report_store}{pass};
 
-    if ($self->{grammar} and $self->{grammar}->dsn =~ /$dsn/i) {
-        return $self->{dbix} if $self->{dbix};    # caching
+    # cacheing
+    if ($self->{grammar} && $self->{dbix}) {
+        my $cached_grammar_type = $self->{grammar}->dsn;
+        if ( $dsn =~ /$cached_grammar_type/ ) {
+            return $self->{dbix};    # caching
+        }
     }
 
     my $needs_tables;
