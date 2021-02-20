@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate::Record::Auth_Results;
-our $VERSION = '1.20200214';
+our $VERSION = '1.20210220';
 use strict;
 use warnings;
 
@@ -79,7 +79,7 @@ Mail::DMARC::Report::Aggregate::Record::Auth_Results - auth_results section of a
 
 =head1 VERSION
 
-version 1.20200214
+version 1.20210220
 
 =head1 AUTHORS
 
