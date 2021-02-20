@@ -1,3 +1,7 @@
+### 1.20210220
+
+- Fix db connection cache
+- use Email::Sender for report sending
 
 ### 1.20200214
 
