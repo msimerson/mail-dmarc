@@ -48,6 +48,7 @@ my %META = (
         "Net::Server::HTTP" => 0,
       },
       "requires" => {
+        "perl" => "5.10.0",
         "CPAN" => 0,
         "Carp" => 0,
         "Config::Tiny" => 0,
