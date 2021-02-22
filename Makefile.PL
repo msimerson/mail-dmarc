@@ -35,7 +35,6 @@ my %META = (
     },
     "runtime" => {
       "recommends" => {
-        "Email::Sender" => 0,
         "CGI" => 0,
         "HTTP::Request" => 0,
         "JSON" => 0,
@@ -56,6 +55,8 @@ my %META = (
         "DBIx::Simple" => "1.35",
         "Data::Dumper" => 0,
         "Email::MIME" => 0,
+        "Email::Sender" => 0,
+        "Email::Sender::Simple" => "1.300032",
         "Email::Simple" => 0,
         "Encode" => 0,
         "English" => 0,
