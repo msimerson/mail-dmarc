@@ -413,8 +413,17 @@ sub email {
         };
         if ( my $error = $@ ) {
             next if scalar @transports;
-            my $code = $error->code;
-            my $message = $error->message;
+            my $code;
+            my $message;
+            if (ref $error eq 'Email::Sender::Failure') {
+              $code = $error->code;
+              $message = $error->message;
+            }
+            else {
+              $code = 'error';
+              $message = $error;
+              chomp $message;
+            }
             $code = join( ', ', $log_data->{send_error_code}, $code ) if exists $log_data->{send_error_code};
             $message = join( ', ', $log_data->{send_error}, $message ) if exists $log_data->{send_error};
             $log_data->{send_error} = $message;
