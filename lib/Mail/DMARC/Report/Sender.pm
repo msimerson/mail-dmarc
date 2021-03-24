@@ -463,7 +463,7 @@ sub log_output {
 
         my @parts;
         foreach my $key ( sort keys %$args ) {
-            my $value = $args->{ $key };
+            my $value = $args->{ $key } // '';
             $value =~ s/,/#044/g; # Encode commas
             push @parts, join( '=', $key, $value );
         }
