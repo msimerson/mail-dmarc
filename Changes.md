@@ -1,3 +1,7 @@
+### 1.20210427
+
+- Fix report sending issues with SSL/TLS
+
 ### 1.20210220
 
 - Fix db connection cache

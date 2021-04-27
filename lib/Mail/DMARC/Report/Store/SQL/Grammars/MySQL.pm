@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL::Grammars::MySQL;
-our $VERSION = '1.20210220';
+our $VERSION = '1.20210427';
 use strict;
 use warnings;
 
@@ -290,7 +290,7 @@ Mail::DMARC::Report::Store::SQL::Grammars::MySQL - Grammar for working with mysq
 
 =head1 VERSION
 
-version 1.20210220
+version 1.20210427
 
 =head1 SYPNOSIS
 
