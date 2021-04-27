@@ -2,6 +2,7 @@ package Mail::DMARC::Base;
 our $VERSION = '1.20210220';
 use strict;
 use warnings;
+use 5.10.0;
 
 use Carp;
 use Config::Tiny;

@@ -25,7 +25,7 @@ sub new {
         transports_method => undef,
         transports_object => undef,
         dkim_key => undef,
-        verbose => 1,
+        verbose => 0,
     };
     return bless $self, $class;
 };
@@ -147,7 +147,7 @@ sub get_dkim_key {
         else {
             die 'DKIM signing requested but Mail::DKIM could not be loaded. Please check that Mail::DKIM is installed.';
         }
-        syslog( LOG_INFO, 'DKIM signing key loaded' ) if $self->{syslog};
+        $self->log_output( 'DKIM signing key loaded' );
         return $self->{dkim_key};
     }
 }
@@ -165,7 +165,7 @@ sub run {
     );
 
     openlog( 'dmarc_send_reports', 'pid', LOG_MAIL )     if $self->{syslog};
-    syslog( LOG_INFO, 'dmarc_send_reports starting up' ) if $self->{syslog};
+    $self->log_output( 'dmarc_send_reports starting up' );
 
     $|++;
     my $report = Mail::DMARC::Report->new();
@@ -191,7 +191,7 @@ sub run {
             $self->send_report( $aggregate, $report );
         };
         if ( my $error = $@ ) {
-            syslog( LOG_INFO, 'error sending report: ' . $error ) if $self->{syslog};
+            $self->log_output( 'error sending report: ' . $error );
         }
 
         if ( $batch_do++ > $self->{batch_size} ) {
@@ -207,7 +207,7 @@ sub run {
 
     alarm(0);
 
-    syslog( LOG_INFO, 'dmarc_send_reports done' ) if $self->{syslog};
+    $self->log_output( 'dmarc_send_reports done' );
     closelog() if $self->{syslog};
 
     return;
@@ -222,7 +222,7 @@ sub send_report {
 
     alarm($self->{alarm_at});
 
-    $self->log_to_syslog({
+    $self->log_output({
         'id'     => $aggregate->metadata->report_id,
         'domain' => $aggregate->policy_published->domain,
         'rua'    => $aggregate->policy_published->rua,
@@ -231,7 +231,7 @@ sub send_report {
     # Generate the list of report receivers
     my $report_receivers = eval{ $report->uri->parse( $aggregate->policy_published->rua ) };
     if ( my $error = $@ ) {
-        $self->log_to_syslog({
+        $self->log_output({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report - ' . $error,
         });
@@ -242,7 +242,7 @@ sub send_report {
 
     # Check we have some receivers
     if ( scalar @$report_receivers == 0 ) {
-        $self->log_to_syslog({
+        $self->log_output({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report',
         });
@@ -265,7 +265,7 @@ sub send_report {
         my $max    = $receiver->{max_bytes};
 
         if ( $max && $xml_compressed_bytes > $max ) {
-           $self->log_to_syslog({
+           $self->log_output({
                 'id'   => $aggregate->metadata->report_id,
                 "info' => 'skipping $method: report size ($xml_compressed_bytes) larger than $max",
             });
@@ -330,7 +330,7 @@ sub email {
 
     my $to = $args->{to};
     if ( !$to ) {
-        $self->log_to_syslog({ 'error' => 'No recipient for email' });
+        $self->log_output({ 'error' => 'No recipient for email' });
         croak 'No recipient for email';
     }
     my $mime = $args->{mime} // undef;
@@ -384,7 +384,7 @@ sub email {
             print "DKIM Signing error\n\t$error\n" if $self->{verbose};
             $log_data->{error} = 'DKIM Signing error';
             $log_data->{error_detail} = $error;
-            $self->log_to_syslog($log_data);
+            $self->log_output($log_data);
             return;
         }
     }
@@ -413,8 +413,17 @@ sub email {
         };
         if ( my $error = $@ ) {
             next if scalar @transports;
-            my $code = $error->code;
-            my $message = $error->message;
+            my $code;
+            my $message;
+            if (ref $error eq 'Email::Sender::Failure') {
+              $code = $error->code;
+              $message = $error->message;
+            }
+            else {
+              $code = 'error';
+              $message = $error;
+              chomp $message;
+            }
             $code = join( ', ', $log_data->{send_error_code}, $code ) if exists $log_data->{send_error_code};
             $message = join( ', ', $log_data->{send_error}, $message ) if exists $log_data->{send_error};
             $log_data->{send_error} = $message;
@@ -431,7 +440,7 @@ sub email {
         last if $done;
     }
 
-    $self->log_to_syslog( $log_data );
+    $self->log_output( $log_data );
 
     if ( $success ) {
         return 1;
@@ -439,25 +448,33 @@ sub email {
     return 0;
 }
 
-sub log_to_syslog {
+sub log_output {
     my ( $self, $args ) = @_;
-    return if ! $self->{syslog};
 
     my $log_level = LOG_INFO;
-    if ( $args->{'log_level'} ) {
-        $log_level = $args->{'log_level'};
-        delete $args->{'log_level'};
+    my $log_entry = '';
+
+    if ( ref $args eq 'HASH' ) {
+
+        if ( $args->{'log_level'} ) {
+            $log_level = $args->{'log_level'};
+            delete $args->{'log_level'};
+        }
+
+        my @parts;
+        foreach my $key ( sort keys %$args ) {
+            my $value = $args->{ $key } // '';
+            $value =~ s/,/#044/g; # Encode commas
+            push @parts, join( '=', $key, $value );
+        }
+        $log_entry =  join( ', ', @parts );
+    }
+    else {
+        $log_entry = $args;
     }
 
-    my @parts;
-    foreach my $key ( sort keys %$args ) {
-        my $value = $args->{ $key };
-        $value =~ s/,/#044/g; # Encode commas
-        push @parts, join( '=', $key, $value );
-    }
-
-    syslog( $log_level, join( ', ', @parts ) );
-    print join( ', ', @parts ) if $self->{verbose};
+    syslog( $log_level, $log_entry ) if $self->{syslog};
+    print "$log_entry\n"             if $self->{verbose};
 
     return;
 }
