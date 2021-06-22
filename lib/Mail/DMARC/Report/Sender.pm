@@ -64,7 +64,7 @@ sub get_transports_for {
         return ($self->{smarthost}) if $self->{smarthost};
         my $transport_data = {
             host => $report->config->{smtp}->{smarthost},
-            ssl => 1,
+            ssl => 'starttls',
             port => 587,
             helo => $report->sendit->smtp->get_helo_hostname,
             timeout => 32,
@@ -85,7 +85,7 @@ sub get_transports_for {
     if ( Email::Sender::Transport::SMTP->can('hosts') ) {
         push @transports, Email::Sender::Transport::SMTP->new({
             hosts => \@smtp_hosts,
-            ssl => 1,
+            ssl => 'starttls',
             port => 25,
             helo => $report->sendit->smtp->get_helo_hostname,
             timeout => 32,
@@ -105,7 +105,7 @@ sub get_transports_for {
         foreach my $host ( @smtp_hosts ) {
             push @transports, Email::Sender::Transport::SMTP->new({
                 host => $host,
-                ssl => 1,
+                ssl => 'starttls',
                 port => 25,
                 helo => $report->sendit->smtp->get_helo_hostname,
                 timeout => 32,
@@ -463,7 +463,7 @@ sub log_output {
 
         my @parts;
         foreach my $key ( sort keys %$args ) {
-            my $value = $args->{ $key };
+            my $value = $args->{ $key } // '';
             $value =~ s/,/#044/g; # Encode commas
             push @parts, join( '=', $key, $value );
         }

@@ -164,8 +164,6 @@ __END__
 
   dmarc_view_reports [ --option=value ]
 
-=head1 DESCRIPTION
-
 Dumps the contents of the DMARC data store to your terminal. The most recent records are show first.
 
 =head2 Search Options
