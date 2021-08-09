@@ -9,6 +9,7 @@ use Encode;
 use Getopt::Long;
 use Sys::Syslog qw(:standard :macros);
 use Mail::DMARC::Report;
+use Email::Sender;
 use Email::Sender::Simple qw{ sendmail };
 use Email::Sender::Transport::SMTP;
 use Email::Sender::Transport::SMTP::Persistent;
@@ -59,6 +60,8 @@ sub get_transports_for {
 
     my $report = $args->{report};
 
+    my $transport_can_maybetls = $Email::Sender::VERSION > 2.0;
+
     # Do we have a smart host?
     if ( $report->config->{smtp}{smarthost} ) {
         return ($self->{smarthost}) if $self->{smarthost};
@@ -83,42 +86,66 @@ sub get_transports_for {
     $log_data->{smtp_host} = join( ',', @smtp_hosts );
 
     if ( Email::Sender::Transport::SMTP->can('hosts') ) {
-        push @transports, Email::Sender::Transport::SMTP->new({
-            hosts => \@smtp_hosts,
-            ssl => 'starttls',
-            port => 25,
-            helo => $report->sendit->smtp->get_helo_hostname,
-            timeout => 32,
-        });
-        push @transports, Email::Sender::Transport::SMTP->new({
-            hosts => \@smtp_hosts,
-            ssl => 0,
-            port => 25,
-            helo => $report->sendit->smtp->get_helo_hostname,
-            timeout => 32,
-        });
-    }
-    else {
-        # We can't pass hosts to the transport, so pass a list of transports
-        # for each possible host.
-
-        foreach my $host ( @smtp_hosts ) {
+        if ( $transport_can_maybetls ) {
             push @transports, Email::Sender::Transport::SMTP->new({
-                host => $host,
-                ssl => 'starttls',
+                hosts => \@smtp_hosts,
+                ssl => 'maybestarttls',
                 port => 25,
                 helo => $report->sendit->smtp->get_helo_hostname,
                 timeout => 32,
             });
         }
-        foreach my $host ( @smtp_hosts ) {
+        else {
             push @transports, Email::Sender::Transport::SMTP->new({
-                host => $host,
+                hosts => \@smtp_hosts,
+                ssl => 'starttls',
+                port => 25,
+                helo => $report->sendit->smtp->get_helo_hostname,
+                timeout => 32,
+            });
+            push @transports, Email::Sender::Transport::SMTP->new({
+                hosts => \@smtp_hosts,
                 ssl => 0,
                 port => 25,
                 helo => $report->sendit->smtp->get_helo_hostname,
                 timeout => 32,
             });
+        }
+    }
+    else {
+        # We can't pass hosts to the transport, so pass a list of transports
+        # for each possible host.
+
+        if ( $transport_can_maybetls ) {
+            foreach my $host ( @smtp_hosts ) {
+                push @transports, Email::Sender::Transport::SMTP->new({
+                    host => $host,
+                    ssl => 'maybestarttls',
+                    port => 25,
+                    helo => $report->sendit->smtp->get_helo_hostname,
+                    timeout => 32,
+                });
+            }
+        }
+        else {
+            foreach my $host ( @smtp_hosts ) {
+                push @transports, Email::Sender::Transport::SMTP->new({
+                    host => $host,
+                    ssl => 'starttls',
+                    port => 25,
+                    helo => $report->sendit->smtp->get_helo_hostname,
+                    timeout => 32,
+                });
+            }
+            foreach my $host ( @smtp_hosts ) {
+                push @transports, Email::Sender::Transport::SMTP->new({
+                    host => $host,
+                    ssl => 0,
+                    port => 25,
+                    helo => $report->sendit->smtp->get_helo_hostname,
+                    timeout => 32,
+                });
+            }
         }
     }
 
