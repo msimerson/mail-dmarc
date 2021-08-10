@@ -34,5 +34,5 @@ jobs:
 
       - name: Perl Critic
         env:
-          AUTHOR_TESTING=1
+          AUTHOR_TESTING: 1
         run: prove xt/author-critic.t
