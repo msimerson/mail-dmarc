@@ -1,0 +1,60 @@
+name: Coverage Test
+
+on: [ push ]
+
+jobs:
+  perl_tester:
+    runs-on: ubuntu-latest
+    name: "perl v${{ matrix.perl-version }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        perl-version:
+          - "5.30"
+
+    container:
+      image: perl:${{ matrix.perl-version }}
+      # image: perldocker/perl-tester:${{ matrix.perl-version }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Install Perl Modules
+        uses: perl-actions/install-with-cpanm@v1
+        with:
+          install: |
+            Regexp::Common
+            Config::Tiny
+            File::ShareDir
+            Net::DNS::Resolver
+            DBD::SQLite
+            DBD::Pg
+            DBD::mysql
+            Net::IP
+            Socket6
+            Email::MIME
+            Net::HTTP
+            Net::SMTPS
+            XML::LibXML
+            Email::Sender
+            DBIx::Simple
+            HTTP::Tiny
+            Test::File::ShareDir
+            Test::Output
+            Net::IDN::Encode
+            CGI
+            XML::Validator::Schema
+            Test::Exception
+            Devel::Cover::Report::Coveralls
+          sudo: false
+
+      - run: perl Makefile.PL
+
+      - name: Coveralls
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        run: cover -test -report coveralls
