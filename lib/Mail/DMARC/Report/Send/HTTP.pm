@@ -18,7 +18,7 @@ sub post {
     carp "http send feature not complete!";
     return;
 
-## no critic (Unreachable)
+    ## no critic (Unreachable,Eval)
     # TODO: test against real HTTP server, validate HTTP response
     eval "require Net::HTTP" or return;
 
