@@ -1,0 +1,49 @@
+name: CI Tests
+
+on: [ push ]
+
+jobs:
+  perl_tester:
+    runs-on: ubuntu-latest
+    name: "perl v${{ matrix.perl-version }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        perl-version:
+          - "5.30"
+          - "5.28"
+          - "5.26"
+
+    container:
+      image: perldocker/perl-tester:${{ matrix.perl-version }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: uses install-with-cpanm
+        uses: perl-actions/install-with-cpanm@v1
+        with:
+          install: |
+            Regexp::Common
+            Config::Tiny
+            File::ShareDir
+            Net::DNS::Resolver
+            DBD::SQLite
+            DBD::Pg
+            DBD::mysql
+            Net::IP
+            Socket6
+            Email::MIME
+            Net::SMTPS
+            XML::LibXML
+            Email::Sender
+            DBIx::Simple
+            HTTP::Tiny
+            Test::File::ShareDir
+            Test::Output
+            Net::IDN::Encode
+            CGI
+            XML::Validator::Schema
+          sudo: false
+      - run: perl Makefile.PL
+      - run: make test
