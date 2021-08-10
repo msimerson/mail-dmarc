@@ -18,7 +18,10 @@ jobs:
     container:
       image: perldocker/perl-tester:${{ matrix.perl-version }}
 
-      - uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
 
       - name: install-with-cpanm
         uses: perl-actions/install-with-cpanm@v1
@@ -47,4 +50,6 @@ jobs:
           sudo: false
 
       - run: perl Makefile.PL
-      - run: make test
+
+      - name: Run CI Tests
+        run: make test
