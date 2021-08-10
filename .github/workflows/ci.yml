@@ -18,9 +18,9 @@ jobs:
     container:
       image: perldocker/perl-tester:${{ matrix.perl-version }}
 
-    steps:
       - uses: actions/checkout@v2
-      - name: uses install-with-cpanm
+
+      - name: install-with-cpanm
         uses: perl-actions/install-with-cpanm@v1
         with:
           install: |
@@ -45,5 +45,6 @@ jobs:
             CGI
             XML::Validator::Schema
           sudo: false
+
       - run: perl Makefile.PL
       - run: make test

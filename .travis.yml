@@ -1,3 +1,4 @@
+
 language: perl
 perl:
   - "5.28"
@@ -12,10 +13,10 @@ services:
   - postgresql
 
 before_install:
-  - ./t/install-db.sh
+  - ./test/install-db.sh
 
 install:
-  - ./t/install-deps.sh
+  - ./test/install-deps.sh
 
 script:
   - HARNESS_IS_VERBOSE=1 prove -v -Ilib t
