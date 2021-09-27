@@ -1,3 +1,10 @@
+### 1.20210927
+
+- Fix reporting for selectors whose name evaluates to false
+- Use maybestarttls for opportunistic encryption when sending reports using Email::Sender v2.0 or greater
+- Remove dead domain dmarc-qa.com from tests
+- Print full syntax guide with "--help" option (Jeremiah Morris)
+
 ### 1.20210427
 
 - Fix report sending issues with SSL/TLS
