@@ -1,3 +1,7 @@
+### 1.20211209
+
+- Properly delete sent reports when the database does not support cascade
+
 ### 1.20210927
 
 - Fix reporting for selectors whose name evaluates to false

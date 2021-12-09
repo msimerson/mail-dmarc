@@ -40,6 +40,8 @@
             "DBIx::Simple" : "1.35",
             "Data::Dumper" : "0",
             "Email::MIME" : "0",
+            "Email::Sender" : "0",
+            "Email::Sender::Simple" : "1.300032",
             "Email::Simple" : "0",
             "Encode" : "0",
             "English" : "0",
@@ -65,7 +67,8 @@
             "Sys::Syslog" : "0",
             "Test::File::ShareDir" : "0",
             "URI" : "0",
-            "XML::LibXML" : "0"
+            "XML::LibXML" : "0",
+            "perl" : "v5.10.0"
          }
       },
       "test" : {
@@ -80,114 +83,114 @@
    "provides" : {
       "Mail::DMARC" : {
          "file" : "lib/Mail/DMARC.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Base" : {
          "file" : "lib/Mail/DMARC/Base.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::HTTP" : {
          "file" : "lib/Mail/DMARC/HTTP.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Policy" : {
          "file" : "lib/Mail/DMARC/Policy.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::PurePerl" : {
          "file" : "lib/Mail/DMARC/PurePerl.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report" : {
          "file" : "lib/Mail/DMARC/Report.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Aggregate" : {
          "file" : "lib/Mail/DMARC/Report/Aggregate.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Aggregate::Metadata" : {
          "file" : "lib/Mail/DMARC/Report/Aggregate/Metadata.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Aggregate::Record" : {
          "file" : "lib/Mail/DMARC/Report/Aggregate/Record.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Aggregate::Record::Auth_Results" : {
          "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Auth_Results.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM" : {
          "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Auth_Results/DKIM.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF" : {
          "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Auth_Results/SPF.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Aggregate::Record::Identifiers" : {
          "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Identifiers.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Aggregate::Record::Row" : {
          "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Row.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated" : {
          "file" : "lib/Mail/DMARC/Report/Aggregate/Record/Row/Policy_Evaluated.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Receive" : {
          "file" : "lib/Mail/DMARC/Report/Receive.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Send" : {
          "file" : "lib/Mail/DMARC/Report/Send.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Send::HTTP" : {
          "file" : "lib/Mail/DMARC/Report/Send/HTTP.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Send::SMTP" : {
          "file" : "lib/Mail/DMARC/Report/Send/SMTP.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Sender" : {
          "file" : "lib/Mail/DMARC/Report/Sender.pm"
       },
       "Mail::DMARC::Report::Store" : {
          "file" : "lib/Mail/DMARC/Report/Store.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Store::SQL" : {
          "file" : "lib/Mail/DMARC/Report/Store/SQL.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Store::SQL::Grammars::MySQL" : {
          "file" : "lib/Mail/DMARC/Report/Store/SQL/Grammars/MySQL.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL" : {
          "file" : "lib/Mail/DMARC/Report/Store/SQL/Grammars/PostgreSQL.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::Store::SQL::Grammars::SQLite" : {
          "file" : "lib/Mail/DMARC/Report/Store/SQL/Grammars/SQLite.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Report::URI" : {
          "file" : "lib/Mail/DMARC/Report/URI.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Result" : {
          "file" : "lib/Mail/DMARC/Result.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Result::Reason" : {
          "file" : "lib/Mail/DMARC/Result/Reason.pm",
-         "version" : "1.20210220"
+         "version" : "1.20211209"
       },
       "Mail::DMARC::Test::Transport" : {
          "file" : "lib/Mail/DMARC/Test/Transport.pm"
@@ -206,7 +209,7 @@
          "url" : "https://github.com/msimerson/mail-dmarc"
       }
    },
-   "version" : "1.20210220",
+   "version" : "1.20211209",
    "x_contributors" : [
       "Benny Pedersen <me@junc.eu>",
       "Jean Paul Galea <jeanpaul@yubico.com>",
@@ -214,5 +217,5 @@
       "Priyadi Iman Nurcahyo <priyadi@priyadi.net>",
       "Ricardo Signes <rjbs@cpan.org>"
    ],
-   "x_serialization_backend" : "JSON::PP version 4.04"
+   "x_serialization_backend" : "JSON::PP version 4.06"
 }
