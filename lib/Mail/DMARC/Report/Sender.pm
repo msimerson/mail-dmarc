@@ -294,7 +294,7 @@ sub send_report {
         if ( $max && $xml_compressed_bytes > $max ) {
            $self->log_output({
                 'id'   => $aggregate->metadata->report_id,
-                "info' => 'skipping $method: report size ($xml_compressed_bytes) larger than $max",
+                'info' => "skipping $method: report size ($xml_compressed_bytes) larger than $max",
             });
             push @too_big, $method;
             next URI;
