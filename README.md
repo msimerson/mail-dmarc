@@ -10,7 +10,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 # VERSION
 
-version 1.20211209
+version 1.20230215
 
 # SYNOPSIS
 
@@ -287,7 +287,7 @@ The daddy of this perl module was a [DMARC module for the qpsmtpd MTA](https://g
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2021 by Matt Simerson.
+This software is copyright (c) 2023 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
