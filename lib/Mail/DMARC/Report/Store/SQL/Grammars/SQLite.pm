@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL::Grammars::SQLite;
-our $VERSION = '1.20211209';
+our $VERSION = '1.20230215';
 use strict;
 use warnings;
 
@@ -290,7 +290,7 @@ Mail::DMARC::Report::Store::SQL::Grammars::SQLite - Grammar for working with sql
 
 =head1 VERSION
 
-version 1.20211209
+version 1.20230215
 
 =head1 SYPNOSIS
 
@@ -322,7 +322,7 @@ Marc Bradshaw <marc@marcbradshaw.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2021 by Matt Simerson.
+This software is copyright (c) 2023 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

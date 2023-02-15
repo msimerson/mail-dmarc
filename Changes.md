@@ -1,3 +1,7 @@
+### 1.20230215
+
+- Fix error when logging a report which was skipped for size
+
 ### 1.20211209
 
 - Properly delete sent reports when the database does not support cascade
