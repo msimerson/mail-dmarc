@@ -231,7 +231,7 @@ sub test_is_spf_aligned {
 
     ok( $dmarc->header_from('example.com'), "spf, set header_from" );
     ok( $dmarc->spf(
-            domain => 'example.com',
+            domain => 'example.COM',
             scope  => 'mfrom',
             result => 'pass'
         ),
