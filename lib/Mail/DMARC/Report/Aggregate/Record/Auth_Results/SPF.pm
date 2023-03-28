@@ -27,7 +27,7 @@ sub new {
 
 sub domain {
     return $_[0]->{domain} if 1 == scalar @_;
-    return $_[0]->{domain} =  $_[1];
+    return $_[0]->{domain} =  lc $_[1];
 }
 
 sub result {
