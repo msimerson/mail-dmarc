@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use Net::DNS::Resolver::Mock;
 use Test::More;
 
 use Test::File::ShareDir
@@ -27,6 +28,9 @@ $base = $mod->new();
 eval { $base->config('t/mail-dmarc.ini'); };
 chomp $@;
 ok( !$@, "alternate config file" );
+
+my $resolver = new Net::DNS::Resolver::Mock();
+$base->set_resolver($resolver);
 
 __any_inet_to();
 __is_public_suffix();

@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use Net::DNS::Resolver::Mock;
 use Test::More;
 use URI;
 
@@ -10,6 +11,16 @@ use Test::File::ShareDir
 
 use lib 'lib';
 use_ok('Mail::DMARC::PurePerl');
+
+my $resolver = new Net::DNS::Resolver::Mock();
+$resolver->zonefile_parse(join("\n",
+'_dmarc.mail-dmarc.tnpi.net.                        600 TXT "v=DMARC1; p=reject; rua=mailto:invalid@theartfarm.com; ruf=mailto:invalid@theartfarm.com; pct=90"',
+'_dmarc.tnpi.net.                                   600 TXT "v=DMARC1; p=reject; rua=mailto:dmarc-feedback@theartfarm.com; ruf=mailto:dmarc-feedback@theartfarm.com; pct=100"    ',
+'tnpi.net.                                          600 MX  10 mail.theartfarm.com.',
+'tnpi.net._report._dmarc.theartfarm.com.            600 TXT "v=DMARC1"',
+'cadillac.net._report._dmarc.theartfarm.com.        600 TXT "v=DMARC1"',
+'mail-dmarc.tnpi.net._report._dmarc.theartfarm.com. 600 TXT "v=DMARC1; rua=mailto:invalid-test@theartfarm.com;"',
+''));
 
 my @test_policy = (
     'v', 'DMARC1',    # Section 6.2, Formal Definition
@@ -27,6 +38,7 @@ my $test_rec = join( '; ',
 
 my $dmarc = Mail::DMARC::PurePerl->new;
 $dmarc->config('t/mail-dmarc.ini');
+ $dmarc->set_resolver($resolver);
 
 isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 
@@ -374,6 +386,7 @@ sub test_validate {
     );
 
     $dmarc = Mail::DMARC::PurePerl->new(%sample_dmarc);
+    $dmarc->set_resolver($resolver);
     eval { $dmarc->validate(); };
     #print Dumper($dmarc->result);
     ok($dmarc->is_spf_aligned(), "validate, one-shot, is_spf_aligned, yes" );

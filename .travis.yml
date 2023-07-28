@@ -1,6 +1,7 @@
 
 language: perl
 perl:
+  - "5.38"
   - "5.28"
   - "5.22"
 # perlbrew (used by Travis to install perl versions) no longer supports these

@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use Net::DNS::Resolver::Mock;
 use Test::More;
 
 use IO::Compress::Gzip;
@@ -11,9 +12,15 @@ use Mail::DMARC::Policy;
 use Mail::DMARC::Report::Aggregate;
 use Mail::DMARC::Report::Aggregate::Record;
 
+my $resolver = new Net::DNS::Resolver::Mock();
+$resolver->zonefile_parse(join("\n",
+'tnpi.net.               600 MX  10 mail.theartfarm.com.',
+''));
+
 my $mod = 'Mail::DMARC::Report::Send::SMTP';
 use_ok($mod);
 my $smtp = $mod->new;
+$smtp->set_resolver($resolver);
 isa_ok( $smtp, $mod );
 $smtp->config('t/mail-dmarc.ini');
 
