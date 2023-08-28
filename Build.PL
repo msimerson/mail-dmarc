@@ -139,7 +139,8 @@ my $module_build_args = {
     "Test::Exception" => 0,
     "Test::File::ShareDir" => 0,
     "Test::More" => 0,
-    "Test::Output" => 0
+    "Test::Output" => 0,
+    "Net::DNS::Resolver::Mock" => 0
   },
   "develop_requires" => {
     "Test::Pod" => "1.41"

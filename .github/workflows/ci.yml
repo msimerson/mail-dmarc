@@ -48,6 +48,7 @@ jobs:
             Net::IDN::Encode
             CGI
             XML::Validator::Schema
+            Net::DNS::Resolver::Mock
           sudo: false
 
       - run: perl Makefile.PL

@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use Net::DNS::Resolver::Mock;
 use Test::More;
 
 use Test::File::ShareDir
@@ -11,8 +12,16 @@ use lib 'lib';
 use_ok('Mail::DMARC::PurePerl');
 use_ok('Mail::DMARC::Result');
 
+my $resolver = new Net::DNS::Resolver::Mock();
+$resolver->zonefile_parse(join("\n",
+'tnpi.net.                         600 A     66.128.51.170',
+'_dmarc.tnpi.net.                  600 TXT   "v=DMARC1; p=reject; rua=mailto:dmarc-feedback@theartfarm.com; ruf=mailto:dmarc-feedback@theartfarm.com; pct=100"',
+'nodmarcrecord.blogspot.com.       600 A     142.251.37.1',
+''));
+
 my $pp     = Mail::DMARC::PurePerl->new;
 my $result = Mail::DMARC::Result->new;
+$pp->set_resolver($resolver);
 
 isa_ok( $result, 'Mail::DMARC::Result' );
 

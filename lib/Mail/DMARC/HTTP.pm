@@ -87,6 +87,7 @@ sub return_json_error {
 
 sub serve_validator {
     my $cgi  = shift || CGI->new();  # passed in $cgi for testing
+    my $resolver = shift; # passed in $resolver for testing
     my $json = JSON->new->utf8;
 
     print $cgi->header("application/json");
@@ -104,6 +105,8 @@ sub serve_validator {
 
     eval { $dmpp = Mail::DMARC::PurePerl->new( %$input ) };
     if ($@) { return return_json_error($@); }
+
+    $dmpp->set_resolver($resolver) if $resolver;
 
     eval { $res = $dmpp->validate(); };
     if ($@) { return return_json_error($@); }

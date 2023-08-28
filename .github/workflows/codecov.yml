@@ -50,6 +50,7 @@ jobs:
             XML::Validator::Schema
             Test::Exception
             Devel::Cover::Report::Coveralls
+            Net::DNS::Resolver::Mock
           sudo: false
 
       - run: perl Makefile.PL
