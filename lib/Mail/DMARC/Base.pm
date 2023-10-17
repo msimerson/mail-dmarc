@@ -250,10 +250,12 @@ sub epoch_to_iso {
 sub get_resolver {
     my $self = shift;
     my $timeout = shift || $self->config->{dns}{timeout} || 5;
+    my $retrans = shift || $self->config->{dns}{retrans} || 5;
     return $self->{resolver} if defined $self->{resolver};
     $self->{resolver} = Net::DNS::Resolver->new( dnsrch => 0 );
     $self->{resolver}->tcp_timeout($timeout);
     $self->{resolver}->udp_timeout($timeout);
+    $self->{resolver}->retrans($retrans);
     return $self->{resolver};
 }
 
