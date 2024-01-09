@@ -6,7 +6,7 @@ our $VERSION = '1.20230215';
 
 use Carp;
 use English '-no_match_vars';
-use Email::MIME;
+use MIME::Entity;
 #use Mail::Sender;  # something to consider
 use Sys::Hostname;
 use POSIX;
@@ -115,24 +115,20 @@ sub get_filename {
 sub assemble_too_big_message_object {
     my ( $self, $to, $body ) = @_;
 
-    my @parts    = Email::MIME->create(
-        attributes => {
-            content_type => "text/plain",
-            disposition  => "inline",
-            charset      => "US-ASCII",
-        },
-        body => $body,
-    ) or croak "unable to add body!";
+    my $email = MIME::Entity->build(
+        Type => "multipart/mixed",
+	From => $self->config->{organization}{email},
+        To   => $to,
+        Date => $self->get_timestamp_rfc2822,
+        Subject => 'DMARC too big report'
+    ) or croak "unable to create header!";;
 
-    my $email = Email::MIME->create(
-        header_str => [
-            From => $self->config->{organization}{email},
-            To   => $to,
-            Date => $self->get_timestamp_rfc2822,
-            Subject => 'DMARC too big report',
-        ],
-        parts => [@parts],
-    ) or croak "unable to assemble message\n";
+    $email->attach(
+        Type => "text/plain",
+        Disposition  => "inline",
+        Charset      => "US-ASCII",
+        Data => $body,
+    ) or croak "unable to add body and assemble message!";
 
     return $email;
 }
@@ -146,35 +142,27 @@ sub assemble_message_object {
     my $cf       = 'gzip';
       $filename .= $cf eq 'gzip' ? '.gz' : '.zip';
 
-    my @parts    = Email::MIME->create(
-        attributes => {
-            content_type => "text/plain",
-            disposition  => "inline",
-            charset      => "US-ASCII",
-        },
-        body => $self->human_summary( $agg_ref ),
-    ) or croak "unable to add body!";
+    my $email = MIME::Entity->build(
+        Type    => "multipart/mixed",
+        From    => $self->config->{organization}{email},
+        To      => $to,
+        Date    => $self->get_timestamp_rfc2822,
+        Subject => $self->get_subject( $agg_ref )
+    ) or croak "unable to create header!";;
 
-    push @parts,
-        Email::MIME->create(
-        attributes => {
-            filename     => $filename,
-            content_type => "application/$cf",
-            encoding     => "base64",
-            name         => $filename,
-        },
-        body => $shrunk,
-        ) or croak "unable to add report!";
+    $email->attach(
+        Type         => "text/plain",
+        Disposition  => "inline",
+        Charset      => "US-ASCII",
+        Data         => \$self->human_summary( $agg_ref ),
+    ) or croak "unable to add body to message!";
 
-    my $email = Email::MIME->create(
-        header_str => [
-            From => $self->config->{organization}{email},
-            To   => $to,
-            Date => $self->get_timestamp_rfc2822,
-            Subject => $self->get_subject( $agg_ref ),
-        ],
-        parts => [@parts],
-    ) or croak "unable to assemble message\n";
+    $email->attach(
+        Type      => "application/$cf",
+        Encoding  => "base64",
+        Filename  => $filename,
+        Data      => \$shrunk,
+    ) or croak "unable to add report to message!";
 
     return $email;
 }

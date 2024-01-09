@@ -6,7 +6,7 @@ our $VERSION = '1.20230215';
 
 use Carp;
 use Data::Dumper;
-use Email::MIME;
+use MIME::Parser;
 use Email::Simple;
 use Encode;
 use IO::Uncompress::Unzip;
@@ -137,8 +137,10 @@ sub from_email_simple {
     };
 
     my $rep_type;
-    foreach my $part ( Email::MIME->new( $email->as_string )->parts ) {
-        my ($c_type) = split /;/, $part->content_type || '';
+    my $parser = MIME::Parser->new;
+    foreach my $part ( $parser->parse( $email->as_string )->parts_DFS ) {
+        next if defined(!$part->bodyhandle); # something to process
+        my ($c_type) = split /;/, $part->effective_type || '';
         next if $c_type eq 'text/plain';
         if ( $c_type eq 'text/rfc822-headers' ) {
             warn "TODO: handle forensic reports\n";  ## no critic (Carp)
@@ -151,7 +153,7 @@ sub from_email_simple {
             next;
         }
         my $bigger;
-        my $filename = $part->{ct}{attributes}{name} || '';
+        my $filename = $part->head->recommended_filename || $part->bodyhandle->path || '';
 
         if ( $c_type eq 'application/zip' || $c_type eq 'application/x-zip-compressed' ) {
             $self->get_submitter_from_filename( $filename );
