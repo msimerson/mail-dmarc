@@ -299,7 +299,7 @@ __END__
 
 =head1 Status Badges
 
-=for markdown [![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
+=for markdown [![Build Status](https://github.com/msimerson/mail-dmarc/actions/workflows/ci.yml/badge.svg)](https://github.com/msimerson/mail-dmarc/actions/workflows/ci.yml)
 
 =for markdown [![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
 
