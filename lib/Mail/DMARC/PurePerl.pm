@@ -297,6 +297,7 @@ sub is_whitelisted {
         foreach my $line ( split /\n/, $self->slurp($white_file) ) {
             next if $line =~ /^#/; # ignore comments
             my ($lip,$reason) = split /\s+/, $line, 2;
+            next if not defined $lip;
             $self->{_whitelist}{$lip} = $reason;
         };
     };
