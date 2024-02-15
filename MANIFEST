@@ -1,4 +1,8 @@
+.coveralls.yml
 .perltidyrc
+.test/cleanup.sh
+.test/install-db.sh
+.test/install-deps.sh
 bin/dmarc_http_client
 bin/dmarc_httpd
 bin/dmarc_lookup
