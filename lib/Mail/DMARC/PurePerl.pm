@@ -297,6 +297,7 @@ sub is_whitelisted {
         foreach my $line ( split /\n/, $self->slurp($white_file) ) {
             next if $line =~ /^#/; # ignore comments
             my ($lip,$reason) = split /\s+/, $line, 2;
+            next if not defined $lip;
             $self->{_whitelist}{$lip} = $reason;
         };
     };
@@ -753,7 +754,7 @@ Marc Bradshaw <marc@marcbradshaw.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2023 by Matt Simerson.
+This software is copyright (c) 2024 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

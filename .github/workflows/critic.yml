@@ -1,6 +1,6 @@
 name: Perl Critic
 
-on: [ push ]
+on: [ push, pull_request ]
 
 jobs:
   perl_tester:
@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 

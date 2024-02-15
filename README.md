@@ -1,6 +1,6 @@
 # Status Badges
 
-[![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
+[![Build Status](https://github.com/msimerson/mail-dmarc/actions/workflows/ci.yml/badge.svg)](https://github.com/msimerson/mail-dmarc/actions/workflows/ci.yml)
 
 [![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
 
@@ -287,7 +287,7 @@ The daddy of this perl module was a [DMARC module for the qpsmtpd MTA](https://g
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2023 by Matt Simerson.
+This software is copyright (c) 2024 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

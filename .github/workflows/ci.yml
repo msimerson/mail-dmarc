@@ -1,6 +1,6 @@
 name: CI Tests
 
-on: [ push ]
+on: [ push, pull_request ]
 
 jobs:
   perl_tester:
@@ -16,16 +16,17 @@ jobs:
           - "5.26"
 
     container:
-      image: perldocker/perl-tester:${{ matrix.perl-version }}
+      image: perl:${{ matrix.perl-version }}
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
       - name: install-with-cpanm
-        uses: perl-actions/install-with-cpanm@stable
+        uses: perl-actions/install-with-cpanm@v1
+        continue-on-error: true
         with:
           install: |
             Regexp::Common
@@ -45,6 +46,7 @@ jobs:
             HTTP::Tiny
             Test::File::ShareDir
             Test::Output
+            Test::Exception
             Net::IDN::Encode
             CGI
             XML::Validator::Schema
