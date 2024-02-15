@@ -121,7 +121,7 @@ sub assemble_too_big_message_object {
         To   => $to,
         Date => $self->get_timestamp_rfc2822,
         Subject => 'DMARC too big report'
-    ) or croak "unable to create header!";;
+    ) or croak "unable to create header!";
 
     $email->attach(
         Type => "text/plain",
