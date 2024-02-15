@@ -24,7 +24,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: install-with-cpanm
+      - name: Install Perl Modules with cpanm
         uses: perl-actions/install-with-cpanm@v1
         continue-on-error: true
         with:

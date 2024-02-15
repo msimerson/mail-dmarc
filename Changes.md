@@ -1,3 +1,13 @@
+
+### 1.20240214
+
+- feat: add imap option to specify port #195
+- feat: add configurable DNS retrans option #214
+- ignore empty/wrong lines on whitelist_dmarc file #219
+- test: mock DNS during testing #213
+- ci: restore CI tests to working order
+- Force lower case for SPF domain input #212
+
 ### 1.20230215
 
 - Fix error when logging a report which was skipped for size
