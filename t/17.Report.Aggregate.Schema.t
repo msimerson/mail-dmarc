@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use Net::DNS::Resolver::Mock;
 use Test::Exception;
 use Test::More;
 use Test::File::ShareDir -share => { -dist => { 'Mail-DMARC' => 'share' } };
@@ -28,7 +29,18 @@ if ($@) {
     exit;
 }
 
+my $resolver = new Net::DNS::Resolver::Mock();
+$resolver->zonefile_parse(join("\n",
+'tnpi.net.                         600 A   66.128.51.170',
+'tnpi.net.                         600 MX  10 mail.theartfarm.com.',
+'_dmarc.mail-dmarc.tnpi.net.       600 TXT "v=DMARC1; p=reject; rua=mailto:invalid@theartfarm.com; ruf=mailto:invalid@theartfarm.com; pct=90"',
+'_dmarc.tnpi.net.                  600 TXT "v=DMARC1; p=reject; rua=mailto:dmarc-feedback@theartfarm.com; ruf=mailto:dmarc-feedback@theartfarm.com; pct=100"',
+'mail-dmarc.tnpi.net.              600 TXT "test zone for Mail::DMARC perl module"',
+'mail-dmarc.tnpi.net._report._dmarc.theartfarm.com. 600 TXT "v=DMARC1; rua=mailto:invalid-test@theartfarm.com;"',
+''));
+
 my $dmarc = Mail::DMARC::PurePerl->new();
+$dmarc->set_resolver($resolver);
 my $store = $dmarc->report->store;
 
 $store->config('t/mail-dmarc.ini');

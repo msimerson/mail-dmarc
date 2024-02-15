@@ -1,5 +1,5 @@
 package Mail::DMARC::HTTP;
-our $VERSION = '1.20210427';
+our $VERSION = '1.20230215';
 use strict;
 use warnings;
 
@@ -87,6 +87,7 @@ sub return_json_error {
 
 sub serve_validator {
     my $cgi  = shift || CGI->new();  # passed in $cgi for testing
+    my $resolver = shift; # passed in $resolver for testing
     my $json = JSON->new->utf8;
 
     print $cgi->header("application/json");
@@ -104,6 +105,8 @@ sub serve_validator {
 
     eval { $dmpp = Mail::DMARC::PurePerl->new( %$input ) };
     if ($@) { return return_json_error($@); }
+
+    $dmpp->set_resolver($resolver) if $resolver;
 
     eval { $res = $dmpp->validate(); };
     if ($@) { return return_json_error($@); }
@@ -210,7 +213,7 @@ Mail::DMARC::HTTP - view stored reports via HTTP
 
 =head1 VERSION
 
-version 1.20210427
+version 1.20230215
 
 =head1 SYNOPSIS
 
@@ -236,7 +239,7 @@ Marc Bradshaw <marc@marcbradshaw.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2021 by Matt Simerson.
+This software is copyright (c) 2024 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

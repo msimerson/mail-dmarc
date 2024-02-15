@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Net::DNS::Resolver::Mock;
 
 $ENV{MAIL_DMARC_CONFIG_FILE} = 't/mail-dmarc.ini';
 
@@ -14,6 +15,11 @@ use Mail::DMARC::Test::Transport;
 use Email::Sender::Transport::Failable;
 use Email::Sender::Transport::Test;
 
+my $resolver = new Net::DNS::Resolver::Mock();
+$resolver->zonefile_parse(join("\n",
+'fastmaildmarc.com.        600 MX  10 in1-smtp.messagingengine.com.',
+'_dmarc.fastmaildmarc.com. 600 TXT "v=DMARC1; p=reject; rua=mailto:rua@fastmaildmarc.com"',
+''));
 
 # We test both method and object type callbacks
 foreach my $callback_type ( qw{ method object fail fallback } ) {
@@ -22,6 +28,7 @@ foreach my $callback_type ( qw{ method object fail fallback } ) {
         unlink 't/reports-test.sqlite' if -e 't/reports-test.sqlite'; # Clear test database for each run
 
         my $dmarc = Mail::DMARC::PurePerl->new;
+        $dmarc->set_resolver($resolver);
 
         $dmarc->set_fake_time( time-86400);
         $dmarc->init();

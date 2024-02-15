@@ -1,3 +1,18 @@
+### 1.20230215
+
+- Fix error when logging a report which was skipped for size
+
+### 1.20211209
+
+- Properly delete sent reports when the database does not support cascade
+
+### 1.20210927
+
+- Fix reporting for selectors whose name evaluates to false
+- Use maybestarttls for opportunistic encryption when sending reports using Email::Sender v2.0 or greater
+- Remove dead domain dmarc-qa.com from tests
+- Print full syntax guide with "--help" option (Jeremiah Morris)
+
 ### 1.20210427
 
 - Fix report sending issues with SSL/TLS

@@ -30,7 +30,8 @@ my %META = (
         "Test::Exception" => 0,
         "Test::File::ShareDir" => 0,
         "Test::More" => 0,
-        "Test::Output" => 0
+        "Test::Output" => 0,
+        "Net::DNS::Resolver::Mock" => 0
       }
     },
     "runtime" => {

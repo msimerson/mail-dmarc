@@ -1,5 +1,5 @@
 package Mail::DMARC::Base;
-our $VERSION = '1.20210427';
+our $VERSION = '1.20230215';
 use strict;
 use warnings;
 use 5.10.0;
@@ -250,10 +250,12 @@ sub epoch_to_iso {
 sub get_resolver {
     my $self = shift;
     my $timeout = shift || $self->config->{dns}{timeout} || 5;
+    my $retrans = shift || $self->config->{dns}{retrans} || 5;
     return $self->{resolver} if defined $self->{resolver};
     $self->{resolver} = Net::DNS::Resolver->new( dnsrch => 0 );
     $self->{resolver}->tcp_timeout($timeout);
     $self->{resolver}->udp_timeout($timeout);
+    $self->{resolver}->retrans($retrans);
     return $self->{resolver};
 }
 
@@ -327,7 +329,7 @@ Mail::DMARC::Base - DMARC utility functions
 
 =head1 VERSION
 
-version 1.20210427
+version 1.20230215
 
 =head1 METHODS
 
@@ -387,7 +389,7 @@ Marc Bradshaw <marc@marcbradshaw.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2021 by Matt Simerson.
+This software is copyright (c) 2024 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

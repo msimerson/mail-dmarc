@@ -1,0 +1,38 @@
+name: Perl Critic
+
+on: [ push, pull_request ]
+
+jobs:
+  perl_tester:
+    runs-on: ubuntu-latest
+    name: "perl v${{ matrix.perl-version }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        perl-version:
+          - "5.30"
+
+    container:
+      image: perl:${{ matrix.perl-version }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install Perl Modules
+        uses: perl-actions/install-with-cpanm@v1
+        with:
+          install: |
+            Test::More
+            Test::Perl::Critic
+          sudo: false
+
+      - run: perl Makefile.PL
+
+      - name: Perl Critic
+        env:
+          AUTHOR_TESTING: 1
+        run: prove xt/author-critic.t

@@ -2,7 +2,7 @@ package Mail::DMARC;
 use strict;
 use warnings;
 
-our $VERSION = '1.20210427';
+our $VERSION = '1.20230215';
 
 use Carp;
 our $psl_loads = 0;
@@ -299,7 +299,7 @@ __END__
 
 =head1 Status Badges
 
-=for markdown [![Build Status](https://travis-ci.org/msimerson/mail-dmarc.svg?branch=master)](https://travis-ci.org/msimerson/mail-dmarc)
+=for markdown [![Build Status](https://github.com/msimerson/mail-dmarc/actions/workflows/ci.yml/badge.svg)](https://github.com/msimerson/mail-dmarc/actions/workflows/ci.yml)
 
 =for markdown [![Coverage Status](https://coveralls.io/repos/msimerson/mail-dmarc/badge.svg)](https://coveralls.io/r/msimerson/mail-dmarc)
 
@@ -309,7 +309,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 =head1 VERSION
 
-version 1.20210427
+version 1.20230215
 
 =head1 SYNOPSIS
 
@@ -655,7 +655,7 @@ Ricardo Signes <rjbs@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2021 by Matt Simerson.
+This software is copyright (c) 2024 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

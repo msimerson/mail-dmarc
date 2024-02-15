@@ -228,9 +228,6 @@ sub test_is_valid {
     chomp $@;
     ok( $@, "is_valid, 1.4.5 bogus p value, $@" );
 
-    eval { $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject; rua=a@dmarc-qa.com;') };
-    ok( $pol, "is_valid, 1.4.6 missing mailto" );
-
     # policy, minimum
     $pol = Mail::DMARC::Policy->new( 'v=DMARC1; p=reject' );
     ok( $pol->is_valid, "is_valid, 1.4.2 smallest record" );

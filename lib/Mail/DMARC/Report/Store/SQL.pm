@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-our $VERSION = '1.20210427';
+our $VERSION = '1.20230215';
 use strict;
 use warnings;
 
@@ -141,13 +141,13 @@ sub delete_report {
     if (scalar @row_ids) {
         foreach my $table (qw/ report_record_spf report_record_dkim report_record_reason /) {
             print "deleting $table rows " . join(',', @row_ids) . "\n" if $self->verbose;
-            eval { $self->query( $self->grammar->delete_from_where_record_in($table, \@row_ids)); };
+            eval { $self->query( $self->grammar->delete_from_where_record_in($table), \@row_ids); };
             # warn $@ if $@;
         }
     }
     foreach my $table (qw/ report_policy_published report_record report_error /) {
         print "deleting $table rows for report $report_id\n" if $self->verbose;
-        eval { $self->query( $self->grammar->delete_from_where_report( $table, [$report_id] )); };
+        eval { $self->query( $self->grammar->delete_from_where_report($table), [$report_id] ); };
         # warn $@ if $@;
     }
 
@@ -452,7 +452,7 @@ sub insert_rr_dkim {
     my ( $self, $row_id, $dkim ) = @_;
     my (@fields, @values);
     foreach ( qw/ domain selector result human_result / ) {
-        next if ! $dkim->{$_};
+        next if ! defined $dkim->{$_};
         if ( 'domain' eq $_ ) {
             push @fields, 'domain_id';
             push @values, $self->get_domain_id( $dkim->{domain} );
@@ -470,7 +470,7 @@ sub insert_rr_spf {
     my ( $self, $row_id, $spf ) = @_;
     my (@fields, @values);
     for ( qw/ domain scope result / ) {
-        next if ! $spf->{$_};
+        next if ! defined $spf->{$_};
         if ( 'domain' eq $_ ) {
             push @fields, 'domain_id';
             push @values, $self->get_domain_id( $spf->{domain} );
@@ -682,7 +682,7 @@ Mail::DMARC::Report::Store::SQL - store and retrieve reports from a SQL RDBMS
 
 =head1 VERSION
 
-version 1.20210427
+version 1.20230215
 
 =head1 DESCRIPTION
 
@@ -716,7 +716,7 @@ Marc Bradshaw <marc@marcbradshaw.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2021 by Matt Simerson.
+This software is copyright (c) 2024 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
