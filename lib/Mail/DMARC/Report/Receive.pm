@@ -29,7 +29,7 @@ sub from_imap {
     my $f_done = $self->config->{imap}{f_done};
     my $port   = $self->config->{imap}{port} // $self->get_imap_port();
 
-    my $use_ssl = $self->config->{imap}{use_ssl} // (($port==993) ? 1 : undef);
+    my $use_ssl = $self->config->{imap}{use_ssl} // ($port==993);
     no warnings qw(once);                ## no critic (Warn)
     my $imap = Net::IMAP::Simple->new( $server, port => $port,
             defined($use_ssl) ? (use_ssl=>$use_ssl) : ()
