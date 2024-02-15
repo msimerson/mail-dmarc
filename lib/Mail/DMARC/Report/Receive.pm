@@ -27,11 +27,12 @@ sub from_imap {
     my $folder = $self->config->{imap}{folder} or croak "no imap folder conf";
     my $a_done = $self->config->{imap}{a_done};
     my $f_done = $self->config->{imap}{f_done};
-    my $port   = $self->get_imap_port();
+    my $port   = $self->config->{imap}{port} // $self->get_imap_port();
 
+    my $use_ssl = $self->config->{imap}{use_ssl} // ($port==993);
     no warnings qw(once);                ## no critic (Warn)
-    my $imap = Net::IMAP::Simple->new( $server, Port => $port,
-            ($port==993 ? (use_ssl => 1) : ()),
+    my $imap = Net::IMAP::Simple->new( $server, port => $port,
+           ($use_ssl) ? (use_ssl=>$use_ssl) : ()
         )
         or do {
             ## no critic (PackageVar)
