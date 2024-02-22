@@ -135,9 +135,6 @@ t/23.Report.Send.HTTP.t
 t/25.Report.Receive.t
 t/26.Report.Sender.t
 t/mail-dmarc.ini
-t/travis/backends/mail-dmarc.sql.mysql.ini
-t/travis/backends/mail-dmarc.sql.Pg.ini
-t/travis/backends/mail-dmarc.sql.SQLite.ini
 t/whitelist
 TODO.md
 xt/author-critic.t

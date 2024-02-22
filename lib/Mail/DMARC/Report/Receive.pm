@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Receive;
 use strict;
 use warnings;
 
-our $VERSION = '1.20230215';
+our $VERSION = '1.20240214';
 
 use Carp;
 use Data::Dumper;
@@ -27,11 +27,11 @@ sub from_imap {
     my $folder = $self->config->{imap}{folder} or croak "no imap folder conf";
     my $a_done = $self->config->{imap}{a_done};
     my $f_done = $self->config->{imap}{f_done};
-    my $port   = $self->get_imap_port();
+    my $port   = $self->config->{imap}{port} // $self->get_imap_port();
 
     no warnings qw(once);                ## no critic (Warn)
-    my $imap = Net::IMAP::Simple->new( $server, Port => $port,
-            ($port==993 ? (use_ssl => 1) : ()),
+    my $imap = Net::IMAP::Simple->new( $server, port => $port,
+           ($port != 143) ? (use_ssl => 1) : ()
         )
         or do {
             ## no critic (PackageVar)
@@ -423,7 +423,7 @@ Mail::DMARC::Report::Receive - process incoming DMARC reports
 
 =head1 VERSION
 
-version 1.20230215
+version 1.20240214
 
 =head1 DESCRIPTION
 

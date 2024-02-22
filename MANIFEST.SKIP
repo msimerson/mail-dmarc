@@ -1,5 +1,7 @@
 .DS_Store
+.coveralls.yml
 .git
+.test
 .release
 .tar.gz
 .travis.yml
@@ -11,3 +13,4 @@
 ^MYMETA.
 dmarc_reports.sqlite
 t/reports-test.sqlite
+t/travis
