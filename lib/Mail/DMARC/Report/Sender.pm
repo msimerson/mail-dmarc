@@ -324,7 +324,9 @@ sub send_report {
         $report->store->delete_report($aggregate->metadata->report_id);
     }
     else {
-        $self->send_too_big_email(\@too_big, $xml_compressed_bytes, $aggregate);
+        my $send_errors = $report->config->{smtp}->{send_errors} // 1;
+        $self->send_too_big_email(\@too_big, $xml_compressed_bytes, $aggregate) if $send_errors;
+        $report->store->delete_report($aggregate->metadata->report_id);
     };
 
     alarm(0);
@@ -346,7 +348,7 @@ sub send_too_big_email {
                 report_domain=> $aggregate->policy_published->domain,
             }
         );
-        my $mime_object = $report->sendit->smtp->assemble_too_big_message_object($aggregate, $to, $body);
+        my $mime_object = $report->sendit->smtp->assemble_too_big_message_object($to, $body);
         $self->email({ to => $to, mime => $mime_object });
     };
     return;
