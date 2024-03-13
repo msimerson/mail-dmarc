@@ -1,5 +1,5 @@
 package Mail::DMARC::Result::Reason;
-our $VERSION = '1.20240214';
+our $VERSION = '1.20240313';
 use strict;
 use warnings;
 
@@ -44,7 +44,7 @@ Mail::DMARC::Result::Reason - policy override reason
 
 =head1 VERSION
 
-version 1.20240214
+version 1.20240313
 
 =head1 METHODS
 

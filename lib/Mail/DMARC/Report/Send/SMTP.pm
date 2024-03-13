@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Send::SMTP;
 use strict;
 use warnings;
 
-our $VERSION = '1.20240214';
+our $VERSION = '1.20240313';
 
 use Carp;
 use English '-no_match_vars';
@@ -208,7 +208,7 @@ Mail::DMARC::Report::Send::SMTP - utility methods for sending reports via SMTP
 
 =head1 VERSION
 
-version 1.20240214
+version 1.20240313
 
 =head2 SUBJECT FIELD
 

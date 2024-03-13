@@ -1,3 +1,8 @@
+### 1.20240313
+
+- Fix error email sent when reports are too large
+- Delete reports after sending error emails
+- Make sending of error emails optional
 
 ### 1.20240214
 
