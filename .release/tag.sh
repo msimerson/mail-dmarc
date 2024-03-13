@@ -10,15 +10,17 @@ echo "tag $TAGNAME"
 git tag "$TAGNAME"
 git push --tags
 
-# create a GitHub release
-# https://developer.github.com/v3/repos/releases/#create-a-release
-echo "hint: your GitHub OTP password"
+# GitHub CLI api
+# https://cli.github.com/manual/gh_api
 
-curl -u msimerson -X POST https://api.github.com/repos/msimerson/mail-dmarc/releases -H 'Content-Type: application/json' -d "{
-  \"tag_name\": \"$TAGNAME\",
-  \"target_commitish\": \"master\",
-  \"name\": \"$TAGNAME\",
-  \"body\": \"Description of the release\",
-  \"draft\": true,
-  \"prerelease\": false
-}"
+gh api \
+  --method POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  /repos/msimerson/mail-dmarc/releases \
+ -f tag_name="$TAGNAME" \
+ -f target_commitish='master' \
+ -f name="$TAGNAME" \
+ -F draft=true \
+ -F prerelease=false \
+ -F generate_release_notes=true

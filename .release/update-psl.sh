@@ -8,5 +8,5 @@ curl -o share/public_suffix_list https://publicsuffix.org/list/effective_tld_nam
 
 if ! repo_is_clean; then
     git add share/public_suffix_list
-    git commit -m "PSL: updated"
+    git commit -m "chore: updated PSL"
 fi

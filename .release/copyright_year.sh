@@ -12,5 +12,5 @@ sed -i '' \
 
 if ! repo_is_clean; then
     git add .
-    git commit -m "bump copyright to $YEAR"
+    git commit -m "doc: bump copyright to $YEAR"
 fi
