@@ -45,7 +45,7 @@ use_ok($mod);
 my $sql = $mod->new;
 isa_ok( $sql, $mod );
 
-my $backend_dir = './t/travis/backends';
+my $backend_dir = './t/backends';
 opendir( my $dir, $backend_dir ) || die "Unable to view backends in $backend_dir";
 # The general gist of the tests is:
 #  test query mechanisms
