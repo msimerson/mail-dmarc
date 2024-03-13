@@ -134,6 +134,9 @@ t/22.Report.Send.SMTP.t
 t/23.Report.Send.HTTP.t
 t/25.Report.Receive.t
 t/26.Report.Sender.t
+t/backends/mail-dmarc.sql.mysql.ini
+t/backends/mail-dmarc.sql.Pg.ini
+t/backends/mail-dmarc.sql.SQLite.ini
 t/mail-dmarc.ini
 t/whitelist
 TODO.md
