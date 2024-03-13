@@ -8,9 +8,9 @@
 ^_build
 ^blib
 ^Makefile$
+^Makefile.old$
 ^Build$
 ^MANIFEST\.bak$
 ^MYMETA.
 dmarc_reports.sqlite
 t/reports-test.sqlite
-t/travis
