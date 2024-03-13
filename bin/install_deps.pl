@@ -9,8 +9,8 @@ use Data::Dumper;
 use English qw( -no_match_vars );
 
 my $apps = [
-#   { app => 'mysql-server-5', info => { port => 'mysql55-server', dport=>'mysql5',  yum =>'mysql-server'} },
-#   { app => 'apache22'      , info => { port => 'apache22',       dport=>'',     yum => 'httpd' } },
+#   { app => 'mysql-server-8', info => { port => 'mysql82-server', dport=>'mysql82',  yum =>'mysql-server'} },
+#   { app => 'apache24'      , info => { port => 'apache24',       dport=>'',     yum => 'httpd' } },
 ];
 
 $EUID == 0 or die "You will have better luck if you run me as root.\n"; ## no critic (Carp)
@@ -351,13 +351,6 @@ sub is_freebsd_port_installed {
     }
 
     return 0;
-}
-
-sub get_freebsd_pkg_info {
-    if ( -x '/usr/sbin/pkg_info' ) {
-        return '/usr/sbin/pkg_info';
-    };
-    return;
 }
 
 sub get_freebsd_pkgng {
