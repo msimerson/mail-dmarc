@@ -38,7 +38,8 @@ jobs:
             DBD::mysql
             Net::IP
             Socket6
-            Email::MIME
+            MIME::Entity
+            MIME::Parser
             Net::SMTPS
             XML::LibXML
             Email::Sender
