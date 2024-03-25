@@ -29,11 +29,18 @@ sub from_imap {
     my $f_done = $self->config->{imap}{f_done};
     my $port   = $self->config->{imap}{port} // 993;
 
-    if (defined $self->config->{imap}{SSL_verify_mode}) {
-        IO::Socket::SSL::set_ctx_defaults(
-            SSL_verifycn_scheme => 'imap',
-            SSL_verify_mode => $self->config->{imap}{SSL_verify_mode},
-        );
+    if ($port != 143) {
+        eval "use IO::Socket::SSL";  ## no critic (Eval)
+        if ( $@ ) {
+            croak "Can't load IO::Socket::SSL: $!\n";
+        };
+
+        if (defined $self->config->{imap}{SSL_verify_mode}) {
+            IO::Socket::SSL::set_ctx_defaults(
+                SSL_verifycn_scheme => 'imap',
+                SSL_verify_mode => $self->config->{imap}{SSL_verify_mode},
+            );
+        }
     }
 
     no warnings qw(once);                ## no critic (Warn)
