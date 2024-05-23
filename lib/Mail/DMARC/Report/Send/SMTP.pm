@@ -175,6 +175,7 @@ sub assemble_message_object {
         ],
         parts => [@parts],
     ) or croak "unable to assemble message\n";
+    $email->header_str_set( 'Message-ID' => $self->get_message_id );
 
     return $email;
 }
@@ -195,6 +196,24 @@ sub get_helo_hostname {
     return $host if $host && $host ne 'mail.example.com';
     return Sys::Hostname::hostname;
 };
+
+sub get_message_id {
+    my $self = shift;
+    my $host = $self->get_helo_hostname;
+
+    my ($ss, $mm, $hh, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+
+    # Generate a "random" Message-ID
+    return sprintf("<%04d%02d%02d%02d%02d.%s\@%s>\n",
+             $year + 1900,
+             $mon  + 1,
+             $mday,
+             $hh,
+             $mm,
+             rand(),
+             $host
+    );
+}
 
 1;
 
