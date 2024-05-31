@@ -28,11 +28,25 @@ sub from_imap {
     my $folder = $self->config->{imap}{folder} or croak "no imap folder conf";
     my $a_done = $self->config->{imap}{a_done};
     my $f_done = $self->config->{imap}{f_done};
-    my $port   = $self->config->{imap}{port} // $self->get_imap_port();
+    my $port   = $self->config->{imap}{port} // 993;
+
+    if ($port != 143) {
+        eval "use IO::Socket::SSL";  ## no critic (Eval)
+        if ( $@ ) {
+            croak "Can't load IO::Socket::SSL: $!\n";
+        };
+
+        if (defined $self->config->{imap}{SSL_verify_mode}) {
+            IO::Socket::SSL::set_ctx_defaults(
+                SSL_verifycn_scheme => 'imap',
+                SSL_verify_mode => $self->config->{imap}{SSL_verify_mode},
+            );
+        }
+    }
 
     no warnings qw(once);                ## no critic (Warn)
     my $imap = Net::IMAP::Simple->new( $server, port => $port,
-           ($port != 143) ? (use_ssl => 1) : ()
+           use_ssl => $port != 143,
         )
         or do {
             ## no critic (PackageVar)
@@ -182,33 +196,6 @@ sub from_email_simple {
         warn "Unknown message part $c_type\n";  ## no critic (Carp)
     }
     return $rep_type;
-}
-
-sub get_imap_port {
-    my $self = shift;
-
-    load "IO::Socket::SSL";
-    if ( $@ ) {
-        carp "no SSL, using insecure connection: $!\n";
-        return 143;
-    };
-
-    load "Mozilla::CA";
-    if ( ! $@ ) {
-        IO::Socket::SSL::set_ctx_defaults(
-                SSL_verifycn_scheme => 'imap',
-                SSL_verify_mode => 0x02,
-                SSL_ca_file => Mozilla::CA::SSL_ca_file(),
-                );
-        return 993;
-    };
-
-    # no CA, disable verification
-    IO::Socket::SSL::set_ctx_defaults(
-        SSL_verifycn_scheme => 'imap',
-        SSL_verify_mode => 0,
-    );
-    return 993;
 }
 
 sub get_submitter_from_filename {
