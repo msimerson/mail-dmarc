@@ -194,14 +194,13 @@ sub find_psl_file {
         print "using $file for Public Suffix List\n" if $self->verbose;
         return $file;
     }
-    my $path;
-    foreach $path ($self->get_prefix('share/' . $file)) {    ## no critic
-        last if ( -f $path && -r $path );
+
+    foreach my $path ($self->get_prefix($file)) {
+        if ( -f $path && -r $path ) {
+            print "using $path for Public Suffix List\n"; # if $self->verbose;
+            return $path;
+        }
     }
-    if ($path && -r $path) {
-        print "using $path for Public Suffix List\n" if $self->verbose;
-        return $path;
-    };
 
     # Fallback to included suffic list
     return $self->get_sharefile('public_suffix_list');
