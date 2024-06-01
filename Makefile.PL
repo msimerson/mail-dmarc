@@ -70,6 +70,7 @@ my %META = (
         "IO::Socket::SSL" => 0,
         "IO::Uncompress::Gunzip" => 0,
         "IO::Uncompress::Unzip" => 0,
+	"Module::Load" => 0,
         "Net::DNS::Resolver" => 0,
         "Net::IDN::Encode" => 0,
         "Net::IP" => 0,

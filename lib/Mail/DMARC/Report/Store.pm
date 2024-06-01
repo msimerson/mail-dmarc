@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Carp;
+use Module::Load;
 
 use parent 'Mail::DMARC::Base';
 
@@ -40,7 +41,7 @@ sub backend {
 
     return $self->{$backend} if ref $self->{$backend};
     my $module = "Mail::DMARC::Report::Store::$backend";
-    eval "use $module";    ## no critic (Eval)
+    load $module;
     if ($@) {
         croak "Unable to load backend $backend: $@\n";
     }
