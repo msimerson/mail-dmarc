@@ -1,25 +1,3 @@
-# ************************************************************
-# Sequel Pro SQL dump
-# Version 4096
-#
-# http://www.sequelpro.com/
-# http://code.google.com/p/sequel-pro/
-#
-# Host: 127.0.0.2 (MySQL 5.5.30)
-# Database: mail_dmarc
-# Generation Time: 2013-05-17 07:47:45 +0000
-# ************************************************************
-
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-
-
 # Dump of table author
 # ------------------------------------------------------------
 
@@ -27,11 +5,11 @@ DROP TABLE IF EXISTS `author`;
 
 CREATE TABLE `author` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `org_name` varchar(253) CHARACTER SET ascii NOT NULL DEFAULT '',
-  `email`    varchar(255) CHARACTER SET ascii DEFAULT NULL,
-  `extra_contact` varchar(255) CHARACTER SET ascii DEFAULT NULL,
+  `org_name` varchar(253) NOT NULL DEFAULT '',
+  `email`    varchar(255) DEFAULT NULL,
+  `extra_contact` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 
 
@@ -42,10 +20,10 @@ DROP TABLE IF EXISTS `domain`;
 
 CREATE TABLE `domain` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `domain` varchar(253) CHARACTER SET ascii NOT NULL DEFAULT '',
+  `domain` varchar(253) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   UNIQUE KEY `domain` (`domain`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 
 DROP TABLE IF EXISTS `report_error`;
@@ -53,12 +31,12 @@ DROP TABLE IF EXISTS `report_error`;
 CREATE TABLE `report_error` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `report_id` int(11) unsigned NOT NULL,
-  `error` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '',
+  `error` varchar(255) NOT NULL DEFAULT '',
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `report_id` (`report_id`),
   CONSTRAINT `report_error_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `report` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 
 # Dump of table fk_disposition
@@ -262,7 +240,7 @@ CREATE TABLE `report_record_reason` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `report_record_id` int(11) unsigned NOT NULL,
   `type` varchar(24) NOT NULL DEFAULT '',
-  `comment` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
+  `comment` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `report_record_id` (`report_record_id`),
   KEY `type` (`type`),
@@ -313,12 +291,3 @@ CREATE TABLE `report_record_spf` (
   CONSTRAINT `report_record_spf_ibfk_3` FOREIGN KEY (`result`) REFERENCES `fk_spf_result` (`result`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
 
-
-
-
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
