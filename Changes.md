@@ -1,3 +1,5 @@
+- Permit storage of UTF-8 chars in MySQL DB, related to #190
+
 ### 1.20240313
 
 - Fix error email sent when reports are too large

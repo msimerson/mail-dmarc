@@ -531,6 +531,8 @@ sub db_connect {
     my $needs_tables;
 
     $self->{grammar} = undef;
+    my %opts;
+
     if ($dsn =~ /sqlite/i) {
         my ($db) = ( split /=/, $dsn )[-1];
         if ( !$db || $db eq ':memory:' || !-e $db ) {
@@ -541,6 +543,7 @@ sub db_connect {
         }
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::SQLite->new();
     } elsif ($dsn =~ /mysql/i) {
+        $opts{'mysql_enable_utf8mb4'} = 1;
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::MySQL->new();
     } elsif ($dsn =~ /pg/i) {
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL->new();
@@ -548,7 +551,7 @@ sub db_connect {
         croak "can't determine database type, so unable to load grammar.\n";
     }
 
-    $self->{dbix} = DBIx::Simple->connect( $dsn, $user, $pass )
+    $self->{dbix} = DBIx::Simple->connect( $dsn, $user, $pass, \%opts )
         or return $self->error( DBIx::Simple->error );
 
     if ($needs_tables) {
