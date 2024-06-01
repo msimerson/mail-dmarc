@@ -11,6 +11,7 @@ use Email::Simple;
 use Encode;
 use IO::Uncompress::Unzip;
 use IO::Uncompress::Gunzip;
+use Module::Load;
 use XML::LibXML;
 
 use parent 'Mail::DMARC::Base';
@@ -20,7 +21,7 @@ require Mail::DMARC::Report::Aggregate::Record;
 
 sub from_imap {
     my $self = shift;
-    eval "require Net::IMAP::Simple";    ## no critic (Eval)
+    load "Net::IMAP::Simple";
     croak "Net::IMAP::Simple seems to not work, is it installed?" if $@;
 
     my $server = $self->config->{imap}{server} or croak "no imap server conf";
@@ -112,7 +113,7 @@ sub from_mbox {
 
     # TODO: replace this module
     # commented out due to build test failures
-    #   eval "require Mail::Mbox::MessageParser";    ## no critic (Eval)
+    #   load "Mail::Mbox::MessageParser";
     #   croak "is Mail::Mbox::MessageParser installed?" if $@;
 
     #   my $file_handle = FileHandle->new($file_name);
