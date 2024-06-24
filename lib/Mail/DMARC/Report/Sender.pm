@@ -17,16 +17,17 @@ use Module::Load;
 
 sub new {
     my $class = shift;
+    my $args = shift;
     my $self = {
-        send_delay => 5,
-        batch_size => 1,
-        alarm_at => 120,
-        syslog => 0,
-        smarthost => undef,
-        transports_method => undef,
-        transports_object => undef,
-        dkim_key => undef,
-        verbose => 0,
+        send_delay => $args->{delay} // 5,
+        batch_size => $args->{batch} // 1,
+        alarm_at => $args->{timeout} // 120,
+        syslog => $args->{syslog} // 0,
+        smarthost => $args->{smarthost} // undef,
+        transports_method => $args->{transports_method} // undef,
+        transports_object => $args->{transports_object} // undef,
+        dkim_key => $args->{dkim_key} // undef,
+        verbose => $args->{verbose} // 0,
     };
     return bless $self, $class;
 };
