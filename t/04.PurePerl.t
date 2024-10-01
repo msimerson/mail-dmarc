@@ -20,6 +20,11 @@ $resolver->zonefile_parse(join("\n",
 'tnpi.net._report._dmarc.theartfarm.com.            600 TXT "v=DMARC1"',
 'cadillac.net._report._dmarc.theartfarm.com.        600 TXT "v=DMARC1"',
 'mail-dmarc.tnpi.net._report._dmarc.theartfarm.com. 600 TXT "v=DMARC1; rua=mailto:invalid-test@theartfarm.com;"',
+
+'invalid-sp-and-with-rua.example.com.               600 MX  10 mail.example.com.',
+'invalid-sp-and-without-rua.example.com.            600 MX  10 mail.example.com.',
+'_dmarc.invalid-sp-and-with-rua.example.com.        600 TXT "v=DMARC1; p=reject; sp=invalid; rua=mailto:rua@example.com"',
+'_dmarc.invalid-sp-and-without-rua.example.com.     600 TXT "v=DMARC1; p=reject; sp=invalid"',
 ''));
 
 my @test_policy = (
@@ -52,6 +57,7 @@ test_is_aligned();
 test_is_whitelisted();
 test_discover_policy();
 test_validate();
+test_validate_invalid_sp();
 test_has_valid_reporting_uri();
 test_external_report();
 test_verify_external_reporting( 'tnpi.net',            'theartfarm.com', 1 );
@@ -391,6 +397,35 @@ sub test_validate {
     #print Dumper($dmarc->result);
     ok($dmarc->is_spf_aligned(), "validate, one-shot, is_spf_aligned, yes" );
     ok(!$dmarc->is_dkim_aligned(), "validate, one-shot, is_dkim_aligned, no" );
+}
+
+sub test_validate_invalid_sp {
+    my %subtests = (
+        'invalid-sp-and-with-rua.example.com'    => 'pass',
+        'invalid-sp-and-without-rua.example.com' => 'none',
+    );
+    while (my ($header_from, $expected_result) = each %subtests) {
+        my %sample_dmarc = (
+            config_file   => 'mail-dmarc.ini',
+            source_ip     => '192.0.1.1',
+            envelope_to   => 'example.com',
+            envelope_from => 'cars4you.info',
+            header_from   => $header_from,
+            dkim          => [],
+            spf           => [
+                {
+                    domain => $header_from,
+                    scope  => 'mfrom',
+                    result => 'pass',
+                }
+            ],
+        );
+
+        $dmarc = Mail::DMARC::PurePerl->new(%sample_dmarc);
+        $dmarc->set_resolver($resolver);
+        eval { $dmarc->validate(); };
+        is($dmarc->result->result, $expected_result, "DMARC result is ${expected_result}") or diag Dumper($dmarc->result);
+    }
 }
 
 sub test_exists_in_dns {
