@@ -35,7 +35,15 @@ sub validate {
     # 9.6. reject email if the domain appears to not exist
     $self->exists_in_dns() or return $self->result;
     $policy ||= $self->discover_policy();  # 11.2.2 Query DNS for DMARC policy
-    $policy or return $self->result;
+    if (!$policy) {
+        # RFC7489 section 4.3 step 8:
+        #  If a policy is found, it is combined with the Author's domain
+        #  and the SPF and DKIM results to produce a DMARC policy result (a
+        #  "pass" or "fail")
+        # Hence, if no (valid) policy has been found, produce "none" instead.
+        $self->result->result('none');
+        return $self->result;
+    }
 
     #   3.5 Out of Scope  DMARC has no "short-circuit" provision, such as
     #         specifying that a pass from one authentication test allows one
