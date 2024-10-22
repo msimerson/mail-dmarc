@@ -264,7 +264,8 @@ sub is_spf_aligned {
     $self->result->spf('fail');
     return 0 if !$spf_dom;
 
-    my $from_dom = $self->header_from or croak "header_from not set!";
+    my $from_dom = lc $self->header_from or croak "header_from not set!";
+    $spf_dom = lc $spf_dom;
 
     if ( lc($spf_dom) eq lc($from_dom) ) {
         $self->result->spf('pass');
