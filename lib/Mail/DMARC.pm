@@ -45,19 +45,19 @@ sub source_ip {
 
 sub envelope_to {
     return $_[0]->{envelope_to} if 1 == scalar @_;
-    croak "invalid envelope_to" if !$_[0]->is_valid_domain( $_[1] );
+    croak "invalid envelope_to" if !$_[0]->is_valid_domain( lc $_[1] );
     return $_[0]->{envelope_to} = $_[1];
 }
 
 sub envelope_from {
     return $_[0]->{envelope_from} if 1 == scalar @_;
-    croak "invalid envelope_from" if !$_[0]->is_valid_domain( $_[1] );
+    croak "invalid envelope_from" if !$_[0]->is_valid_domain( lc $_[1] );
     return $_[0]->{envelope_from} = $_[1];
 }
 
 sub header_from {
     return $_[0]->{header_from} if 1 == scalar @_;
-    croak "invalid header_from" if !$_[0]->is_valid_domain( $_[1] );
+    croak "invalid header_from" if !$_[0]->is_valid_domain( lc $_[1] );
     return $_[0]->{header_from} = lc $_[1];
 }
 
