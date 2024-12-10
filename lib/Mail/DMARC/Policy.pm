@@ -56,6 +56,20 @@ sub parse {
     return bless \%policy, ref $self;    # inherited defaults + overrides
 }
 
+sub stringify {
+    my ( $self ) = @_;
+
+    my %dmarc_record = %{$self};
+    # "v" tag must be the first one
+    my $dmarc_txt = 'v=' . $dmarc_record{v} . '; ';
+    foreach my $key ( keys %dmarc_record ) {
+     next if ($key =~ /^domain|v$/);
+     $dmarc_txt .= "$key=$dmarc_record{$key}; ";
+    }
+    $dmarc_txt =~ s/;\s$//;
+    return $dmarc_txt;
+}
+
 sub apply_defaults {
     my $self = shift;
 
@@ -268,6 +282,13 @@ via DNS.
     my $pol = Mail::DMARC::Policy->new;
     $pol->parse( 'v=DMARC1; p=none; rua=mailto:dmarc@example.com' );
     $pol->parse( 'v=DMARC1' );       # external reporting record
+
+=head2 stringify
+
+Returns the textual representation of the DMARC record.
+
+    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=none;');
+    print $pol->stringify;
 
 =head1 Record Tags
 
