@@ -63,7 +63,7 @@ sub stringify {
     # "v" tag must be the first one
     my $dmarc_txt = 'v=' . delete $dmarc_record{v} . '; ';
     foreach my $key ( keys %dmarc_record ) {
-     next if ($key =~ /^domain|v$/);
+     next if $key eq 'domain';
      $dmarc_txt .= "$key=$dmarc_record{$key}; ";
     }
     $dmarc_txt =~ s/;\s$//;
