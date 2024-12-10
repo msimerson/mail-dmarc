@@ -57,16 +57,15 @@ sub parse {
 }
 
 sub stringify {
-    my ( $self ) = @_;
+    my $self = shift;
 
     my %dmarc_record = %{$self};
-    # "v" tag must be the first one
-    my $dmarc_txt = 'v=' . (delete $dmarc_record{v}) . '; ';
+    delete $dmarc_record{domain};
+
+    my $dmarc_txt = 'v=' . (delete $dmarc_record{v}); # "v" tag must be first
     foreach my $key ( keys %dmarc_record ) {
-     next if $key eq 'domain';
-     $dmarc_txt .= "$key=$dmarc_record{$key}; ";
+     $dmarc_txt .= "; $key=$dmarc_record{$key}";
     }
-    $dmarc_txt =~ s/;\s$//;
     return $dmarc_txt;
 }
 
