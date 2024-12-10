@@ -262,7 +262,7 @@ sub test_is_valid {
 
 sub test_stringify {
     $pol = Mail::DMARC::Policy->new( 'v=DMARC1; p=reject' );
-    ok($pol->stringify, 'v=DMARC1; p=reject');
+    cmp_ok($pol->stringify, 'eq', 'v=DMARC1; p=reject');
 }
 
 sub handles_common_record_errors {
