@@ -281,7 +281,7 @@ sub is_valid_ip {
 sub is_valid_domain {
     my ( $self, $domain ) = @_;
     return 0 if $domain !~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x;
-    my $tld = ( split /\./, lc $domain )[-1];
+    my $tld = ( split /\./, $domain )[-1];
     return 1 if $self->is_public_suffix($tld);
     $tld = join( '.', ( split /\./, $domain )[ -2, -1 ] );
     return 1 if $self->is_public_suffix($tld);
