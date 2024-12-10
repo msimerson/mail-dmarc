@@ -25,6 +25,7 @@ stderr_is { test_parse() } $expected_parse_warning, 'STDERR yields parse warning
 test_setter_values();
 test_apply_defaults();
 test_is_valid();
+test_stringify();
 handles_common_record_errors();
 
 done_testing();
@@ -257,6 +258,11 @@ sub test_is_valid {
         );
     };
     ok( $pol && $pol->is_valid, "is_valid, pos, implicit p=none w/rua" );
+}
+
+sub test_stringify {
+    $pol = Mail::DMARC::Policy->new( 'v=DMARC1; p=reject' );
+    cmp_ok($pol->stringify, 'eq', 'v=DMARC1; p=reject');
 }
 
 sub handles_common_record_errors {
