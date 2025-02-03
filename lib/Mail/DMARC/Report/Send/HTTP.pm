@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Send::HTTP;
 use strict;
 use warnings;
 
-our $VERSION = '1.20240314';
+our $VERSION = '1.20250203';
 
 use Carp;
 
@@ -53,7 +53,7 @@ Mail::DMARC::Report::Send::HTTP - utility methods to send reports by HTTP
 
 =head1 VERSION
 
-version 1.20240314
+version 1.20250203
 
 =head1 12.2.2. HTTP
 
@@ -89,7 +89,7 @@ Marc Bradshaw <marc@marcbradshaw.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2024 by Matt Simerson.
+This software is copyright (c) 2025 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
