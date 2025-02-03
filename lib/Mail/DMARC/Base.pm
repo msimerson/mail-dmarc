@@ -283,7 +283,8 @@ sub is_valid_domain {
     return 0 if $domain !~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x;
     my $tld = ( split /\./, lc $domain )[-1];
     return 1 if $self->is_public_suffix($tld);
-    return 0 if lc $domain eq 'localhost';
+    return 0 if $domain eq 'localhost';
+    return 0 if $tld eq 'localdomain';
     $tld = join( '.', ( split /\./, $domain )[ -2, -1 ] );
     return 1 if $self->is_public_suffix($tld);
     return 0;
