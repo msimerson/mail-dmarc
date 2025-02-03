@@ -1,5 +1,20 @@
 - Permit storage of UTF-8 chars in MySQL DB, related to #190
 
+### 1.20250203
+
+- consider localhost as invalid domain #255
+- add a stringify method to the Policy class #253
+- lower case domains passed to is_valid_domain #252
+- lower case match from and envelope-from domains #249
+- Change validation result for RFC7489 6.6.3 step 6.2 #248
+- point README links to search.cpan.org #240
+- sender: set options when creating new sender object #239
+- permit storage of UTF-8 chars in MySQL DB #238
+- load report_store modules using Module::Load #237
+- create an email message with a proper Message-ID #236
+- imap: only use port 143 if requested #235
+- find_psl_file: fix duplicate share in path #232
+
 ### 1.20240313
 
 - Fix error email sent when reports are too large
