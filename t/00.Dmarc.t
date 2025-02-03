@@ -225,7 +225,7 @@ sub test_spf {
 
 sub test_header_from {
 
-    my @good_vals = (qw/ spam-example.com bar.com /);
+    my @good_vals = (qw/ spam-example.com bar.com test.co.UK test.CO.za /);
     foreach my $k (@good_vals) {
         ok( $dmarc->header_from($k), "header_from, $k" );
     }
