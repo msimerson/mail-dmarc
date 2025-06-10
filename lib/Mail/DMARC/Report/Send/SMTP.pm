@@ -204,7 +204,7 @@ sub get_message_id {
     my ($ss, $mm, $hh, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
 
     # Generate a "random" Message-ID
-    return sprintf("<%04d%02d%02d%02d%02d.%s\@%s>\n",
+    return sprintf("<%04d%02d%02d%02d%02d.%s\@%s>",
              $year + 1900,
              $mon  + 1,
              $mday,
