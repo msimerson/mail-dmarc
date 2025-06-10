@@ -1,5 +1,9 @@
 - Permit storage of UTF-8 chars in MySQL DB, related to #190
 
+### 1.20250610
+
+- Fix end of line characters in message-id for reports
+
 ### 1.20250203
 
 - consider localhost as invalid domain #255
