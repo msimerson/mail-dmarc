@@ -2,7 +2,6 @@
 use strict;
 use warnings;
 
-use lib 'lib';
 use Mail::DMARC;
 use Mail::DMARC::HTTP;
 

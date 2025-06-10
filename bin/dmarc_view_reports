@@ -22,7 +22,6 @@ my %command_line_options = (
     );
 GetOptions (%command_line_options);
 
-use lib 'lib';
 use Mail::DMARC::Report;
 my $report = Mail::DMARC::Report->new;
 my $gip;

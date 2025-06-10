@@ -6,7 +6,6 @@ use Data::Dumper;
 use Getopt::Long;
 use Pod::Usage;
 
-use lib 'lib';
 use Mail::DMARC::Report::Receive;
 
 $|++;
