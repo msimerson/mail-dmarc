@@ -8,7 +8,6 @@ use Pod::Usage;
 $Data::Dumper::Sortkeys = 1;
 $Data::Dumper::Quotekeys = 0;
 
-use lib 'lib';
 use Mail::DMARC::PurePerl;
 
 my %command_line_options = (
