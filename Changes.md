@@ -1,4 +1,6 @@
-- Permit storage of UTF-8 chars in MySQL DB, related to #190
+### 1.20250615
+
+- if XML declares a namespace, remove it
 
 ### 1.20250610
 
