@@ -16,7 +16,7 @@ isa_ok( $recv, $mod );
 
 $recv->config('t/mail-dmarc.ini');
 
-test_from_email_msg();
+test_from_email_file();
 test_get_submitter_from_subject();
 test_from_imap();
 
@@ -64,8 +64,9 @@ sub test_get_submitter_from_subject {
     }
 }
 
-sub test_from_email_msg {
+sub test_from_email_file {
     if ( -f 'report.msg' ) {
-        ok( $recv->from_email_msg('report.msg'), 'from_email_msg' );
+        $recv->verbose(1);
+        ok( $recv->from_file('report.msg'), 'from_file' );
     }
 }

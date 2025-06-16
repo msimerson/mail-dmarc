@@ -103,8 +103,7 @@ sub from_file {
     my ( $self, $file ) = @_;
     croak "missing message" if !$file;
     croak "No such file $file: $!" if !-f $file;
-    return $self->from_email_simple(
-        Email::Simple->new( $self->slurp($file) ) );
+    return $self->from_email_simple(Email::Simple->new( $self->slurp($file) ) );
 }
 
 sub from_mbox {
@@ -153,8 +152,8 @@ sub from_email_simple {
 
     my $rep_type;
     foreach my $part ( Email::MIME->new( $email->as_string )->parts ) {
-        my ($c_type) = split /;/, $part->content_type || '';
-        next if $c_type eq 'text/plain';
+        my ($c_type, @ignore) = split ';', ($part->content_type || '');
+        next if $c_type =~ m{^text/(plain|html)$};
         if ( $c_type eq 'text/rfc822-headers' ) {
             warn "TODO: handle forensic reports\n";  ## no critic (Carp)
             $rep_type = 'forensic';
@@ -165,6 +164,7 @@ sub from_email_simple {
             $rep_type = 'forensic';
             next;
         }
+
         my $bigger;
         my $filename = $part->{ct}{attributes}{name} || '';
 
@@ -193,7 +193,9 @@ sub from_email_simple {
                 next;
             }
         }
-        warn "Unknown message part $c_type\n";  ## no critic (Carp)
+        if ($c_type ne 'multipart/alternative') {
+            warn "Unknown message part $c_type\n";  ## no critic (Carp)
+        }
     }
     return $rep_type;
 }
@@ -233,6 +235,12 @@ sub handle_body {
     my ( $self, $body ) = @_;
 
     print "handling decompressed body\n" if $self->{verbose};
+    if ($body =~ /xmlns=/) {
+        # gmx.net added an invalid namespace ("urn:ietf:params:xml:ns:dmarc-2.0")
+        # which breaks the findnodes parsing.
+        print "NOTICE: removing xmlns from XML document\n" if $self->{verbose};
+        $body =~ s/\s+xmlns="[^"]*"//g;
+    }
 
     my $dom = XML::LibXML->load_xml( string => $body );
     $self->do_node_report_metadata( $dom->findnodes("/feedback/report_metadata") );
