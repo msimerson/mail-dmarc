@@ -1,6 +1,8 @@
 ### 1.20250615
 
 - if XML declares a namespace, remove it
+- silence warnings for text/html parts
+- silence most "Unknown message part" warnings
 
 ### 1.20250610
 
