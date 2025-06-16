@@ -152,8 +152,8 @@ sub from_email_simple {
 
     my $rep_type;
     foreach my $part ( Email::MIME->new( $email->as_string )->parts ) {
-        my ($c_type) = split /;/, $part->content_type || '';
-        next if $c_type eq 'text/plain';
+        my ($c_type, @ignore) = split ';', ($part->content_type || '');
+        next if $c_type =~ m{^text/(plain|html)$};
         if ( $c_type eq 'text/rfc822-headers' ) {
             warn "TODO: handle forensic reports\n";  ## no critic (Carp)
             $rep_type = 'forensic';
@@ -193,7 +193,9 @@ sub from_email_simple {
                 next;
             }
         }
-        warn "Unknown message part $c_type\n";  ## no critic (Carp)
+        if ($c_type ne 'multipart/alternative') {
+            warn "Unknown message part $c_type\n";  ## no critic (Carp)
+        }
     }
     return $rep_type;
 }
