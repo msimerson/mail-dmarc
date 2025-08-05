@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Aggregate::Metadata;
 use strict;
 use warnings;
 
-our $VERSION = '1.20250610';
+our $VERSION = '1.20250805';
 
 use XML::LibXML;
 
@@ -92,7 +92,7 @@ Mail::DMARC::Report::Aggregate::Metadata - metadata section of aggregate report
 
 =head1 VERSION
 
-version 1.20250610
+version 1.20250805
 
 =head1 AUTHORS
 

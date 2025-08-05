@@ -1,4 +1,4 @@
-### 1.20250615
+### 1.20250805
 
 - if XML declares a namespace, remove it
 - silence warnings for text/html parts
