@@ -10,7 +10,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 # VERSION
 
-version 1.20250610
+version 1.20250805
 
 # SYNOPSIS
 
@@ -57,15 +57,15 @@ When a message arrives via SMTP, the MTA or filtering application can pass in a 
     d. does the message conform to the published policy?
     e. did the policy request reporting? If so, save details.
 
-The validation results are returned as a [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3AResult) object. If the author domain requested a report, it was saved to the [Report Store](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3AReport%3A%3AStore). The Store class includes a SQL implementation that is tested with SQLite, MySQL and PostgreSQL.
+The validation results are returned as a [Mail::DMARC::Result](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3AResult) object. If the author domain requested a report, it was saved to the [Report Store](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3AReport%3A%3AStore). The Store class includes a SQL implementation that is tested with SQLite, MySQL and PostgreSQL.
 
-There is more information available in the $result object. See [Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3AResult) for complete details.
+There is more information available in the $result object. See [Mail::DMARC::Result](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3AResult) for complete details.
 
-Reports are viewed with the [dmarc\_view\_reports](http://search.cpan.org/perldoc?dmarc_view_reports) program or with a web browser and the [dmarc\_httpd](http://search.cpan.org/perldoc?dmarc_httpd) program.
+Reports are viewed with the [dmarc\_view\_reports](https://metacpan.org/pod/dmarc_view_reports) program or with a web browser and the [dmarc\_httpd](https://metacpan.org/pod/dmarc_httpd) program.
 
-Aggregate reports are sent to their requestors with the [dmarc\_send\_reports](http://search.cpan.org/perldoc?dmarc_send_reports) program.
+Aggregate reports are sent to their requestors with the [dmarc\_send\_reports](https://metacpan.org/pod/dmarc_send_reports) program.
 
-For aggregate reports that you have been sent, the [dmarc\_receive](http://search.cpan.org/perldoc?dmarc_receive) program will parse the email messages (from IMAP, Mbox, or files) and save the report results into the [Report Store](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3AReport%3A%3AStore).
+For aggregate reports that you have been sent, the [dmarc\_receive](https://metacpan.org/pod/dmarc_receive) program will parse the email messages (from IMAP, Mbox, or files) and save the report results into the [Report Store](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3AReport%3A%3AStore).
 
 The report store can use the same database to store reports you have received as well as reports you will send. There are several ways to identify the difference, including:
 
@@ -74,23 +74,23 @@ The report store can use the same database to store reports you have received as
 
 # CLASSES
 
-[Mail::DMARC](http://search.cpan.org/perldoc?Mail%3A%3ADMARC) - the perl interface for DMARC
+[Mail::DMARC](https://metacpan.org/pod/Mail%3A%3ADMARC) - the perl interface for DMARC
 
-[Mail::DMARC::Policy](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3APolicy) - a DMARC policy
+[Mail::DMARC::Policy](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3APolicy) - a DMARC policy
 
-[Mail::DMARC::PurePerl](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3APurePerl) - Pure Perl implementation of DMARC
+[Mail::DMARC::PurePerl](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3APurePerl) - Pure Perl implementation of DMARC
 
-[Mail::DMARC::Result](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3AResult) - the results of applying policy
+[Mail::DMARC::Result](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3AResult) - the results of applying policy
 
-[Mail::DMARC::Report](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3AReport) - Reporting: the R in DMARC
+[Mail::DMARC::Report](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3AReport) - Reporting: the R in DMARC
 
-> [Mail::DMARC::Report::Send](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3AReport%3A%3ASend) - send reports via SMTP & HTTP
+> [Mail::DMARC::Report::Send](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3AReport%3A%3ASend) - send reports via SMTP & HTTP
 >
-> [Mail::DMARC::Report::Receive](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3AReport%3A%3AReceive) - receive and store reports from email, HTTP
+> [Mail::DMARC::Report::Receive](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3AReport%3A%3AReceive) - receive and store reports from email, HTTP
 >
-> [Mail::DMARC::Report::Store](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3AReport%3A%3AStore) - a persistent data store for aggregate reports
+> [Mail::DMARC::Report::Store](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3AReport%3A%3AStore) - a persistent data store for aggregate reports
 >
-> [Mail::DMARC::Report::View](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3AReport%3A%3AView) - CLI and CGI methods for viewing reports
+> [Mail::DMARC::Report::View](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3AReport%3A%3AView) - CLI and CGI methods for viewing reports
 
 [Mail::DMARC::libopendmarc](http://search.cpan.org/~shari/Mail-DMARC-opendmarc) - an XS implementation using libopendmarc
 
@@ -163,7 +163,7 @@ You can instead pass in the entire From: header with header\_from\_raw.
 
 ## header\_from\_raw
 
-Retrieve the header\_from domain by parsing it from a raw From field/header. The domain portion is extracted by [get\_dom\_from\_header](http://search.cpan.org/perldoc?Mail%3A%3ADMARC%3A%3APurePerl%23get_dom_from_header), which is fast, generally effective, but also rather crude. It has limits, so read the description.
+Retrieve the header\_from domain by parsing it from a raw From field/header. The domain portion is extracted by [get\_dom\_from\_header](https://metacpan.org/pod/Mail%3A%3ADMARC%3A%3APurePerl%23get_dom_from_header), which is fast, generally effective, but also rather crude. It has limits, so read the description.
 
 ## dkim
 
