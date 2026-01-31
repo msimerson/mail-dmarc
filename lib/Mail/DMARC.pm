@@ -237,7 +237,6 @@ sub get_report_window {
     return ( $begin, $end );
 }
 
-
 sub get_start_of_zulu_day {
     my ( $self, $t ) = @_;
     my $start_of_zulu_day = $t - ( $t % 86400 );
@@ -328,13 +327,13 @@ DMARC: Domain-based Message Authentication, Reporting and Conformance
 
   # any result that did not pass is a fail. Now for disposition
 
-  if ( $result->evalated->disposition eq 'reject' ) {
+  if ( $result->disposition eq 'reject' ) {
      ...treat the sender to a 550 ...
   };
-  if ( $result->evalated->disposition eq 'quarantine' ) {
+  if ( $result->disposition eq 'quarantine' ) {
      ...assign a bunch of spam points...
   };
-  if ( $result->evalated->disposition eq 'none' ) {
+  if ( $result->disposition eq 'none' ) {
      ...continue normal processing...
   };
 

@@ -192,7 +192,7 @@ my %MM_ARGS = (
     ],
   },
   "MIN_PERL_VERSION" => "5.008",
-  "VERSION" => "1.20191025",
+  "VERSION" => "1.20250805",
   "test" => {
     "TESTS" => "t/*.t"
   },
