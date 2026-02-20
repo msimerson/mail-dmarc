@@ -159,7 +159,7 @@ sub serve_gzip {
     my ($extension) = (split /\./, $decomp)[-1];
 
     # browser accepts gz encoding, serve compressed
-    if ( grep {/gzip/} $ENV{HTTP_ACCEPT_ENCODING} ) {
+    if ( ($ENV{HTTP_ACCEPT_ENCODING} || '') =~ /gzip/ ) {
         my $length = length $contents;
         return print <<"EO_GZ"
 Content-Length: $length
