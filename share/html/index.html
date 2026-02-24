@@ -3,125 +3,138 @@
 <head>
  <meta charset="utf-8" />
  <title>Mail::DMARC::HTTP</title>
- <link rel="stylesheet" type="text/css" media="screen" href="https://code.jquery.com/ui/1.10.3/themes/cupertino/jquery-ui.css" />
- <link rel="stylesheet" type="text/css" media="screen" href="/dmarc/css/ui.jqgrid.css" />
- <script type="text/javascript" src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
- <script type="text/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
- <script type="text/javascript" src="/dmarc/js/i18n/grid.locale-en.js"></script>
- <script type="text/javascript" src="/dmarc/js/jquery.jqGrid.min.js"></script>
+ <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css" />
+ <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+ <script type="text/javascript" src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
 
 <style type="text/css">
 html, body {
   margin: 0;
   padding: 0;
   font-size: 80%;
+  font-family: sans-serif;
 }
-span.cellWithoutBackground {
+td.dt-control {
+  cursor: pointer;
+}
+td.dt-control::before {
+  content: '▶';
+  color: #888;
+}
+tr.shown td.dt-control::before {
+  content: '▼';
+}
+.dmarc-pass, .dmarc-none       { background-color: #CCFFCC; }
+.dmarc-fail, .dmarc-reject     { background-color: #FFCCCC; }
+.dmarc-quarantine              { background-color: #FFFFCC; }
+span.dmarc-cell {
   display: block;
-  background-image: none;
-  margin-right:-2px;
-  margin-left:-2px;
-  height: 14px;
-  padding:4px;
+  padding: 2px 4px;
+}
+table.child-detail {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0;
+}
+table.child-detail th, table.child-detail td {
+  border: 1px solid #ccc;
+  padding: 4px 6px;
+}
+table.child-detail th {
+  background: #f0f0f0;
 }
 </style>
 
 <script type="text/javascript">
-// Set the options globally
-jQuery.extend(jQuery.jgrid.defaults, {
-  altRows:true,
-  datatype: "json",
-  height:'60%',
-  jsonReader : {
-    root:   'rows',
-    page:   'cur_page',
-    total:  'total_pages',
-    records:'total_rows',
-    repeatitems:false,
-    subgrid: {
-      root:   'rows',
-      page:   'cur_page',
-      total:  'total_pages',
-      records:'total_rows',
-      repeatitems:false,
+function dmarcCell(value) {
+  if (!value) return '';
+  var cls = 'dmarc-' + value.toLowerCase();
+  return '<span class="dmarc-cell ' + cls + '">' + value + '</span>';
+}
+
+function formatChildRows(rows) {
+  if (!rows || !rows.length) return '<p>No detail rows found.</p>';
+  var html = '<table class="child-detail"><thead><tr>'
+    + '<th>Header From</th><th>IP</th><th>#</th><th>Disposition</th>'
+    + '<th>SPF</th><th>DKIM</th><th>Envelope To</th><th>Envelope From</th>'
+    + '</tr></thead><tbody>';
+  rows.forEach(function(r) {
+    html += '<tr>'
+      + '<td>' + (r.header_from  || '') + '</td>'
+      + '<td>' + (r.source_ip    || '') + '</td>'
+      + '<td>' + (r.count        || '') + '</td>'
+      + '<td>' + dmarcCell(r.disposition)  + '</td>'
+      + '<td>' + dmarcCell(r.spf)          + '</td>'
+      + '<td>' + dmarcCell(r.dkim)         + '</td>'
+      + '<td>' + (r.envelope_to  || '') + '</td>'
+      + '<td>' + (r.envelope_from || '') + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+jQuery(document).ready(function() {
+  var colNames = ['rid', 'from_domain', 'author', 'begin', 'end', 'uuid'];
+
+  var table = jQuery('#grid').DataTable({
+    processing: true,
+    serverSide: true,
+    ajax: function(data, callback) {
+      var params = {
+        rows: data.length,
+        page: Math.floor(data.start / data.length) + 1,
+      };
+      if (data.order && data.order.length) {
+        params.sidx = colNames[data.order[0].column - 1] || 'rid';
+        params.sord = data.order[0].dir === 'desc' ? 'desc' : 'asc';
+      }
+      if (data.search && data.search.value) {
+        params.searchField  = 'fd.domain';
+        params.searchString = data.search.value;
+      }
+      jQuery.ajax({
+        url:  '/dmarc/json/report',
+        type: 'POST',
+        data: params,
+        success: function(json) {
+          callback({
+            draw:            data.draw,
+            recordsTotal:    json.total_rows,
+            recordsFiltered: json.total_rows,
+            data:            json.rows || [],
+          });
+        },
+      });
     },
-  },
-  pager: '#gridpager',
-});
+    columns: [
+      { data: null,          title: '',            className: 'dt-control', orderable: false, defaultContent: '' },
+      { data: 'rid',         title: 'Id' },
+      { data: 'from_domain', title: 'Sender/From' },
+      { data: 'author',      title: 'Org Name' },
+      { data: 'begin',       title: 'Begin' },
+      { data: 'end',         title: 'End' },
+      { data: 'uuid',        title: 'UUID' },
+    ],
+    order: [[1, 'desc']],
+    pageLength: 100,
+    lengthMenu: [50, 100, 500],
+  });
 
-jQuery(document).ready(function(){
-  jQuery("#grid").jqGrid({
-      url:'/dmarc/json/report',
-      mtype: 'POST',
-      colNames:['Id','Sender/From','Org Name','Begin','End','UUID' ],
-      colModel :[
-        {name:'rid', index:'rid', width:30, align:'center', sortable: true },
-        {name:'from_domain', index:'from_domain', width:150, align:'right', sortable: true},
-        {name:'author',      index:'author',      width:170, align:'center' },
-        {name:'begin',       index:'begin',       width:100, sorttype:'date'},
-        {name:'end',         index:'end',         width:100, sorttype:'date'},
-        {name:'uuid',        index:'uuid',        width:250, align:'left'},
-      ],
-      rowNum: 100,
-      rowList: [50,100,500],
-      sortname: 'rid',
-      viewrecords: true,
-      editurl:"/dmarc/json/record/edit",
-      sortorder: 'desc',
-      caption:"DMARC Reports",
-      subGrid: true,
-      subGridRowExpanded: (subgrid_id, row_id) => {
-
-    // subgrid_id is a id of the div tag created within a table
-    // the row_id is the id of the row
-    // If we want to pass additional parameters to the url we can use
-    // the method getRowData(row_id) - which returns associative array in type name-value
-       var subgrid_table_id;
-       subgrid_table_id = subgrid_id+"_t";
-       var row_data = jQuery('#grid').getRowData(row_id);
-       jQuery("#"+subgrid_id).html("<table id='"+subgrid_table_id+"' class='scroll'></table>");
-       jQuery("#"+subgrid_table_id).jqGrid({
-          url:"/dmarc/json/row?rid="+ row_data.rid,
-          datatype: "json",
-          colNames: ['Header From','IP','#','Disposition','SPF','DKIM','Envelope To','Envelope From'],
-          colModel: [
-            {name:"header_from",index:"header_from",width:140,align:"right",key:true},
-            {name:"source_ip",index:"source_ip",width:200,align:"center",key:true},
-            {name:"count",index:"count",width:20,align:"center"},
-            {name:"disposition",index:"disposition",width:70,align:"center",formatter:dmarcFormatter},
-            {name:"spf",index:"spf",width:40,align:"center",formatter:dmarcFormatter},
-            {name:"dkim",index:"dkim",width:40,align:"center",formatter:dmarcFormatter},
-            {name:"envelope_to",index:"envelope_to",width:140,align:"right",sortable:false},
-            {name:"envelope_from",index:"envelope_from",width:100,align:"right"},
-          ],
-          height: '100%',
-          rowNum:20,
-          sortname: 'num',
-          pager: false,
-          sortorder: "asc"
-       });
-      },
-
-      filterToolbar: {
-        autosearch:true
-      },
-  })
-  .navGrid('#gridpager',{add:false,del:false,edit:false,search:true});
-});
-
-function dmarcFormatter (cellValue, Options, rowObject) {
-  let color;
-  if ( cellValue == 'fail' ) color = '#FFCCCC';
-  if ( cellValue == 'pass' ) color = '#CCFFCC';       // CCFFCC green
-  if ( cellValue == 'reject' ) color = '#FFCCCC';     // FFCCCC red
-  if ( cellValue == 'quarantine' ) color = '#FFFFCC'; // FFFFCC yellow
-  if ( cellValue == 'none' ) color = '#CCFFCC';
-  return '<span class="cellWithoutBackground" style="background-color: '+color+';">' + cellValue +'</span>';
-};
-
-jQuery("#mybutton").click(function() {
-   jQuery("#grid").setColumns({'Begin':'begin','End':'end'});
-   return false;
+  jQuery('#grid tbody').on('click', 'td.dt-control', function() {
+    var tr  = jQuery(this).closest('tr');
+    var row = table.row(tr);
+    if (row.child.isShown()) {
+      row.child.hide();
+      tr.removeClass('shown');
+    } else {
+      var rid = row.data().rid;
+      jQuery.getJSON('/dmarc/json/row?rid=' + rid, function(json) {
+        row.child(formatChildRows(json.rows)).show();
+        tr.addClass('shown');
+      });
+    }
+  });
 });
 </script>
 
@@ -130,12 +143,7 @@ jQuery("#mybutton").click(function() {
 <body>
 <p><a href="https://search.cpan.org/dist/Mail-DMARC/">Mail::DMARC::HTTP</a>.</p>
 
-<div id="mybutton"></div>
-
-<div id="jqgrid">
- <table id="grid"></table>
- <div id="gridpager"></div>
-</div>
+<table id="grid" class="display" style="width:100%"><caption>DMARC Reports</caption></table>
 
 </body>
 </html>
