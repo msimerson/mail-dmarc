@@ -71,6 +71,7 @@ jQuery(document).ready(() => {
   const table = jQuery('#grid').DataTable({
     processing: true,
     serverSide: true,
+    rowId: 'rid',
     ajax: (data, callback) => {
       const orderCol = data.order?.[0];
       const sortCol  = orderCol ? (data.columns[orderCol.column].name || 'r.id') : 'r.id';
@@ -111,9 +112,9 @@ jQuery(document).ready(() => {
 
   jQuery('#grid tbody').on('click', 'td.dt-control', function() {
     const tr  = jQuery(this).closest('tr');
-    const row = table.row(tr);
-    const rid = row.data()?.rid;
+    const rid = tr[0].id;
     if (!rid) return;
+    const row = table.row(tr);
     if (row.child.isShown()) {
       row.child.hide();
       tr.removeClass('shown');
