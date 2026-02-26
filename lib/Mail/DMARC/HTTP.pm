@@ -195,7 +195,8 @@ sub report_json_report {
 
 sub report_json_rr {
     print "Content-type: application/json\n\n";
-    my $row = $report->store->backend->get_rr( CGI->new->Vars );
+    my %vars = CGI->new->Vars;
+    my $row = $report->store->backend->get_rr( rid => $vars{rid} );
     print encode_json $row;
     # warn Dumper($row);
     return;

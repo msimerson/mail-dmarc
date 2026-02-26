@@ -123,9 +123,16 @@ jQuery(document).ready(() => {
     row.child('<p class="child-loading">Loading\u2026</p>').show();
     tr.addClass('shown');
     fetch(`/dmarc/json/row?rid=${rid}`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+        return r.json();
+      })
       .then(json => {
         table.row(tr[0]).child(formatChildRows(json.data)).show();
+      })
+      .catch(() => {
+        table.row(tr[0]).child.hide();
+        tr.removeClass('shown');
       });
   });
 });
