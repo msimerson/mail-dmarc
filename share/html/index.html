@@ -85,11 +85,7 @@ jQuery(document).ready(() => {
         params.search_col = 'fd.domain';
         params.search_val = data.search.value;
       }
-      fetch('/dmarc/json/report', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body:    new URLSearchParams(params),
-      })
+      fetch('/dmarc/json/report?' + new URLSearchParams(params))
         .then(r => r.json())
         .then(json => callback({
           draw:            data.draw,
