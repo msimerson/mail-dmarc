@@ -96,8 +96,7 @@ jQuery(document).ready(() => {
     },
     columns: [
       { data: 'rid',         name: null,        title: '',             className: 'dt-control', orderable: false,
-        render: () => '',
-        createdCell: (td, rid) => { td.dataset.rid = rid; } },
+        render: () => '' },
       { data: 'rid',         name: 'r.id',      title: 'Id' },
       { data: 'from_domain', name: 'fd.domain', title: 'Sender/From' },
       { data: 'author',      name: 'a.org_name', title: 'Org Name' },
@@ -111,10 +110,10 @@ jQuery(document).ready(() => {
   });
 
   jQuery('#grid tbody').on('click', 'td.dt-control', function() {
-    const td  = this;
-    const rid = td.dataset.rid;
-    const tr  = jQuery(td).closest('tr');
+    const tr  = jQuery(this).closest('tr');
     const row = table.row(tr);
+    const rid = row.data()?.rid;
+    if (!rid) return;
     if (row.child.isShown()) {
       row.child.hide();
       tr.removeClass('shown');
