@@ -128,14 +128,14 @@ jQuery(document).ready(function() {
       tr.removeClass('shown');
       return;
     }
-    var rid    = row.data().rid;
-    var rowIdx = row.index();
+    var rid = row.data().rid;
     // Show a loading placeholder immediately for instant visual feedback
     row.child('<p class="child-loading">Loading\u2026</p>').show();
     tr.addClass('shown');
     jQuery.getJSON('/dmarc/json/row?rid=' + rid, function(json) {
-      // Re-fetch a fresh row reference in case DataTables re-drew the table
-      table.row(rowIdx).child(formatChildRows(json.rows)).show();
+      // Use the tr DOM element (not row index) to find the row; the index can
+      // shift if DataTables re-draws between the click and the response.
+      table.row(tr[0]).child(formatChildRows(json.rows)).show();
     });
   });
 });
