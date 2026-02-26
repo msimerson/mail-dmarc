@@ -200,6 +200,17 @@ EO_REPORTS
     ;
 }
 
+sub count_filtered_report_query {
+    return <<'EO_SQL'
+SELECT COUNT(*)
+FROM report r
+LEFT JOIN author a  ON r.author_id=a.id
+LEFT JOIN domain fd ON r.from_domain_id=fd.id
+WHERE 1=1
+EO_SQL
+    ;
+}
+
 sub insert_error {
     my ( $self, $which ) = @_;
     if ( $which == 0 ) {

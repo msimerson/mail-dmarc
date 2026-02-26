@@ -228,28 +228,48 @@ sub get_report {
     croak "invalid parameters" if @args % 2;
     my %args = @args;
 
-    my $query = $self->grammar->select_report_query;
-    my @params;
     my @known = qw/ r.id a.org_name fd.domain r.begin r.end /;
     my %known = map { $_ => 1 } @known;
 
-    # TODO: allow custom search ops?
-    if ( $args{search_col} && $known{ $args{search_col} } ) {
-        $query .= $self->grammar->and_arg($args{search_col});
-        push @params, $args{search_val};
-    };
+    my $where = '';
+    my @where_params;
+
+    # Multi-column LIKE search across sender and org (when only search_val given)
+    if ( $args{search_val} && !$args{search_col} ) {
+        my $safe = $args{search_val};
+        $safe =~ s/([%_\\])/\\$1/g;    # escape LIKE metacharacters
+        my $like = '%' . $safe . '%';
+        $where .= " AND (fd.domain LIKE ? ESCAPE '\\' OR a.org_name LIKE ? ESCAPE '\\')";
+        push @where_params, $like, $like;
+    }
+    elsif ( $args{search_col} && $known{ $args{search_col} } ) {
+        $where .= $self->grammar->and_arg($args{search_col});
+        push @where_params, $args{search_val};
+    }
 
     foreach my $known ( @known ) {
         next if ! defined $args{$known};
-        $query .= $self->grammar->and_arg($known);
-        push @params, $args{$known};
-    };
+        $where .= $self->grammar->and_arg($known);
+        push @where_params, $args{$known};
+    }
+
+    my $total_recs    = $self->dbix->query($self->grammar->count_reports)->list;
+    my $filtered_recs = $total_recs;
+    if ( $where ) {
+        $filtered_recs = $self->dbix->query(
+            $self->grammar->count_filtered_report_query . $where, @where_params
+        )->list;
+    }
+
+    my $order = '';
     if ( $args{sort_col} && $known{$args{sort_col}} ) {
         if ( $args{sort_dir} ) {
-            $query .= $self->grammar->order_by($args{sort_col}, $args{sort_dir} eq 'desc' ? ' DESC' : ' ASC');
+            $order = $self->grammar->order_by($args{sort_col}, $args{sort_dir} eq 'desc' ? ' DESC' : ' ASC');
         };
     };
-    my $total_recs = $self->dbix->query($self->grammar->count_reports)->list;
+
+    my $query  = $self->grammar->select_report_query . $where . $order;
+    my @params = @where_params;
     if ( $args{length} ) {
         my $start = $args{start} || 0;
         $start = 0 if $start < 0;
@@ -264,8 +284,9 @@ sub get_report {
         $_->{end} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{end} )));
     };
     return {
-        recordsTotal => $total_recs,
-        data         => $reports,
+        recordsTotal    => $total_recs,
+        recordsFiltered => $filtered_recs,
+        data            => $reports,
     };
 }
 

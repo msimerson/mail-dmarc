@@ -3,9 +3,9 @@
 <head>
  <meta charset="utf-8" />
  <title>Mail::DMARC::HTTP</title>
- <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css" />
+ <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.3.7/css/dataTables.dataTables.min.css" />
  <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
- <script type="text/javascript" src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+ <script type="text/javascript" src="https://cdn.datatables.net/2.3.7/js/dataTables.min.js"></script>
 
 <style type="text/css">
 html, body {
@@ -49,6 +49,8 @@ const dmarcCell = (value) => {
   return `<span class="dmarc-cell dmarc-${value.toLowerCase()}">${value}</span>`;
 };
 
+const escAttr = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
 const formatChildRows = (rows) => {
   if (!rows || !rows.length) return '<p>No detail rows found.</p>';
   const body = rows.map(r => `<tr>
@@ -83,7 +85,6 @@ jQuery(document).ready(() => {
         sort_dir: sortDir,
       };
       if (data.search?.value) {
-        params.search_col = 'fd.domain';
         params.search_val = data.search.value;
       }
       fetch('/dmarc/json/report?' + new URLSearchParams(params))
@@ -91,7 +92,7 @@ jQuery(document).ready(() => {
         .then(json => callback({
           draw:            data.draw,
           recordsTotal:    json.recordsTotal,
-          recordsFiltered: json.recordsTotal,
+          recordsFiltered: json.recordsFiltered || json.recordsTotal,
           data:            json.data || [],
         }))
         .catch(() => callback({
@@ -104,12 +105,12 @@ jQuery(document).ready(() => {
     columns: [
       { data: 'rid',         name: null,        title: '',             className: 'dt-control', orderable: false,
         render: () => '' },
-      { data: 'rid',         name: 'r.id',      title: 'Id' },
+      { data: 'rid',         name: 'r.id',      title: 'Id',
+        render: (data, type, row) => type === 'display' ? `<span title="${escAttr(row.uuid)}">${data}</span>` : data },
       { data: 'from_domain', name: 'fd.domain', title: 'Sender/From' },
       { data: 'author',      name: 'a.org_name', title: 'Org Name' },
       { data: 'begin',       name: 'r.begin',   title: 'Begin' },
       { data: 'end',         name: 'r.end',     title: 'End' },
-      { data: 'uuid',        name: null,        title: 'UUID', orderable: false },
     ],
     order: [[1, 'desc']],
     pageLength: 100,
