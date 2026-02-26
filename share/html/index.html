@@ -93,6 +93,12 @@ jQuery(document).ready(() => {
           recordsTotal:    json.recordsTotal,
           recordsFiltered: json.recordsTotal,
           data:            json.data || [],
+        }))
+        .catch(() => callback({
+          draw:            data.draw,
+          recordsTotal:    0,
+          recordsFiltered: 0,
+          data:            [],
         }));
     },
     columns: [
