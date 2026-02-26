@@ -233,10 +233,10 @@ sub get_report {
     my @known = qw/ r.id a.org_name fd.domain r.begin r.end /;
     my %known = map { $_ => 1 } @known;
 
-    # TODO: allow custom search ops?  'searchOper' => 'eq',
-    if ( $args{searchField} && $known{ $args{searchField} } ) {
-        $query .= $self->grammar->and_arg($args{searchField});
-        push @params, $args{searchString};
+    # TODO: allow custom search ops?
+    if ( $args{search_col} && $known{ $args{search_col} } ) {
+        $query .= $self->grammar->and_arg($args{search_col});
+        push @params, $args{search_val};
     };
 
     foreach my $known ( @known ) {
@@ -244,25 +244,17 @@ sub get_report {
         $query .= $self->grammar->and_arg($known);
         push @params, $args{$known};
     };
-    if ( $args{sidx} && $known{$args{sidx}} ) {
-        if ( $args{sord} ) {
-            $query .= $self->grammar->order_by($args{sidx}, $args{sord} eq 'desc' ? ' DESC' : ' ASC');
+    if ( $args{sort_col} && $known{$args{sort_col}} ) {
+        if ( $args{sort_dir} ) {
+            $query .= $self->grammar->order_by($args{sort_col}, $args{sort_dir} eq 'desc' ? ' DESC' : ' ASC');
         };
     };
     my $total_recs = $self->dbix->query($self->grammar->count_reports)->list;
-    my $total_pages = 0;
-    if ( $args{rows} ) {
-        if ( $args{page} ) {
-            $total_pages = POSIX::ceil($total_recs / $args{rows});
-            my $start = ($args{rows} * $args{page}) - $args{rows};
-            $start = 0 if $start < 0;
-            $query .= $self->grammar->limit_args(2);
-            push @params, $start, $args{rows};
-        }
-        else {
-            $query .= $self->grammar->limit_args;
-            push @params, $args{rows};
-        };
+    if ( $args{length} ) {
+        my $start = $args{start} || 0;
+        $start = 0 if $start < 0;
+        $query .= $self->grammar->limit_args(2);
+        push @params, $start, $args{length};
     };
 
     # warn "query: $query\n" . join(", ", @params) . "\n";
@@ -271,12 +263,9 @@ sub get_report {
         $_->{begin} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{begin} )));
         $_->{end} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{end} )));
     };
-    # return in the format expected by jqGrid
     return {
-        cur_page    => $args{page},
-        total_pages => $total_pages,
-        total_rows  => $total_recs,
-        rows        => $reports,
+        recordsTotal => $total_recs,
+        data         => $reports,
     };
 }
 
@@ -301,10 +290,7 @@ sub get_rr {
         $_->{reasons} = $self->query($self->grammar->select_report_reason, [ $_->{id} ] );
     };
     return {
-        cur_page    => 1,
-        total_pages => 1,
-        total_rows  => scalar @$rows,
-        rows        => $rows,
+        data => $rows,
     };
 }
 

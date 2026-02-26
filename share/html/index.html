@@ -18,11 +18,11 @@ td.dt-control {
   cursor: pointer;
 }
 td.dt-control::before {
-  content: '▶';
+  content: '\25B6';
   color: #888;
 }
 tr.shown td.dt-control::before {
-  content: '▼';
+  content: '\25BC';
 }
 .dmarc-pass, .dmarc-none       { background-color: #CCFFCC; }
 .dmarc-fail, .dmarc-reject     { background-color: #FFCCCC; }
@@ -44,76 +44,70 @@ table.child-detail th, table.child-detail td {
 </style>
 
 <script type="text/javascript">
-function dmarcCell(value) {
+const dmarcCell = (value) => {
   if (!value) return '';
-  var cls = 'dmarc-' + value.toLowerCase();
-  return '<span class="dmarc-cell ' + cls + '">' + value + '</span>';
-}
+  return `<span class="dmarc-cell dmarc-${value.toLowerCase()}">${value}</span>`;
+};
 
-function formatChildRows(rows) {
+const formatChildRows = (rows) => {
   if (!rows || !rows.length) return '<p>No detail rows found.</p>';
-  var html = '<table class="child-detail"><thead><tr>'
-    + '<th>Header From</th><th>IP</th><th>#</th><th>Disposition</th>'
-    + '<th>SPF</th><th>DKIM</th><th>Envelope To</th><th>Envelope From</th>'
-    + '</tr></thead><tbody>';
-  rows.forEach(function(r) {
-    html += '<tr>'
-      + '<td>' + (r.header_from  || '') + '</td>'
-      + '<td>' + (r.source_ip    || '') + '</td>'
-      + '<td>' + (r.count        || '') + '</td>'
-      + '<td>' + dmarcCell(r.disposition)  + '</td>'
-      + '<td>' + dmarcCell(r.spf)          + '</td>'
-      + '<td>' + dmarcCell(r.dkim)         + '</td>'
-      + '<td>' + (r.envelope_to  || '') + '</td>'
-      + '<td>' + (r.envelope_from || '') + '</td>'
-      + '</tr>';
-  });
-  html += '</tbody></table>';
-  return html;
-}
+  const body = rows.map(r => `<tr>
+    <td>${r.header_from   || ''}</td>
+    <td>${r.source_ip     || ''}</td>
+    <td>${r.count         || ''}</td>
+    <td>${dmarcCell(r.disposition)}</td>
+    <td>${dmarcCell(r.spf)}</td>
+    <td>${dmarcCell(r.dkim)}</td>
+    <td>${r.envelope_to   || ''}</td>
+    <td>${r.envelope_from || ''}</td>
+  </tr>`).join('');
+  return `<table class="child-detail"><thead><tr>
+    <th>Header From</th><th>IP</th><th>#</th><th>Disposition</th>
+    <th>SPF</th><th>DKIM</th><th>Envelope To</th><th>Envelope From</th>
+  </tr></thead><tbody>${body}</tbody></table>`;
+};
 
-jQuery(document).ready(function() {
-  // SQL column names as known by get_report() backend (null = not sortable)
-  var colNames = ['r.id', 'fd.domain', 'a.org_name', 'r.begin', 'r.end', null];
-
-  var table = jQuery('#grid').DataTable({
+jQuery(document).ready(() => {
+  const table = jQuery('#grid').DataTable({
     processing: true,
     serverSide: true,
-    ajax: function(data, callback) {
-      var params = {
-        rows: data.length,
-        page: Math.floor(data.start / data.length) + 1,
+    ajax: (data, callback) => {
+      const orderCol = data.order?.[0];
+      const sortCol  = orderCol ? (data.columns[orderCol.column].name || 'r.id') : 'r.id';
+      const sortDir  = orderCol?.dir || 'desc';
+      const params   = {
+        start:    data.start,
+        length:   data.length,
+        sort_col: sortCol,
+        sort_dir: sortDir,
       };
-      if (data.order && data.order.length) {
-        params.sidx = colNames[data.order[0].column - 1] || 'r.id';
-        params.sord = data.order[0].dir === 'desc' ? 'desc' : 'asc';
+      if (data.search?.value) {
+        params.search_col = 'fd.domain';
+        params.search_val = data.search.value;
       }
-      if (data.search && data.search.value) {
-        params.searchField  = 'fd.domain';
-        params.searchString = data.search.value;
-      }
-      jQuery.ajax({
-        url:  '/dmarc/json/report',
-        type: 'POST',
-        data: params,
-        success: function(json) {
-          callback({
-            draw:            data.draw,
-            recordsTotal:    json.total_rows,
-            recordsFiltered: json.total_rows,
-            data:            json.rows || [],
-          });
-        },
-      });
+      fetch('/dmarc/json/report', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    new URLSearchParams(params),
+      })
+        .then(r => r.json())
+        .then(json => callback({
+          draw:            data.draw,
+          recordsTotal:    json.recordsTotal,
+          recordsFiltered: json.recordsTotal,
+          data:            json.data || [],
+        }));
     },
     columns: [
-      { data: null,          title: '',            className: 'dt-control', orderable: false, defaultContent: '' },
-      { data: 'rid',         title: 'Id' },
-      { data: 'from_domain', title: 'Sender/From' },
-      { data: 'author',      title: 'Org Name' },
-      { data: 'begin',       title: 'Begin' },
-      { data: 'end',         title: 'End' },
-      { data: 'uuid',        title: 'UUID' },
+      { data: 'rid',         name: null,        title: '',             className: 'dt-control', orderable: false,
+        render: () => '',
+        createdCell: (td, rid) => { td.dataset.rid = rid; } },
+      { data: 'rid',         name: 'r.id',      title: 'Id' },
+      { data: 'from_domain', name: 'fd.domain', title: 'Sender/From' },
+      { data: 'author',      name: 'a.org_name', title: 'Org Name' },
+      { data: 'begin',       name: 'r.begin',   title: 'Begin' },
+      { data: 'end',         name: 'r.end',     title: 'End' },
+      { data: 'uuid',        name: null,        title: 'UUID', orderable: false },
     ],
     order: [[1, 'desc']],
     pageLength: 100,
@@ -121,22 +115,22 @@ jQuery(document).ready(function() {
   });
 
   jQuery('#grid tbody').on('click', 'td.dt-control', function() {
-    var tr  = jQuery(this).closest('tr');
-    var row = table.row(tr);
+    const td  = this;
+    const rid = td.dataset.rid;
+    const tr  = jQuery(td).closest('tr');
+    const row = table.row(tr);
     if (row.child.isShown()) {
       row.child.hide();
       tr.removeClass('shown');
       return;
     }
-    var rid = row.data().rid;
-    // Show a loading placeholder immediately for instant visual feedback
     row.child('<p class="child-loading">Loading\u2026</p>').show();
     tr.addClass('shown');
-    jQuery.getJSON('/dmarc/json/row?rid=' + rid, function(json) {
-      // Use the tr DOM element (not row index) to find the row; the index can
-      // shift if DataTables re-draws between the click and the response.
-      table.row(tr[0]).child(formatChildRows(json.rows)).show();
-    });
+    fetch(`/dmarc/json/row?rid=${rid}`)
+      .then(r => r.json())
+      .then(json => {
+        table.row(tr[0]).child(formatChildRows(json.data)).show();
+      });
   });
 });
 </script>

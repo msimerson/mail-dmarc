@@ -148,12 +148,12 @@ sub test_cleanup {
         return;
     }
 
-    my $reports = $sql->get_report()->{rows};
+    my $reports = $sql->get_report()->{data};
     foreach my $report (@$reports) {
         # print Dumper($report);
         $sql->delete_report($report->{rid});
     }
-    $reports = $sql->get_report()->{rows};
+    $reports = $sql->get_report()->{data};
     if (scalar @$reports) {
         # print Dumper($reports);
         die "failed to delete reports!\n";
@@ -275,12 +275,12 @@ sub test_get_row_dkim {
 }
 
 sub test_get_report {
-    my $reports = $sql->get_report( rid => $report_id )->{rows};
+    my $reports = $sql->get_report( rid => $report_id )->{data};
 
     ok( scalar @$reports, "get_report, no limits, " . scalar @$reports );
 
     my $limit = 10;
-    my $r = $sql->get_report( rows => $limit )->{rows};
+    my $r = $sql->get_report( length => $limit )->{data};
     if ( ! $r || ! scalar @$r || scalar @$r < $limit ) {
         ok( 1, "skipping author tests" );
         return;
@@ -299,11 +299,11 @@ sub test_get_report {
     while ( my $key = shift @queries ) {
         my $val = shift @queries;
         $r = $sql->get_report( $key => $val );
-        $reports = $r->{rows};
+        $reports = $r->{data};
         ok( scalar @$reports, "get_report, $key, $val, " . scalar @$reports );
     };
-    $reports = $sql->get_report( rows => 1, sord => 'desc', sidx => 'rid'  );
-    ok( $reports->{rows}, "get_report, multisearch");
+    $reports = $sql->get_report( length => 1, sort_dir => 'desc', sort_col => 'r.id' );
+    ok( $reports->{data}, "get_report, multisearch");
 }
 
 sub test_get_author_id {
