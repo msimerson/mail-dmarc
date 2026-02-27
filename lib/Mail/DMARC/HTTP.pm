@@ -56,7 +56,7 @@ sub dmarc_dispatch {
     if ($path) {
         warn "path: $path\n";
         # Parse QUERY_STRING once here via URI (not CGI->new->Vars) to avoid
-        # CGI.pm state issues in Net::Server::HTTP persistent processes.
+        # CGI.pm state issues in persistent Net::Server::HTTP processes.
         my %vars = URI->new('http://x/?' . ($ENV{QUERY_STRING} // ''))->query_form;
         return report_json_report(\%vars) if $path eq '/dmarc/json/report';
         return report_json_rr(\%vars)     if $path eq '/dmarc/json/row';
