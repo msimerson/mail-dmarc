@@ -228,55 +228,62 @@ sub get_report {
     croak "invalid parameters" if @args % 2;
     my %args = @args;
 
-    my $query = $self->grammar->select_report_query;
-    my @params;
     my @known = qw/ r.id a.org_name fd.domain r.begin r.end /;
     my %known = map { $_ => 1 } @known;
 
-    # TODO: allow custom search ops?  'searchOper' => 'eq',
-    if ( $args{searchField} && $known{ $args{searchField} } ) {
-        $query .= $self->grammar->and_arg($args{searchField});
-        push @params, $args{searchString};
-    };
+    my $where = '';
+    my @where_params;
+
+    # Per-column LIKE searches
+    for my $pair ( [ search_domain => 'fd.domain' ], [ search_author => 'a.org_name' ] ) {
+        my ($param, $col_name) = @$pair;
+        next unless $args{$param};
+        my $safe = $args{$param};
+        $safe =~ s/([%_!])/!$1/g;    # escape LIKE metacharacters using !
+        $where .= " AND $col_name LIKE ? ESCAPE '!'";
+        push @where_params, '%' . $safe . '%';
+    }
 
     foreach my $known ( @known ) {
         next if ! defined $args{$known};
-        $query .= $self->grammar->and_arg($known);
-        push @params, $args{$known};
-    };
-    if ( $args{sidx} && $known{$args{sidx}} ) {
-        if ( $args{sord} ) {
-            $query .= $self->grammar->order_by($args{sidx}, $args{sord} eq 'desc' ? ' DESC' : ' ASC');
+        $where .= $self->grammar->and_arg($known);
+        push @where_params, $args{$known};
+    }
+
+    my $total_recs    = $self->dbix->query($self->grammar->count_reports)->list;
+    my $filtered_recs = $total_recs;
+    if ( $where ) {
+        $filtered_recs = $self->dbix->query(
+            $self->grammar->count_filtered_report_query . $where, @where_params
+        )->list;
+    }
+
+    my $order = '';
+    if ( $args{sort_col} && $known{$args{sort_col}} ) {
+        if ( $args{sort_dir} ) {
+            $order = $self->grammar->order_by($args{sort_col}, $args{sort_dir} eq 'desc' ? ' DESC' : ' ASC');
         };
     };
-    my $total_recs = $self->dbix->query($self->grammar->count_reports)->list;
-    my $total_pages = 0;
-    if ( $args{rows} ) {
-        if ( $args{page} ) {
-            $total_pages = POSIX::ceil($total_recs / $args{rows});
-            my $start = ($args{rows} * $args{page}) - $args{rows};
-            $start = 0 if $start < 0;
-            $query .= $self->grammar->limit_args(2);
-            push @params, $start, $args{rows};
-        }
-        else {
-            $query .= $self->grammar->limit_args;
-            push @params, $args{rows};
-        };
+
+    my $query  = $self->grammar->select_report_query . $where . $order;
+    my @params = @where_params;
+    if ( $args{length} ) {
+        my $start = $args{start} || 0;
+        $start = 0 if $start < 0;
+        $query .= $self->grammar->limit_args(2);
+        push @params, $start, $args{length};
     };
 
     # warn "query: $query\n" . join(", ", @params) . "\n";
     my $reports = $self->query($query, \@params);
     foreach (@$reports ) {
-        $_->{begin} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{begin} )));
-        $_->{end} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{end} )));
+        $_->{begin} = $self->epoch_to_iso( $_->{begin} );
+        $_->{end}   = $self->epoch_to_iso( $_->{end} );
     };
-    # return in the format expected by jqGrid
     return {
-        cur_page    => $args{page},
-        total_pages => $total_pages,
-        total_rows  => $total_recs,
-        rows        => $reports,
+        recordsTotal    => $total_recs,
+        recordsFiltered => $filtered_recs,
+        data            => $reports,
     };
 }
 
@@ -301,10 +308,7 @@ sub get_rr {
         $_->{reasons} = $self->query($self->grammar->select_report_reason, [ $_->{id} ] );
     };
     return {
-        cur_page    => 1,
-        total_pages => 1,
-        total_rows  => scalar @$rows,
-        rows        => $rows,
+        data => $rows,
     };
 }
 
