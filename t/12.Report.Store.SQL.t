@@ -253,6 +253,17 @@ sub test_retrieve {
         my $r = $sql->retrieve( $_ => $tests{$_} );
         ok( @$r, "retrieve, $_, " . scalar @$r );
     };
+
+    # Test negation with '!' prefix
+    my $r_neg_author = $sql->retrieve( author => '!NonExistentAuthor' );
+    ok( scalar @$r_neg_author >= scalar @$r, "retrieve, negate author excludes nothing when non-matching" );
+
+    my $r_neg_domain = $sql->retrieve( from_domain => '!nonexistent.example.com' );
+    ok( scalar @$r_neg_domain >= scalar @$r, "retrieve, negate from_domain excludes nothing when non-matching" );
+
+    my $r_excl_author = $sql->retrieve( author => '!Test Company' );
+    ok( scalar @$r_excl_author < scalar @$r || scalar @$r_excl_author == 0,
+        "retrieve, negate author excludes matching records" );
 }
 
 sub test_retrieve_todo {
