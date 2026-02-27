@@ -239,8 +239,8 @@ sub get_report {
         my ($param, $col_name) = @$pair;
         next unless $args{$param};
         my $safe = $args{$param};
-        $safe =~ s/([%_\\])/\\$1/g;    # escape LIKE metacharacters
-        $where .= " AND $col_name LIKE ? ESCAPE '\\'";
+        $safe =~ s/([%_!])/!$1/g;    # escape LIKE metacharacters using !
+        $where .= " AND $col_name LIKE ? ESCAPE '!'";
         push @where_params, '%' . $safe . '%';
     }
 
