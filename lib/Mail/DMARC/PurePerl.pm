@@ -62,7 +62,9 @@ sub validate {
     return $self->result if $aligned;
 
     my $effective_p
-        = defined $policy->sp && $self->result->published->domain ne $from_dom
+        = defined $policy->sp
+        && $self->result->published
+        && $self->result->published->domain ne $from_dom
         ? $policy->sp
         : $policy->p;
 
