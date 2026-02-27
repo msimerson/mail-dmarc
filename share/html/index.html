@@ -41,6 +41,12 @@ table.child-detail th, table.child-detail td {
   padding: 4px 6px;
 }
 .child-loading { padding: 4px; }
+thead input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  font-size: 100%;
+}
 </style>
 
 <script type="text/javascript">
@@ -84,9 +90,10 @@ jQuery(document).ready(() => {
         sort_col: sortCol,
         sort_dir: sortDir,
       };
-      if (data.search?.value) {
-        params.search_val = data.search.value;
-      }
+      const searchDomain = data.columns?.[2]?.search?.value;
+      const searchAuthor = data.columns?.[3]?.search?.value;
+      if (searchDomain) params.search_domain = searchDomain;
+      if (searchAuthor) params.search_author = searchAuthor;
       fetch('/dmarc/json/report?' + new URLSearchParams(params))
         .then(r => r.json())
         .then(json => callback({
@@ -115,6 +122,28 @@ jQuery(document).ready(() => {
     order: [[1, 'desc']],
     pageLength: 100,
     lengthMenu: [50, 100, 500],
+    searching: false,
+    initComplete: function() {
+      const api = this.api();
+      const searchTr = jQuery('<tr>');
+      api.columns().every(function(i) {
+        const th = jQuery('<th>');
+        if (i === 2 || i === 3) {
+          const placeholder = i === 2 ? 'Filter sender\u2026' : 'Filter org\u2026';
+          let timer;
+          jQuery('<input type="text" />')
+            .attr('placeholder', placeholder)
+            .on('input', function() {
+              clearTimeout(timer);
+              const val = this.value;
+              timer = setTimeout(() => api.column(i).search(val).draw(), 300);
+            })
+            .appendTo(th);
+        }
+        searchTr.append(th);
+      });
+      jQuery('#grid thead').append(searchTr);
+    },
   });
 
   jQuery('#grid tbody').on('click', 'td.dt-control', function() {
