@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-our $VERSION = '1.20250805';
+our $VERSION = '1.20260226';
 use strict;
 use warnings;
 
@@ -689,7 +689,7 @@ Mail::DMARC::Report::Store::SQL - store and retrieve reports from a SQL RDBMS
 
 =head1 VERSION
 
-version 1.20250805
+version 1.20260226
 
 =head1 DESCRIPTION
 
@@ -723,7 +723,7 @@ Marc Bradshaw <marc@marcbradshaw.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2025 by Matt Simerson.
+This software is copyright (c) 2026 by Matt Simerson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

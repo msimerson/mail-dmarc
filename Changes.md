@@ -1,3 +1,10 @@
+### 1.20260226
+
+- feat: replace jqGrid with DataTables in web UI #269
+- doc: remove invalid reference to evalated #267
+- doc: bump copyright to 2026
+- updated PSL
+
 ### 1.20250805
 
 - if XML declares a namespace, remove it
