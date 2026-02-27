@@ -32,8 +32,10 @@ sub validate {
 
     # 11.2.1 Extract RFC5322.From domain
     my $from_dom = $self->get_from_dom() or return $self->result;
+
     # 9.6. reject email if the domain appears to not exist
     $self->exists_in_dns() or return $self->result;
+
     $policy ||= $self->discover_policy();  # 11.2.2 Query DNS for DMARC policy
     if (!$policy) {
         # RFC7489 section 4.3 step 8:
@@ -60,13 +62,13 @@ sub validate {
     return $self->result if $aligned;
 
     my $effective_p
-        = $self->is_subdomain && defined $policy->sp
+        = defined $policy->sp && $self->result->published->domain ne $from_dom
         ? $policy->sp
         : $policy->p;
 
-    # 11.2.6 Apply policy.  Emails that fail the DMARC mechanism check are
+    # 11.2.6 Apply policy. Emails that fail the DMARC mechanism check are
     #        disposed of in accordance with the discovered DMARC policy of the
-    #        Domain Owner.  See Section 6.2 for details.
+    #        Domain Owner. See Section 6.2 for details.
     if ( lc $effective_p eq 'none' ) {
         return $self->result;
     }
@@ -123,6 +125,9 @@ sub discover_policy {
     my $from_dom = shift || $self->header_from or croak;
     print "Header From: $from_dom\n" if $self->verbose;
     my $org_dom  = $self->get_organizational_domain($from_dom);
+    if ($org_dom ne $from_dom) {
+        $self->is_subdomain(1);
+    }
 
     # 9.1  Mail Receivers MUST query the DNS for a DMARC TXT record
     my ($matches, $at_dom) = $self->fetch_dmarc_record( $from_dom, $org_dom );
@@ -399,11 +404,11 @@ sub exists_in_dns {
     my $self = shift;
     my $from_dom = shift || $self->header_from or croak "no header_from!";
 
-  # rfc7489 6.6.3
-  #     If the set produced by the mechanism above contains no DMARC policy
-  #     record (i.e., any indication that there is no such record as opposed
-  #     to a transient DNS error), Mail Receivers SHOULD NOT apply the DMARC
-  #     mechanism to the message.
+    # rfc7489 6.6.3
+    #   If the set produced by the mechanism above contains no DMARC policy
+    #   record (i.e., any indication that there is no such record as opposed
+    #   to a transient DNS error), Mail Receivers SHOULD NOT apply the DMARC
+    #   mechanism to the message.
 
     my $org_dom = $self->get_organizational_domain($from_dom);
     my @todo    = $from_dom;
@@ -436,10 +441,10 @@ sub fetch_dmarc_record {
     # 1.  Mail Receivers MUST query the DNS for a DMARC TXT record at the
     #     DNS domain matching the one found in the RFC5322.From domain in
     #     the message. A possibly empty set of records is returned.
-    $self->is_subdomain( defined $org_dom ? 0 : 1 );
     my @matches = ();
     my $query = $self->get_resolver->send( "_dmarc.$zone", 'TXT' )
         or return (\@matches, $zone);
+
     for my $rr ( $query->answer ) {
         next if $rr->type ne 'TXT';
 
