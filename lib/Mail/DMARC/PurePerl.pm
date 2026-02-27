@@ -125,9 +125,7 @@ sub discover_policy {
     my $from_dom = shift || $self->header_from or croak;
     print "Header From: $from_dom\n" if $self->verbose;
     my $org_dom  = $self->get_organizational_domain($from_dom);
-    if ($org_dom ne $from_dom) {
-        $self->is_subdomain(1);
-    }
+    $self->is_subdomain($org_dom eq $from_dom ? 0 : 1);
 
     # 9.1  Mail Receivers MUST query the DNS for a DMARC TXT record
     my ($matches, $at_dom) = $self->fetch_dmarc_record( $from_dom, $org_dom );
