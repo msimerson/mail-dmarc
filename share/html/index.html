@@ -76,6 +76,9 @@ const formatChildRows = (rows) => {
 };
 
 jQuery(document).ready(() => {
+  let filterDomain = '';
+  let filterAuthor = '';
+
   const table = jQuery('#grid').DataTable({
     processing: true,
     serverSide: true,
@@ -90,10 +93,8 @@ jQuery(document).ready(() => {
         sort_col: sortCol,
         sort_dir: sortDir,
       };
-      const searchDomain = data.columns?.[2]?.search?.value;
-      const searchAuthor = data.columns?.[3]?.search?.value;
-      if (searchDomain) params.search_domain = searchDomain;
-      if (searchAuthor) params.search_author = searchAuthor;
+      if (filterDomain) params.search_domain = filterDomain;
+      if (filterAuthor) params.search_author = filterAuthor;
       fetch('/dmarc/json/report?' + new URLSearchParams(params))
         .then(r => r.json())
         .then(json => callback({
@@ -136,7 +137,11 @@ jQuery(document).ready(() => {
             .on('input', function() {
               clearTimeout(timer);
               const val = this.value;
-              timer = setTimeout(() => api.column(i).search(val).draw(), 300);
+              timer = setTimeout(() => {
+                if (i === 2) filterDomain = val;
+                else filterAuthor = val;
+                api.draw();
+              }, 300);
             })
             .appendTo(th);
         }

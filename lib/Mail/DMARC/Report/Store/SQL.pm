@@ -244,19 +244,6 @@ sub get_report {
         push @where_params, '%' . $safe . '%';
     }
 
-    # Legacy combined search (backward compat)
-    if ( $args{search_val} && !$args{search_col} && !$args{search_domain} && !$args{search_author} ) {
-        my $safe = $args{search_val};
-        $safe =~ s/([%_\\])/\\$1/g;    # escape LIKE metacharacters
-        my $like = '%' . $safe . '%';
-        $where .= " AND (fd.domain LIKE ? ESCAPE '\\' OR a.org_name LIKE ? ESCAPE '\\')";
-        push @where_params, $like, $like;
-    }
-    elsif ( $args{search_col} && $known{ $args{search_col} } && !$args{search_domain} && !$args{search_author} ) {
-        $where .= $self->grammar->and_arg($args{search_col});
-        push @where_params, $args{search_val};
-    }
-
     foreach my $known ( @known ) {
         next if ! defined $args{$known};
         $where .= $self->grammar->and_arg($known);
@@ -290,8 +277,8 @@ sub get_report {
     # warn "query: $query\n" . join(", ", @params) . "\n";
     my $reports = $self->query($query, \@params);
     foreach (@$reports ) {
-        $_->{begin} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{begin} )));
-        $_->{end} = join('<br>', split(/T/, $self->epoch_to_iso( $_->{end} )));
+        $_->{begin} = $self->epoch_to_iso( $_->{begin} );
+        $_->{end}   = $self->epoch_to_iso( $_->{end} );
     };
     return {
         recordsTotal    => $total_recs,
