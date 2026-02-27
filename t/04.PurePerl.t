@@ -228,6 +228,11 @@ sub test_discover_policy {
     };
     is_deeply( $policy, $expected, 'discover_policy, deeply' );
     is( $dmarc->is_subdomain(), 1, "discover_policy, is_subdomain" );
+
+    $dmarc->init();
+    $dmarc->header_from('tnpi.net');
+    $policy = $dmarc->discover_policy;
+    is( $dmarc->is_subdomain(), 0, "fetch_dmarc_record, is_subdomain" );
 }
 
 sub get_test_headers {
@@ -469,8 +474,6 @@ sub test_fetch_dmarc_record {
 
     ($matches) = $dmarc->fetch_dmarc_record('mail-dmarc.tnpi.net');
     is_deeply( $matches, [$test_rec], 'fetch_dmarc_record' );
-
-    my $policy;
 
     ($matches) = $dmarc->fetch_dmarc_record('com');
     is_deeply( $matches, [], 'fetch_dmarc_record, 1.2.4 TLD lookup not allowed' );
