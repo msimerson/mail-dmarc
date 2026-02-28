@@ -63,12 +63,14 @@ sub retrieve {
         push @params, $args{end};
     };
     if ( $args{author} ) {
-        $query .= $self->grammar->and_arg('a.org_name');
-        push @params, $args{author};
+        my ( $op, $val ) = $self->_negate_arg( $args{author} );
+        $query .= $self->grammar->and_arg('a.org_name', $op);
+        push @params, $val;
     };
     if ( $args{from_domain} ) {
-        $query .= $self->grammar->and_arg('fd.domain');
-        push @params, $args{from_domain};
+        my ( $op, $val ) = $self->_negate_arg( $args{from_domain} );
+        $query .= $self->grammar->and_arg('fd.domain', $op);
+        push @params, $val;
     };
 
     my $reports = $self->query( $query, \@params );
@@ -78,6 +80,14 @@ sub retrieve {
         $_->{end} = join(" ", split(/T/, $self->epoch_to_iso( $_->{end} )));
     };
     return $reports;
+}
+
+sub _negate_arg {
+    my ( $self, $val ) = @_;
+    if ( substr($val, 0, 1) eq '!' ) {
+        return ( '!=', substr($val, 1) );
+    }
+    return ( '=', $val );
 }
 
 sub next_todo {

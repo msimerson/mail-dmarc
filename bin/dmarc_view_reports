@@ -38,12 +38,19 @@ print_header();
 
 foreach my $report_ref ( reverse @$reports ) {
     my $rows = $report->store->backend->get_rr( rid => $report_ref->{rid} )->{rows};
-    next if $disposition && ! grep { $_->{disposition} eq $disposition } @$rows;
-    next if $dkim && ! grep { $_->{dkim} eq $dkim } @$rows;
-    next if $spf  && ! grep { $_->{spf } eq $spf } @$rows;
+    next if $disposition && ! grep { _matches($disposition, $_->{disposition}) } @$rows;
+    next if $dkim && ! grep { _matches($dkim, $_->{dkim}) } @$rows;
+    next if $spf  && ! grep { _matches($spf,  $_->{spf }) } @$rows;
     print_record($report_ref);
     print_rows( $rows );
     print "\n";
+}
+
+sub _matches {
+    my ($filter, $value) = @_;
+    no warnings;  ## no critic (NoWarn)
+    if ( substr($filter, 0, 1) eq '!' ) { return $value ne substr($filter, 1); }
+    return $value eq $filter;
 }
 
 sub print_record {
@@ -56,9 +63,9 @@ sub print_rows {
     my $rows = shift;
     foreach my $row ( @$rows ) {
         no warnings;  ## no critic (NoWarn)
-        next if $disposition && $disposition ne $row->{disposition};
-        next if $dkim && $dkim ne $row->{dkim};
-        next if $spf  && $spf ne $row->{spf};
+        next if $disposition && !_matches($disposition, $row->{disposition});
+        next if $dkim && !_matches($dkim, $row->{dkim});
+        next if $spf  && !_matches($spf,  $row->{spf});
         printf "  | -- %3s %20s %39s %13s %7s %7s", @$row{qw/ count header_from source_ip disposition dkim spf /};
         foreach my $r ( @{ $row->{reasons} } ) {
             print '  ' . $r->{type};
@@ -175,6 +182,10 @@ Dumps the contents of the DMARC data store to your terminal. The most recent rec
     dkim         - DKIM alignment result (pass/fail)
     spf          - SPF alignment result  (pass/fail)
 
+Prefix a value with C<!> to negate the match (exclude matching records). This is
+supported for C<author>, C<from_dom>, C<disposition>, C<dkim>, and C<spf>.
+For example, C<--author=!google.com> will exclude reports authored by google.com.
+
 =head2 Other Options
 
   dmarc_view_reports [ --geoip --dns --help --verbose ]
@@ -191,6 +202,14 @@ To search for all reports from google.com that failed DMARC alignment:
   dmarc_view_reports --author=google.com --dkim=fail --spf=fail
 
 Note that we don't use --disposition. That would only tell us the result of applying DMARC policy, not necessarily if the messages failed DMARC alignment.
+
+To exclude reports from google.com:
+
+  dmarc_view_reports --author=!google.com
+
+To exclude rows with a specific disposition:
+
+  dmarc_view_reports --disposition=!none
 
 To display GeoIP lookup data for the source ip:
 
