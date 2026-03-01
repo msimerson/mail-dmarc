@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<feedback>
+  <report_metadata>
+    <org_name>Test Sender</org_name>
+    <email>noreply@test.example</email>
+    <report_id>1234567890</report_id>
+    <date_range>
+      <begin>1609459200</begin>
+      <end>1609545600</end>
+    </date_range>
+  </report_metadata>
+  <policy_published>
+    <domain>example.com</domain>
+    <adkim>r</adkim>
+    <aspf>r</aspf>
+    <p>none</p>
+    <sp>none</sp>
+    <pct>100</pct>
+  </policy_published>
+  <record>
+    <row>
+      <source_ip>1.2.3.4</source_ip>
+      <count>1</count>
+      <policy_evaluated>
+        <disposition>none</disposition>
+        <dkim>pass</dkim>
+        <spf>pass</spf>
+      </policy_evaluated>
+    </row>
+    <identifiers>
+      <header_from>example.com</header_from>
+    </identifiers>
+    <auth_results>
+      <spf>
+        <domain>example.com</domain>
+        <scope>mfrom</scope>
+        <result>pass</result>
+      </spf>
+      <dkim>
+        <domain>example.com</domain>
+        <selector>default</selector>
+        <result>pass</result>
+      </dkim>
+    </auth_results>
+  </record>
+</feedback>
