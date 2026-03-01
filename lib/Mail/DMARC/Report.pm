@@ -2,7 +2,7 @@ package Mail::DMARC::Report;
 use strict;
 use warnings;
 
-our $VERSION = '1.20260226';
+our $VERSION = '1.20260301';
 
 use Carp;
 use IO::Compress::Gzip;
@@ -89,7 +89,7 @@ Mail::DMARC::Report - A DMARC report interface
 
 =head1 VERSION
 
-version 1.20260226
+version 1.20260301
 
 =head1 DESCRIPTION
 
