@@ -20,6 +20,8 @@ test_from_email_file();
 test_from_file_xml();
 test_from_file_gzip();
 test_from_file_zip();
+test_from_file_errors();
+test_get_submitter_from_filename();
 test_get_submitter_from_subject();
 test_from_imap();
 
@@ -65,6 +67,37 @@ sub test_get_submitter_from_subject {
         cmp_ok( $recv->get_submitter_from_subject($subject),
             'eq', $dom, "get_submitter_from_subject, $dom" );
     }
+
+    # Test UUID handling
+    $recv->report->init();
+    my $meta = $recv->report->aggregate->metadata;
+    $recv->get_submitter_from_subject(
+        'Subject: Report Domain: example.com Submitter: sender.example Report-ID: <uuid-test>'
+    );
+    is( $meta->uuid, 'uuid-test', 'subject parser sets metadata uuid' );
+}
+
+sub test_get_submitter_from_filename {
+    $recv->{_envelope_to} = undef;
+    $recv->{_header_from} = undef;
+
+    my $result = $recv->get_submitter_from_filename('submit.example!report.example!1!2');
+    is( $result, 'submit.example', 'filename parser extracts envelope submitter' );
+    is( $recv->{_header_from}, 'report.example', 'filename parser sets header from domain' );
+
+    # Test early return when submitter already set
+    $recv->{_envelope_to} = 'existing.submitter';
+    my $should_be_undef = $recv->get_submitter_from_filename('new.submitter!new.header!1!2');
+    ok( !defined($should_be_undef), 'filename parser returns early when submitter already set' );
+    is( $recv->{_envelope_to}, 'existing.submitter', 'existing submitter is preserved' );
+}
+
+sub test_from_file_errors {
+    eval { $recv->from_file() };
+    like( $@, qr/missing message/i, 'from_file croaks when file argument is missing' );
+
+    eval { $recv->from_file('t/fixtures/not-there.xml') };
+    like( $@, qr/no such file/i, 'from_file croaks for missing file path' );
 }
 
 sub test_from_file_xml {
