@@ -32,9 +32,11 @@ test_disposition();
 test_dkim();
 test_dkim_align();
 test_spf();
+test_spf_align();
 test_result();
 test_reason();
 test_dkim_meta();
+test_published_errors();
 
 done_testing();
 exit;
@@ -260,6 +262,17 @@ sub test_dkim_align {
 
 sub test_dkim_meta {
     ok( $result->dkim_meta( { domain => 'test' } ), "dkim_meta" );
+}
+
+sub test_published_errors {
+    my $res = Mail::DMARC::Result->new;
+
+    eval { $res->published() };
+    like( $@, qr/no policy discovered/i, 'published croaks when policy not set' );
+
+    eval { $res->published( {} ) };
+    like( $@, qr/tag the policy object with a domain/i,
+        'published croaks when policy has no domain' );
 }
 
 sub test_spf {

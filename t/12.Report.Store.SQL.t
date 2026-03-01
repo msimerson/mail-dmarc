@@ -264,11 +264,32 @@ sub test_retrieve {
     my $r_excl_author = $sql->retrieve( author => '!Test Company' );
     ok( scalar @$r_excl_author < scalar @$r || scalar @$r_excl_author == 0,
         "retrieve, negate author excludes matching records" );
+
+    my $r_sorted = $sql->retrieve( sort_by => 'author', sort_order => 'ASC', limit => 1 );
+    ok( ref($r_sorted) eq 'ARRAY' && scalar @$r_sorted <= 1,
+        'retrieve supports sort and limit' );
+
+    my $r_fallback = $sql->retrieve( sort_by => 'bogus', sort_order => 'invalid', limit => 1 );
+    ok( ref($r_fallback) eq 'ARRAY',
+        'retrieve falls back to default sort options for invalid values' );
+
+    eval { $sql->retrieve( limit => 0 ) };
+    like( $@, qr/limit must be a positive integer/i,
+        'retrieve croaks when limit is zero' );
+
+    eval { $sql->retrieve( limit => 'abc' ) };
+    like( $@, qr/limit must be a positive integer/i,
+        'retrieve croaks when limit is non-numeric' );
 }
 
 sub test_retrieve_todo {
     my $r = $sql->retrieve_todo();
     ok( $r, "retrieve_todo");
+    for ( 1 .. scalar @$r ) {
+        ok( $sql->next_todo(), 'next_todo returns cached report' );
+    }
+    ok( !defined $sql->next_todo(), 'next_todo returns undef when cached list is exhausted' );
+    ok( !exists $sql->{_todo_list}, 'next_todo clears exhausted cache' );
     # warn Dumper($r);
     # die $r->as_xml;
 }
