@@ -1,3 +1,7 @@
+
+- dmarc_view_reports: --geoip fixed
+- dmarc_view_reports: add --limit and --sort options
+
 ### 1.20260301
 
 - dmarc_receive: support gzip, zip, and XML files #277
