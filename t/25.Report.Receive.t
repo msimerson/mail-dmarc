@@ -68,7 +68,7 @@ sub test_get_submitter_from_subject {
 }
 
 sub test_from_file_xml {
-    my $file = 't/test_dmarc.xml';
+    my $file = 't/fixtures/test_dmarc.xml';
     return if !-f $file;
 
     eval "require DBD::SQLite";
@@ -87,7 +87,7 @@ sub test_from_file_xml {
 }
 
 sub test_from_file_gzip {
-    my $file = 't/test_dmarc.xml.gz';
+    my $file = 't/fixtures/test_dmarc.xml.gz';
     return if !-f $file;
 
     eval "require DBD::SQLite";
@@ -106,7 +106,7 @@ sub test_from_file_gzip {
 }
 
 sub test_from_file_zip {
-    my $file = 't/test_dmarc.xml.zip';
+    my $file = 't/fixtures/test_dmarc.xml.zip';
     return if !-f $file;
 
     eval "require DBD::SQLite";
