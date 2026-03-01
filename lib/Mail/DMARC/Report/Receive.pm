@@ -9,6 +9,7 @@ use Data::Dumper;
 use Email::MIME;
 use Email::Simple;
 use Encode;
+use File::Basename;
 use IO::Uncompress::Unzip;
 use IO::Uncompress::Gunzip;
 use Module::Load;
@@ -103,7 +104,43 @@ sub from_file {
     my ( $self, $file ) = @_;
     croak "missing message" if !$file;
     croak "No such file $file: $!" if !-f $file;
-    return $self->from_email_simple(Email::Simple->new( $self->slurp($file) ) );
+
+    my $contents = $self->slurp($file);
+
+    # Detect gzip by magic bytes \x1f\x8b
+    if ( substr($contents, 0, 2) eq "\x1f\x8b" ) {
+        my $xml;
+        IO::Uncompress::Gunzip::gunzip( \$contents, \$xml )
+            or croak "gunzip failed: $IO::Uncompress::Gunzip::GunzipError";
+        $self->_init_for_file($file);
+        return $self->handle_body($xml) ? 'aggregate' : undef;
+    }
+
+    # Detect zip by magic bytes PK\x03\x04
+    if ( substr($contents, 0, 4) eq "PK\x03\x04" ) {
+        my $xml;
+        IO::Uncompress::Unzip::unzip( \$contents, \$xml )
+            or croak "unzip failed: $IO::Uncompress::Unzip::UnzipError";
+        $self->_init_for_file($file);
+        return $self->handle_body($xml) ? 'aggregate' : undef;
+    }
+
+    # Detect XML by content (starts with optional BOM/whitespace then '<')
+    if ( $contents =~ /\A(?:\xef\xbb\xbf)?\s*</ ) {
+        $self->_init_for_file($file);
+        return $self->handle_body($contents) ? 'aggregate' : undef;
+    }
+
+    return $self->from_email_simple(Email::Simple->new($contents));
+}
+
+sub _init_for_file {
+    my ( $self, $file ) = @_;
+    $self->report->init();
+    $self->{_envelope_to} = undef;
+    $self->{_header_from} = undef;
+    $self->get_submitter_from_filename( File::Basename::basename($file) );
+    return;
 }
 
 sub from_mbox {
@@ -427,7 +464,23 @@ Receive DMARC reports and save them to the report store/database.
 
 =head2 from_imap, from_file, from_mbox
 
-These methods are called by L<dmarc_receive> program, which has its own documentation and usage instructions. The methods accept a message (or list of messages) and create an Email::Simple object from each, passing that object to from_email_simple.
+These methods are called by L<dmarc_receive> program, which has its own documentation and usage instructions.
+
+C<from_file> accepts a file path and auto-detects the file type:
+
+=over 4
+
+=item * B<gzip> (magic bytes C<\x1f\x8b>) - decompresses with L<IO::Uncompress::Gunzip> and parses as XML
+
+=item * B<zip> (magic bytes C<PK\x03\x04>) - decompresses with L<IO::Uncompress::Unzip> and parses as XML
+
+=item * B<XML> (content starting with C<E<lt>>) - parses directly
+
+=item * B<email message> - falls back to passing the file to from_email_simple
+
+=back
+
+C<from_imap> and C<from_mbox> accept a message (or list of messages) and create an Email::Simple object from each, passing that object to from_email_simple.
 
 =head2 from_email_simple
 

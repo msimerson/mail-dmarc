@@ -17,6 +17,9 @@ isa_ok( $recv, $mod );
 $recv->config('t/mail-dmarc.ini');
 
 test_from_email_file();
+test_from_file_xml();
+test_from_file_gzip();
+test_from_file_zip();
 test_get_submitter_from_subject();
 test_from_imap();
 
@@ -61,6 +64,63 @@ sub test_get_submitter_from_subject {
         my $subject = $subjects{$dom};
         cmp_ok( $recv->get_submitter_from_subject($subject),
             'eq', $dom, "get_submitter_from_subject, $dom" );
+    }
+}
+
+sub test_from_file_xml {
+    my $file = 't/test_dmarc.xml';
+    return if !-f $file;
+
+    eval "require DBD::SQLite";
+    if ($@) {
+        SKIP: { skip 'DBD::SQLite not available', 1 }
+        return;
+    }
+
+    my $result = eval { $recv->from_file($file) };
+    if ($@) {
+        diag "from_file XML failed: $@";
+        ok(0, "from_file with XML file");
+    } else {
+        cmp_ok( $result, 'eq', 'aggregate', "from_file with XML file" );
+    }
+}
+
+sub test_from_file_gzip {
+    my $file = 't/test_dmarc.xml.gz';
+    return if !-f $file;
+
+    eval "require DBD::SQLite";
+    if ($@) {
+        SKIP: { skip 'DBD::SQLite not available', 1 }
+        return;
+    }
+
+    my $result = eval { $recv->from_file($file) };
+    if ($@) {
+        diag "from_file gzip failed: $@";
+        ok(0, "from_file with gzip file");
+    } else {
+        cmp_ok( $result, 'eq', 'aggregate', "from_file with gzip file" );
+    }
+}
+
+sub test_from_file_zip {
+    my $file = 't/test_dmarc.xml.zip';
+    return if !-f $file;
+
+    eval "require DBD::SQLite";
+    if ($@) {
+        SKIP: { skip 'DBD::SQLite not available', 1 }
+        return;
+    }
+
+    my $result = eval { $recv->from_file($file) };
+    if ($@) {
+        diag "from_file zip failed: $@";
+        ok(0, "from_file with zip file");
+    } else {
+        cmp_ok( $result, 'eq', 'aggregate', "from_file with zip file" );
     }
 }
 

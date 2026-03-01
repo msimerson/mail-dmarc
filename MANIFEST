@@ -82,6 +82,9 @@ t/backends/mail-dmarc.sql.mysql.ini
 t/backends/mail-dmarc.sql.Pg.ini
 t/backends/mail-dmarc.sql.SQLite.ini
 t/mail-dmarc.ini
+t/test_dmarc.xml
+t/test_dmarc.xml.gz
+t/test_dmarc.xml.zip
 t/whitelist
 TODO.md
 xt/author-critic.t
