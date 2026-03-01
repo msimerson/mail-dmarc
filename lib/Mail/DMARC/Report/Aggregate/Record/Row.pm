@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Aggregate::Record::Row;
-our $VERSION = '1.20260226';
+our $VERSION = '1.20260301';
 use strict;
 use warnings;
 
@@ -56,7 +56,7 @@ Mail::DMARC::Report::Aggregate::Record::Row - row section of a DMARC aggregate r
 
 =head1 VERSION
 
-version 1.20260226
+version 1.20260301
 
 =head1 AUTHORS
 

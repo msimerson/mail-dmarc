@@ -1,3 +1,10 @@
+### 1.20260301
+
+- dmarc_receive: support gzip, zip, and XML files #277
+- dmarc_view_reports: add --rid filter #276
+- dmarc_view_reports: add negation support in filters #275
+- fix(sp): base effective policy on request domain #273
+
 ### 1.20260226
 
 - feat: replace jqGrid with DataTables in web UI #269
