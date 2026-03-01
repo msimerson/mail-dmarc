@@ -8,6 +8,7 @@ use Pod::Usage;
 $|++;
 
 my %command_line_options = (
+    'rid:s'         => \my $rid,
     'author:s'      => \my $author,
     'from_dom:s'    => \my $from,
     'begin:s'       => \my $begin,
@@ -28,6 +29,7 @@ my $gip;
 pod2usage if $help;
 
 my $reports = $report->store->retrieve(
+        (defined $rid       ? (rid        => $rid      ) : () ),
         (defined $from      ? (from_domain => $from     ) : () ),
         (defined $author    ? (author      => $author   ) : () ),
         (defined $begin     ? (begin       => $begin    ) : () ),
@@ -174,6 +176,7 @@ Dumps the contents of the DMARC data store to your terminal. The most recent rec
 
 =head2 Search Options
 
+    rid          - report ID (internal database ID)
     author       - report author (Yahoo! Inc, google.com, etc..)
     from_dom     - message sender domain
     begin        - epoch start time to display messages after
@@ -196,6 +199,10 @@ For example, C<--author=!google.com> will exclude reports authored by google.com
     verbose      - print additional debug info
 
 =head1 EXAMPLES
+
+To view a specific report by its ID:
+
+  dmarc_view_reports --rid=560
 
 To search for all reports from google.com that failed DMARC alignment:
 
