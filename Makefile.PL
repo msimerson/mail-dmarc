@@ -37,6 +37,7 @@ my %META = (
     "runtime" => {
       "recommends" => {
         "CGI" => 0,
+        "GeoIP2" => 0,
         "HTTP::Request" => 0,
         "JSON" => 0,
         "LWP::UserAgent" => 0,
