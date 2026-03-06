@@ -4,6 +4,7 @@ bin/dmarc_httpd
 bin/dmarc_lookup
 bin/dmarc_receive
 bin/dmarc_send_reports
+bin/dmarc_sqlite_to_mysql.pl
 bin/dmarc_update_public_suffix_list
 bin/dmarc_view_reports
 bin/install_deps.pl
@@ -82,9 +83,6 @@ t/backends/mail-dmarc.sql.mysql.ini
 t/backends/mail-dmarc.sql.Pg.ini
 t/backends/mail-dmarc.sql.SQLite.ini
 t/mail-dmarc.ini
-t/fixtures/test_dmarc.xml
-t/fixtures/test_dmarc.xml.gz
-t/fixtures/test_dmarc.xml.zip
 t/whitelist
 TODO.md
 xt/author-critic.t

@@ -1,8 +1,10 @@
 #!/bin/sh
 
-. .release/base.sh || exit
+set -e
 
-assure_repo_is_clean || exit
+. .release/base.sh
+
+assure_repo_is_clean
 
 NEWVER="$(get_version)"
 
@@ -31,9 +33,18 @@ update_meta()
     git add META.*
 }
 
+update_makefile()
+{
+    sed -i '' \
+        -e "/\"VERSION\" =>/ s/=> \".*\"/=> \"$NEWVER\"/" \
+        Makefile.PL
+    git add Makefile.PL
+}
+
 update_modules
 update_readme
 update_meta
+update_makefile
 
 if ! repo_is_clean; then
     git status

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 . .release/base.sh || exit
 
 assure_repo_is_clean || exit
