@@ -1,7 +1,22 @@
+# Drop dependent tables first (reverse dependency order) before dropping report
+DROP TABLE IF EXISTS `report_record_spf`;
+DROP TABLE IF EXISTS `report_record_dkim`;
+DROP TABLE IF EXISTS `report_record_reason`;
+DROP TABLE IF EXISTS `report_record`;
+DROP TABLE IF EXISTS `report_policy_published`;
+DROP TABLE IF EXISTS `report_error`;
+DROP TABLE IF EXISTS `report`;
+DROP TABLE IF EXISTS `fk_spf_scope`;
+DROP TABLE IF EXISTS `fk_spf_result`;
+DROP TABLE IF EXISTS `fk_dkim_result`;
+DROP TABLE IF EXISTS `fk_disposition_reason`;
+DROP TABLE IF EXISTS `fk_disposition`;
+DROP TABLE IF EXISTS `domain`;
+DROP TABLE IF EXISTS `author`;
+
+
 # Dump of table author
 # ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `author`;
 
 CREATE TABLE `author` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -16,8 +31,6 @@ CREATE TABLE `author` (
 # Dump of table domain
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `domain`;
-
 CREATE TABLE `domain` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `domain` varchar(253) NOT NULL DEFAULT '',
@@ -26,7 +39,24 @@ CREATE TABLE `domain` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `report_error`;
+# Dump of table report
+# ------------------------------------------------------------
+
+CREATE TABLE `report` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `begin` int(11) unsigned NOT NULL,
+  `end` int(11) unsigned NOT NULL,
+  `author_id` int(11) unsigned NOT NULL,
+  `rcpt_domain_id` int(11) unsigned DEFAULT NULL,
+  `from_domain_id` int(11) unsigned NOT NULL,
+  `uuid` varchar(253) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `author_id` (`author_id`),
+  KEY `from_domain_id` (`from_domain_id`),
+  CONSTRAINT `report_ibfk_3` FOREIGN KEY (`from_domain_id`) REFERENCES `domain` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `report_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `author` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=ascii;
+
 
 CREATE TABLE `report_error` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -41,8 +71,6 @@ CREATE TABLE `report_error` (
 
 # Dump of table fk_disposition
 # ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `fk_disposition`;
 
 CREATE TABLE `fk_disposition` (
   `disposition` varchar(10) NOT NULL DEFAULT '',
@@ -64,8 +92,6 @@ UNLOCK TABLES;
 
 # Dump of table fk_disposition_reason
 # ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `fk_disposition_reason`;
 
 CREATE TABLE `fk_disposition_reason` (
   `type` varchar(24) NOT NULL DEFAULT '',
@@ -90,8 +116,6 @@ UNLOCK TABLES;
 
 # Dump of table fk_dkim_result
 # ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `fk_dkim_result`;
 
 CREATE TABLE `fk_dkim_result` (
   `result` varchar(9) NOT NULL DEFAULT '',
@@ -118,8 +142,6 @@ UNLOCK TABLES;
 # Dump of table fk_spf_result
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `fk_spf_result`;
-
 CREATE TABLE `fk_spf_result` (
   `result` varchar(9) NOT NULL DEFAULT '',
   PRIMARY KEY (`result`)
@@ -145,8 +167,6 @@ UNLOCK TABLES;
 # Dump of table fk_spf_scope
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `fk_spf_scope`;
-
 CREATE TABLE `fk_spf_scope` (
   `scope` varchar(5) NOT NULL DEFAULT '',
   PRIMARY KEY (`scope`)
@@ -164,31 +184,8 @@ VALUES
 UNLOCK TABLES;
 
 
-# Dump of table report
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `report`;
-
-CREATE TABLE `report` (
-  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `begin` int(11) unsigned NOT NULL,
-  `end` int(11) unsigned NOT NULL,
-  `author_id` int(11) unsigned NOT NULL,
-  `rcpt_domain_id` int(11) unsigned DEFAULT NULL,
-  `from_domain_id` int(11) unsigned NOT NULL,
-  `uuid` varchar(253) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `author_id` (`author_id`),
-  KEY `from_domain_id` (`from_domain_id`),
-  CONSTRAINT `report_ibfk_3` FOREIGN KEY (`from_domain_id`) REFERENCES `domain` (`id`) ON UPDATE CASCADE,
-  CONSTRAINT `report_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `author` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=ascii;
-
-
 # Dump of table report_policy_published
 # ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `report_policy_published`;
 
 CREATE TABLE `report_policy_published` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -208,8 +205,6 @@ CREATE TABLE `report_policy_published` (
 
 # Dump of table report_record
 # ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `report_record`;
 
 CREATE TABLE `report_record` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -234,8 +229,6 @@ CREATE TABLE `report_record` (
 # Dump of table report_record_reason
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `report_record_reason`;
-
 CREATE TABLE `report_record_reason` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `report_record_id` int(11) unsigned NOT NULL,
@@ -252,8 +245,6 @@ CREATE TABLE `report_record_reason` (
 
 # Dump of table report_record_dkim
 # ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `report_record_dkim`;
 
 CREATE TABLE `report_record_dkim` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -273,8 +264,6 @@ CREATE TABLE `report_record_dkim` (
 
 # Dump of table report_record_spf
 # ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `report_record_spf`;
 
 CREATE TABLE `report_record_spf` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
