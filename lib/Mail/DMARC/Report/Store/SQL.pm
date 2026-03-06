@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL;
-our $VERSION = '1.20260301';
+our $VERSION = '1.20260306';
 use strict;
 use warnings;
 
@@ -428,11 +428,11 @@ sub row_exists {
 }
 
 sub insert_agg_record {
-    my ($self, $row_id, $rec) = @_;
+    my ($self, $report_id, $rec) = @_;
 
-    return 1 if $self->row_exists( $row_id, $rec);
+    return 1 if $self->row_exists( $report_id, $rec);
 
-    $row_id = $self->insert_rr( $row_id, $rec )
+    my $row_id = $self->insert_rr( $report_id, $rec )
         or croak "failed to insert report row";
 
     my $reasons = $rec->row->policy_evaluated->reason;
@@ -716,7 +716,7 @@ Mail::DMARC::Report::Store::SQL - store and retrieve reports from a SQL RDBMS
 
 =head1 VERSION
 
-version 1.20260301
+version 1.20260306
 
 =head1 DESCRIPTION
 

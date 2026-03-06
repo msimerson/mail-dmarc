@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 get_version()
 {
     echo "1.$(date '+%Y%m%d')"

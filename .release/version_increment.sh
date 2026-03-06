@@ -1,8 +1,10 @@
 #!/bin/sh
 
-. .release/base.sh || exit
+set -e
 
-assure_repo_is_clean || exit
+. .release/base.sh
+
+assure_repo_is_clean
 
 NEWVER="$(get_version)"
 
@@ -38,6 +40,5 @@ update_meta
 if ! repo_is_clean; then
     git status
     git add .
+    git commit -m "release version $NEWVER"
 fi
-
-git commit -m "release version $NEWVER"

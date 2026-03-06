@@ -1,8 +1,10 @@
 #!/bin/sh
 
-. .release/base.sh || exit
+set -e
 
-assure_repo_is_clean || exit
+. .release/base.sh
+
+assure_repo_is_clean
 
 pod2markdown --perldoc-url-prefix=sco lib/Mail/DMARC.pm > README.md
 

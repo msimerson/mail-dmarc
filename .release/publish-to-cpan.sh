@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 if [ -n "$PERL_PUBLISH_SETUP" ]; then
 	perl -MCPAN -e 'install Module::Build'
 	perl -MCPAN -e 'install Mozilla::CA'

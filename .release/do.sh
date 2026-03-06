@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 # shellcheck source=.release/base.sh
 . .release/base.sh
 

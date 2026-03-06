@@ -1,8 +1,10 @@
 #!/bin/sh
 
-. .release/base.sh || exit
+set -e
 
-assure_repo_is_clean || exit
+. .release/base.sh
+
+assure_repo_is_clean
 
 curl -o share/public_suffix_list https://publicsuffix.org/list/effective_tld_names.dat
 

@@ -10,7 +10,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 # VERSION
 
-version 1.20260301
+version 1.20260306
 
 # SYNOPSIS
 
