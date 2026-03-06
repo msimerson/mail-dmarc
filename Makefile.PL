@@ -173,6 +173,7 @@ my %MM_ARGS = (
   "ABSTRACT" => "Perl implementation of DMARC",
   "AUTHOR" => "Matt Simerson <msimerson\@cpan.org>, Davide Migliavacca <shari\@cpan.org>, Marc Bradshaw <marc\@marcbradshaw.net>",
   "DISTNAME" => "Mail-DMARC",
+  "VERSION_FROM" => "lib/Mail/DMARC.pm",
   "EXE_FILES" => [
     "bin/dmarc_update_public_suffix_list",
     "bin/dmarc_send_reports",
@@ -193,7 +194,6 @@ my %MM_ARGS = (
     ],
   },
   "MIN_PERL_VERSION" => "5.008",
-  "VERSION" => "1.20260306",
   "test" => {
     "TESTS" => "t/*.t"
   },
