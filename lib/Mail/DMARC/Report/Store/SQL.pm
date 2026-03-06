@@ -575,6 +575,7 @@ sub db_connect {
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::SQLite->new();
     } elsif ($dsn =~ /mysql/i) {
         $opts{'mysql_enable_utf8mb4'} = 1;
+        $opts{'mysql_ssl'} = 1;
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::MySQL->new();
     } elsif ($dsn =~ /pg/i) {
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL->new();
