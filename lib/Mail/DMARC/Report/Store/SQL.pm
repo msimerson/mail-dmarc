@@ -428,11 +428,11 @@ sub row_exists {
 }
 
 sub insert_agg_record {
-    my ($self, $row_id, $rec) = @_;
+    my ($self, $report_id, $rec) = @_;
 
-    return 1 if $self->row_exists( $row_id, $rec);
+    return 1 if $self->row_exists( $report_id, $rec);
 
-    $row_id = $self->insert_rr( $row_id, $rec )
+    my $row_id = $self->insert_rr( $report_id, $rec )
         or croak "failed to insert report row";
 
     my $reasons = $rec->row->policy_evaluated->reason;
@@ -575,7 +575,6 @@ sub db_connect {
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::SQLite->new();
     } elsif ($dsn =~ /mysql/i) {
         $opts{'mysql_enable_utf8mb4'} = 1;
-        $opts{'mysql_ssl'} = 1;
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::MySQL->new();
     } elsif ($dsn =~ /pg/i) {
         $self->{grammar} = Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL->new();

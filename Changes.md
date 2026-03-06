@@ -1,3 +1,4 @@
+### 1.20260306
 
 - dmarc_sqlite_to_mysql: added new script
 - mysql: enable SSL for newer MySQL. Fix schema for new import.
