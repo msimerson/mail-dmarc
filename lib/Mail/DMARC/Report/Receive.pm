@@ -206,31 +206,45 @@ sub from_email_simple {
         my $filename = $part->{ct}{attributes}{name} || '';
 
         if ( $c_type eq 'application/zip' || $c_type eq 'application/x-zip-compressed' ) {
-            $self->get_submitter_from_filename( $filename );
-            $unzipper->{zip}->( \$part->body, \$bigger );
-            $self->handle_body($bigger);
-            $rep_type = 'aggregate';
+            eval {
+                $self->get_submitter_from_filename( $filename );
+                $unzipper->{zip}->( \$part->body, \$bigger );
+                $self->handle_body($bigger);
+                $rep_type = 'aggregate';
+            } or do {
+                warn "failure processing $filename: $@";
+            };
             next;
         }
         if ( $c_type eq 'application/gzip' ) {
-            $self->get_submitter_from_filename( $filename );
-            $unzipper->{gz}->( \$part->body, \$bigger );
-            $self->handle_body($bigger);
-            $rep_type = 'aggregate';
+            eval {
+                $self->get_submitter_from_filename( $filename );
+                $unzipper->{gz}->( \$part->body, \$bigger );
+                $self->handle_body($bigger);
+                $rep_type = 'aggregate';
+            } or do {
+                warn "failure processing $filename: $@";
+            };
             next;
         }
         if ( $filename =~ /xml\.gz$/ ) {
             if ( $c_type eq 'application/octet-stream' ||
                  $c_type eq 'multipart/alternative' ) {
-
-                $self->get_submitter_from_filename( $filename );
-                $unzipper->{gz}->( \$part->body, \$bigger );
-                $self->handle_body($bigger);
-                $rep_type = 'aggregate';
+                eval {
+                    $self->get_submitter_from_filename( $filename );
+                    $unzipper->{gz}->( \$part->body, \$bigger );
+                    $self->handle_body($bigger);
+                    $rep_type = 'aggregate';
+                } or do {
+                    warn "failure processing $filename: $@";
+                };
                 next;
             }
         }
-        if ($c_type ne 'multipart/alternative') {
+
+        if ($c_type eq 'multipart/alternative') {
+        } elsif ($c_type eq 'multipart/related') {
+        } else {
             warn "Unknown message part $c_type\n";  ## no critic (Carp)
         }
     }

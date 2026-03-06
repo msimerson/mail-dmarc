@@ -18,3 +18,4 @@ Mail-DMARC-*
 t/reports-test.sqlite
 dmarc_reports.sqlite
 *.bak
+mail-dmarc.ini

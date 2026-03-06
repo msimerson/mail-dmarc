@@ -1,4 +1,5 @@
 
+- dmarc_receive: eval un(g)zip, so imperfect archives don't interrupt loop
 - dmarc_view_reports: --geoip fixed
 - dmarc_view_reports: add --limit and --sort options
 
