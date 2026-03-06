@@ -40,6 +40,5 @@ update_meta
 if ! repo_is_clean; then
     git status
     git add .
+    git commit -m "release version $NEWVER"
 fi
-
-git commit -m "release version $NEWVER"
