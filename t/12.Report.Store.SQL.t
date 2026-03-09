@@ -217,7 +217,7 @@ sub test_populate_agg_metadata {
             'email' => 'noreply@example.com',
             'extra_contact_info' => 'http://www.example.com/dmarc-policy/',
             'org_name' => 'My Great Company',
-            'report_id' => 2,
+            'report_id' => $report_id,
         },
         "populate_agg_metadata, deeply" ) or diag Dumper($agg);
 }
@@ -242,7 +242,7 @@ sub test_retrieve {
     ok( scalar @$r, "retrieve, " . scalar @$r );
 
     my %tests = (
-        rid         => 2,
+        rid         => $report_id,
         author      => 'Test Company',
         from_domain => 'recip.example.com',
         begin       => $begin,
