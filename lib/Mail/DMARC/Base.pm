@@ -285,6 +285,7 @@ sub is_valid_domain {
     return 1 if $self->is_public_suffix($tld);
     return 0 if $domain eq 'localhost';
     return 0 if $tld eq 'localdomain';
+    return 0 if -1 == index($domain, '.');
     $tld = join( '.', ( split /\./, $domain )[ -2, -1 ] );
     return 1 if $self->is_public_suffix($tld);
     return 0;
