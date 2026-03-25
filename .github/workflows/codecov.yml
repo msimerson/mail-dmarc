@@ -1,6 +1,8 @@
 name: Coverage Test
 
-on: [ push, pull_request ]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   perl_tester:
@@ -46,7 +48,6 @@ jobs:
             Test::File::ShareDir
             Test::Output
             Test::Exception
-            Net::IDN::Encode
             CGI
             XML::Validator::Schema
             Devel::Cover::Report::Coveralls

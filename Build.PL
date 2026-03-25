@@ -52,7 +52,6 @@ my $module_build_args = {
     "IO::Uncompress::Unzip" => 0,
     "Module::Load" => 0,
     "Net::DNS::Resolver" => 0,
-    "Net::IDN::Encode" => 0,
     "Net::IP" => 0,
     "Net::SSLeay" => 0,
     "POSIX" => 0,
