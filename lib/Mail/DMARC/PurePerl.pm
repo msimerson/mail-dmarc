@@ -15,6 +15,7 @@ sub init {
     $self->{envelope_to} = undef;
     $self->{envelope_from} = undef;
     $self->{source_ip} = undef;
+    $self->{sender} = undef;
     $self->{policy} = undef;
     $self->{result} = undef;
     $self->{report} = undef;
@@ -264,10 +265,16 @@ sub is_spf_aligned {
 
     my @spf_results;
     if ($spf_dom) {
-        push @spf_results, { domain => lc $spf_dom, result => 'pass' };
+        push @spf_results, { domain => lc $spf_dom, result => 'pass', scope => 'mfrom' };
     }
     else {
-        @spf_results = @{ $self->spf };
+        my @all_results = @{ $self->spf };
+        # RFC 7489 §4.3.2: only RFC5321.MailFrom (mfrom) is used for DMARC SPF
+        # alignment. EHLO/HELO is not used. Results with no scope specified are
+        # treated as mfrom for backward compatibility.
+        @spf_results = grep {
+            !defined $_->{scope} || lc $_->{scope} ne 'helo'
+        } @all_results;
     }
 
     foreach my $res (@spf_results) {
@@ -312,6 +319,11 @@ sub is_whitelisted {
     return if ! $self->{_whitelist}{$s_ip};
 
     my ($type, $comment) = split /\s+/, $self->{_whitelist}{$s_ip}, 2;
+    # Validate type against RFC 7489 PolicyOverrideType enum
+    my @valid_reason_types = qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /;
+    if ( !$type || !grep { $_ eq lc $type } @valid_reason_types ) {
+        $type = 'other';
+    }
     $self->result->disposition('none');
     $self->result->reason(
             type => $type,
@@ -475,15 +487,29 @@ sub get_from_dom {
         return;
     };
 
-    # TODO: the From header can contain multiple addresses and should be
-    # parsed as described in RFC 2822. If From has multiple-addresses,
-    # then parse and use the domain in the Sender header.
+    # RFC 7489 §5.6.1: if From contains multiple addresses with different
+    # domains, use the Sender header domain. Caller should set $dmarc->sender.
+    my @domains;
+    while ( $header =~ /\@([\w][\w.-]*)/g ) {
+        my $dom = lc $1;
+        $dom =~ s/[>;\s,].*$//;
+        push @domains, $dom if $dom;
+    }
+    my %unique_doms = map { $_ => 1 } @domains;
+    if ( keys %unique_doms > 1 ) {
+        if ( $self->sender ) {
+            my $sender_dom = $self->to_ascii_domain( $self->sender );
+            return $self->header_from($sender_dom);
+        }
+        $self->result->result('none');
+        $self->result->reason(
+            type    => 'other',
+            comment => 'multiple RFC5322.From domains; provide Sender header via $dmarc->sender',
+        );
+        return;
+    }
 
-    # This returns only the domain in the last email address.
     # Caller can pass in pre-parsed from_dom if this doesn't suit them.
-    #
-    # I care only about the domain. This is way faster than RFC2822 parsing
-
     my ($from_dom) = ( split /@/, $header )[-1]; # grab everything after the @
     ($from_dom) = split /(\s+|>)/, lc $from_dom; # remove trailing cruft
     if ( !$from_dom ) {
@@ -493,6 +519,10 @@ sub get_from_dom {
         );
         return;
     }
+
+    # RFC 8616 §6: convert U-labels to A-labels before DNS lookups
+    $from_dom = $self->to_ascii_domain($from_dom);
+
     return $self->header_from($from_dom);
 }
 
@@ -512,17 +542,32 @@ sub external_report {
             return 0;
         };
         print "$dest_host is external for $dmarc_dom\n" if $self->verbose;
+        return 1;
     }
 
-    if ( 'http' eq $uri->scheme ) {
-        if ($uri->host eq $dmarc_dom ) {
+    if ( $uri->scheme =~ /^https?$/ ) {
+        if ( $uri->host eq $dmarc_dom ) {
             print $uri->host ." not external for $dmarc_dom\n" if $self->verbose;
             return 0;
         };
         print $uri->host ." is external for $dmarc_dom\n" if $self->verbose;
+        return 1;
     }
 
     return 1;
+}
+
+sub _uri_authority_host {
+    my ($uri) = @_;
+    my $scheme = $uri->scheme // '';
+    if ( $scheme eq 'mailto' ) {
+        my $path = $uri->path or return;
+        return ( split /@/, $path )[-1];
+    }
+    elsif ( $scheme =~ /^https?$/ ) {
+        return $uri->host;
+    }
+    return;
 }
 
 sub verify_external_reporting {
@@ -534,8 +579,21 @@ sub verify_external_reporting {
     my $dmarc_dom = $self->result->published->domain
         or croak "published policy not tagged!";
 
-    my $dest_email = $uri_ref->{uri}->path or croak("invalid URI");
-    my ($dest_host) = ( split /@/, $dest_email )[-1];
+    #  1.  Extract the host portion of the authority component of the URI.
+    my $dest_host;
+    my $scheme = $uri_ref->{uri}->scheme // '';
+    if ( $scheme eq 'mailto' ) {
+        my $path = $uri_ref->{uri}->path or croak "invalid mailto URI";
+        ($dest_host) = ( split /@/, $path )[-1];
+    }
+    elsif ( $scheme =~ /^https?$/ ) {
+        $dest_host = $uri_ref->{uri}->host or croak "invalid $scheme URI";
+    }
+    else {
+        print "\tunsupported URI scheme '$scheme' for external verification\n"
+            if $self->verbose;
+        return;
+    }
 
     #  2.  Prepend the string "_report._dmarc".
     #  3.  Prepend the domain name from which the policy was retrieved,
@@ -573,13 +631,11 @@ sub verify_external_reporting {
     my @overrides = grep { ref $_ && $_->{rua} } @matches;
     foreach my $or (@overrides) {
         my $recips_ref = $self->report->uri->parse( $or->{rua} ) or next;
-        if ( ( split /@/, $recips_ref->[0]{uri} )[-1] eq
-            ( split /@/, $uri_ref->{uri} )[-1] )
-        {
-  # the overriding URI MUST use the same destination host from the first step.
-            print "found override RUA: $or->{rua}\n" if $self->verbose;
-            $self->result->published->rua( $or->{rua} );
-        }
+        # the overriding URI MUST use the same destination host from step 1.
+        my $override_host = _uri_authority_host( $recips_ref->[0]{uri} );
+        next unless defined $override_host && $override_host eq $dest_host;
+        print "found override RUA: $or->{rua}\n" if $self->verbose;
+        $self->result->published->rua( $or->{rua} );
     }
 
     return @matches;

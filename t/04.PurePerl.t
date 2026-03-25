@@ -245,8 +245,9 @@ sub get_test_headers {
         'user@example.com'                              => 'example.com',
         '<user@example.com>'                            => 'example.com',
         ' <user@example.com > '                         => 'example.com',
-        'Sample User <user@example.com>,Sample2<user@example2.com>' =>
-            'example2.com',
+        # RFC 7489 §5.6.1: multiple From domains require Sender header;
+        # without $dmarc->sender set, get_from_dom returns undef (outside scope)
+        'Sample User <user@example.com>,Sample2<user@example2.com>' => '',
         'From: "Test 1.1.5"'                            => '',
     );
 }

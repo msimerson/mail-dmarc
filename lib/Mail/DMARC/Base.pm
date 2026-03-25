@@ -271,6 +271,21 @@ sub set_resolver {
     return;
 }
 
+sub to_ascii_domain {
+    my ($self, $domain) = @_;
+    return $domain unless $domain =~ /[^\x00-\x7F]/;  # fast path: ASCII only
+    # Convert each U-label to its A-label (punycode) equivalent per RFC 8616 §6
+    my @ascii_labels = map {
+        if ( /[^\x00-\x7F]/ ) {
+            my $ascii = eval { URI::_idna::encode($_) };
+            $ascii // $_;
+        } else {
+            $_;
+        }
+    } split /\./, $domain;
+    return join '.', @ascii_labels;
+}
+
 sub is_valid_ip {
     my ( $self, $ip ) = @_;
 
