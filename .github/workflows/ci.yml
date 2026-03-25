@@ -1,6 +1,8 @@
 name: CI Tests
 
-on: [ push, pull_request ]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   perl_tester:
@@ -11,8 +13,8 @@ jobs:
       fail-fast: false
       matrix:
         perl-version:
-          - "5.32"
-          - "5.28"
+          - "5.40"
+          - "5.34"
           - "5.26"
 
     container:
