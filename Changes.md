@@ -1,3 +1,15 @@
+### 1.20260325
+
+- feat: handle multiple From addresses, RFC §5.6.1
+- feat: added IDN U-label → A-label conversion to from_dom
+- feat(dmarc_view_reports): better CLI viewing alignment #294
+- feat(psl): add exception support #293
+- fix: external_reporting was broken for HTTP/HTTPS URIs
+- fix: filter out SPF scope => 'helo' results before alignment checking.
+- fix(report): in XML, only emit <comment> when it's defined.
+- fix: validate the whitelist reason type
+- test: t/12: report_id autoincrements between test runs #289
+
 ### 1.20260306
 
 - dmarc_sqlite_to_mysql: added new script

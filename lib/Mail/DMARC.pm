@@ -67,6 +67,12 @@ sub header_from_raw {
     return $_[0]->{header_from_raw} = lc $_[1];
 }
 
+sub sender {
+    return $_[0]->{sender} if 1 == scalar @_;
+    croak "invalid sender" if !$_[0]->is_valid_domain( lc $_[1] );
+    return $_[0]->{sender} = lc $_[1];
+}
+
 sub local_policy {
     return $_[0]->{local_policy} if 1 == scalar @_;
 

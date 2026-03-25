@@ -45,6 +45,29 @@ subtest 'Basic Pass' => sub {
     is($result->disposition, 'none', 'Disposition is none');
 };
 
+subtest 'SPF helo scope should not satisfy DMARC alignment' => sub {
+    $dmarc->init;
+    $dmarc->header_from('example.com');
+    $dmarc->spf([
+        {
+            domain => 'other.com',
+            scope  => 'mfrom',
+            result => 'pass',   # mfrom pass but domain doesn't align
+        },
+        {
+            domain => 'example.com',
+            scope  => 'helo',
+            result => 'pass',   # helo aligns but RFC 7489 §4.3.2 says only mfrom counts
+        }
+    ]);
+    my $policy = Mail::DMARC::Policy->new(v => 'DMARC1', p => 'reject');
+    $dmarc->{policy} = $policy;
+
+    $dmarc->is_spf_aligned;
+
+    is($dmarc->result->spf, 'fail', "helo-scoped SPF should not satisfy DMARC alignment");
+};
+
 subtest 'SPF should pass if at least one pass is aligned' => sub {
     $dmarc->init;
     $dmarc->header_from('example.com');
@@ -56,7 +79,7 @@ subtest 'SPF should pass if at least one pass is aligned' => sub {
         },
         {
             domain => 'example.com',
-            scope  => 'helo',
+            scope  => 'mfrom',
             result => 'pass',
         }
     ]);
