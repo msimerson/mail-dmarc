@@ -10,11 +10,11 @@ use File::ShareDir;
 use HTTP::Tiny;
 use IO::File;
 use Net::DNS::Resolver;
-use Net::IDN::Encode qw/domain_to_unicode/;
 use Net::IP;
 use Regexp::Common 2013031301 qw /net/;
 use Socket;
 use Socket6 qw//;    # don't export symbols
+require URI::_idna;
 
 sub new {
     my ( $class, @args ) = @_;
@@ -143,7 +143,7 @@ sub is_public_suffix {
 
     my $public_suffixes = $self->get_public_suffix_list();
 
-    $zone = domain_to_unicode( $zone ) if $zone =~ /xn--/;
+    $zone = URI::_idna::decode( $zone, 0 ) // $zone if $zone =~ /xn--/;
 
     # Check for exception rules
     return 0 if $public_suffixes->{"!$zone"};

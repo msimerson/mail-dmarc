@@ -46,7 +46,6 @@ jobs:
             Test::File::ShareDir
             Test::Output
             Test::Exception
-            Net::IDN::Encode
             CGI
             XML::Validator::Schema
             Devel::Cover::Report::Coveralls

@@ -49,15 +49,88 @@ my $reports = $report->store->retrieve(
         (sort_order         => $sort_order),
         );
 
-print_header();
+my @display_data;
+my %max_width = (
+    rid         => length('ID'),
+    author      => length('Author'),
+    begin       => length('Report-Start'),
+    count       => length('Qty'),
+    header_from => length('From'),
+    source_ip   => length('IP'),
+    disposition => length('Disposition'),
+    dkim        => length('DKIM'),
+    spf         => length('SPF'),
+);
 
 foreach my $r ( @$reports ) {
     my $rows = $report->store->backend->get_rr( rid => $r->{rid} )->{data};
-    next if $disposition && ! grep { _matches($disposition, $_->{disposition}) } @$rows;
-    next if $dkim && ! grep { _matches($dkim, $_->{dkim}) } @$rows;
-    next if $spf  && ! grep { _matches($spf,  $_->{spf }) } @$rows;
-    print_record($r);
-    print_rows( $rows );
+
+    my @filtered_rows;
+    foreach my $row ( @$rows ) {
+        no warnings;  ## no critic (NoWarn)
+        next if $disposition && !_matches($disposition, $row->{disposition});
+        next if $dkim && !_matches($dkim, $row->{dkim});
+        next if $spf  && !_matches($spf,  $row->{spf});
+
+        $row->{reasons_str} = join '  ', map { $_->{type} . ($_->{comment} ? " ($_->{comment})" : "") } @{$row->{reasons} // []};
+        $row->{geoip_details} = get_geoip_details( $row->{source_ip} ) // '';
+        $row->{dns_hostname} = get_dns_hostname( $row->{source_ip} ) // '';
+
+        foreach my $field (qw/ count header_from source_ip disposition dkim spf reasons_str geoip_details /) {
+            my $len = length($row->{$field} // '');
+            $max_width{$field} = $len if $len > $max_width{$field};
+        }
+        push @filtered_rows, $row;
+    }
+
+    if ( $disposition || $dkim || $spf ) {
+        next if ! @filtered_rows;
+    }
+
+    foreach my $field (qw/ rid author begin /) {
+        my $len = length($r->{$field} // '');
+        $max_width{$field} = $len if $len > $max_width{$field};
+    }
+
+    push @display_data, { record => $r, rows => \@filtered_rows };
+}
+
+# Print header
+printf "%*s  %-*s  %-*s\n",
+    $max_width{rid}, 'ID',
+    $max_width{author}, 'Author',
+    $max_width{begin}, 'Report-Start';
+
+printf "  | -- %*s %-*s %-*s %-*s %-*s %-*s\n",
+    $max_width{count}, 'Qty',
+    $max_width{header_from}, 'From',
+    $max_width{source_ip}, 'IP',
+    $max_width{disposition}, 'Disposition',
+    $max_width{dkim}, 'DKIM',
+    $max_width{spf}, 'SPF';
+print "\n";
+
+foreach my $d ( @display_data ) {
+    my $r = $d->{record};
+    printf "%*s  %-*s  %-*s\n",
+        $max_width{rid}, $r->{rid},
+        $max_width{author}, $r->{author},
+        $max_width{begin}, $r->{begin};
+
+    foreach my $row ( @{$d->{rows}} ) {
+        printf "  | -- %*s %-*s %-*s %-*s %-*s %-*s",
+            $max_width{count}, $row->{count},
+            $max_width{header_from}, $row->{header_from},
+            $max_width{source_ip}, $row->{source_ip},
+            $max_width{disposition}, $row->{disposition},
+            $max_width{dkim}, $row->{dkim},
+            $max_width{spf}, $row->{spf};
+
+        printf "  %-*s", $max_width{reasons_str}, $row->{reasons_str} if $max_width{reasons_str};
+        printf "  %-*s", $max_width{geoip_details}, $row->{geoip_details} if $max_width{geoip_details};
+        print "  $row->{dns_hostname}" if $row->{dns_hostname};
+        print "\n";
+    }
     print "\n";
 }
 
@@ -93,38 +166,6 @@ sub parse_sort_option {
 
     return ($sort_by, $sort_order);
 }
-
-sub print_record {
-    my $rec = shift;
-    printf "%3s  %26s  %15s\n", @$rec{qw/ rid author begin /};
-    return;
-};
-
-sub print_rows {
-    my $rows = shift;
-    foreach my $row ( @$rows ) {
-        no warnings;  ## no critic (NoWarn)
-        next if $disposition && !_matches($disposition, $row->{disposition});
-        next if $dkim && !_matches($dkim, $row->{dkim});
-        next if $spf  && !_matches($spf,  $row->{spf});
-        printf "  | -- %3s %20s %39s %13s %7s %7s", @$row{qw/ count header_from source_ip disposition dkim spf /};
-        foreach my $r ( @{ $row->{reasons} } ) {
-            print '  ' . $r->{type};
-            print "( $r->{comment} )" if $r->{comment};
-        };
-        my $geoip_details = get_geoip_details( $row->{source_ip} );
-        print "  $geoip_details";
-        my $dns_hostname = get_dns_hostname( $row->{source_ip} );
-        print "  $dns_hostname\n";
-    }
-    return;
-};
-
-sub print_header {
-    printf "%3s  %26s  %15s\n", qw[ ID Author Report-Start ];
-    printf "  | -- %3s %20s %39s %13s %7s %7s\n", 'Qty','From','IP','Disposition','DKIM','SPF';
-    return;
-};
 
 sub get_geoip_details {
     my $ip = shift;
@@ -282,38 +323,22 @@ metro_code
 =head1 SAMPLE OUTPUT
 
 
- ID             Recipient           From/Sender     Report-Start
-  | -- Qty                        Source IP   Disposition    DKIM     SPF
+ ID  Author            Report-Start
+  | -- Qty From                                         IP             Disposition DKIM SPF
 
- 570        theartfarm.com          simerson.net  2013-05-20 09:40:50
-  | --   1                   75.126.200.152    quarantine    fail    fail
+ 570  theartfarm.com   2013-05-20 09:40:50
+  | --   1 simerson.net                                 75.126.200.152 quarantine  fail fail
 
- 568              yeah.net              tnpi.net  2013-05-21 09:00:00
-  | --   1                   111.176.77.138        reject    fail    fail
+ 568  yeah.net         2013-05-21 09:00:00
+  | --   1 tnpi.net                                     111.176.77.138 reject      fail fail
 
- 567               126.com              tnpi.net  2013-05-21 09:00:00
-  | --   1                    49.73.135.125        reject    fail    fail
+ 565  google.com       2013-05-20 17:00:00
+  | --  88 mesick.us                                    208.75.177.101 none        pass pass
 
- 565            google.com             mesick.us  2013-05-20 17:00:00
-  | --  88                   208.75.177.101          none    pass    pass
-
- 564            google.com        theartfarm.com  2013-05-20 17:00:00
-  | --   3                   208.75.177.101          none    pass    pass
-
- 563            google.com          lynboyer.com  2013-05-20 17:00:00
-  | --   1          2a00:1450:4010:c03::235          none    pass    fail  forwarded
-  | --  12                   208.75.177.101          none    pass    pass
-  | --   1                   209.85.217.174          none    pass    fail  forwarded
-
- 561            google.com          simerson.net  2013-05-20 17:00:00
-  | --   1                   208.75.177.101          none    pass    pass
-
- 560            google.com              tnpi.net  2013-05-20 17:00:00
-  | --   1                   208.75.177.101          none    pass    pass
-  | --   1                    27.20.110.240        reject    fail    fail
-
- 559           hotmail.com          lynboyer.com  2013-05-20 20:00:00
-  | --   6                   208.75.177.101          none    pass    pass
+ 563  google.com       2013-05-20 17:00:00
+  | --   1 lynboyer.com                                 2a00:1450:4010:c03::235 none pass fail  forwarded
+  | --  12 lynboyer.com                                 208.75.177.101          none pass pass
+  | --   1 lynboyer.com                                 209.85.217.174          none pass fail  forwarded
 
 
 =head1 AUTHORS
