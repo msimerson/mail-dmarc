@@ -11,14 +11,14 @@ jobs:
       fail-fast: false
       matrix:
         perl-version:
-          - "5.30"
+          - "5.34"
 
     container:
       image: perl:${{ matrix.perl-version }}
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 

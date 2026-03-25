@@ -256,48 +256,42 @@ sub is_spf_aligned {
     my $spf_dom = shift;
 
     if ( !$spf_dom && !$self->spf ) { croak "missing SPF!"; }
-    if ( !$spf_dom ) {
-        my @passes = grep { $_->{result} && $_->{result} =~ /pass/i } @{ $self->spf };
-        if (scalar @passes == 0) {
-            $self->result->spf('fail');
-            return 0;
-        };
-        my ($ref)  = grep { $_->{scope} && $_->{scope} eq 'mfrom' } @passes;
-        if (!$ref) {
-            ($ref) = grep { $_->{scope} && $_->{scope} eq 'helo' } @passes;
-        }
-        if (!$ref) { ($ref) = $passes[0]; };
-        $spf_dom = $ref->{domain};
-    };
-
-    # 11.2.4 Perform SPF validation checks.  The results of this step
-    #        MUST include the domain name from the RFC5321.MailFrom if SPF
-    #        evaluation returned a "pass" result.
-
-    $self->result->spf('fail');
-    return 0 if !$spf_dom;
 
     my $from_dom = lc $self->header_from or croak "header_from not set!";
-    $spf_dom = lc $spf_dom;
+    my $from_org = $self->get_organizational_domain($from_dom);
 
-    if ( $spf_dom eq $from_dom ) {
-        $self->result->spf('pass');
-        $self->result->spf_align('strict');
-        return 1;
+    $self->result->spf('fail');
+
+    my @spf_results;
+    if ($spf_dom) {
+        push @spf_results, { domain => lc $spf_dom, result => 'pass' };
+    }
+    else {
+        @spf_results = @{ $self->spf };
     }
 
-    # don't try relaxed match if strict policy requested
-    if ( $self->policy->aspf && 's' eq lc $self->policy->aspf ) {
-        return 0;
+    foreach my $res (@spf_results) {
+        next if lc $res->{result} ne 'pass';
+        my $s_dom = lc $res->{domain};
+
+        if ( $s_dom eq $from_dom ) {
+            $self->result->spf('pass');
+            $self->result->spf_align('strict');
+            return 1;
+        }
+
+        # don't try relaxed match if strict policy requested
+        next if $self->policy->aspf && 's' eq lc $self->policy->aspf;
+
+        if ( $self->get_organizational_domain($s_dom) eq $from_org ) {
+            $self->result->spf('pass');
+            $self->result->spf_align('relaxed');
+            # Don't return, we might find a strict match later. DMARC just
+            # needs one, for reporting it's nice to have the best match
+        }
     }
 
-    if ( $self->get_organizational_domain($spf_dom) eq
-         $self->get_organizational_domain($from_dom) )
-    {
-        $self->result->spf('pass');
-        $self->result->spf_align('relaxed');
-        return 1;
-    }
+    return 1 if $self->result->spf eq 'pass';
     return 0;
 }
 

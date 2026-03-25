@@ -145,12 +145,19 @@ sub is_public_suffix {
 
     $zone = domain_to_unicode( $zone ) if $zone =~ /xn--/;
 
+    # Check for exception rules
+    return 0 if $public_suffixes->{"!$zone"};
+
+    # Check for direct match
     return 1 if $public_suffixes->{$zone};
 
+    # Check for wildcard match
     my @labels = split /\./, $zone;
-    $zone = join '.', '*', (@labels)[ 1 .. scalar(@labels) - 1 ];
+    if (scalar @labels > 1) {
+        my $wildcard = join '.', '*', (@labels)[ 1 .. scalar(@labels) - 1 ];
+        return 1 if $public_suffixes->{$wildcard};
+    }
 
-    return 1 if $public_suffixes->{$zone};
     return 0;
 }
 

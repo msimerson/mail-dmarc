@@ -1,6 +1,8 @@
 name: CI Tests
 
-on: [ push, pull_request ]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   perl_tester:
@@ -11,16 +13,15 @@ jobs:
       fail-fast: false
       matrix:
         perl-version:
+          - "5.36"
           - "5.32"
-          - "5.28"
           - "5.26"
 
     container:
       image: perl:${{ matrix.perl-version }}
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -54,6 +55,4 @@ jobs:
           sudo: false
 
       - run: perl Makefile.PL
-
-      - name: Run CI Tests
-        run: make test
+      - run: make test
