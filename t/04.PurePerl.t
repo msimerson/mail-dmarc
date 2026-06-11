@@ -82,6 +82,8 @@ test_discover_policy();
 test_validate();
 test_validate_t_tag();
 test_validate_invalid_sp();
+test_validate_psd_y();
+test_validate_np_tag();
 test_has_valid_reporting_uri();
 test_external_report();
 test_verify_external_reporting( 'tnpi.net',            'theartfarm.com', 1 );
@@ -512,6 +514,61 @@ sub test_validate_invalid_sp {
         $dmarc->set_resolver($resolver);
         eval { $dmarc->validate(); };
         is($dmarc->result->result, $expected_result, "DMARC result is ${expected_result}") or diag Dumper($dmarc->result);
+    }
+}
+
+sub test_validate_psd_y {
+    # psd=y record with no p= tag: $effective_p must default to 'none', no warnings
+    $dmarc = Mail::DMARC::PurePerl->new(
+        config_file   => 'mail-dmarc.ini',
+        source_ip     => '192.0.1.1',
+        envelope_to   => 'example.com',
+        envelope_from => 'cars4you.info',
+        header_from   => 'sub.psd.dmarctest.net',
+        dkim          => [],
+        spf           => [{
+            domain => 'unrelated.example.com',
+            scope  => 'mfrom',
+            result => 'pass',
+        }],
+    );
+    $dmarc->set_resolver($resolver);
+    my @warns;
+    local $SIG{__WARN__} = sub { push @warns, @_ };
+    eval { $dmarc->validate() };
+    my $result = $dmarc->result;
+    is( $result->result,      'fail', 'psd=y: result is fail (alignment failed)' );
+    is( $result->disposition, 'none', 'psd=y: disposition is none (no p= → default none)' );
+    ok( !@warns, 'psd=y: no uninitialized-value warnings' )
+        or diag "warnings: @warns";
+}
+
+sub test_validate_np_tag {
+    my @subtests = (
+        # existing subdomain (has MX in mock): p=none applies
+        [ 'real.np.dmarctest.net',  'none',   'np tag: existing subdomain uses p=none' ],
+        # ghost subdomain (NXDOMAIN in mock): np=reject applies
+        [ 'ghost.np.dmarctest.net', 'reject', 'np tag: non-existent subdomain uses np=reject' ],
+    );
+    for my $t (@subtests) {
+        my ($header_from, $expected_disp, $label) = @$t;
+        $dmarc = Mail::DMARC::PurePerl->new(
+            config_file   => 'mail-dmarc.ini',
+            source_ip     => '192.0.1.1',
+            envelope_to   => 'example.com',
+            envelope_from => 'cars4you.info',
+            header_from   => $header_from,
+            dkim          => [],
+            spf           => [{
+                domain => 'unrelated.example.com',
+                scope  => 'mfrom',
+                result => 'pass',
+            }],
+        );
+        $dmarc->set_resolver($resolver);
+        eval { $dmarc->validate() };
+        is( $dmarc->result->disposition, $expected_disp, $label )
+            or diag Dumper($dmarc->result);
     }
 }
 

@@ -65,7 +65,9 @@ sub validate {
 
     # Determine if the from domain is a non-existent subdomain (for np tag)
     my $is_sub     = $self->is_subdomain;
-    my $sub_exists = !$is_sub || $self->_subdomain_exists_in_dns($from_dom);
+    my $sub_exists = !$is_sub
+        || !defined $policy->np
+        || $self->_subdomain_exists_in_dns($from_dom);
 
     my $effective_p;
     if ( $is_sub && !$sub_exists && defined $policy->np ) {
@@ -81,6 +83,7 @@ sub validate {
     else {
         $effective_p = $policy->p;
     }
+    $effective_p //= 'none';
 
     # RFC 9989 4.7 t tag: testing mode, apply one severity level
     if ( defined $policy->t && lc( $policy->t ) eq 'y' ) {
@@ -486,15 +489,19 @@ sub _psl_organizational_domain {
 
 sub _subdomain_exists_in_dns {
     my ( $self, $dom ) = @_;
-    # Returns true if the domain exists in DNS (even with no useful records),
-    # false only on a definitive NXDOMAIN, used for np tag evaluation.
+    # Returns true if the domain has DNS infrastructure (RFC 9989 4.7).
+    # Returns false on NXDOMAIN or when DNS responds but finds no records,
+    # returns true conservatively when all queries time out / return 
+    # no response
+    my $got_response = 0;
     for my $type (qw/ A AAAA MX NS /) {
         my $q = $self->get_resolver->send( $dom, $type );
         next unless $q;
+        $got_response = 1;
         return 0 if $q->header->rcode eq 'NXDOMAIN';
         return 1 if $q->answer;
     }
-    return 1;  # uncertain → assume exists (conservative)
+    return $got_response ? 0 : 1;
 }
 
 sub exists_in_dns {
