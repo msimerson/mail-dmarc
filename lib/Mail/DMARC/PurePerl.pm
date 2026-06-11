@@ -180,6 +180,10 @@ sub discover_policy {
         $policy->p('none');
     }
 
+    # psd=y records reach here without p= value, default to 'none' so all
+    # downstream consumers see a concrete value.
+    $policy->p('none') if !$policy->p;
+
     return $policy;
 }
 

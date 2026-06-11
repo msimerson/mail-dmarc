@@ -551,6 +551,8 @@ sub test_validate_psd_y {
     my $result = $dmarc->result;
     is( $result->result,      'fail', 'psd=y: result is fail (alignment failed)' );
     is( $result->disposition, 'none', 'psd=y: disposition is none (no p= → default none)' );
+    is( $result->published->p, 'none',
+        'psd=y: published policy has p=none after discover_policy' );
     ok( !@warns, 'psd=y: no uninitialized-value warnings' )
         or diag "warnings: @warns";
 }
