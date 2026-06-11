@@ -589,7 +589,8 @@ sub test_exists_in_dns {
 sub test_get_organizational_domain {
     # DMARCbis: org domain is determined by DNS Tree Walk, not PSL.
     # Domains with a DMARC record in their tree anchor the org domain.
-    # Domains with no DMARC records in DNS: org domain = from domain.
+    # When no DMARC records exist in the DNS tree, get_organizational_domain()
+    # falls back to the PSL.
     my %domains = (
         # record at _dmarc.tnpi.net (psd=u default): org = tnpi.net
         'tnpi.net'              => 'tnpi.net',
