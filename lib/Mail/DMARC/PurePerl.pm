@@ -395,9 +395,17 @@ sub tree_walk {
                 next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
                 push @matches, join( '', $rr->txtdata );
             }
+
+            # Multiple DMARC records at a single name is a processing error; do not
+            # continue the walk and do not fall back to a parent-domain policy.
+            if ( scalar @matches > 1 ) {
+                my @result = ( undef, undef, undef );
+                $self->{_tw_cache}{$from_dom} = \@result;
+                return @result;
+            }
+
             if ( scalar @matches == 1 ) {
                 my $rec = $matches[0];
-                my $pol = eval { $self->policy->parse("domain=$target;$rec") };
                 if ($pol) {
                     # Author domain takes precedence: save only the first record found
                     if ( !defined $policy_record ) {
