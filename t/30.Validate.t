@@ -295,7 +295,7 @@ subtest 'External Reporting Verification' => sub {
     );
 
     # We need to mock get_resolver->send for verify_external_reporting
-    no warnings 'redefine';
+    no warnings qw(redefine once);
     my $old_send = Net::DNS::Resolver->can('send');
     *Net::DNS::Resolver::send = sub {
         my ($self, $name, $type) = @_;
