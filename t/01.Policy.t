@@ -56,11 +56,9 @@ sub test_apply_defaults {
     my $expected = {
         v     => 'DMARC1',
         p     => 'reject',
-        rf    => 'afrf',
         fo    => 0,
         adkim => 'r',
         aspf  => 'r',
-        ri    => 86400
     };
     is_deeply( $pol, $expected, "new, with defaults" );
 }
@@ -70,6 +68,9 @@ sub test_setter_values {
         p     => [qw/ none reject quarantine NONE REJEcT Quarantine /],
         v     => [qw/ DMARC1 dmarc1 /],
         sp    => [qw/ none reject quarantine NoNe REjEcT QuarAntine /],
+        np    => [qw/ none reject quarantine None Reject Quarantine /],
+        psd   => [qw/ y n u Y N U /],
+        t     => [qw/ y n Y N /],
         adkim => [qw/ r s R S /],
         aspf  => [qw/ r s R S /],
         fo    => [qw/ 0 1 d s D S 0:d 0:1:d:s /],
@@ -92,6 +93,9 @@ sub test_setter_values {
         p     => [qw/ nonense silly example /],
         v     => ['DMARC2'],
         sp    => [qw/ nones rejection quarrantine /],
+        np    => [qw/ nones rejection quarrantine /],
+        psd   => [qw/ yes no maybe /],
+        t     => [qw/ yes no testing /],
         adkim => [qw/ relaxed strict /],
         aspf  => [qw/ relaxed strict /],
         fo    => [qw/ 00 11 dd ss /],
@@ -258,6 +262,36 @@ sub test_is_valid {
         );
     };
     ok( $pol && $pol->is_valid, "is_valid, pos, implicit p=none w/rua" );
+
+    # DMARCbis: psd=y domains (PSDs) do not require p=
+    $pol = undef;
+    eval {
+        $pol = Mail::DMARC::Policy->new( v => 'DMARC1', psd => 'y' );
+    };
+    ok( $pol && $pol->is_valid, "is_valid, psd=y without p is valid" );
+
+    # DMARCbis: np tag validation
+    $pol = undef;
+    eval {
+        $pol = Mail::DMARC::Policy->new(
+            v   => 'DMARC1',
+            p   => 'none',
+            np  => 'reject',
+            psd => 'n',
+        );
+    };
+    ok( $pol && $pol->is_valid, "is_valid, np=reject psd=n" );
+
+    # np with invalid value
+    $pol = undef;
+    eval {
+        $pol = Mail::DMARC::Policy->new(
+            v  => 'DMARC1',
+            p  => 'none',
+            np => 'bogus',
+        );
+    };
+    ok( !$pol, "is_valid, neg, invalid np value" );
 }
 
 sub test_stringify {

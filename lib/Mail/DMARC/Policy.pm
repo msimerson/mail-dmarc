@@ -75,10 +75,8 @@ sub apply_defaults {
     $self->adkim('r') if !defined $self->adkim;
     $self->aspf('r')  if !defined $self->aspf;
     $self->fo(0)      if !defined $self->fo;
-    $self->ri(86400)  if !defined $self->ri;
-    $self->rf('afrf') if !defined $self->rf;
 
-    #   pct   # default is 100%, but 100% -vs- not defined is different
+    # rf, ri, pct are deprecated in DMARCbis (RFC 9989) and MUST be ignored
     return 1;
 }
 
@@ -98,6 +96,24 @@ sub sp {
     return $_[0]->{sp} if 1 == scalar @_;
     croak "invalid sp ($_[1])" if !$_[0]->is_valid_p( $_[1] );
     return $_[0]->{sp} = $_[1];
+}
+
+sub np {
+    return $_[0]->{np} if 1 == scalar @_;
+    croak "invalid np ($_[1])" if !$_[0]->is_valid_p( $_[1] );
+    return $_[0]->{np} = $_[1];
+}
+
+sub psd {
+    return $_[0]->{psd} if 1 == scalar @_;
+    croak "invalid psd ($_[1])" if 0 == grep {/^\Q$_[1]\E$/i} qw/ y n u /;
+    return $_[0]->{psd} = lc $_[1];
+}
+
+sub t {
+    return $_[0]->{t} if 1 == scalar @_;
+    croak "invalid t ($_[1])" if 0 == grep {/^\Q$_[1]\E$/i} qw/ y n /;
+    return $_[0]->{t} = lc $_[1];
 }
 
 sub adkim {
@@ -182,7 +198,11 @@ sub is_valid {
     $obj = $self if !$obj;
     croak "missing version specifier" if !$obj->{v};
     croak "invalid version" if 'DMARC1' ne uc $obj->{v};
-    if ( !$obj->{p} ) {
+
+    # psd=y domains (PSDs) are not required to have a p= tag
+    my $is_psd = defined $obj->{psd} && lc $obj->{psd} eq 'y';
+
+    if ( !$obj->{p} && !$is_psd ) {
         if ( $obj->{rua} && $self->is_valid_uri_list( $obj->{rua} ) ) {
             $obj->{p} = 'none';
         }
@@ -190,7 +210,12 @@ sub is_valid {
             croak "missing policy action (p=)";
         }
     }
-    croak "invalid policy action" if !$self->is_valid_p( $obj->{p} );
+    if ( $obj->{p} ) {
+        croak "invalid policy action" if !$self->is_valid_p( $obj->{p} );
+    }
+    if ( defined $obj->{np} ) {
+        croak "invalid np" if !$self->is_valid_p( $obj->{np} );
+    }
 
     # everything else is optional
     return 1;

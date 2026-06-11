@@ -153,14 +153,15 @@ sub _test_fail_sampled_out {
     ok( !$pp->is_spf_aligned,  "is_spf_aligned, neg" );
     ok( !$pp->is_aligned(),    "is_aligned, neg" );
     delete $pp->result->{published};
+    # DMARCbis: pct= is deprecated and MUST be ignored; full reject policy applies
     my $expected = {
-        'disposition' => 'quarantine',
+        'disposition' => 'reject',
         'dkim'        => 'fail',
         'spf'         => 'fail',
-        'reason'      => [{ 'type' => 'sampled_out' }],
+        'reason'      => [],
         'result'      => 'fail',
     };
-    is_deeply( $pp->result, $expected, "result, fail, strict, sampled out, $test_dom"
+    is_deeply( $pp->result, $expected, "result, fail, strict, sampled out (pct ignored), $test_dom"
     ) or diag Data::Dumper::Dumper( $pp->result );
 }
 

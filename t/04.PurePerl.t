@@ -25,6 +25,28 @@ $resolver->zonefile_parse(join("\n",
 'invalid-sp-and-without-rua.example.com.            600 MX  10 mail.example.com.',
 '_dmarc.invalid-sp-and-with-rua.example.com.        600 TXT "v=DMARC1; p=reject; sp=invalid; rua=mailto:rua@example.com"',
 '_dmarc.invalid-sp-and-without-rua.example.com.     600 TXT "v=DMARC1; p=reject; sp=invalid"',
+# example.com acts as the org-domain anchor for all *.example.com tests
+'example.com.                                       600 MX  10 mail.example.com.',
+'_dmarc.example.com.                                600 TXT "v=DMARC1; p=none; psd=n; rua=mailto:dmarc@example.com"',
+
+# DMARCbis tree walk test fixtures
+# anchor.dmarctest.net: psd=n → lucky anchor (org domain = anchor.dmarctest.net)
+'anchor.dmarctest.net.                          600 MX  10 mail.anchor.dmarctest.net.',
+'_dmarc.anchor.dmarctest.net.                   600 TXT "v=DMARC1; p=none; psd=n; rua=mailto:dmarc@anchor.dmarctest.net"',
+'sub.anchor.dmarctest.net.                      600 MX  10 mail.anchor.dmarctest.net.',
+
+# psd.dmarctest.net: psd=y → PSD; org domain is one label below (sub.psd.dmarctest.net)
+'_dmarc.psd.dmarctest.net.                      600 TXT "v=DMARC1; psd=y"',
+'sub.psd.dmarctest.net.                         600 MX  10 mail.sub.psd.dmarctest.net.',
+
+# t=y testing mode: reject policy should be downgraded to quarantine
+'_dmarc.ttest.dmarctest.net.                    600 TXT "v=DMARC1; p=reject; t=y; rua=mailto:dmarc@ttest.dmarctest.net"',
+'ttest.dmarctest.net.                           600 MX  10 mail.ttest.dmarctest.net.',
+
+# np tag: sub exists but ghost.np.dmarctest.net is NXDOMAIN
+'_dmarc.np.dmarctest.net.                       600 TXT "v=DMARC1; p=none; np=reject; rua=mailto:dmarc@np.dmarctest.net"',
+'np.dmarctest.net.                              600 MX  10 mail.np.dmarctest.net.',
+'real.np.dmarctest.net.                         600 MX  10 mail.np.dmarctest.net.',
 ''));
 
 my @test_policy = (
@@ -50,6 +72,7 @@ isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 test_get_from_dom();
 test_fetch_dmarc_record();
 test_get_organizational_domain();
+test_tree_walk();
 test_exists_in_dns();
 test_is_spf_aligned();
 test_is_dkim_aligned();
@@ -57,6 +80,7 @@ test_is_aligned();
 test_is_whitelisted();
 test_discover_policy();
 test_validate();
+test_validate_t_tag();
 test_validate_invalid_sp();
 test_has_valid_reporting_uri();
 test_external_report();
@@ -218,11 +242,10 @@ sub test_discover_policy {
     ok( $policy, "discover_policy" )
         or return diag Data::Dumper::Dumper($dmarc);
     $policy->apply_defaults;
+    # DMARCbis: rf and ri are deprecated; apply_defaults no longer sets them
     my $expected = { %test_policy,
-        aspf  => 'r',      # $pol->new adds the defaults that are
-        adkim => 'r',      #  implied in all DMARC records
-        ri    => 86400,
-        rf    => 'afrf',
+        aspf  => 'r',
+        adkim => 'r',
         fo    => 0,
         domain => 'mail-dmarc.tnpi.net',
     };
@@ -406,6 +429,63 @@ sub test_validate {
     ok(!$dmarc->is_dkim_aligned(), "validate, one-shot, is_dkim_aligned, no" );
 }
 
+sub test_tree_walk {
+    # Lucky anchor: psd=n stops the walk; that domain is the org domain
+    $dmarc->init;
+    $dmarc->header_from('anchor.dmarctest.net');
+    my ($rec, $org, $at) = $dmarc->tree_walk('anchor.dmarctest.net');
+    ok( $rec, "tree_walk, psd=n anchor: record found" );
+    is( $org, 'anchor.dmarctest.net', "tree_walk, psd=n: org = anchor domain" );
+    is( $at,  'anchor.dmarctest.net', "tree_walk, psd=n: at = anchor domain" );
+
+    # Subdomain of anchor domain
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('sub.anchor.dmarctest.net');
+    ok( $rec, "tree_walk, psd=n anchor: record found for subdomain" );
+    is( $org, 'anchor.dmarctest.net', "tree_walk, subdomain walks to anchor" );
+
+    # PSD: psd=y, org domain is one label below
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('sub.psd.dmarctest.net');
+    ok( $rec, "tree_walk, psd=y: record found" );
+    is( $org, 'sub.psd.dmarctest.net', "tree_walk, psd=y: org = domain below PSD" );
+
+    # No DMARC records at all, tree_walk returns undef (get_organizational_domain
+    # falls back to PSL for the org domain)
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('bbc.co.uk');
+    ok( !$rec, "tree_walk, no records: record is undef" );
+    ok( !defined $org, "tree_walk, no records: org is undef (PSL fallback in get_org_dom)" );
+
+    # Caching: second call returns same result without extra DNS queries
+    $dmarc->init;
+    $dmarc->tree_walk('tnpi.net');
+    ok( $dmarc->{_tw_cache}{'tnpi.net'}, "tree_walk, cache populated" );
+    ($rec, $org, $at) = $dmarc->tree_walk('tnpi.net');
+    is( $org, 'tnpi.net', "tree_walk, cached result correct" );
+}
+
+sub test_validate_t_tag {
+    # t=y: reject policy should be downgraded to quarantine
+    $dmarc->init;
+    $dmarc->config('t/mail-dmarc.ini');
+    $dmarc->source_ip('192.0.1.1');
+    $dmarc->envelope_to('example.com');
+    $dmarc->envelope_from('cars4you.info');
+    $dmarc->header_from('ttest.dmarctest.net');
+    $dmarc->dkim([]);
+    $dmarc->spf([{
+        domain => 'unrelated.example.com',
+        scope  => 'mfrom',
+        result => 'pass',
+    }]);
+    eval { $dmarc->validate() };
+    my $result = $dmarc->result;
+    ok( $result, "validate t=y, result exists" );
+    isnt( $result->disposition, 'reject',
+        "validate t=y, disposition is not reject (policy downgraded)" );
+}
+
 sub test_validate_invalid_sp {
     my %subtests = (
         'invalid-sp-and-with-rua.example.com'    => 'pass',
@@ -450,15 +530,25 @@ sub test_exists_in_dns {
 }
 
 sub test_get_organizational_domain {
+    # DMARCbis: org domain is determined by DNS Tree Walk, not PSL.
+    # Domains with a DMARC record in their tree anchor the org domain.
+    # Domains with no DMARC records in DNS: org domain = from domain.
     my %domains = (
-        'tnpi.net'        => 'tnpi.net',
-        'www.tnpi.net'    => 'tnpi.net',
-        'plus.google.com' => 'google.com',
-        'bbc.co.uk'       => 'bbc.co.uk',
-        'www.bbc.co.uk'   => 'bbc.co.uk',
+        # record at _dmarc.tnpi.net (psd=u default): org = tnpi.net
+        'tnpi.net'              => 'tnpi.net',
+        'www.tnpi.net'          => 'tnpi.net',
+        'mail-dmarc.tnpi.net'   => 'tnpi.net',
+
+        # record at _dmarc.anchor.dmarctest.net with psd=n: lucky anchor
+        'anchor.dmarctest.net'     => 'anchor.dmarctest.net',
+        'sub.anchor.dmarctest.net' => 'anchor.dmarctest.net',
+
+        # no DMARC records anywhere: org domain = from domain
+        'bbc.co.uk'             => 'bbc.co.uk',
     );
 
     foreach ( keys %domains ) {
+        $dmarc->init;
         cmp_ok(
             $domains{$_}, 'eq',
             $dmarc->get_organizational_domain($_),
