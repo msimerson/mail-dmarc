@@ -481,11 +481,11 @@ sub test_validate_t_tag {
         scope  => 'mfrom',
         result => 'pass',
     }]);
-    eval { $dmarc->validate() };
+    ok( eval { $dmarc->validate(); 1 }, "validate t=y, validate() did not die" ) or diag $@;
     my $result = $dmarc->result;
     ok( $result, "validate t=y, result exists" );
-    isnt( $result->disposition, 'reject',
-        "validate t=y, disposition is not reject (policy downgraded)" );
+    is( $result->disposition, 'quarantine',
+        "validate t=y, disposition downgraded from reject to quarantine" );
 }
 
 sub test_validate_invalid_sp {
