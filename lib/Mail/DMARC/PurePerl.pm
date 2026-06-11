@@ -425,6 +425,12 @@ sub tree_walk {
                     # psd=u (default): update org_dom candidate, keep walking
                     $org_dom = $target;
                 }
+            } elsif ( scalar @matches > 1 ) {
+                # 9.5. If the remaining set contains multiple records, processing
+                #      terminates and the Mail Receiver takes no action.
+                $self->result->reason( type => 'other', comment => "too many policies" );
+                print "Too many DMARC records\n" if $self->verbose;
+                return;
             }
         }
 
