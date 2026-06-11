@@ -47,6 +47,18 @@ $resolver->zonefile_parse(join("\n",
 '_dmarc.np.dmarctest.net.                       600 TXT "v=DMARC1; p=none; np=reject; rua=mailto:dmarc@np.dmarctest.net"',
 'np.dmarctest.net.                              600 MX  10 mail.np.dmarctest.net.',
 'real.np.dmarctest.net.                         600 MX  10 mail.np.dmarctest.net.',
+
+# np absent, sp=quarantine: ghost subdomain falls back to sp (no np tag)
+'_dmarc.npnosp.dmarctest.net.                   600 TXT "v=DMARC1; p=none; sp=quarantine; rua=mailto:dmarc@npnosp.dmarctest.net"',
+'npnosp.dmarctest.net.                          600 MX  10 mail.npnosp.dmarctest.net.',
+
+# np=none: ghost subdomain, np=none, no enforcement despite p=reject
+'_dmarc.npnone.dmarctest.net.                   600 TXT "v=DMARC1; p=reject; np=none; rua=mailto:dmarc@npnone.dmarctest.net"',
+'npnone.dmarctest.net.                          600 MX  10 mail.npnone.dmarctest.net.',
+
+# np=reject + t=y: ghost subdomain, reject downgraded to quarantine
+'_dmarc.npttest2.dmarctest.net.                 600 TXT "v=DMARC1; p=none; np=reject; t=y; rua=mailto:dmarc@npttest2.dmarctest.net"',
+'npttest2.dmarctest.net.                        600 MX  10 mail.npttest2.dmarctest.net.',
 ''));
 
 my @test_policy = (
@@ -546,9 +558,15 @@ sub test_validate_psd_y {
 sub test_validate_np_tag {
     my @subtests = (
         # existing subdomain (has MX in mock): p=none applies
-        [ 'real.np.dmarctest.net',  'none',   'np tag: existing subdomain uses p=none' ],
+        [ 'real.np.dmarctest.net',       'none',       'np tag: existing subdomain uses p=none' ],
         # ghost subdomain (NXDOMAIN in mock): np=reject applies
-        [ 'ghost.np.dmarctest.net', 'reject', 'np tag: non-existent subdomain uses np=reject' ],
+        [ 'ghost.np.dmarctest.net',      'reject',     'np tag: non-existent subdomain uses np=reject' ],
+        # no np tag: NXDOMAIN subdomain falls through to sp=quarantine
+        [ 'ghost.npnosp.dmarctest.net',  'quarantine', 'np absent: NXDOMAIN subdomain uses sp=quarantine' ],
+        # np=none: no enforcement for NXDOMAIN subdomain even though p=reject
+        [ 'ghost.npnone.dmarctest.net',  'none',       'np=none: NXDOMAIN subdomain disposition is none' ],
+        # np=reject + t=y: reject downgraded to quarantine via testing mode
+        [ 'ghost.npttest2.dmarctest.net','quarantine', 'np+t=y: NXDOMAIN subdomain reject downgraded by t=y' ],
     );
     for my $t (@subtests) {
         my ($header_from, $expected_disp, $label) = @$t;
