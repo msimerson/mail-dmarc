@@ -1,3 +1,6 @@
+
+- chore(ci): update install-with-cpan to v2, #299
+
 ### 1.20260325
 
 - feat: handle multiple From addresses, RFC §5.6.1
