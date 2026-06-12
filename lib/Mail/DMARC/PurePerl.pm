@@ -21,6 +21,7 @@ sub init {
     $self->{report} = undef;
     $self->{spf} = undef;
     $self->{dkim} = undef;
+    $self->{_tw_cache} = {};
     return;
 }
 
@@ -62,44 +63,54 @@ sub validate {
 
     return $self->result if $aligned;
 
-    my $effective_p
-        = defined $policy->sp
-        && $self->result->published
-        && $self->result->published->domain ne $from_dom
-        ? $policy->sp
-        : $policy->p;
+    # Determine if the from domain is a non-existent subdomain (for np tag)
+    my $is_sub     = $self->is_subdomain;
+    my $sub_exists = !$is_sub
+        || !defined $policy->np
+        || $self->_subdomain_exists_in_dns($from_dom);
 
-    # 11.2.6 Apply policy. Emails that fail the DMARC mechanism check are
-    #        disposed of in accordance with the discovered DMARC policy of the
-    #        Domain Owner. See Section 6.2 for details.
+    my $effective_p;
+    if ( $is_sub && !$sub_exists && defined $policy->np ) {
+        # RFC 9989 §4.7 np tag: policy for non-existent subdomains
+        $effective_p = $policy->np;
+    }
+    elsif ( defined $policy->sp
+        && $self->result->published
+        && $self->result->published->domain ne $from_dom )
+    {
+        $effective_p = $policy->sp;
+    }
+    else {
+        $effective_p = $policy->p;
+    }
+    $effective_p //= 'none';
+
+    # RFC 9989 4.7 t tag: testing mode, apply one severity level lower
+    if ( defined $policy->t && lc( $policy->t ) eq 'y' ) {
+        my $tested =
+              ( lc($effective_p) eq 'reject' )     ? 'quarantine'
+            : ( lc($effective_p) eq 'quarantine' ) ? 'none'
+            :                                        $effective_p;
+        if ( $tested ne $effective_p ) {
+            $effective_p = $tested;
+            $self->result->reason(
+                type    => 'other',
+                comment => 'policy testing mode (t=y)'
+            );
+        }
+    }
+
+    # RFC 9989: pct tag is deprecated and MUST be ignored
+
+    # Apply policy. Emails that fail the DMARC mechanism check are
+    # disposed of in accordance with the discovered DMARC policy.
     if ( lc $effective_p eq 'none' ) {
         return $self->result;
     }
 
     return $self->result if $self->is_whitelisted;
 
-    # 7.1.  Policy Fallback Mechanism
-    # If the "pct" tag is present in a policy record, application of policy
-    # is done on a selective basis.
-    if ( !defined $policy->pct ) {
-        $self->result->disposition($effective_p);
-        return $self->result;
-    }
-
-    # The stated percentage of messages that fail the DMARC test MUST be
-    # subjected to whatever policy is selected by the "p" or "sp" tag
-    if ( int( rand(100) ) < $policy->pct ) {
-        $self->result->disposition($effective_p);
-        return $self->result;
-    }
-
-    $self->result->reason( type => 'sampled_out' );
-
-    # Those that are not thus selected MUST instead be subjected to the next
-    # policy lower in terms of severity.  In decreasing order of severity,
-    # the policies are "reject", "quarantine", and "none".
-    $self->result->disposition(
-        ( $effective_p eq 'reject' ) ? 'quarantine' : 'none' );
+    $self->result->disposition($effective_p);
     return $self->result;
 }
 
@@ -127,47 +138,43 @@ sub discover_policy {
     my $self     = shift;
     my $from_dom = shift || $self->header_from or croak;
     print "Header From: $from_dom\n" if $self->verbose;
-    my $org_dom  = $self->get_organizational_domain($from_dom);
-    $self->is_subdomain($org_dom eq $from_dom ? 0 : 1);
 
-    # 9.1  Mail Receivers MUST query the DNS for a DMARC TXT record
-    my ($matches, $at_dom) = $self->fetch_dmarc_record( $from_dom, $org_dom );
-    if (0 == scalar @$matches ) {
+    # RFC 9989 4.10: DNS Tree Walk replaces PSL-based org domain lookup
+    my ( $record_str, $org_dom, $at_dom ) = $self->tree_walk($from_dom);
+    # Fall back to PSL when no DMARC records exist for org domain determination
+    $org_dom //= $self->_psl_organizational_domain($from_dom);
+    $self->is_subdomain( $org_dom eq $from_dom ? 0 : 1 );
+
+    if ( !$record_str ) {
         $self->result->result('none');
-        $self->result->reason( type => 'other', comment => 'no policy' );
-        return;
-    };
-
-    # 9.5. If the remaining set contains multiple records, processing
-    #      terminates and the Mail Receiver takes no action.
-    if ( scalar @$matches > 1 ) {
-        $self->result->reason( type => 'other', comment => "too many policies" );
-        print "Too many DMARC records\n" if $self->verbose;
+        $self->result->reason( type => 'other', comment => 'no policy' )
+            if !@{ $self->result->reason };
         return;
     }
 
     my $policy;
-    if (!$at_dom) { $at_dom = $from_dom; }
-    my $policy_str = "domain=$at_dom;" . $matches->[0];  # prefix with domain
-    eval { $policy = $self->policy( $policy_str ) } or return;
+    my $policy_str = "domain=$at_dom;" . $record_str;
+    eval { $policy = $self->policy($policy_str) };
     if ($@) {
-        $self->result->reason( type => 'other', comment => "policy parse error: $@" );
+        $self->result->reason(
+            type    => 'other',
+            comment => "policy parse error: $@"
+        );
         return;
-    };
+    }
+    return unless $policy;
     $self->result->published($policy);
 
-    # 9.6 If a retrieved policy record does not contain a valid "p" tag, or
-    #     contains an "sp" tag that is not valid, then:
-    if (   !$policy->p
-        || !$policy->is_valid_p( $policy->p )
-        || ( defined $policy->sp && !$policy->is_valid_p( $policy->sp ) ) )
-    {
+    # If a retrieved policy record does not contain a valid "p" tag, or
+    # contains an "sp"/"np" tag that is not valid, then:
+    my $p_invalid  = $policy->p  && !$policy->is_valid_p( $policy->p );
+    my $sp_invalid = defined $policy->sp && !$policy->is_valid_p( $policy->sp );
+    my $np_invalid = defined $policy->np && !$policy->is_valid_p( $policy->np );
 
-        #   A.  if an "rua" tag is present and contains at least one
-        #       syntactically valid reporting URI, the Mail Receiver SHOULD
-        #       act as if a record containing a valid "v" tag and "p=none"
-        #       was retrieved, and continue processing;
-        #   B.  otherwise, the Mail Receiver SHOULD take no action.
+    # psd=y records are not required to have p=
+    my $is_psd = defined $policy->psd && lc( $policy->psd ) eq 'y';
+
+    if ( ( !$policy->p && !$is_psd ) || $p_invalid || $sp_invalid || $np_invalid ) {
         if (   !$policy->rua
             || !$self->has_valid_reporting_uri( $policy->rua ) )
         {
@@ -177,6 +184,10 @@ sub discover_policy {
         $policy->v('DMARC1');
         $policy->p('none');
     }
+
+    # psd=y records reach here without p= value, default to 'none' so all
+    # downstream consumers see a concrete value.
+    $policy->p('none') if !$policy->p;
 
     return $policy;
 }
@@ -366,44 +377,142 @@ sub get_dkim_pass_sigs {
     return grep { 'pass' eq lc $_->{result} } @$dkim_sigs;
 }
 
+sub tree_walk {
+    my ( $self, $from_dom ) = @_;
+    $from_dom = lc $from_dom;
+
+    return @{ $self->{_tw_cache}{$from_dom} }
+        if $self->{_tw_cache}{$from_dom};
+
+    # RFC 9989 4.10 DNS Tree Walk: walk up the DNS hierarchy from
+    # the author domain, querying _dmarc.<target> at each level.
+    # Stop when a record with psd=n (org domain anchor) or psd=y (PSD)
+    # is found, or after 8 queries, or when no labels remain.
+
+    my @labels      = split /\./, $from_dom;
+    my $target      = $from_dom;
+    my $query_count = 0;
+
+    # policy_record / at_dom: FIRST record found (most specific, author domain wins)
+    # org_dom: domain of the last record found, or the psd=n anchor
+    # prev_target: target queried one step before the current one (one label
+    #   longer); when a psd=y PSD is found, that child is the Organizational Domain
+    my ( $policy_record, $at_dom, $org_dom, $prev_target );
+
+    while ( $query_count < 8 && scalar @labels > 0 ) {
+        $query_count++;
+        my $query = $self->get_resolver->send( "_dmarc.$target", 'TXT' );
+        if ($query) {
+            my @matches;
+            for my $rr ( $query->answer ) {
+                next if $rr->type ne 'TXT';
+                next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
+                push @matches, join( '', $rr->txtdata );
+            }
+            if ( scalar @matches == 1 ) {
+                my $rec = $matches[0];
+                my $pol = eval { $self->policy->parse("domain=$target;$rec") };
+                if ($pol) {
+                    # Author domain takes precedence: save only the first record found
+                    if ( !defined $policy_record ) {
+                        $policy_record = $rec;
+                        $at_dom        = $target;
+                    }
+                    my $psd_val = defined $pol->psd ? lc $pol->psd : 'u';
+                    if ( $psd_val eq 'n' ) {
+                        # Lucky anchor: this domain is the Organizational Domain
+                        print "Tree Walk anchor (psd=n): $target\n"
+                            if $self->verbose;
+                        my @result = ( $policy_record, $target, $at_dom );
+                        $self->{_tw_cache}{$from_dom} = \@result;
+                        return @result;
+                    }
+                    if ( $psd_val eq 'y' ) {
+                        # PSD found; org domain is the child one label below it
+                        my $below = $prev_target // $from_dom;
+                        print "Tree Walk PSD (psd=y): $target, org=$below\n"
+                            if $self->verbose;
+                        my @result = ( $policy_record, $below, $at_dom );
+                        $self->{_tw_cache}{$from_dom} = \@result;
+                        return @result;
+                    }
+                    # psd=u (default): update org_dom candidate, keep walking
+                    $org_dom = $target;
+                }
+            } elsif ( scalar @matches > 1 ) {
+                # 9.5. If the remaining set contains multiple records, processing
+                #      terminates and the Mail Receiver takes no action.
+                $self->result->reason( type => 'other', comment => "too many policies" );
+                print "Too many DMARC records\n" if $self->verbose;
+                return;
+            }
+        }
+
+        # Remove leftmost label; apply >=8-label reduction rule (RFC 9989 4.10)
+        $prev_target = $target;
+        my $n = scalar @labels;
+        if ( $n >= 8 ) {
+            my $trim = $n - 7;
+            splice @labels, 0, $trim;
+        }
+        else {
+            shift @labels;
+        }
+        $target = join( '.', @labels );
+    }
+
+    # Walked to top without a psd=n/y anchor; use last record found as org domain
+    my @result = ( $policy_record, $org_dom, $at_dom );
+    $self->{_tw_cache}{$from_dom} = \@result;
+    return @result;
+}
+
 sub get_organizational_domain {
-    my $self = shift;
+    my $self     = shift;
     my $from_dom = shift || $self->header_from
         or croak "missing header_from!";
+    $from_dom = lc $from_dom;
 
-    # 4.1 Acquire a "public suffix" list, i.e., a list of DNS domain
-    #     names reserved for registrations. http://publicsuffix.org/list/
+    my ( undef, $org_dom ) = $self->tree_walk($from_dom);
 
-    # 4.2 Break the subject DNS domain name into a set of "n" ordered
-    #     labels.  Number these labels from right-to-left; e.g. for
-    #     "example.com", "com" would be label 1 and "example" would be
-    #     label 2.;
-    my @labels = reverse split /\./, lc $from_dom;
-
-    # 4.3 Search the public suffix list for the name that matches the
-    #     largest number of labels found in the subject DNS domain.  Let
-    #     that number be "x".
-    my $greatest = 0;
-    for ( my $i = 0; $i <= scalar @labels; $i++ ) {
-        next if !$labels[$i];
-        my $tld = join '.', reverse( (@labels)[ 0 .. $i ] );
-
-        if ( $self->is_public_suffix($tld) ) {
-            $greatest = $i + 1;
-        }
+    # Fallback: when no DMARC records exist in DNS for this tree, use the PSL
+    # to determine the org domain
+    if ( !defined $org_dom ) {
+        $org_dom = $self->_psl_organizational_domain($from_dom);
     }
 
-    if ( $greatest == scalar @labels ) {    # same
-        return $from_dom;
-    }
-
-    # 4.4 Construct a new DNS domain name using the name that matched
-    #     from the public suffix list and prefixing to it the "x+1"th
-    #     label from the subject domain. This new name is the
-    #     Organizational Domain.
-    my $org_dom = join '.', reverse( (@labels)[ 0 .. $greatest ] );
     print "Organizational Domain: $org_dom\n" if $self->verbose;
     return $org_dom;
+}
+
+sub _psl_organizational_domain {
+    my ( $self, $from_dom ) = @_;
+
+    my @labels  = reverse split /\./, lc $from_dom;
+    my $greatest = 0;
+    for ( my $i = 0; $i <= $#labels; $i++ ) {
+        next if !$labels[$i];
+        my $tld = join '.', reverse( @labels[ 0 .. $i ] );
+        $greatest = $i + 1 if $self->is_public_suffix($tld);
+    }
+    return $from_dom if $greatest == scalar @labels;
+    return join '.', reverse( @labels[ 0 .. $greatest ] );
+}
+
+sub _subdomain_exists_in_dns {
+    my ( $self, $dom ) = @_;
+    # RFC 9989 4.7: a subdomain is non-existent only when DNS consistently
+    # returns NXDOMAIN. NOERROR/NODATA means the name exists but lacks that
+    # record type. Timeouts and other errors are treated conservatively as
+    # existing.
+    my $got_response = 0;
+    for my $type (qw/ A AAAA MX NS /) {
+        my $q = $self->get_resolver->send( $dom, $type );
+        next unless $q;
+        return 1 if $q->header->rcode ne 'NXDOMAIN';  # NOERROR/NODATA or error → exists
+        $got_response = 1;
+    }
+    return $got_response ? 0 : 1;
 }
 
 sub exists_in_dns {

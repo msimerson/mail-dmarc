@@ -53,6 +53,19 @@ sub parse {
         }
         $policy{lc $tag} = $value;
     }
+
+    # RFC 9989: an unrecognized value for an optional tag is ignored (the tag
+    # reverts to its default); it MUST NOT invalidate the whole record. The
+    # setters croak, so normalize here on the parse-from-DNS path instead.
+    if ( defined $policy{psd} && $policy{psd} !~ /^[ynu]$/i ) {
+        warn "ignoring invalid psd ($policy{psd})\n";
+        delete $policy{psd};
+    }
+    if ( defined $policy{t} && $policy{t} !~ /^[yn]$/i ) {
+        warn "ignoring invalid t ($policy{t})\n";
+        delete $policy{t};
+    }
+
     return bless \%policy, ref $self;    # inherited defaults + overrides
 }
 
@@ -75,10 +88,8 @@ sub apply_defaults {
     $self->adkim('r') if !defined $self->adkim;
     $self->aspf('r')  if !defined $self->aspf;
     $self->fo(0)      if !defined $self->fo;
-    $self->ri(86400)  if !defined $self->ri;
-    $self->rf('afrf') if !defined $self->rf;
 
-    #   pct   # default is 100%, but 100% -vs- not defined is different
+    # rf, ri, pct are deprecated in DMARCbis (RFC 9989) and MUST be ignored
     return 1;
 }
 
@@ -98,6 +109,24 @@ sub sp {
     return $_[0]->{sp} if 1 == scalar @_;
     croak "invalid sp ($_[1])" if !$_[0]->is_valid_p( $_[1] );
     return $_[0]->{sp} = $_[1];
+}
+
+sub np {
+    return $_[0]->{np} if 1 == scalar @_;
+    croak "invalid np ($_[1])" if !$_[0]->is_valid_p( $_[1] );
+    return $_[0]->{np} = $_[1];
+}
+
+sub psd {
+    return $_[0]->{psd} if 1 == scalar @_;
+    croak "invalid psd ($_[1])" if 0 == grep {/^\Q$_[1]\E$/i} qw/ y n u /;
+    return $_[0]->{psd} = lc $_[1];
+}
+
+sub t {
+    return $_[0]->{t} if 1 == scalar @_;
+    croak "invalid t ($_[1])" if 0 == grep {/^\Q$_[1]\E$/i} qw/ y n /;
+    return $_[0]->{t} = lc $_[1];
 }
 
 sub adkim {
@@ -182,7 +211,11 @@ sub is_valid {
     $obj = $self if !$obj;
     croak "missing version specifier" if !$obj->{v};
     croak "invalid version" if 'DMARC1' ne uc $obj->{v};
-    if ( !$obj->{p} ) {
+
+    # psd=y domains (PSDs) are not required to have a p= tag
+    my $is_psd = defined $obj->{psd} && lc $obj->{psd} eq 'y';
+
+    if ( !$obj->{p} && !$is_psd ) {
         if ( $obj->{rua} && $self->is_valid_uri_list( $obj->{rua} ) ) {
             $obj->{p} = 'none';
         }
@@ -190,7 +223,12 @@ sub is_valid {
             croak "missing policy action (p=)";
         }
     }
-    croak "invalid policy action" if !$self->is_valid_p( $obj->{p} );
+    if ( $obj->{p} ) {
+        croak "invalid policy action" if !$self->is_valid_p( $obj->{p} );
+    }
+    if ( defined $obj->{np} ) {
+        croak "invalid np" if !$self->is_valid_p( $obj->{np} );
+    }
 
     # everything else is optional
     return 1;
@@ -226,7 +264,7 @@ version 1.20260306
 
 A DMARC record in DNS format looks like this:
 
-    v=DMARC1; p=reject; adkim=s; aspf=s; rua=mailto:dmarc@example.com; pct=100;
+    v=DMARC1; p=reject; adkim=s; aspf=s; rua=mailto:dmarc@example.com;
 
 DMARC records are stored in TXT resource records in the DNS, at _dmarc.example.com. To retrieve a DMARC record for a domain:
 
@@ -245,7 +283,7 @@ DMARC records are stored in TXT resource records in the DNS, at _dmarc.example.c
 
 =head1 METHODS
 
-All methods validate their input against the 2013 DMARC specification. Attempts to set invalid values will throw exceptions.
+All methods validate their input against the DMARC specification (RFC 7489 / DMARCbis RFC 9989). Attempts to set invalid values will throw exceptions.
 
 =head2 new
 
@@ -256,22 +294,23 @@ Create a new empty policy:
 Create a new policy from named arguments:
 
  my $pol = Mail::DMARC::Policy->new(
-         v   => 'DMARC1',
-         p   => 'none',
-         pct => 50,
+         v => 'DMARC1',
+         p => 'none',
          );
 
 Create a new policy from a DMARC DNS resource record:
 
  my $pol = Mail::DMARC::Policy->new(
-         'v=DMARC1; p=reject; rua=mailto:dmarc@example.com; pct=50;'
+         'v=DMARC1; p=reject; rua=mailto:dmarc@example.com;'
          );
 
 If a policy is passed in (the latter two examples), the resulting policy object will be an exact representation of the record as returned from DNS.
 
 =head2 apply_defaults
 
-Several of the DMARC tags (adkim,aspf,fo,ri,rf) have default values when not specified in the published DNS record. Calling I<apply_defaults> will apply those default values to the DMARC tags that were not specified in the DNS record. The resulting L<Policy|Mail::DMARC::Policy> object will be a perfect representation of the DMARC policy that is/was applied.
+The DMARC tags C<adkim>, C<aspf>, and C<fo> have default values when not specified in the published DNS record. Calling I<apply_defaults> will apply those defaults to tags not present in the DNS record.
+
+C<rf>, C<ri>, and C<pct> are deprecated in DMARCbis (RFC 9989) and MUST be ignored; C<apply_defaults> no longer sets them.
 
 =head2 parse
 
@@ -300,9 +339,9 @@ Returns the textual representation of the DMARC record.
  aspf=r;      (spf  alignment: s=strict, r=relaxed)
  rua=mailto:dmarc-feedback@example.com; (aggregate reports)
  ruf=mailto:dmarc-feedback@example.com; (forensic reports)
- rf=afrf;     (report format: afrf, iodef)
- ri=8400;     (report interval)
- pct=50;      (percent of messages to filter)
+ rf=afrf;     (DEPRECATED in DMARCbis: report format)
+ ri=8400;     (DEPRECATED in DMARCbis: report interval)
+ pct=50;      (DEPRECATED in DMARCbis: percent of messages to filter)
 
 =head2 Tags in Detail
 
@@ -415,6 +454,8 @@ additional considerations.
 
 =head2 rf
 
+B<Deprecated in DMARCbis (RFC 9989).> This tag MUST be ignored; it is documented here for historical reference only.
+
 Format to be used for message-specific failure reports (comma-
 separated plain-text list of values; OPTIONAL; default "afrf").
 The value of this tag is a list of one or more report formats as
@@ -428,6 +469,8 @@ record.  Initial default values are "afrf" (defined in [AFRF]) and
 
 =head2 ri
 
+B<Deprecated in DMARCbis (RFC 9989).> This tag MUST be ignored; it is documented here for historical reference only.
+
 Interval requested between aggregate reports (plain-text, 32-bit
 unsigned integer; OPTIONAL; default 86400). {R14} Indicates a
 request to Receivers to generate aggregate reports separated by no
@@ -438,6 +481,8 @@ than a daily report is understood to be accommodated on a best-
 effort basis.
 
 =head2 pct
+
+B<Deprecated in DMARCbis (RFC 9989).> This tag MUST be ignored; it is documented here for historical reference only.
 
 (plain-text integer between 0 and 100, inclusive; OPTIONAL;
 default is 100). {R8} Percentage of messages from the DNS domain's

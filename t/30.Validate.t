@@ -17,6 +17,28 @@ my %dns_responses;
     return $dns_responses{$domain}{$type} || 0;
 };
 
+# DMARCbis: discover_policy now uses tree_walk; mock it to read %dns_responses
+*Mail::DMARC::PurePerl::tree_walk = sub {
+    my ($self, $from_dom) = @_;
+    $from_dom = lc $from_dom;
+    # Try author domain first, then parent domain (one level up)
+    my $rec = $dns_responses{"_dmarc.$from_dom"}{'TXT'};
+    if ($rec) {
+        return ($rec, $from_dom, $from_dom);
+    }
+    my @labels = split /\./, $from_dom;
+    shift @labels;
+    my $parent = join('.', @labels);
+    if ($parent && $parent ne $from_dom) {
+        $rec = $dns_responses{"_dmarc.$parent"}{'TXT'};
+        if ($rec) {
+            return ($rec, $parent, $parent);
+        }
+    }
+    return (undef, undef, undef);
+};
+
+# Keep fetch_dmarc_record mock for any remaining callers
 *Mail::DMARC::PurePerl::fetch_dmarc_record = sub {
     my ($self, $zone, $org_dom) = @_;
     my $rec = $dns_responses{"_dmarc.$zone"}{'TXT'};

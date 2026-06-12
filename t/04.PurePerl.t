@@ -25,6 +25,43 @@ $resolver->zonefile_parse(join("\n",
 'invalid-sp-and-without-rua.example.com.            600 MX  10 mail.example.com.',
 '_dmarc.invalid-sp-and-with-rua.example.com.        600 TXT "v=DMARC1; p=reject; sp=invalid; rua=mailto:rua@example.com"',
 '_dmarc.invalid-sp-and-without-rua.example.com.     600 TXT "v=DMARC1; p=reject; sp=invalid"',
+# example.com acts as the org-domain anchor for all *.example.com tests
+'example.com.                                       600 MX  10 mail.example.com.',
+'_dmarc.example.com.                                600 TXT "v=DMARC1; p=none; psd=n; rua=mailto:dmarc@example.com"',
+
+# DMARCbis tree walk test fixtures
+# anchor.dmarctest.net: psd=n → lucky anchor (org domain = anchor.dmarctest.net)
+'anchor.dmarctest.net.                          600 MX  10 mail.anchor.dmarctest.net.',
+'_dmarc.anchor.dmarctest.net.                   600 TXT "v=DMARC1; p=none; psd=n; rua=mailto:dmarc@anchor.dmarctest.net"',
+'sub.anchor.dmarctest.net.                      600 MX  10 mail.anchor.dmarctest.net.',
+
+# psd.dmarctest.net: psd=y → PSD; org domain is one label below (sub.psd.dmarctest.net)
+'_dmarc.psd.dmarctest.net.                      600 TXT "v=DMARC1; psd=y"',
+'sub.psd.dmarctest.net.                         600 MX  10 mail.sub.psd.dmarctest.net.',
+# deep author under the same PSD: org domain is the child of the PSD, not the author
+'deep.sub.psd.dmarctest.net.                    600 MX  10 mail.sub.psd.dmarctest.net.',
+
+# t=y testing mode: reject policy should be downgraded to quarantine
+'_dmarc.ttest.dmarctest.net.                    600 TXT "v=DMARC1; p=reject; t=y; rua=mailto:dmarc@ttest.dmarctest.net"',
+'ttest.dmarctest.net.                           600 MX  10 mail.ttest.dmarctest.net.',
+
+# np tag: sub exists but ghost.np.dmarctest.net is NXDOMAIN
+'_dmarc.np.dmarctest.net.                       600 TXT "v=DMARC1; p=none; np=reject; rua=mailto:dmarc@np.dmarctest.net"',
+'np.dmarctest.net.                              600 MX  10 mail.np.dmarctest.net.',
+'real.np.dmarctest.net.                         600 MX  10 mail.np.dmarctest.net.',
+'txtonly.np.dmarctest.net.                      600 TXT "v=SPF1 -all"',
+
+# np absent, sp=quarantine: ghost subdomain falls back to sp (no np tag)
+'_dmarc.npnosp.dmarctest.net.                   600 TXT "v=DMARC1; p=none; sp=quarantine; rua=mailto:dmarc@npnosp.dmarctest.net"',
+'npnosp.dmarctest.net.                          600 MX  10 mail.npnosp.dmarctest.net.',
+
+# np=none: ghost subdomain, np=none, no enforcement despite p=reject
+'_dmarc.npnone.dmarctest.net.                   600 TXT "v=DMARC1; p=reject; np=none; rua=mailto:dmarc@npnone.dmarctest.net"',
+'npnone.dmarctest.net.                          600 MX  10 mail.npnone.dmarctest.net.',
+
+# np=reject + t=y: ghost subdomain, reject downgraded to quarantine
+'_dmarc.npttest2.dmarctest.net.                 600 TXT "v=DMARC1; p=none; np=reject; t=y; rua=mailto:dmarc@npttest2.dmarctest.net"',
+'npttest2.dmarctest.net.                        600 MX  10 mail.npttest2.dmarctest.net.',
 ''));
 
 my @test_policy = (
@@ -50,6 +87,7 @@ isa_ok( $dmarc, 'Mail::DMARC::PurePerl' );
 test_get_from_dom();
 test_fetch_dmarc_record();
 test_get_organizational_domain();
+test_tree_walk();
 test_exists_in_dns();
 test_is_spf_aligned();
 test_is_dkim_aligned();
@@ -57,7 +95,10 @@ test_is_aligned();
 test_is_whitelisted();
 test_discover_policy();
 test_validate();
+test_validate_t_tag();
 test_validate_invalid_sp();
+test_validate_psd_y();
+test_validate_np_tag();
 test_has_valid_reporting_uri();
 test_external_report();
 test_verify_external_reporting( 'tnpi.net',            'theartfarm.com', 1 );
@@ -218,11 +259,10 @@ sub test_discover_policy {
     ok( $policy, "discover_policy" )
         or return diag Data::Dumper::Dumper($dmarc);
     $policy->apply_defaults;
+    # DMARCbis: rf and ri are deprecated; apply_defaults no longer sets them
     my $expected = { %test_policy,
-        aspf  => 'r',      # $pol->new adds the defaults that are
-        adkim => 'r',      #  implied in all DMARC records
-        ri    => 86400,
-        rf    => 'afrf',
+        aspf  => 'r',
+        adkim => 'r',
         fo    => 0,
         domain => 'mail-dmarc.tnpi.net',
     };
@@ -406,6 +446,69 @@ sub test_validate {
     ok(!$dmarc->is_dkim_aligned(), "validate, one-shot, is_dkim_aligned, no" );
 }
 
+sub test_tree_walk {
+    # Lucky anchor: psd=n stops the walk; that domain is the org domain
+    $dmarc->init;
+    $dmarc->header_from('anchor.dmarctest.net');
+    my ($rec, $org, $at) = $dmarc->tree_walk('anchor.dmarctest.net');
+    ok( $rec, "tree_walk, psd=n anchor: record found" );
+    is( $org, 'anchor.dmarctest.net', "tree_walk, psd=n: org = anchor domain" );
+    is( $at,  'anchor.dmarctest.net', "tree_walk, psd=n: at = anchor domain" );
+
+    # Subdomain of anchor domain
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('sub.anchor.dmarctest.net');
+    ok( $rec, "tree_walk, psd=n anchor: record found for subdomain" );
+    is( $org, 'anchor.dmarctest.net', "tree_walk, subdomain walks to anchor" );
+
+    # PSD: psd=y, org domain is one label below
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('sub.psd.dmarctest.net');
+    ok( $rec, "tree_walk, psd=y: record found" );
+    is( $org, 'sub.psd.dmarctest.net', "tree_walk, psd=y: org = domain below PSD" );
+
+    # PSD with a deeper author: org domain is the PSD's child, not the author
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('deep.sub.psd.dmarctest.net');
+    is( $org, 'sub.psd.dmarctest.net',
+        "tree_walk, psd=y: deep author resolves org to PSD child" );
+
+    # No DMARC records at all, tree_walk returns undef (get_organizational_domain
+    # falls back to PSL for the org domain)
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('bbc.co.uk');
+    ok( !$rec, "tree_walk, no records: record is undef" );
+    ok( !defined $org, "tree_walk, no records: org is undef (PSL fallback in get_org_dom)" );
+
+    # Caching: second call returns same result without extra DNS queries
+    $dmarc->init;
+    $dmarc->tree_walk('tnpi.net');
+    ok( $dmarc->{_tw_cache}{'tnpi.net'}, "tree_walk, cache populated" );
+    ($rec, $org, $at) = $dmarc->tree_walk('tnpi.net');
+    is( $org, 'tnpi.net', "tree_walk, cached result correct" );
+}
+
+sub test_validate_t_tag {
+    # t=y: reject policy should be downgraded to quarantine
+    $dmarc->init;
+    $dmarc->config('t/mail-dmarc.ini');
+    $dmarc->source_ip('192.0.1.1');
+    $dmarc->envelope_to('example.com');
+    $dmarc->envelope_from('cars4you.info');
+    $dmarc->header_from('ttest.dmarctest.net');
+    $dmarc->dkim([]);
+    $dmarc->spf([{
+        domain => 'unrelated.example.com',
+        scope  => 'mfrom',
+        result => 'pass',
+    }]);
+    ok( eval { $dmarc->validate(); 1 }, "validate t=y, validate() did not die" ) or diag $@;
+    my $result = $dmarc->result;
+    ok( $result, "validate t=y, result exists" );
+    is( $result->disposition, 'quarantine',
+        "validate t=y, disposition downgraded from reject to quarantine" );
+}
+
 sub test_validate_invalid_sp {
     my %subtests = (
         'invalid-sp-and-with-rua.example.com'    => 'pass',
@@ -435,6 +538,85 @@ sub test_validate_invalid_sp {
     }
 }
 
+sub test_validate_psd_y {
+    # psd=y record with no p= tag: $effective_p must default to 'none', no warnings
+    $dmarc = Mail::DMARC::PurePerl->new(
+        config_file   => 'mail-dmarc.ini',
+        source_ip     => '192.0.1.1',
+        envelope_to   => 'example.com',
+        envelope_from => 'cars4you.info',
+        header_from   => 'sub.psd.dmarctest.net',
+        dkim          => [],
+        spf           => [{
+            domain => 'unrelated.example.com',
+            scope  => 'mfrom',
+            result => 'pass',
+        }],
+    );
+    $dmarc->set_resolver($resolver);
+    my @warns;
+    local $SIG{__WARN__} = sub { push @warns, @_ };
+    eval { $dmarc->validate() };
+    my $result = $dmarc->result;
+    is( $result->result,      'fail', 'psd=y: result is fail (alignment failed)' );
+    is( $result->disposition, 'none', 'psd=y: disposition is none (no p= → default none)' );
+    is( $result->published->p, 'none',
+        'psd=y: published policy has p=none after discover_policy' );
+    ok( !@warns, 'psd=y: no uninitialized-value warnings' )
+        or diag "warnings: @warns";
+}
+
+sub _run_np_subtests {
+    my @subtests = @_;
+    for my $t (@subtests) {
+        my ($header_from, $expected_disp, $label) = @$t;
+        $dmarc = Mail::DMARC::PurePerl->new(
+            config_file   => 'mail-dmarc.ini',
+            source_ip     => '192.0.1.1',
+            envelope_to   => 'example.com',
+            envelope_from => 'cars4you.info',
+            header_from   => $header_from,
+            dkim          => [],
+            spf           => [{
+                domain => 'unrelated.example.com',
+                scope  => 'mfrom',
+                result => 'pass',
+            }],
+        );
+        $dmarc->set_resolver($resolver);
+        eval { $dmarc->validate() };
+        is( $dmarc->result->disposition, $expected_disp, $label )
+            or diag Dumper($dmarc->result);
+    }
+}
+
+sub test_validate_np_tag {
+    # Tests that use the real _subdomain_exists_in_dns: the mock resolver returns
+    # NOERROR/NODATA for names in the zone that lack the queried record type, which
+    # is enough to exercise the NODATA-handling fix.
+    _run_np_subtests(
+        # existing subdomain (has MX in mock): p=none applies
+        [ 'real.np.dmarctest.net',    'none', 'np tag: existing subdomain uses p=none' ],
+        # TXT-only subdomain: NOERROR/NODATA for A/AAAA/MX/NS → name exists → np= must NOT apply
+        [ 'txtonly.np.dmarctest.net', 'none', 'np tag: TXT-only subdomain treated as existing (p=none, not np=reject)' ],
+    );
+
+    # Ghost-subdomain tests: Net::DNS::Resolver::Mock returns NOERROR/NODATA for
+    # unknown names, whereas real DNS returns NXDOMAIN.
+    # Override _subdomain_exists_in_dns to simulate NXDOMAIN so we can test that
+    # validate() correctly applies the np= tag when the subdomain is non-existent.
+    {
+        no warnings 'redefine';
+        local *Mail::DMARC::PurePerl::_subdomain_exists_in_dns = sub { 0 };
+        _run_np_subtests(
+            [ 'ghost.np.dmarctest.net',       'reject',     'np tag: non-existent subdomain uses np=reject' ],
+            [ 'ghost.npnosp.dmarctest.net',   'quarantine', 'np absent: NXDOMAIN subdomain uses sp=quarantine' ],
+            [ 'ghost.npnone.dmarctest.net',   'none',       'np=none: NXDOMAIN subdomain disposition is none' ],
+            [ 'ghost.npttest2.dmarctest.net', 'quarantine', 'np+t=y: NXDOMAIN subdomain reject downgraded by t=y' ],
+        );
+    }
+}
+
 sub test_exists_in_dns {
     my %tests = (
         'tnpi.net'                 => 1,
@@ -450,15 +632,26 @@ sub test_exists_in_dns {
 }
 
 sub test_get_organizational_domain {
+    # DMARCbis: org domain is determined by DNS Tree Walk, not PSL.
+    # Domains with a DMARC record in their tree anchor the org domain.
+    # When no DMARC records exist in the DNS tree, get_organizational_domain()
+    # falls back to the PSL.
     my %domains = (
-        'tnpi.net'        => 'tnpi.net',
-        'www.tnpi.net'    => 'tnpi.net',
-        'plus.google.com' => 'google.com',
-        'bbc.co.uk'       => 'bbc.co.uk',
-        'www.bbc.co.uk'   => 'bbc.co.uk',
+        # record at _dmarc.tnpi.net (psd=u default): org = tnpi.net
+        'tnpi.net'              => 'tnpi.net',
+        'www.tnpi.net'          => 'tnpi.net',
+        'mail-dmarc.tnpi.net'   => 'tnpi.net',
+
+        # record at _dmarc.anchor.dmarctest.net with psd=n: lucky anchor
+        'anchor.dmarctest.net'     => 'anchor.dmarctest.net',
+        'sub.anchor.dmarctest.net' => 'anchor.dmarctest.net',
+
+        # no DMARC records anywhere: org domain = from domain
+        'bbc.co.uk'             => 'bbc.co.uk',
     );
 
     foreach ( keys %domains ) {
+        $dmarc->init;
         cmp_ok(
             $domains{$_}, 'eq',
             $dmarc->get_organizational_domain($_),
