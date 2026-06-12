@@ -85,16 +85,19 @@ sub validate {
     }
     $effective_p //= 'none';
 
-    # RFC 9989 4.7 t tag: testing mode, apply one severity level
+    # RFC 9989 4.7 t tag: testing mode, apply one severity level lower
     if ( defined $policy->t && lc( $policy->t ) eq 'y' ) {
-        $effective_p =
+        my $tested =
               ( lc($effective_p) eq 'reject' )     ? 'quarantine'
             : ( lc($effective_p) eq 'quarantine' ) ? 'none'
-            :                                    'none';
-        $self->result->reason(
-            type    => 'other',
-            comment => 'policy testing mode (t=y)'
-        );
+            :                                        $effective_p;
+        if ( $tested ne $effective_p ) {
+            $effective_p = $tested;
+            $self->result->reason(
+                type    => 'other',
+                comment => 'policy testing mode (t=y)'
+            );
+        }
     }
 
     # RFC 9989: pct tag is deprecated and MUST be ignored
@@ -392,7 +395,9 @@ sub tree_walk {
 
     # policy_record / at_dom: FIRST record found (most specific, author domain wins)
     # org_dom: domain of the last record found, or the psd=n anchor
-    my ( $policy_record, $at_dom, $org_dom );
+    # prev_target: target queried one step before the current one (one label
+    #   longer); when a psd=y PSD is found, that child is the Organizational Domain
+    my ( $policy_record, $at_dom, $org_dom, $prev_target );
 
     while ( $query_count < 8 && scalar @labels > 0 ) {
         $query_count++;
@@ -423,8 +428,8 @@ sub tree_walk {
                         return @result;
                     }
                     if ( $psd_val eq 'y' ) {
-                        # PSD found; org domain is the domain one level below
-                        my $below = $org_dom // $from_dom;
+                        # PSD found; org domain is the child one label below it
+                        my $below = $prev_target // $from_dom;
                         print "Tree Walk PSD (psd=y): $target, org=$below\n"
                             if $self->verbose;
                         my @result = ( $policy_record, $below, $at_dom );
@@ -444,6 +449,7 @@ sub tree_walk {
         }
 
         # Remove leftmost label; apply >=8-label reduction rule (RFC 9989 4.10)
+        $prev_target = $target;
         my $n = scalar @labels;
         if ( $n >= 8 ) {
             my $trim = $n - 7;

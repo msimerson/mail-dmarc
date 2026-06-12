@@ -38,6 +38,8 @@ $resolver->zonefile_parse(join("\n",
 # psd.dmarctest.net: psd=y → PSD; org domain is one label below (sub.psd.dmarctest.net)
 '_dmarc.psd.dmarctest.net.                      600 TXT "v=DMARC1; psd=y"',
 'sub.psd.dmarctest.net.                         600 MX  10 mail.sub.psd.dmarctest.net.',
+# deep author under the same PSD: org domain is the child of the PSD, not the author
+'deep.sub.psd.dmarctest.net.                    600 MX  10 mail.sub.psd.dmarctest.net.',
 
 # t=y testing mode: reject policy should be downgraded to quarantine
 '_dmarc.ttest.dmarctest.net.                    600 TXT "v=DMARC1; p=reject; t=y; rua=mailto:dmarc@ttest.dmarctest.net"',
@@ -464,6 +466,12 @@ sub test_tree_walk {
     ($rec, $org, $at) = $dmarc->tree_walk('sub.psd.dmarctest.net');
     ok( $rec, "tree_walk, psd=y: record found" );
     is( $org, 'sub.psd.dmarctest.net', "tree_walk, psd=y: org = domain below PSD" );
+
+    # PSD with a deeper author: org domain is the PSD's child, not the author
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('deep.sub.psd.dmarctest.net');
+    is( $org, 'sub.psd.dmarctest.net',
+        "tree_walk, psd=y: deep author resolves org to PSD child" );
 
     # No DMARC records at all, tree_walk returns undef (get_organizational_domain
     # falls back to PSL for the org domain)
