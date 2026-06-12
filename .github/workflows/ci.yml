@@ -3,6 +3,11 @@ name: CI Tests
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
 
 jobs:
   perl_tester:
@@ -14,7 +19,6 @@ jobs:
       matrix:
         perl-version:
           - "5.40"
-          - "5.36"
           - "5.26"
 
     container:
