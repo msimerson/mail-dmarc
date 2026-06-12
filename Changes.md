@@ -1,5 +1,8 @@
 ### Unreleased
 
+### 1.20260612
+
+- feat: implement RFC 9989 DMARC, by @bigio in #297
 - chore(ci): update install-with-cpan to v2, #299
 
 ### 1.20260325

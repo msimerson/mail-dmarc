@@ -2,7 +2,7 @@ package Mail::DMARC::Policy;
 use strict;
 use warnings;
 
-our $VERSION = '1.20260306';
+our $VERSION = '1.20260612';
 
 use Carp;
 
@@ -246,7 +246,7 @@ Mail::DMARC::Policy - a DMARC policy in object format
 
 =head1 VERSION
 
-version 1.20260306
+version 1.20260612
 
 =head1 SYNOPSIS
 
