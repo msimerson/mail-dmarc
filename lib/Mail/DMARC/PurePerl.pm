@@ -150,7 +150,7 @@ sub discover_policy {
 
     my $policy;
     my $policy_str = "domain=$at_dom;" . $record_str;
-    eval { $policy = $self->policy($policy_str) } or return;
+    eval { $policy = $self->policy($policy_str) };
     if ($@) {
         $self->result->reason(
             type    => 'other',
@@ -158,6 +158,7 @@ sub discover_policy {
         );
         return;
     }
+    return unless $policy;
     $self->result->published($policy);
 
     # If a retrieved policy record does not contain a valid "p" tag, or
