@@ -47,6 +47,7 @@ $resolver->zonefile_parse(join("\n",
 '_dmarc.np.dmarctest.net.                       600 TXT "v=DMARC1; p=none; np=reject; rua=mailto:dmarc@np.dmarctest.net"',
 'np.dmarctest.net.                              600 MX  10 mail.np.dmarctest.net.',
 'real.np.dmarctest.net.                         600 MX  10 mail.np.dmarctest.net.',
+'txtonly.np.dmarctest.net.                      600 TXT "v=SPF1 -all"',
 
 # np absent, sp=quarantine: ghost subdomain falls back to sp (no np tag)
 '_dmarc.npnosp.dmarctest.net.                   600 TXT "v=DMARC1; p=none; sp=quarantine; rua=mailto:dmarc@npnosp.dmarctest.net"',
@@ -557,19 +558,8 @@ sub test_validate_psd_y {
         or diag "warnings: @warns";
 }
 
-sub test_validate_np_tag {
-    my @subtests = (
-        # existing subdomain (has MX in mock): p=none applies
-        [ 'real.np.dmarctest.net',       'none',       'np tag: existing subdomain uses p=none' ],
-        # ghost subdomain (NXDOMAIN in mock): np=reject applies
-        [ 'ghost.np.dmarctest.net',      'reject',     'np tag: non-existent subdomain uses np=reject' ],
-        # no np tag: NXDOMAIN subdomain falls through to sp=quarantine
-        [ 'ghost.npnosp.dmarctest.net',  'quarantine', 'np absent: NXDOMAIN subdomain uses sp=quarantine' ],
-        # np=none: no enforcement for NXDOMAIN subdomain even though p=reject
-        [ 'ghost.npnone.dmarctest.net',  'none',       'np=none: NXDOMAIN subdomain disposition is none' ],
-        # np=reject + t=y: reject downgraded to quarantine via testing mode
-        [ 'ghost.npttest2.dmarctest.net','quarantine', 'np+t=y: NXDOMAIN subdomain reject downgraded by t=y' ],
-    );
+sub _run_np_subtests {
+    my @subtests = @_;
     for my $t (@subtests) {
         my ($header_from, $expected_disp, $label) = @$t;
         $dmarc = Mail::DMARC::PurePerl->new(
@@ -589,6 +579,33 @@ sub test_validate_np_tag {
         eval { $dmarc->validate() };
         is( $dmarc->result->disposition, $expected_disp, $label )
             or diag Dumper($dmarc->result);
+    }
+}
+
+sub test_validate_np_tag {
+    # Tests that use the real _subdomain_exists_in_dns: the mock resolver returns
+    # NOERROR/NODATA for names in the zone that lack the queried record type, which
+    # is enough to exercise the NODATA-handling fix.
+    _run_np_subtests(
+        # existing subdomain (has MX in mock): p=none applies
+        [ 'real.np.dmarctest.net',    'none', 'np tag: existing subdomain uses p=none' ],
+        # TXT-only subdomain: NOERROR/NODATA for A/AAAA/MX/NS → name exists → np= must NOT apply
+        [ 'txtonly.np.dmarctest.net', 'none', 'np tag: TXT-only subdomain treated as existing (p=none, not np=reject)' ],
+    );
+
+    # Ghost-subdomain tests: Net::DNS::Resolver::Mock returns NOERROR/NODATA for
+    # unknown names, whereas real DNS returns NXDOMAIN.
+    # Override _subdomain_exists_in_dns to simulate NXDOMAIN so we can test that
+    # validate() correctly applies the np= tag when the subdomain is non-existent.
+    {
+        no warnings 'redefine';
+        local *Mail::DMARC::PurePerl::_subdomain_exists_in_dns = sub { 0 };
+        _run_np_subtests(
+            [ 'ghost.np.dmarctest.net',       'reject',     'np tag: non-existent subdomain uses np=reject' ],
+            [ 'ghost.npnosp.dmarctest.net',   'quarantine', 'np absent: NXDOMAIN subdomain uses sp=quarantine' ],
+            [ 'ghost.npnone.dmarctest.net',   'none',       'np=none: NXDOMAIN subdomain disposition is none' ],
+            [ 'ghost.npttest2.dmarctest.net', 'quarantine', 'np+t=y: NXDOMAIN subdomain reject downgraded by t=y' ],
+        );
     }
 }
 

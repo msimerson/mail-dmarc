@@ -495,17 +495,16 @@ sub _psl_organizational_domain {
 
 sub _subdomain_exists_in_dns {
     my ( $self, $dom ) = @_;
-    # Returns true if the domain has DNS infrastructure (RFC 9989 4.7).
-    # Returns false on NXDOMAIN or when DNS responds but finds no records,
-    # returns true conservatively when all queries time out / return 
-    # no response
+    # RFC 9989 4.7: a subdomain is non-existent only when DNS consistently
+    # returns NXDOMAIN. NOERROR/NODATA means the name exists but lacks that
+    # record type. Timeouts and other errors are treated conservatively as
+    # existing.
     my $got_response = 0;
     for my $type (qw/ A AAAA MX NS /) {
         my $q = $self->get_resolver->send( $dom, $type );
         next unless $q;
+        return 1 if $q->header->rcode ne 'NXDOMAIN';  # NOERROR/NODATA or error → exists
         $got_response = 1;
-        return 0 if $q->header->rcode eq 'NXDOMAIN';
-        return 1 if $q->answer;
     }
     return $got_response ? 0 : 1;
 }
