@@ -85,16 +85,19 @@ sub validate {
     }
     $effective_p //= 'none';
 
-    # RFC 9989 4.7 t tag: testing mode, apply one severity level
+    # RFC 9989 4.7 t tag: testing mode, apply one severity level lower
     if ( defined $policy->t && lc( $policy->t ) eq 'y' ) {
-        $effective_p =
+        my $tested =
               ( lc($effective_p) eq 'reject' )     ? 'quarantine'
             : ( lc($effective_p) eq 'quarantine' ) ? 'none'
-            :                                    'none';
-        $self->result->reason(
-            type    => 'other',
-            comment => 'policy testing mode (t=y)'
-        );
+            :                                        $effective_p;
+        if ( $tested ne $effective_p ) {
+            $effective_p = $tested;
+            $self->result->reason(
+                type    => 'other',
+                comment => 'policy testing mode (t=y)'
+            );
+        }
     }
 
     # RFC 9989: pct tag is deprecated and MUST be ignored
