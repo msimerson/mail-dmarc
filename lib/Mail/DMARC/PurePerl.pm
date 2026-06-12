@@ -88,8 +88,8 @@ sub validate {
     # RFC 9989 4.7 t tag: testing mode, apply one severity level
     if ( defined $policy->t && lc( $policy->t ) eq 'y' ) {
         $effective_p =
-              ( $effective_p eq 'reject' )     ? 'quarantine'
-            : ( $effective_p eq 'quarantine' ) ? 'none'
+              ( lc($effective_p) eq 'reject' )     ? 'quarantine'
+            : ( lc($effective_p) eq 'quarantine' ) ? 'none'
             :                                    'none';
         $self->result->reason(
             type    => 'other',
