@@ -144,7 +144,8 @@ sub discover_policy {
 
     if ( !$record_str ) {
         $self->result->result('none');
-        $self->result->reason( type => 'other', comment => 'no policy' );
+        $self->result->reason( type => 'other', comment => 'no policy' )
+            if !@{ $self->result->reason };
         return;
     }
 
