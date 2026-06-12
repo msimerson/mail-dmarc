@@ -53,6 +53,19 @@ sub parse {
         }
         $policy{lc $tag} = $value;
     }
+
+    # RFC 9989: an unrecognized value for an optional tag is ignored (the tag
+    # reverts to its default); it MUST NOT invalidate the whole record. The
+    # setters croak, so normalize here on the parse-from-DNS path instead.
+    if ( defined $policy{psd} && $policy{psd} !~ /^[ynu]$/i ) {
+        warn "ignoring invalid psd ($policy{psd})\n";
+        delete $policy{psd};
+    }
+    if ( defined $policy{t} && $policy{t} !~ /^[yn]$/i ) {
+        warn "ignoring invalid t ($policy{t})\n";
+        delete $policy{t};
+    }
+
     return bless \%policy, ref $self;    # inherited defaults + overrides
 }
 
