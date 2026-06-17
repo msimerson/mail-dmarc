@@ -907,6 +907,16 @@ host part of the authority component of a [URI] specified in the
 
 The overriding URI MUST use the same destination host from the first step.
 
+=head1 NOT IMPLEMENTED
+
+=head2 RFC 9991 - DMARC Failure Reporting
+
+RFC 9991 defines the format and delivery of per-message DMARC failure reports
+(forensic reports, sent via the C<ruf> tag). This module does B<not> implement
+RFC 9991. Sending failure reports is not supported. The C<ruf> tag in a DMARC
+policy record is parsed and stored but no failure reports are generated or
+delivered.
+
 =head1 AUTHORS
 
 =over 4
