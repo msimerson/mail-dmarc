@@ -287,7 +287,7 @@ sub insert_into {
 
 sub update {
     my ($self, $table, $cols) = @_;
-    my $columns = '"' . join( '" = ?, "') . '" = ?';
+    my $columns = '"' . join( '" = ?, "', @$cols ) . '" = ?';
     return "UPDATE \"$table\" SET $columns WHERE 1=1";
 }
 

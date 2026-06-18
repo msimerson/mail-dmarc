@@ -287,8 +287,9 @@ sub handle_body {
 
     print "handling decompressed body\n" if $self->{verbose};
     if ($body =~ /xmlns=/) {
-        # gmx.net added an invalid namespace ("urn:ietf:params:xml:ns:dmarc-2.0")
-        # which breaks the findnodes parsing.
+        # RFC 9990 defines xmlns="urn:ietf:params:xml:ns:dmarc-2.0" as the
+        # official namespace. Strip it so un-namespaced XPath queries
+        # (/feedback/...) continue to work with XML::LibXML.
         print "NOTICE: removing xmlns from XML document\n" if $self->{verbose};
         $body =~ s/\s+xmlns="[^"]*"//g;
     }
@@ -343,10 +344,10 @@ sub do_node_policy_published {
 
     my $pol = Mail::DMARC::Policy->new();
 
-    foreach my $n (qw/ domain adkim aspf p sp pct /) {
+    foreach my $n (qw/ domain adkim aspf p sp np t psd fo discovery_method /) {
         my $val = $node->findnodes("./$n")->string_value or next;
         $val =~ s/\s*//g;    # remove whitespace
-        $pol->$n($val);
+        eval { $pol->$n($val) };    # ignore unknown/invalid tag values
     }
 
     $self->report->aggregate->policy_published($pol);

@@ -57,8 +57,7 @@ sub as_xml {
 
     return <<"EO_XML"
 <?xml version="1.0"?>
-<feedback>
-\t<version>1.0</version>
+<feedback xmlns="urn:ietf:params:xml:ns:dmarc-2.0">
 $meta
 $pubp
 $reco</feedback>
@@ -118,8 +117,10 @@ sub get_auth_results_as_xml {
     foreach my $dkim_sig ( @{ $rec->{auth_results}{dkim} } ) {
         $ar .= "\t\t\t<dkim>\n";
         foreach my $g (qw/ domain selector result human_result /) {
-            next if !defined $dkim_sig->{$g};
-            my $val = XML::LibXML::Text->new( $dkim_sig->{$g} )->toString();
+            next if !defined $dkim_sig->{$g} && $g ne 'selector';
+            my $val = defined $dkim_sig->{$g}
+                ? XML::LibXML::Text->new( $dkim_sig->{$g} )->toString()
+                : '';
             $ar .= "\t\t\t\t<$g>$val</$g>\n";
         }
         $ar .= "\t\t\t</dkim>\n";
@@ -143,14 +144,11 @@ sub get_policy_published_as_xml {
     my $self = shift;
     my $pp = $self->policy_published or return '';
     my $xml = "\t<policy_published>\n\t\t<domain>$pp->{domain}</domain>\n";
-    foreach my $f (qw/ adkim aspf p sp pct fo /) {
+    foreach my $f (qw/ adkim aspf p sp np t psd fo discovery_method /) {
         my $v = $pp->{$f};
         # Set some default values for missing optional fields if necessary
         if ( $f eq 'sp' && !defined $v ) {
             $v = $pp->{'p'};
-        }
-        if ( $f eq 'pct' && !defined $v ) {
-            $v = '100';
         }
         if ( $f eq 'fo' && !defined $v ) {
             $v = '0';

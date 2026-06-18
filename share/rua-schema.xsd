@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
    <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-     targetNamespace="http://dmarc.org/dmarc-xml/0.1">
+     targetNamespace="urn:ietf:params:xml:ns:dmarc-2.0">
 
    <!-- The time range in UTC covered by messages in this report,
         specified in seconds since epoch. -->
@@ -33,13 +33,21 @@
      </xs:restriction>
    </xs:simpleType>
 
-   <!-- The policy actions specified by p and sp in the
+   <!-- The policy actions specified by p, sp, and np in the
         DMARC record. -->
    <xs:simpleType name="DispositionType">
      <xs:restriction base="xs:string">
        <xs:enumeration value="none"/>
        <xs:enumeration value="quarantine"/>
        <xs:enumeration value="reject"/>
+     </xs:restriction>
+   </xs:simpleType>
+
+   <!-- How the policy was discovered (RFC 9989 tree walk or PSL). -->
+   <xs:simpleType name="DiscoveryMethodType">
+     <xs:restriction base="xs:string">
+       <xs:enumeration value="treewalk"/>
+       <xs:enumeration value="psl"/>
      </xs:restriction>
    </xs:simpleType>
 
@@ -56,13 +64,20 @@
        <xs:element name="aspf" type="AlignmentType"
                    minOccurs="0"/>
        <!-- The policy to apply to messages from the domain. -->
-       <xs:element name="p" type="DispositionType"/>
+       <xs:element name="p" type="DispositionType" minOccurs="0"/>
        <!-- The policy to apply to messages from subdomains. -->
-       <xs:element name="sp" type="DispositionType"/>
-       <!-- The percent of messages to which policy applies. -->
-       <xs:element name="pct" type="xs:integer"/>
+       <xs:element name="sp" type="DispositionType" minOccurs="0"/>
+       <!-- RFC 9989: policy for non-existent subdomains. -->
+       <xs:element name="np" type="DispositionType" minOccurs="0"/>
+       <!-- RFC 9989: testing mode (y = apply one severity lower). -->
+       <xs:element name="t" type="xs:string" minOccurs="0"/>
+       <!-- RFC 9989: public suffix domain indicator. -->
+       <xs:element name="psd" type="xs:string" minOccurs="0"/>
        <!-- Failure reporting options in effect. -->
-       <xs:element name="fo" type="xs:string"/>
+       <xs:element name="fo" type="xs:string" minOccurs="0"/>
+       <!-- RFC 9989/9990: how the policy was discovered. -->
+       <xs:element name="discovery_method" type="DiscoveryMethodType"
+                   minOccurs="0"/>
      </xs:all>
    </xs:complexType>
 
@@ -75,21 +90,17 @@
    </xs:simpleType>
 
    <!-- Reasons that may affect DMARC disposition or execution
-        thereof. -->
+        thereof (RFC 9990). -->
    <xs:simpleType name="PolicyOverrideType">
      <xs:restriction base="xs:string">
-       <xs:enumeration value="forwarded"/>
-       <xs:enumeration value="sampled_out"/>
        <xs:enumeration value="trusted_forwarder"/>
        <xs:enumeration value="mailing_list"/>
        <xs:enumeration value="local_policy"/>
+       <xs:enumeration value="policy_test_mode"/>
        <xs:enumeration value="other"/>
      </xs:restriction>
    </xs:simpleType>
 
-   <!-- How do we allow report generators to include new
-        classes of override reasons if they want to be more
-        specific than "other"? -->
    <xs:complexType name="PolicyOverrideReason">
      <xs:all>
        <xs:element name="type" type="PolicyOverrideType"/>
@@ -169,9 +180,9 @@
        <!-- The "d=" parameter in the signature. -->
        <xs:element name="domain" type="xs:string"
                    minOccurs="1"/>
-       <!-- The "s=" parameter in the signature. -->
+       <!-- The "s=" parameter in the signature (RFC 9990: required). -->
        <xs:element name="selector" type="xs:string"
-                   minOccurs="0"/>
+                   minOccurs="1"/>
        <!-- The DKIM verification result. -->
        <xs:element name="result" type="DKIMResultType"
                    minOccurs="1"/>
@@ -246,8 +257,6 @@
    <xs:element name="feedback">
      <xs:complexType>
        <xs:sequence>
-         <xs:element name="version"
-                     type="xs:decimal"/>
          <xs:element name="report_metadata"
                      type="ReportMetadataType"/>
          <xs:element name="policy_published"
