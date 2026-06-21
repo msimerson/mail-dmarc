@@ -3,6 +3,7 @@ use warnings;
 
 use Data::Dumper;
 use Test::More;
+use Test::Exception;
 
 use lib 'lib';
 
@@ -34,8 +35,8 @@ sub test_get_size_limit {
 
     is( $uri->get_size_limit(undef), 0, 'get_size_limit undef means no limit' );
 
-    eval { $uri->get_size_limit('7x') };
-    like( $@, qr/unrecognized unit/i, 'get_size_limit croaks on invalid unit' );
+    throws_ok { $uri->get_size_limit('7x') } qr/unrecognized unit/i,
+        'get_size_limit croaks on invalid unit';
 }
 
 sub test_parse {
@@ -49,14 +50,14 @@ sub test_parse {
     foreach (@good) {
         my $uris = $uri->parse($_);
         ok( $uris,         "parse, $_" );
-        ok( scalar @$uris, "parse, count " . scalar @$uris );
+        ok( @$uris, "parse, count " . @$uris );
     }
 
     my $mixed = $uri->parse(
         'mailto:good@example.com,ftp://invalid.example,https://ok.example/path!20k'
     );
-    is( scalar @$mixed, 2, 'parse filters unsupported schemes (ftp)' );
+    is( @$mixed, 2, 'parse filters unsupported schemes (ftp)' );
 
-    eval { $uri->parse() };
-    like( $@, qr/URI string is required/i, 'parse croaks without URI string' );
+    throws_ok { $uri->parse() } qr/URI string is required/i,
+        'parse croaks without URI string';
 }

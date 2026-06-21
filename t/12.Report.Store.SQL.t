@@ -1,9 +1,12 @@
 use strict;
 use warnings;
+use feature 'try';
+no warnings 'experimental::try';  ## no critic (ProhibitNoWarnings)
 
 use Data::Dumper;
 use Test::More;
 use Test::Output;
+use Test::Exception;
 $Data::Dumper::Sortkeys = 1;
 
 use lib 'lib';
@@ -154,7 +157,7 @@ sub test_cleanup {
         $sql->delete_report($report->{rid});
     }
     $reports = $sql->get_report()->{data};
-    if (scalar @$reports) {
+    if (@$reports) {
         # print Dumper($reports);
         die "failed to delete reports!\n";
     }
@@ -239,7 +242,7 @@ sub test_get_report_policy_published {
 
 sub test_retrieve {
     my $r = $sql->retrieve;
-    ok( scalar @$r, "retrieve, " . scalar @$r );
+    ok( @$r, "retrieve, " . @$r );
 
     my %tests = (
         rid         => $report_id,
@@ -251,41 +254,39 @@ sub test_retrieve {
 
     foreach ( keys %tests ) {
         my $r = $sql->retrieve( $_ => $tests{$_} );
-        ok( @$r, "retrieve, $_, " . scalar @$r );
+        ok( @$r, "retrieve, $_, " . @$r );
     };
 
     # Test negation with '!' prefix
     my $r_neg_author = $sql->retrieve( author => '!NonExistentAuthor' );
-    ok( scalar @$r_neg_author >= scalar @$r, "retrieve, negate author excludes nothing when non-matching" );
+    ok( @$r_neg_author >= @$r, "retrieve, negate author excludes nothing when non-matching" );
 
     my $r_neg_domain = $sql->retrieve( from_domain => '!nonexistent.example.com' );
-    ok( scalar @$r_neg_domain >= scalar @$r, "retrieve, negate from_domain excludes nothing when non-matching" );
+    ok( @$r_neg_domain >= @$r, "retrieve, negate from_domain excludes nothing when non-matching" );
 
     my $r_excl_author = $sql->retrieve( author => '!Test Company' );
-    ok( scalar @$r_excl_author < scalar @$r || scalar @$r_excl_author == 0,
+    ok( @$r_excl_author < @$r || @$r_excl_author == 0,
         "retrieve, negate author excludes matching records" );
 
     my $r_sorted = $sql->retrieve( sort_by => 'author', sort_order => 'ASC', limit => 1 );
-    ok( ref($r_sorted) eq 'ARRAY' && scalar @$r_sorted <= 1,
+    ok( ref($r_sorted) eq 'ARRAY' && @$r_sorted <= 1,
         'retrieve supports sort and limit' );
 
     my $r_fallback = $sql->retrieve( sort_by => 'bogus', sort_order => 'invalid', limit => 1 );
     ok( ref($r_fallback) eq 'ARRAY',
         'retrieve falls back to default sort options for invalid values' );
 
-    eval { $sql->retrieve( limit => 0 ) };
-    like( $@, qr/limit must be a positive integer/i,
-        'retrieve croaks when limit is zero' );
+    throws_ok { $sql->retrieve( limit => 0 ) } qr/limit must be a positive integer/i,
+        'retrieve croaks when limit is zero';
 
-    eval { $sql->retrieve( limit => 'abc' ) };
-    like( $@, qr/limit must be a positive integer/i,
-        'retrieve croaks when limit is non-numeric' );
+    throws_ok { $sql->retrieve( limit => 'abc' ) } qr/limit must be a positive integer/i,
+        'retrieve croaks when limit is non-numeric';
 }
 
 sub test_retrieve_todo {
     my $r = $sql->retrieve_todo();
     ok( $r, "retrieve_todo");
-    for ( 1 .. scalar @$r ) {
+    for ( 1 .. @$r ) {
         ok( $sql->next_todo(), 'next_todo returns cached report' );
     }
     ok( !defined $sql->next_todo(), 'next_todo returns undef when cached list is exhausted' );
@@ -309,16 +310,16 @@ sub test_get_row_dkim {
 sub test_get_report {
     my $reports = $sql->get_report( rid => $report_id )->{data};
 
-    ok( scalar @$reports, "get_report, no limits, " . scalar @$reports );
+    ok( @$reports, "get_report, no limits, " . @$reports );
 
     my $limit = 10;
     my $r = $sql->get_report( length => $limit )->{data};
-    if ( ! $r || ! scalar @$r || scalar @$r < $limit ) {
+    if ( ! $r || ! @$r || @$r < $limit ) {
         ok( 1, "skipping author tests" );
         return;
     };
 
-    cmp_ok( scalar @$reports, '==', $limit, "get_report, limit $limit" );
+    cmp_ok( @$reports, '==', $limit, "get_report, limit $limit" );
 
     my @queries = (
             author      => 'The Art Farm',
@@ -332,7 +333,7 @@ sub test_get_report {
         my $val = shift @queries;
         $r = $sql->get_report( $key => $val );
         $reports = $r->{data};
-        ok( scalar @$reports, "get_report, $key, $val, " . scalar @$reports );
+        ok( @$reports, "get_report, $key, $val, " . @$reports );
     };
     $reports = $sql->get_report( length => 1, sort_dir => 'desc', sort_col => 'r.id' );
     ok( $reports->{data}, "get_report, multisearch");
@@ -474,7 +475,7 @@ sub test_ip_store_and_fetch {
             $sql->grammar->select_from( [ 'id', 'source_ip' ], 'report_record' ) . $sql->grammar->and_arg('id'),
             [ $r_id ]
         );
-        ok( scalar @$rr_ref, 'records_retrieved' );
+        ok( @$rr_ref, 'records_retrieved' );
         if ( $sql->grammar->language eq 'postgresql' ) {
             compare_any_inet_round_trip( $ip, $rr_ref->[0]{source_ip} );
         } else {
@@ -512,22 +513,18 @@ sub test_query_insert {
     ok( $sql->delete_report($rid), "delete_report, report, $rid");
 
     # negative tests
-    eval {
-        $rid = $sql->query(
+    dies_ok {
+        $sql->query(
             $sql->grammar->insert_into( 'reporting', [ 'domain', 'begin', 'end' ] ),
             [ $test_domain, $begin, $end ] );
-    };
-    chomp $@;
-    ok( $@, "query_insert, report, neg: $@" );
+    } "query_insert, neg, bad table";
 
-    eval {
-        $rid = $sql->query(
+    dies_ok {
+        $sql->query(
             $sql->grammar->insert_into( 'report', [ 'domin', 'begin', 'end' ] ),
             [ 'a' x 257, 'yellow', $end ]
         );
-    };
-    chomp $@;
-    ok( $@, "query_insert, report, neg: $@" );
+    } "query_insert, neg, bad column";
 }
 
 sub test_query_replace {
@@ -547,14 +544,12 @@ sub test_query_replace {
     }
 
     # negative
-    eval {
+    dies_ok {
         $sql->query(
             $sql->grammar->replace_into( 'rep0rt', [ 'id', 'domain', 'begin', 'end' ] ),
             [ 1, 1, 1, 1 ]
         );
-    };
-    chomp $@;
-    ok( $@, "replace, negative, $@" );
+    } "replace, negative";
 }
 
 sub test_query_update {
@@ -566,12 +561,11 @@ sub test_query_update {
         ok( $r, "query_update, $r" );
 
         # negative test
-        eval {
+        dies_ok {
             $sql->query(
                 $sql->grammar->update( 'report', [ 'ed' ] ).$sql->grammar->and_arg( 'id' ),
                 [ time, $v->{id} ] );
-        };
-        ok( $@, "query_update, neg" );
+        } "query_update, neg";
     }
 }
 
@@ -580,20 +574,22 @@ sub test_query_delete {
     my $victims = $sql->query($sql->grammar->select_from( [ 'id' ], 'report' ).$sql->grammar->limit(1));
     foreach my $v (@$victims) {
         # print "test_query_delete victim: $v->{id}\n";
-        eval {
+        try {
             my $r = $sql->delete_report($v->{id});
             ok( $r, "query_delete $v->{id}" );
-        };
-        warn $@ if ($@);
+        }
+        catch ($error) {
+            warn $error;
+        }
     }
 
     # neg
-    eval { $sql->query(
-        $sql->grammar->delete_from( 'repor' ).$sql->grammar->and_arg( 'id' ),
-        [ 1 ]
-    ); };
-    chomp $@;
-    ok( $@, "delete, negative, $@" );
+    dies_ok {
+        $sql->query(
+            $sql->grammar->delete_from( 'repor' ).$sql->grammar->and_arg( 'id' ),
+            [ 1 ]
+        );
+    } "delete, negative";
 }
 
 sub test_query_any {
@@ -604,17 +600,22 @@ sub test_query_any {
     }
 
     # negative
-    eval { $sql->query("SELECT id FROM rep0rt LIMIT 1") };
-    chomp $@;
-    ok( $@, "query, select, negative, $@" );
+    dies_ok { $sql->query("SELECT id FROM rep0rt LIMIT 1") }
+        "query, select, negative";
 }
 
 sub test_db_connect {
     my ($grammar) = @_;
     my $dbh;
-    eval { $dbh = $sql->db_connect(); };
-    if ($@) {
-        warn $@;
+    my $error = '';
+    try {
+        $dbh = $sql->db_connect();
+    }
+    catch ($e) {
+        $error = $e;
+    }
+    if ($error) {
+        warn $error;
         return 0;
     }
 
@@ -629,7 +630,7 @@ sub test_grammar_loaded {
 }
 
 sub compare_any_inet_round_trip {
-    my ( $ip, $pres ) = @_;
+    my ($ip, $pres) = @_;
 
     if ( $pres eq $ip ) {
         cmp_ok( $pres, 'eq', $ip, "any_inet_ntop, round_trip, $ip" );

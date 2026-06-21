@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Test::Exception;
 use Test::File::ShareDir
   -share => { -dist => { 'Mail-DMARC' => 'share' } };
 
@@ -20,7 +21,7 @@ use Mail::DMARC::Report::Aggregate::Record::Row;
 use Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated;
 
 sub clears_with_undef {
-    my ( $label, $object, $method, $value ) = @_;
+    my ($label, $object, $method, $value) = @_;
     $object->$method($value);
     is( $object->$method, $value, "$label stores initial value" );
     $object->$method(undef);
@@ -28,11 +29,9 @@ sub clears_with_undef {
 }
 
 sub croaks_with_undef {
-    my ( $label, $object, $method, $value ) = @_;
+    my ($label, $object, $method, $value) = @_;
     $object->$method($value);
-    my $error = '';
-    eval { $object->$method(undef); 1 } or $error = $@;
-    ok( $error, "$label treats explicit undef as a setter" );
+    dies_ok { $object->$method(undef) } "$label treats explicit undef as a setter";
 }
 
 clears_with_undef( 'Mail::DMARC::local_policy', Mail::DMARC->new, 'local_policy', 'testing' );
@@ -78,9 +77,8 @@ clears_with_undef(
 
 my $spf = Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF->new;
 $spf->result('pass');
-my $spf_error = '';
-eval { $spf->result(undef); 1 } or $spf_error = $@;
-ok( $spf_error, 'Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF::result treats explicit undef as a setter' );
+dies_ok { $spf->result(undef) }
+    'Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF::result treats explicit undef as a setter';
 
 my $dkim = Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new(
     domain => 'example.com',

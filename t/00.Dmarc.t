@@ -3,6 +3,7 @@ use warnings;
 
 use Data::Dumper;
 use Test::More;
+use Test::Exception;
 
 use Test::File::ShareDir
   -share => { -dist => { 'Mail-DMARC' => 'share' } };
@@ -75,7 +76,7 @@ sub test_zulu_time {
     ];
 
     foreach my $test ( @$data ) {
-        my ( $name, $now, $begin ) = @$test;
+        my ($name, $now, $begin) = @$test;
         my $c_begin = $dmarc->get_start_of_zulu_day( $now );
         is( $c_begin, $begin, "Zulu Day: $name" ); 
     }
@@ -98,8 +99,8 @@ sub test_report_window {
     ];
 
     foreach my $test ( @$data ) {
-        my ( $name, $interval, $now, $begin, $end ) = @$test;
-        my ( $c_begin, $c_end ) = $dmarc->get_report_window( $interval, $now );
+        my ($name, $interval, $now, $begin, $end) = @$test;
+        my ($c_begin, $c_end) = $dmarc->get_report_window( $interval, $now );
         is_deeply( [ $c_begin, $c_end ] , [ $begin, $end ] , "Report Window: $name" ); 
     }
 
@@ -117,10 +118,10 @@ sub test_interval_limits {
 
     my $now = 1426035650;
     foreach my $test ( @$data ) {
-        my ( $name, $min, $max, $interval, $expect ) = @$test;
+        my ($name, $min, $max, $interval, $expect) = @$test;
         $dmarc->config->{'report_sending'}->{'min_interval'} = $min;
         $dmarc->config->{'report_sending'}->{'max_interval'} = $max;
-        my ( $c_begin, $c_end ) = $dmarc->get_report_window( $interval, $now );
+        my ($c_begin, $c_end) = $dmarc->get_report_window( $interval, $now );
         is_deeply( ( $c_end - $c_begin ), $expect - 1, "Interval Limit: $name" ); 
     }
     delete $dmarc->config->{'report_sending'}->{'min_interval'};
@@ -175,13 +176,10 @@ sub test_dkim {
     is($counter, 1, "callback exactly once");
 
     # set DKIM with invalid key=>val pairs
-    eval { $dmarc->dkim( dom => 'foo', 'blah' ) };
-    chomp $@;
-    ok( $@, "dkim, neg, $@" );
+    dies_ok { $dmarc->dkim( dom => 'foo', 'blah' ) } "dkim, neg, invalid pairs";
 
-    eval { $dmarc->dkim( { domain => 'foo.com', result => 'non-existent' } ) };
-    chomp $@;
-    ok( $@, "dkim, neg, $@" );
+    dies_ok { $dmarc->dkim( { domain => 'foo.com', result => 'non-existent' } ) }
+        "dkim, neg, invalid result";
 }
 
 sub test_spf {
@@ -218,9 +216,7 @@ sub test_spf {
     is($counter, 1, "callback exactly once");
 
     # set SPF with invalid key=>val pairs
-    eval { $dmarc->spf( dom => 'foo', 'blah' ) };
-    chomp $@;
-    ok( $@, "spf, neg, $@" );
+    dies_ok { $dmarc->spf( dom => 'foo', 'blah' ) } "spf, neg, invalid pairs";
 }
 
 sub test_header_from {
@@ -232,9 +228,7 @@ sub test_header_from {
 
     my @bad_vals = (qw/ a.b a@b.c f*ct.org /);
     foreach my $k (@bad_vals) {
-        eval { $dmarc->header_from($k); };
-        chomp $@;
-        ok( $@, "header_from, $k, $@" );
+        dies_ok { $dmarc->header_from($k) } "header_from, $k";
     }
 }
 
@@ -265,8 +259,7 @@ sub test_setter_values {
 
     foreach my $k ( keys %bad_vals ) {
         foreach my $t ( @{ $bad_vals{$k} } ) {
-            eval { $dmarc->$k($t); };
-            ok( $@, "neg, $k, $t" ) or diag $dmarc->$k($t);
+            dies_ok { $dmarc->$k($t) } "neg, $k, $t" or diag $dmarc->$k($t);
         }
     }
 }
@@ -323,7 +316,7 @@ sub new {
 }
 sub signatures {
     my $self = shift;
-    return shift @{ $self->{signatures}} if 0 == scalar @_;
+    return shift @{ $self->{signatures}} if 0 == @_;
     push @{ $self->{signatures} }, Mail::DKIM::Signature->new(@_);
     $self->{signatures};
 }

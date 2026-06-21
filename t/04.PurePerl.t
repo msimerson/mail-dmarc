@@ -1,9 +1,12 @@
 use strict;
 use warnings;
+use feature 'try';
+no warnings 'experimental::try';  ## no critic (ProhibitNoWarnings)
 
 use Data::Dumper;
 use Net::DNS::Resolver::Mock;
 use Test::More;
+use Test::Exception;
 use URI;
 
 use Test::File::ShareDir
@@ -154,14 +157,11 @@ sub _test_reason {
 }
 
 sub test_verify_external_reporting {
-    my ( $dmarc_dom, $dest_dom, $outcome ) = @_;
+    my ($dmarc_dom, $dest_dom, $outcome) = @_;
     my $ver = 'verify_external_reporting';
 
-    my $policy;
-    eval {
-        $policy = $dmarc->policy->parse(
-            "v=DMARC1; p=none; rua=mailto:dmarc-feedback\@$dest_dom");
-    };
+    my $policy = $dmarc->policy->parse(
+        "v=DMARC1; p=none; rua=mailto:dmarc-feedback\@$dest_dom");
     $policy->{domain} = $dmarc_dom;
     ok( $policy, "new policy" );
     $dmarc->result->published($policy);
@@ -440,7 +440,7 @@ sub test_validate {
 
     $dmarc = Mail::DMARC::PurePerl->new(%sample_dmarc);
     $dmarc->set_resolver($resolver);
-    eval { $dmarc->validate(); };
+    $dmarc->validate();
     #print Dumper($dmarc->result);
     ok($dmarc->is_spf_aligned(), "validate, one-shot, is_spf_aligned, yes" );
     ok(!$dmarc->is_dkim_aligned(), "validate, one-shot, is_dkim_aligned, no" );
@@ -502,7 +502,7 @@ sub test_validate_t_tag {
         scope  => 'mfrom',
         result => 'pass',
     }]);
-    ok( eval { $dmarc->validate(); 1 }, "validate t=y, validate() did not die" ) or diag $@;
+    lives_ok { $dmarc->validate() } "validate t=y, validate() did not die";
     my $result = $dmarc->result;
     ok( $result, "validate t=y, result exists" );
     is( $result->disposition, 'quarantine',
@@ -533,7 +533,7 @@ sub test_validate_invalid_sp {
 
         $dmarc = Mail::DMARC::PurePerl->new(%sample_dmarc);
         $dmarc->set_resolver($resolver);
-        eval { $dmarc->validate(); };
+        $dmarc->validate();
         is($dmarc->result->result, $expected_result, "DMARC result is ${expected_result}") or diag Dumper($dmarc->result);
     }
 }
@@ -556,7 +556,7 @@ sub test_validate_psd_y {
     $dmarc->set_resolver($resolver);
     my @warns;
     local $SIG{__WARN__} = sub { push @warns, @_ };
-    eval { $dmarc->validate() };
+    $dmarc->validate();
     my $result = $dmarc->result;
     is( $result->result,      'fail', 'psd=y: result is fail (alignment failed)' );
     is( $result->disposition, 'none', 'psd=y: disposition is none (no p= → default none)' );
@@ -584,7 +584,7 @@ sub _run_np_subtests {
             }],
         );
         $dmarc->set_resolver($resolver);
-        eval { $dmarc->validate() };
+        $dmarc->validate();
         is( $dmarc->result->disposition, $expected_disp, $label )
             or diag Dumper($dmarc->result);
     }
@@ -680,13 +680,19 @@ sub test_get_from_dom {
         $dmarc->init;
         $dmarc->header_from_raw($h);
         my $s;
-        eval { $s = $dmarc->get_from_dom() };
+        my $error = '';
+        try {
+            $s = $dmarc->get_from_dom();
+        }
+        catch ($e) {
+            $error = $e;
+        }
         if ( $froms{$h} ) {
             ok( $s eq $froms{$h}, "get_from_dom, $s eq $froms{$h}" );
         }
         else {
-            chomp $@;
-            ok( 1, "get_from_dom, $h, $@" );
+            chomp $error;
+            ok( 1, "get_from_dom, $h, $error" );
         };
     }
 }

@@ -59,8 +59,7 @@ sub test_policy_published {
 sub test_record {
     is_deeply( $agg->record, [],"Mail::DMARC::Report::Aggregate::Record, empty");
 
-    my $r;
-    eval { $r = $agg->record( $test_r ) };
+    my $r = $agg->record( $test_r );
     ok( $r, "record, test") or diag Dumper($r);
 
     #delete $agg->record->[0]{config_file};
