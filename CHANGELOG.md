@@ -1,5 +1,10 @@
 ### Unreleased
 
+### 1.20260621
+
+- feat: implement RFC 9990, aggrement reporting by @bigio (#301)
+- fix: SQL replace_into bug
+
 ### 1.20260612
 
 - feat: implement RFC 9989 DMARC, by @bigio in #297

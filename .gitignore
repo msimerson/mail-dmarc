@@ -20,4 +20,3 @@ dmarc_reports.sqlite
 *.bak
 mail-dmarc.ini
 GEMINI.md
-CLAUDE.md
