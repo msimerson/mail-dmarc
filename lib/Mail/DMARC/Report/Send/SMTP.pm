@@ -1,30 +1,33 @@
 package Mail::DMARC::Report::Send::SMTP;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 
 use Carp;
 use English '-no_match_vars';
 use Email::MIME;
+
 #use Mail::Sender;  # something to consider
 use Sys::Hostname;
 use POSIX;
 
 use parent 'Mail::DMARC::Base';
 
-sub get_domain_mx {
-    my ( $self, $domain ) = @_;
+sub get_domain_mx( $self, $domain ) {
     print "getting MX for $domain\n";
     my $query;
-    eval {
-        $query = $self->get_resolver->send( $domain, 'MX' ) or return [];
-    } or print $@;
-
-    if ( ! $query ) {
-        print "\terror:\n\t$@";
-        return [];
-    };
+    try {
+        $query = $self->get_resolver->send( $domain, 'MX' );
+    }
+    catch ($error) {
+        print "\terror: $error";
+    }
+    return [] if !$query;
 
     my @mx;
     for my $rr ( $query->answer ) {
@@ -34,50 +37,47 @@ sub get_domain_mx {
     }
     if ( $self->verbose ) {
         print "found " . scalar @mx . "MX exchanges\n";
-    };
+    }
     return \@mx;
 }
 
-sub get_smtp_hosts {
-    my $self = shift;
-    my $email = shift or croak "missing email!";
+sub get_smtp_hosts( $self, $email = undef ) {
+    $email or croak "missing email!";
 
     my ($domain) = ( split /@/, $email )[-1];
-    my @mx = map  { $_->{addr} }
-             sort { $a->{pref} <=> $b->{pref} }
-             @{ $self->get_domain_mx($domain) };
+    my @mx = map { $_->{addr} }
+        sort { $a->{pref} <=> $b->{pref} } @{ $self->get_domain_mx($domain) };
 
     push @mx, $domain;
     print "\tfound " . scalar @mx . " MX for $email\n" if $self->verbose;
     return @mx;
 }
 
-sub get_subject {
-    my ( $self, $agg_ref ) = @_;
-
+sub get_subject( $self, $agg_ref ) {
 
     my $rid = $$agg_ref->metadata->report_id || $self->time;
-    my $id = POSIX::strftime( "%Y.%m.%d.", localtime $self->time ) . $rid;
-    my $us = $self->config->{organization}{domain};
-    if ($us eq 'example.com') {
+    my $id  = POSIX::strftime( "%Y.%m.%d.", localtime $self->time ) . $rid;
+    my $us  = $self->config->{organization}{domain};
+    if ( $us eq 'example.com' ) {
         die "Please update mail-dmarc.ini";
     }
     my $pol_dom = $$agg_ref->policy_published->domain;
     return "Report Domain: $pol_dom Submitter: $us Report-ID:$id";
 }
 
-sub human_summary {
-    my ( $self, $agg_ref ) = @_;
+sub human_summary( $self, $agg_ref ) {
 
     my $records = scalar @{ $$agg_ref->{record} };
     my $OrgName = $self->config->{organization}{org_name};
-    my $pass = grep { 'pass' eq $_->{row}{policy_evaluated}{dkim}
-                   || 'pass' eq $_->{row}{policy_evaluated}{spf}  }
-                   @{ $$agg_ref->{record} };
-    my $fail = grep { 'pass' ne $_->{row}{policy_evaluated}{dkim}
-                   && 'pass' ne $_->{row}{policy_evaluated}{spf} }
-                   @{ $$agg_ref->{record} };
-    my $ver  = $Mail::DMARC::Base::VERSION || ''; # undef in author environ
+    my $pass    = grep {
+               'pass' eq $_->{row}{policy_evaluated}{dkim}
+            || 'pass' eq $_->{row}{policy_evaluated}{spf}
+    } @{ $$agg_ref->{record} };
+    my $fail = grep {
+               'pass' ne $_->{row}{policy_evaluated}{dkim}
+            && 'pass' ne $_->{row}{policy_evaluated}{spf}
+    } @{ $$agg_ref->{record} };
+    my $ver  = $Mail::DMARC::Base::VERSION || '';    # undef in author environ
     my $from = $$agg_ref->{policy_published}{domain} or croak;
 
     return <<"EO_REPORT"
@@ -95,8 +95,7 @@ EO_REPORT
         ;
 }
 
-sub get_filename {
-    my ( $self, $agg_ref ) = @_;
+sub get_filename( $self, $agg_ref ) {
 
     #  2013 DMARC Draft, 12.2.1 Email
     #
@@ -112,10 +111,9 @@ sub get_filename {
     ) . '.xml';
 }
 
-sub assemble_too_big_message_object {
-    my ( $self, $to, $body ) = @_;
+sub assemble_too_big_message_object( $self, $to, $body ) {
 
-    my @parts    = Email::MIME->create(
+    my @parts = Email::MIME->create(
         attributes => {
             content_type => "text/plain",
             disposition  => "inline",
@@ -126,9 +124,9 @@ sub assemble_too_big_message_object {
 
     my $email = Email::MIME->create(
         header_str => [
-            From => $self->config->{organization}{email},
-            To   => $to,
-            Date => $self->get_timestamp_rfc2822,
+            From    => $self->config->{organization}{email},
+            To      => $to,
+            Date    => $self->get_timestamp_rfc2822,
             Subject => 'DMARC too big report',
         ],
         parts => [@parts],
@@ -137,22 +135,22 @@ sub assemble_too_big_message_object {
     return $email;
 }
 
-sub assemble_message_object {
-    my ( $self, $agg_ref, $to, $shrunk ) = @_;
+sub assemble_message_object( $self, $agg_ref, $to, $shrunk ) {
 
     my $filename = $self->get_filename($agg_ref);
-# WARNING: changes made here MAY affect Send::compress. Check it!
-#   my $cf       = ( time > 1372662000 ) ? 'gzip' : 'zip';   # gz after 7/1/13
-    my $cf       = 'gzip';
-      $filename .= $cf eq 'gzip' ? '.gz' : '.zip';
 
-    my @parts    = Email::MIME->create(
+    # WARNING: changes made here MAY affect Send::compress. Check it!
+    #   my $cf       = ( time > 1372662000 ) ? 'gzip' : 'zip';   # gz after 7/1/13
+    my $cf = 'gzip';
+    $filename .= $cf eq 'gzip' ? '.gz' : '.zip';
+
+    my @parts = Email::MIME->create(
         attributes => {
             content_type => "text/plain",
             disposition  => "inline",
             charset      => "US-ASCII",
         },
-        body => $self->human_summary( $agg_ref ),
+        body => $self->human_summary($agg_ref),
     ) or croak "unable to add body!";
 
     push @parts,
@@ -168,10 +166,10 @@ sub assemble_message_object {
 
     my $email = Email::MIME->create(
         header_str => [
-            From => $self->config->{organization}{email},
-            To   => $to,
-            Date => $self->get_timestamp_rfc2822,
-            Subject => $self->get_subject( $agg_ref ),
+            From    => $self->config->{organization}{email},
+            To      => $to,
+            Date    => $self->get_timestamp_rfc2822,
+            Subject => $self->get_subject($agg_ref),
         ],
         parts => [@parts],
     ) or croak "unable to assemble message\n";
@@ -180,38 +178,32 @@ sub assemble_message_object {
     return $email;
 }
 
-sub get_timestamp_rfc2822 {
-    my ($self, @args) = @_;
-    my @ts = scalar @args ? @args : localtime $self->time;
+sub get_timestamp_rfc2822( $self, @args ) {
+    my @ts     = @args ? @args : localtime $self->time;
     my $locale = setlocale(LC_CTYPE);
-    setlocale(LC_ALL, 'C');
+    setlocale( LC_ALL, 'C' );
     my $timestamp = POSIX::strftime( '%a, %d %b %Y %H:%M:%S %z', @ts );
-    setlocale(LC_ALL, $locale);
+    setlocale( LC_ALL, $locale );
     return $timestamp;
 }
 
-sub get_helo_hostname {
-    my $self = shift;
+sub get_helo_hostname($self) {
     my $host = $self->config->{smtp}{hostname};
     return $host if $host && $host ne 'mail.example.com';
     return Sys::Hostname::hostname;
-};
+}
 
-sub get_message_id {
-    my $self = shift;
+sub get_message_id($self) {
     my $host = $self->get_helo_hostname;
 
-    my ($ss, $mm, $hh, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+    my ( $ss, $mm, $hh, $mday, $mon, $year, $wday, $yday, $isdst )
+        = localtime(time);
 
     # Generate a "random" Message-ID
-    return sprintf("<%04d%02d%02d%02d%02d.%s\@%s>",
-             $year + 1900,
-             $mon  + 1,
-             $mday,
-             $hh,
-             $mm,
-             rand(),
-             $host
+    return sprintf(
+        "<%04d%02d%02d%02d%02d.%s\@%s>",
+        $year + 1900,
+        $mon + 1, $mday, $hh, $mm, rand(), $host
     );
 }
 
@@ -227,7 +219,7 @@ Mail::DMARC::Report::Send::SMTP - utility methods for sending reports via SMTP
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head2 SUBJECT FIELD
 
@@ -315,4 +307,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

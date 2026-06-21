@@ -114,10 +114,10 @@ foreach my $callback_type ( qw{ method object fail fallback } ) {
         }
 
         if ( $callback_type eq 'fail' ) {
-            is( scalar @deliveries, 0, 'Email send fails' );
+            is( @deliveries, 0, 'Email send fails' );
         }
         else {
-            is( scalar @deliveries, 1, '1 Email sent' );
+            is( @deliveries, 1, '1 Email sent' );
             is( $deliveries[0]->{envelope}->{to}->[0], 'rua@fastmaildmarc.com', 'Sent to correct address' );
             my $body = ${$deliveries[0]->{email}->[0]->{body}};
             is( $body =~ /This is a DMARC aggregate report for fastmaildmarc.com/, 1, 'Human readable description' );

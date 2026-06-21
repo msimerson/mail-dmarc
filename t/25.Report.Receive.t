@@ -3,6 +3,7 @@ use warnings;
 
 use Data::Dumper;
 use Test::More;
+use Test::Exception;
 
 use IO::Compress::Gzip;
 use IO::Compress::Zip;
@@ -93,11 +94,11 @@ sub test_get_submitter_from_filename {
 }
 
 sub test_from_file_errors {
-    eval { $recv->from_file() };
-    like( $@, qr/missing message/i, 'from_file croaks when file argument is missing' );
+    throws_ok { $recv->from_file() } qr/missing message/i,
+        'from_file croaks when file argument is missing';
 
-    eval { $recv->from_file('t/fixtures/not-there.xml') };
-    like( $@, qr/no such file/i, 'from_file croaks for missing file path' );
+    throws_ok { $recv->from_file('t/fixtures/not-there.xml') } qr/no such file/i,
+        'from_file croaks for missing file path';
 }
 
 sub test_from_file_xml {
@@ -110,13 +111,9 @@ sub test_from_file_xml {
         return;
     }
 
-    my $result = eval { $recv->from_file($file) };
-    if ($@) {
-        diag "from_file XML failed: $@";
-        ok(0, "from_file with XML file");
-    } else {
-        cmp_ok( $result, 'eq', 'aggregate', "from_file with XML file" );
-    }
+    lives_and {
+        cmp_ok( $recv->from_file($file), 'eq', 'aggregate', "from_file with XML file" );
+    } "from_file with XML file";
 }
 
 sub test_from_file_gzip {
@@ -129,13 +126,9 @@ sub test_from_file_gzip {
         return;
     }
 
-    my $result = eval { $recv->from_file($file) };
-    if ($@) {
-        diag "from_file gzip failed: $@";
-        ok(0, "from_file with gzip file");
-    } else {
-        cmp_ok( $result, 'eq', 'aggregate', "from_file with gzip file" );
-    }
+    lives_and {
+        cmp_ok( $recv->from_file($file), 'eq', 'aggregate', "from_file with gzip file" );
+    } "from_file with gzip file";
 }
 
 sub test_from_file_zip {
@@ -148,13 +141,9 @@ sub test_from_file_zip {
         return;
     }
 
-    my $result = eval { $recv->from_file($file) };
-    if ($@) {
-        diag "from_file zip failed: $@";
-        ok(0, "from_file with zip file");
-    } else {
-        cmp_ok( $result, 'eq', 'aggregate', "from_file with zip file" );
-    }
+    lives_and {
+        cmp_ok( $recv->from_file($file), 'eq', 'aggregate', "from_file with zip file" );
+    } "from_file with zip file";
 }
 
 sub test_from_email_file {

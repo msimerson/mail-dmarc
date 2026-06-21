@@ -22,40 +22,28 @@ isa_ok( $meta, 'Mail::DMARC::Report::Aggregate::Metadata' );
 my $start = time;
 my $end = time + 10;
 
-test_org_name();
-test_email();
-test_extra_contact_info();
-test_report_id();
+my %scalar_accessors = (
+    org_name           => 'Test Org',
+    email              => 'test@example.com',
+    extra_contact_info => 'http://www.example.com/path/to/dmarc.cgi',
+    report_id          => '12345566677888@sender.com',
+    uuid               => '1234908748913u41u4-1203847308924-adskfjadslfj-13i41230984',
+);
+for my $method ( sort keys %scalar_accessors ) {
+    my $val = $scalar_accessors{$method};
+    ok( $meta->$method($val), "$method, set" );
+    cmp_ok( $meta->$method, 'eq', $val, "$method, get" );
+}
+
 test_date_range();
 test_begin();
 test_end();
 test_error();
-test_uuid();
 test_as_xml();
 
 done_testing();
 exit;
 
-sub test_org_name {
-    my $name = 'Test Org';
-    ok( $meta->org_name($name), "org_name, set");
-    cmp_ok( $meta->org_name, 'eq', $name, "org_name, get");
-};
-sub test_email  {
-    my $email = 'test@example.com';
-    ok( $meta->email( $email ), "test_email, set");
-    cmp_ok( $meta->email, 'eq', $email, "test_email, get");
-};
-sub test_extra_contact_info  {
-    my $eci = 'http://www.example.com/path/to/dmarc.cgi';
-    ok( $meta->extra_contact_info( $eci ), 'extra_contact_info, set');
-    cmp_ok( $meta->extra_contact_info, 'eq', $eci, "extra_contact_info, get");
-};
-sub test_report_id  {
-    my $id = '12345566677888@sender.com';
-    ok( $meta->report_id($id), "report_id, set");
-    cmp_ok( $meta->report_id, 'eq', $id, "report_id, get");
-};
 sub test_date_range  {
     my $range_ref = {begin=>$start,end=>$end};
     ok( $meta->date_range($range_ref), "date_range, set");
@@ -80,11 +68,6 @@ sub test_error {
         ok( $meta->error( $_ ), "error, $_");
     };
     is_deeply($meta->error, $test_errors, "error, deeply");
-};
-sub test_uuid  {
-    my $uuid = '1234908748913u41u4-1203847308924-adskfjadslfj-13i41230984';
-    ok( $meta->uuid($uuid), "uuid, set");
-    cmp_ok( $meta->uuid, 'eq', $uuid, "uuid, get");
 };
 sub test_as_xml  {
     my $expected = <<"EO_XML"

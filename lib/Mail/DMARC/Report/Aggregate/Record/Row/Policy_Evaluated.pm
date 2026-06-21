@@ -1,12 +1,13 @@
 package Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated;
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
-sub new {
-    my ( $class, @args ) = @_;
+sub new( $class, @args ) {
     croak "invalid arguments" if @args % 2;
     my %args = @args;
     my $self = bless { reason => [] }, $class;
@@ -16,32 +17,32 @@ sub new {
     return $self;
 }
 
-sub disposition {
-    return $_[0]->{disposition} if 1 == scalar @_;
-    croak "invalid disposition ($_[1]"
-        if 0 == grep {/^$_[1]$/ix} qw/ reject quarantine none /;
-    return $_[0]->{disposition} =  $_[1];
+sub disposition( $self, $value = undef ) {
+    return $self->{disposition} if @_ == 1;
+    croak 'invalid disposition: ' . ( $value // '(undef)' )
+        if !defined $value || 0 == grep {/^$value$/ix} qw/ reject quarantine none /;
+    return $self->{disposition} = $value;
 }
 
-sub dkim {
-    return $_[0]->{dkim} if 1 == scalar @_;
-    return $_[0]->{dkim} =  $_[1];
+sub dkim( $self, $value = undef ) {
+    return $self->{dkim} if @_ == 1;
+    return $self->{dkim} = $value;
 }
 
-sub spf {
-    return $_[0]->{spf} if 1 == scalar @_;
-    return $_[0]->{spf} =  $_[1];
+sub spf( $self, $value = undef ) {
+    return $self->{spf} if @_ == 1;
+    return $self->{spf} = $value;
 }
 
-sub reason {
-    return $_[0]->{reason} if 1 == scalar @_;
-    if ('ARRAY' eq ref $_[1]) {    # one shot argument
-        $_[0]->{reason} = $_[1];
+sub reason( $self, $value = undef ) {
+    return $self->{reason} if @_ == 1;
+    if ( 'ARRAY' eq ref $value ) {    # one shot argument
+        $self->{reason} = $value;
     }
     else {
-        push @{ $_[0]->{reason} }, $_[1];
+        push @{ $self->{reason} }, $value;
     }
-    return $_[0]->{reason};
+    return $self->{reason};
 }
 
 1;
@@ -56,7 +57,7 @@ Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated - row/policy_evalu
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 AUTHORS
 

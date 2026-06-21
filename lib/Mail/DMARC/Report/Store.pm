@@ -1,49 +1,49 @@
 package Mail::DMARC::Report::Store;
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 use Module::Load;
 
 use parent 'Mail::DMARC::Base';
 
-sub delete_report {
-    my $self = shift;
-    return $self->backend->delete_report(@_);
+sub delete_report( $self, @args ) {
+    return $self->backend->delete_report(@args);
 }
 
-sub error {
-    my $self = shift;
-    return $self->backend->insert_error(@_);
+sub error( $self, @args ) {
+    return $self->backend->insert_error(@args);
 }
 
-sub retrieve {
-    my $self = shift;
-    return $self->backend->retrieve(@_);
+sub retrieve( $self, @args ) {
+    return $self->backend->retrieve(@args);
 }
 
-sub next_todo {
-    my $self = shift;
-    return $self->backend->next_todo(@_);
+sub next_todo( $self, @args ) {
+    return $self->backend->next_todo(@args);
 }
 
-sub retrieve_todo {
-    my $self = shift;
-    return $self->backend->retrieve_todo(@_);
+sub retrieve_todo( $self, @args ) {
+    return $self->backend->retrieve_todo(@args);
 }
 
-sub backend {
-    my $self    = shift;
+sub backend($self) {
     my $backend = $self->config->{report_store}{backend};
 
     croak "no backend defined?!" if !$backend;
 
     return $self->{$backend} if ref $self->{$backend};
     my $module = "Mail::DMARC::Report::Store::$backend";
-    load $module;
-    if ($@) {
-        croak "Unable to load backend $backend: $@\n";
+    try {
+        load $module;
+    }
+    catch ($error) {
+        croak "Unable to load backend $backend: $error\n";
     }
 
     return $self->{$backend} = $module->new;
@@ -61,7 +61,7 @@ Mail::DMARC::Report::Store - persistent storage broker for reports
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 SYNOPSIS
 

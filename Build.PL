@@ -29,7 +29,7 @@ my $module_build_args = {
     "Net::SMTPS" => 0,
   },
   "requires" => {
-    "perl" => "5.10.0",
+    "perl" => "5.34.3",
     "Carp" => 0,
     "Config::Tiny" => 0,
     "DBD::SQLite" => "1.31",

@@ -10,23 +10,22 @@ use Pod::Usage;
 my $dryrun = 0;
 my $random = 0;
 
-GetOptions (
-    'dryrun' => \$dryrun,
-    'help'   => \my $help,
-    'random' => \$random,
+GetOptions(
+    'dryrun'        => \$dryrun,
+    'help'          => \my $help,
+    'random'        => \$random,
     'config-file=s' => \my $config_file,
 );
 
 pod2usage if $help;
 
-if ( $random ) {
-    my $sleep_for = int(rand(60*60));
+if ($random) {
+    my $sleep_for = int(rand(60 * 60));
     sleep $sleep_for;
 }
 
-Mail::DMARC->new(
-    (defined $config_file ? (config_file => $config_file) : ())
-)->update_psl_file($dryrun);
+Mail::DMARC->new((defined $config_file ? (config_file => $config_file) : ()))
+    ->update_psl_file($dryrun);
 
 __END__
 

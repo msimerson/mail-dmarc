@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 use Data::Dumper;
 use Getopt::Long;
@@ -9,58 +11,63 @@ use JSON;
 use LWP::UserAgent;
 
 my %command_line_options = (
-        'host:s' => \my $host,
-        'port:s' => \my $port,
-        'data:s' => \my $data,
-        );
-GetOptions (%command_line_options);
+    'host:s' => \my $host,
+    'port:s' => \my $port,
+    'data:s' => \my $data,
+);
+GetOptions(%command_line_options);
 
-if (!$host) { $host = 'localhost'; warn "using default: --host=$host\n"; };
-if (!$port) { $port = '8080'; warn "using default: --port=$port\n"; };
-if (!$data) { $data = get_json_request(); warn "using sample --data\n"; };
+if (!$host) { $host = 'localhost';        warn "using default: --host=$host\n"; }
+if (!$port) { $port = '8080';             warn "using default: --port=$port\n"; }
+if (!$data) { $data = get_json_request(); warn "using sample --data\n"; }
 if ($data eq '-') {
     $data = '';
-    while ($_ = <>) { chomp; $data .= $_; };
+    while ($_ = <>) { chomp; $data .= $_; }
 }
 
-my $url  = "http://$host:$port/dmarc/json/validate";
-my $ua   = LWP::UserAgent->new;
-my $req  = HTTP::Request->new(POST => $url);
-   $req->content_type('application/json');
-   $req->content($data);
+my $url = "http://$host:$port/dmarc/json/validate";
+my $ua  = LWP::UserAgent->new;
+my $req = HTTP::Request->new(POST => $url);
+$req->content_type('application/json');
+$req->content($data);
 
 my $response = $ua->request($req)->decoded_content;
+
 #print Dumper($response);       # raw JSON response
 my $result;
-eval { $result = JSON->new->utf8->decode($response) };
+try {
+    $result = JSON->new->utf8->decode($response);
+}
+catch ($e) { }
 if ($result) {
-    print Dumper($result);      # pretty formatted struct
+    print Dumper($result);    # pretty formatted struct
     exit;
-};
+}
 
 die $response;
 
 sub get_json_request {
-    return JSON->new->encode ({
-        source_ip     => '192.0.1.1',
-        envelope_to   => 'example.com',
-        envelope_from => 'cars4you.info',
-        header_from   => 'yahoo.com',
-        dkim          => [
-            {   domain       => 'example.com',
-                selector     => 'apr2013',
-                result       => 'fail',
-                human_result => 'fail (body has been altered)',
-            }
-        ],
-        spf => [
-            {   domain => 'example.com',
-                scope  => 'mfrom',
-                result => 'pass',
-            }
-        ],
-    });
-};
+    return JSON->new->encode(
+        {   source_ip     => '192.0.1.1',
+            envelope_to   => 'example.com',
+            envelope_from => 'cars4you.info',
+            header_from   => 'yahoo.com',
+            dkim          => [
+                {   domain       => 'example.com',
+                    selector     => 'apr2013',
+                    result       => 'fail',
+                    human_result => 'fail (body has been altered)',
+                }
+            ],
+            spf => [
+                {   domain => 'example.com',
+                    scope  => 'mfrom',
+                    result => 'pass',
+                }
+            ],
+        }
+    );
+}
 
 __END__
 

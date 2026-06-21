@@ -1,9 +1,12 @@
 use strict;
 use warnings;
+use feature 'try';
+no warnings 'experimental::try';  ## no critic (ProhibitNoWarnings)
 
 use Data::Dumper;
 use Test::More;
 use Test::Output;
+use Test::Exception;
 
 use lib 'lib';
 
@@ -108,8 +111,7 @@ sub test_setter_values {
 
     foreach my $k ( keys %bad_vals ) {
         foreach my $t ( @{ $bad_vals{$k} } ) {
-            eval { $pol->$k($t); };
-            ok( $@, "neg, $k, $t" );
+            dies_ok { $pol->$k($t) } "neg, $k, $t";
         }
     }
 }
@@ -215,23 +217,19 @@ sub test_is_valid {
 
     # empty policy
     my $pol = Mail::DMARC::Policy->new();
-    eval { $pol->is_valid(); };
-    chomp $@;
-    ok( $@, "is_valid, $@" );
+    dies_ok { $pol->is_valid() } "is_valid croaks on empty policy";
 
-    eval { $pol = Mail::DMARC::Policy->new('v=DMARC1') };
-    chomp $@;
-    ok( $@, "is_valid, 1.4.1 meaningless, $@" );
+    dies_ok { Mail::DMARC::Policy->new('v=DMARC1') }
+        "is_valid, 1.4.1 meaningless";
 
-    eval { $pol = Mail::DMARC::Policy->new('v=DMARC1\; p=reject\;') };
+    $pol = Mail::DMARC::Policy->new('v=DMARC1\; p=reject\;');
     ok( $pol, "is_valid, 1.4.3 extra backslashes" );
 
-    eval { $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject; newtag=unknown') };
+    $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject; newtag=unknown');
     ok( $pol, "is_valid, 1.4.4 unknown tag" );
 
-    eval { $pol = Mail::DMARC::Policy->new('v=DMARC1; p=bogus') };
-    chomp $@;
-    ok( $@, "is_valid, 1.4.5 bogus p value, $@" );
+    dies_ok { Mail::DMARC::Policy->new('v=DMARC1; p=bogus') }
+        "is_valid, 1.4.5 bogus p value";
 
     # policy, minimum
     $pol = Mail::DMARC::Policy->new( 'v=DMARC1; p=reject' );
@@ -242,56 +240,36 @@ sub test_is_valid {
     ok( $pol->is_valid, "is_valid, pos, w/defaults" );
 
     # 9.6 policy discovery
-    $pol = undef;
-    eval { $pol = Mail::DMARC::Policy->new( v => 'DMARC1' ); };  # or diag $@;
-    ok( !$pol, "is_valid, neg, missing p, no rua" );
+    dies_ok { Mail::DMARC::Policy->new( v => 'DMARC1' ) }
+        "is_valid, neg, missing p, no rua";
 
-    eval {
-        $pol = Mail::DMARC::Policy->new(
-            v   => 'DMARC1',
-            rua => 'ftp://www.example.com'
-        );
-    };                                                           # or diag $@;
-    ok( !$pol, "is_valid, neg, missing p, invalid rua" );
+    dies_ok {
+        Mail::DMARC::Policy->new( v => 'DMARC1', rua => 'ftp://www.example.com' )
+    } "is_valid, neg, missing p, invalid rua";
 
-    $pol = undef;
-    eval {
-        $pol = Mail::DMARC::Policy->new(
-            v   => 'DMARC1',
-            rua => 'mailto:test@example.com'
-        );
-    };
+    $pol = Mail::DMARC::Policy->new(
+        v   => 'DMARC1',
+        rua => 'mailto:test@example.com'
+    );
     ok( $pol && $pol->is_valid, "is_valid, pos, implicit p=none w/rua" );
 
     # DMARCbis: psd=y domains (PSDs) do not require p=
-    $pol = undef;
-    eval {
-        $pol = Mail::DMARC::Policy->new( v => 'DMARC1', psd => 'y' );
-    };
+    $pol = Mail::DMARC::Policy->new( v => 'DMARC1', psd => 'y' );
     ok( $pol && $pol->is_valid, "is_valid, psd=y without p is valid" );
 
     # DMARCbis: np tag validation
-    $pol = undef;
-    eval {
-        $pol = Mail::DMARC::Policy->new(
-            v   => 'DMARC1',
-            p   => 'none',
-            np  => 'reject',
-            psd => 'n',
-        );
-    };
+    $pol = Mail::DMARC::Policy->new(
+        v   => 'DMARC1',
+        p   => 'none',
+        np  => 'reject',
+        psd => 'n',
+    );
     ok( $pol && $pol->is_valid, "is_valid, np=reject psd=n" );
 
     # np with invalid value
-    $pol = undef;
-    eval {
-        $pol = Mail::DMARC::Policy->new(
-            v  => 'DMARC1',
-            p  => 'none',
-            np => 'bogus',
-        );
-    };
-    ok( !$pol, "is_valid, neg, invalid np value" );
+    dies_ok {
+        Mail::DMARC::Policy->new( v => 'DMARC1', p => 'none', np => 'bogus' )
+    } "is_valid, neg, invalid np value";
 }
 
 sub test_stringify {
@@ -305,7 +283,10 @@ sub handles_common_record_errors {
         chomp $d;
         my $pol = Mail::DMARC::Policy->new($d);
 
-        eval { ok( $pol->is_valid(), "policy is valid: $d"); };
+        try {
+            ok( $pol->is_valid(), "policy is valid: $d");
+        }
+        catch ($e) { }
     }
 }
 

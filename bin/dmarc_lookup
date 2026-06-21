@@ -5,17 +5,17 @@ use warnings;
 use Data::Dumper;
 use Getopt::Long;
 use Pod::Usage;
-$Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
 use Mail::DMARC::PurePerl;
 
 my %command_line_options = (
-        'domain:s'  => \my $domain,
-        'verbose'   => \my $verbose,
-        );
-GetOptions (%command_line_options);
-$verbose = 1 if ! defined $verbose;
+    'domain:s' => \my $domain,
+    'verbose'  => \my $verbose,
+);
+GetOptions(%command_line_options);
+$verbose = 1 if !defined $verbose;
 
 $domain ||= $ARGV[0];
 $domain or pod2usage;
@@ -23,16 +23,16 @@ $domain or pod2usage;
 my $dmarc = Mail::DMARC::PurePerl->new;
 $dmarc->verbose($verbose);
 $dmarc->header_from($domain);
-my $policy = $dmarc->discover_policy() or
-    die "no DMARC policy published for $domain\n";
+my $policy = $dmarc->discover_policy()
+    or die "no DMARC policy published for $domain\n";
 
-print Dumper( $policy );
-if ( $policy->rua ) {
+print Dumper($policy);
+if ($policy->rua) {
     print "\n";
-    my $uri_count = $dmarc->has_valid_reporting_uri( $policy->rua );
+    my $uri_count = $dmarc->has_valid_reporting_uri($policy->rua);
     print "valid report URI: ";
     print $uri_count ? "yes\n" : "no\n";
-};
+}
 
 exit;
 

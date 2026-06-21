@@ -1,5 +1,11 @@
 ### Unreleased
 
+### 2.20260621
+
+- chore: bump minimum supported Perl to 5.34.3
+- refactor: use perl 5.20+ subroutine signatures
+- refactor: replace scalar array count checks with modern idioms
+
 ### 1.20260621
 
 - feat: implement RFC 9990, aggrement reporting by @bigio (#301)

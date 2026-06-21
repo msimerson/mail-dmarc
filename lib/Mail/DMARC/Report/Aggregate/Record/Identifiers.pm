@@ -1,12 +1,13 @@
 package Mail::DMARC::Report::Aggregate::Record::Identifiers;
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
-sub new {
-    my ( $class, @args ) = @_;
+sub new( $class, @args ) {
     croak "invalid arguments" if @args % 2;
     my %args = @args;
     my $self = bless {}, $class;
@@ -16,19 +17,19 @@ sub new {
     return $self;
 }
 
-sub envelope_to {
-    return $_[0]->{envelope_to} if 1 == scalar @_;
-    return $_[0]->{envelope_to} = $_[1];
+sub envelope_to( $self, $value = undef ) {
+    return $self->{envelope_to} if @_ == 1;
+    return $self->{envelope_to} = $value;
 }
 
-sub envelope_from {
-    return $_[0]->{envelope_from} if 1 == scalar @_;
-    return $_[0]->{envelope_from} = $_[1];
+sub envelope_from( $self, $value = undef ) {
+    return $self->{envelope_from} if @_ == 1;
+    return $self->{envelope_from} = $value;
 }
 
-sub header_from {
-    return $_[0]->{header_from} if 1 == scalar @_;
-    return $_[0]->{header_from} = $_[1];
+sub header_from( $self, $value = undef ) {
+    return $self->{header_from} if @_ == 1;
+    return $self->{header_from} = $value;
 }
 
 1;
@@ -43,7 +44,7 @@ Mail::DMARC::Report::Aggregate::Record::Identifiers - identifiers section of a D
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 AUTHORS
 
@@ -71,4 +72,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

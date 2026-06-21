@@ -1,13 +1,14 @@
 package Mail::DMARC::Report::Store::SQL::Grammars::SQLite;
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
-sub new {
-   my $class = shift;
-   my $self = { };
-   bless $self, $class;
-   return $self;
+sub new($class) {
+    my $self = {};
+    bless $self, $class;
+    return $self;
 }
 
 sub language {
@@ -18,10 +19,8 @@ sub dsn {
     return 'SQLite';
 }
 
-sub and_arg {
-    my ($self, $column, $operator) = @_;
+sub and_arg( $self, $column, $operator = undef ) {
     $operator //= '=';
-
     return " AND $column $operator ?";
 }
 
@@ -29,13 +28,11 @@ sub report_record_id {
     return 'SELECT id FROM report_record WHERE report_id=?';
 }
 
-sub delete_from_where_record_in {
-    my ($self, $table) = @_;
-    return "DELETE FROM $table WHERE report_record_id IN (??)"
+sub delete_from_where_record_in( $self, $table ) {
+    return "DELETE FROM $table WHERE report_record_id IN (??)";
 }
 
-sub delete_from_where_report {
-    my ($self, $table) = @_;
+sub delete_from_where_report( $self, $table ) {
     return "DELETE FROM $table WHERE report_id=?";
 }
 
@@ -64,15 +61,16 @@ sub select_report_id {
 }
 
 sub select_id_with_end {
-    return 'SELECT id FROM report WHERE from_domain_id=? AND end > ? AND author_id=?';
+    return
+        'SELECT id FROM report WHERE from_domain_id=? AND end > ? AND author_id=?';
 }
 
 sub insert_report {
-    return 'INSERT INTO report (from_domain_id, begin, end, author_id, uuid) VALUES (?,?,?,?,?)';
+    return
+        'INSERT INTO report (from_domain_id, begin, end, author_id, uuid) VALUES (?,?,?,?,?)';
 }
 
-sub order_by {
-    my ($self, $arg, $order) = @_;
+sub order_by( $self, $arg, $order ) {
     return " ORDER BY $arg $order";
 }
 
@@ -80,17 +78,15 @@ sub count_reports {
     return 'SELECT COUNT(*) FROM report';
 }
 
-sub limit {
-    my ($self, $number_of_entries) = @_;
+sub limit( $self, $number_of_entries = undef ) {
     $number_of_entries //= 1;
     return " LIMIT $number_of_entries";
 }
 
-sub limit_args {
-    my ($self, $number_of_entries) = @_;
-    my $return = ' LIMIT ';
+sub limit_args( $self, $number_of_entries = undef ) {
     $number_of_entries //= 1;
-    for (my $i = 1; $i <= $number_of_entries; $i++) {
+    my $return = ' LIMIT ';
+    for ( my $i = 1; $i <= $number_of_entries; $i++ ) {
         $return .= '?';
         $return .= ',' if $i < $number_of_entries;
     }
@@ -110,7 +106,8 @@ sub select_report_error {
 }
 
 sub select_report_record {
-    return 'SELECT id FROM report_record WHERE report_id=? AND source_ip=? AND count=?'
+    return
+        'SELECT id FROM report_record WHERE report_id=? AND source_ip=? AND count=?';
 }
 
 sub select_todo_query {
@@ -130,7 +127,7 @@ WHERE rr.count IS NULL
 GROUP BY r.id
 ORDER BY r.id ASC
 EO_TODO_QUERY
-    ;
+        ;
 }
 
 sub select_row_spf {
@@ -142,9 +139,8 @@ FROM report_record_spf s
 LEFT JOIN domain d ON s.domain_id=d.id
 WHERE s.report_record_id=?
 EO_SPF_ROW
-    ;
+        ;
 }
-
 
 sub select_row_dkim {
     return <<"EO_DKIM_ROW"
@@ -156,7 +152,7 @@ FROM report_record_dkim k
 LEFT JOIN domain d ON k.domain_id=d.id
 WHERE report_record_id=?
 EO_DKIM_ROW
-    ;
+        ;
 }
 
 sub select_row_reason {
@@ -165,7 +161,7 @@ SELECT type,comment
 FROM report_record_reason
 WHERE report_record_id=?
 EO_ROW_QUERY
-    ;
+        ;
 }
 
 sub select_rr_query {
@@ -181,7 +177,7 @@ LEFT JOIN domain hfd ON hfd.id=rr.header_from_did
 WHERE report_id = ?
 ORDER BY id ASC
 EO_ROW_QUERY
-    ;
+        ;
 }
 
 sub select_report_query {
@@ -197,7 +193,7 @@ LEFT JOIN author a  ON r.author_id=a.id
 LEFT JOIN domain fd ON r.from_domain_id=fd.id
 WHERE 1=1
 EO_REPORTS
-    ;
+        ;
 }
 
 sub count_filtered_report_query {
@@ -208,37 +204,37 @@ LEFT JOIN author a  ON r.author_id=a.id
 LEFT JOIN domain fd ON r.from_domain_id=fd.id
 WHERE 1=1
 EO_SQL
-    ;
+        ;
 }
 
-sub insert_error {
-    my ( $self, $which ) = @_;
+sub insert_error( $self, $which ) {
     if ( $which == 0 ) {
         return 'UPDATE report SET end=? WHERE id=?';
-    } else {
+    }
+    else {
         return 'INSERT INTO report_error (report_id, error) VALUES (?,?)';
     }
 }
 
 sub insert_rr_reason {
-    return 'INSERT INTO report_record_reason (report_record_id, type, comment) VALUES (?,?,?)'
+    return
+        'INSERT INTO report_record_reason (report_record_id, type, comment) VALUES (?,?,?)';
 }
 
-sub insert_rr_dkim {
-    my ( $self, $fields ) = @_;
+sub insert_rr_dkim( $self, $fields ) {
     my $fields_str = join ', ', @$fields;
     return <<"EO_DKIM"
 INSERT INTO report_record_dkim
     (report_record_id, $fields_str)
 VALUES (??)
 EO_DKIM
-    ;
+        ;
 }
 
-sub insert_rr_spf {
-    my ( $self, $fields ) = @_;
+sub insert_rr_spf( $self, $fields ) {
     my $fields_str = join ', ', @$fields;
-    return "INSERT INTO report_record_spf (report_record_id, $fields_str) VALUES(??)";
+    return
+        "INSERT INTO report_record_spf (report_record_id, $fields_str) VALUES(??)";
 }
 
 sub insert_rr {
@@ -248,7 +244,7 @@ INSERT INTO report_record
     disposition, dkim, spf)
    VALUES (??)
 EO_ROW_INSERT
-    ;
+        ;
 }
 
 sub insert_policy_published {
@@ -257,35 +253,30 @@ INSERT INTO report_policy_published
   (report_id, adkim, aspf, p, sp, pct, rua)
 VALUES (??)
 EO_RPP
-    ;
+        ;
 }
 
-sub select_from {
-    my ($self, $columns, $table) = @_;
+sub select_from( $self, $columns, $table ) {
     my $colStr = join( ', ', @$columns );
     return "SELECT $colStr FROM $table WHERE 1=1";
 }
 
-sub insert_into {
-    my ($self, $table, $cols) = @_;
+sub insert_into( $self, $table, $cols ) {
     my $columns = join ', ', @$cols;
     return "INSERT INTO $table ($columns) VALUES (??)";
 }
 
-sub update {
-    my ($self, $table, $cols) = @_;
+sub update( $self, $table, $cols ) {
     my $columns = join( ' = ?, ', @$cols ) . ' = ?';
     return "UPDATE $table SET $columns WHERE 1=1";
 }
 
-sub replace_into {
-    my ($self, $table, $cols) = @_;
+sub replace_into( $self, $table, $cols ) {
     my $columns = join ', ', @$cols;
     return "REPLACE INTO $table ($columns) VALUES (??)";
 }
 
-sub delete_from {
-    my ($self, $table) = @_;
+sub delete_from( $self, $table ) {
     return "DELETE FROM $table WHERE 1=1";
 }
 
@@ -301,7 +292,7 @@ Mail::DMARC::Report::Store::SQL::Grammars::SQLite - Grammar for working with sql
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 SYPNOSIS
 

@@ -1,12 +1,13 @@
 package Mail::DMARC::Result::Reason;
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
-sub new {
-    my ( $class, @args ) = @_;
+sub new( $class, @args ) {
     croak "invalid arguments" if @args % 2;
     my %args = @args;
     my $self = bless {}, $class;
@@ -16,20 +17,21 @@ sub new {
     return $self;
 }
 
-sub type {
-    return $_[0]->{type} if 1 == scalar @_;
+sub type( $self, $val = undef ) {
+    return $self->{type} if @_ == 1;
     croak "invalid type"
-        if 0 == grep {/^$_[1]$/ix}
+        if !defined $val
+        || 0 == grep {/^$val$/ix}
         qw/ forwarded sampled_out trusted_forwarder
-            mailing_list local_policy other /;
-    return $_[0]->{type} = $_[1];
+        mailing_list local_policy other /;
+    return $self->{type} = $val;
 }
 
-sub comment {
-    return $_[0]->{comment} if 1 == scalar @_;
+sub comment( $self, $val = undef ) {
+    return $self->{comment} if @_ == 1;
 
     # comment is optional and requires no validation
-    return $_[0]->{comment} = $_[1];
+    return $self->{comment} = $val;
 }
 
 1;
@@ -44,7 +46,7 @@ Mail::DMARC::Result::Reason - policy override reason
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 METHODS
 
@@ -82,4 +84,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

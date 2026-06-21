@@ -11,14 +11,14 @@ use Mail::DMARC::Report::Receive;
 $|++;
 
 my %command_line_options = (
-    'file:s'    => \my $file,
-    'imap'      => \my $imap,
-    'mbox'      => \my $mbox,
-    'verbose+'  => \my $verbose,
-    );
-GetOptions (%command_line_options);
+    'file:s'   => \my $file,
+    'imap'     => \my $imap,
+    'mbox'     => \my $mbox,
+    'verbose+' => \my $verbose,
+);
+GetOptions(%command_line_options);
 
-pod2usage(0) if ! $imap && ! $mbox && ! $file;
+pod2usage(0) if !$imap && !$mbox && !$file;
 
 ## no critic (Carp)
 my $recv = Mail::DMARC::Report::Receive->new() or die;

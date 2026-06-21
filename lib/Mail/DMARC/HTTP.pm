@@ -1,7 +1,11 @@
 package Mail::DMARC::HTTP;
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 use parent 'Net::Server::HTTP';
 
@@ -15,149 +19,155 @@ use URI;
 our $report;
 use Mail::DMARC::PurePerl;
 
-my %mimes  = (
+my %mimes = (
     css  => 'text/css',
     html => 'text/html',
     js   => 'application/javascript',
     json => 'application/json',
 );
 
-sub new {
-    my $class = shift;
+sub new($class) {
     return bless {}, $class;
 }
 
-sub dmarc_httpd {
-    my $self = shift;
-    $report = shift;
+sub dmarc_httpd( $self, $http_report ) {
+    $report = $http_report;
 
-    my $port   = $report->config->{http}{port}   || 8080;
+    my $port   = $report->config->{http}{port} || 8080;
     my $ports  = $report->config->{https}{port};
     my $sslkey = $report->config->{https}{ssl_key};
     my $sslcrt = $report->config->{https}{ssl_crt};
 
     Net::Server::HTTP->run(
-        app => sub { &dmarc_dispatch },
-        port  => [$port, (($ports && $sslkey && $sslcrt) ? "$ports/ssl" : ()) ],
-        ipv   => '*', # IPv6 if available
-        ($sslkey ? (SSL_key_file => $sslkey) : ()),
-        ($sslcrt ? (SSL_cert_file => $sslcrt) : ()),
-        log_file => 'Sys::Syslog',
-        syslog_ident => 'mail_dmarc',
+        app  => sub {&dmarc_dispatch},
+        port => [ $port, ( ( $ports && $sslkey && $sslcrt ) ? "$ports/ssl" : () ) ],
+        ipv  => '*',    # IPv6 if available
+        ( $sslkey ? ( SSL_key_file  => $sslkey ) : () ),
+        ( $sslcrt ? ( SSL_cert_file => $sslcrt ) : () ),
+        log_file        => 'Sys::Syslog',
+        syslog_ident    => 'mail_dmarc',
         syslog_facility => 'MAIL',
     );
     return;
 }
 
-sub dmarc_dispatch {
-    my $self = shift;
-
+sub dmarc_dispatch($self) {
     my $path = $self->{request_info}{request_path};
     if ($path) {
         warn "path: $path\n";
+
         # Parse QUERY_STRING once here via URI (not CGI->new->Vars) to avoid
         # CGI.pm state issues in persistent Net::Server::HTTP processes.
-        my %vars = URI->new('http://x/?' . ($ENV{QUERY_STRING} // ''))->query_form;
-        return report_json_report(\%vars) if $path eq '/dmarc/json/report';
-        return report_json_rr(\%vars)     if $path eq '/dmarc/json/row';
-        return serve_validator()          if $path eq '/dmarc/json/validate';
-        return serve_file($path)          if $path =~ /\.(?:js|css|html|gz)$/x;
-    };
+        my %vars
+            = URI->new( 'http://x/?' . ( $ENV{QUERY_STRING} // '' ) )->query_form;
+        return report_json_report( \%vars ) if $path eq '/dmarc/json/report';
+        return report_json_rr( \%vars )     if $path eq '/dmarc/json/row';
+        return serve_validator()            if $path eq '/dmarc/json/validate';
+        return serve_file($path)            if $path =~ /\.(?:js|css|html|gz)$/x;
+    }
 
     return serve_file('/dmarc/index.html');
 }
 
-sub serve_pretty_error {
-    my $error = shift || 'Sorry, that operation is not supported.';
+sub serve_pretty_error( $error = undef ) {
+    $error ||= 'Sorry, that operation is not supported.';
     return print <<"EO_ERROR"
 Content-Type: text/html
 
 <p>$error</p>
 
 EO_ERROR
-;
+        ;
 }
 
-sub return_json_error {
-    my ($err) = @_;
+sub return_json_error($err) {
+
     #warn $err;
-    print JSON->new->utf8->encode( { err => $err } );  # to HTTP client
+    print JSON->new->utf8->encode( { err => $err } );    # to HTTP client
     print "\n";
-    return $err;  # to caller
+    return $err;                                         # to caller
 }
 
-sub serve_validator {
-    my $cgi  = shift || CGI->new();  # passed in $cgi for testing
-    my $resolver = shift; # passed in $resolver for testing
+sub serve_validator( $cgi = undef, $resolver = undef ) {
+    $cgi ||= CGI->new();    # passed in $cgi for testing
     my $json = JSON->new->utf8;
 
     print $cgi->header("application/json");
 
     my $post = $cgi->param('POSTDATA');
-    if (!$post) { return return_json_error("missing POST data"); }
+    if ( !$post ) { return return_json_error("missing POST data"); }
 
-    my ($input, $dmpp, $res);
-    eval { $input = $json->decode( $post ); };
-    if ($@) { return return_json_error($@); }
+    my ( $input, $dmpp, $res );
+    try {
+        $input = $json->decode($post);
+    }
+    catch ($error) {
+        return return_json_error($error);
+    }
 
-    if (!$input || !ref $input) {
+    if ( !$input || !ref $input ) {
         return return_json_error("invalid request $post");
     }
 
-    eval { $dmpp = Mail::DMARC::PurePerl->new( %$input ) };
-    if ($@) { return return_json_error($@); }
+    try {
+        $dmpp = Mail::DMARC::PurePerl->new(%$input);
+    }
+    catch ($error) {
+        return return_json_error($error);
+    }
 
     $dmpp->set_resolver($resolver) if $resolver;
 
-    eval { $res = $dmpp->validate(); };
-    if ($@) { return return_json_error($@); }
+    try {
+        $res = $dmpp->validate();
+    }
+    catch ($error) {
+        return return_json_error($error);
+    }
 
-    my $return = $json->allow_blessed->convert_blessed->encode( $res );
+    my $return = $json->allow_blessed->convert_blessed->encode($res);
     print "$return\n";
     return $return;
 }
 
-sub serve_file {
-    my ($path) = @_;
-
+sub serve_file($path) {
     my @bits = split /\//, $path;
     shift @bits;
-    return serve_pretty_error("file not found") if (!$bits[0] || 'dmarc' ne $bits[0]);
+    return serve_pretty_error("file not found")
+        if ( !$bits[0] || 'dmarc' ne $bits[0] );
     shift @bits;
     $path = join '/', @bits;
     my $file = $bits[-1];
-    $file =~ s/[^[ -~]]//g;  # strip out any non-printable chars
+    $file =~ s/[^[ -~]]//g;    # strip out any non-printable chars
 
-    my ($extension) = (split /\./, $file)[-1];
-    return serve_pretty_error("$extension not recognized") if ! $mimes{$extension};
+    my ($extension) = ( split /\./, $file )[-1];
+    return serve_pretty_error("$extension not recognized") if !$mimes{$extension};
 
-    my $dir = "share/html";  # distribution dir
-    if ( ! -d $dir ) {
-        $dir = File::ShareDir::dist_dir( 'Mail-DMARC' ); # installed loc.
+    my $dir = "share/html";    # distribution dir
+    if ( !-d $dir ) {
+        $dir = File::ShareDir::dist_dir('Mail-DMARC');    # installed loc.
         $dir .= "/html";
-    };
-    return serve_pretty_error("no such path") if ! $dir;
-    return serve_gzip("$dir/$path.gz") if -f "$dir/$path.gz";
-    return serve_pretty_error("no such file") if ! -f "$dir/$path";
+    }
+    return serve_pretty_error("no such path") if !$dir;
+    return serve_gzip("$dir/$path.gz")        if -f "$dir/$path.gz";
+    return serve_pretty_error("no such file") if !-f "$dir/$path";
 
-    open my $FH, '<', "$dir/$path" or
-        return serve_pretty_error( "unable to read $dir/$path: $!" );
+    open my $FH, '<', "$dir/$path"
+        or return serve_pretty_error("unable to read $dir/$path: $!");
     print "Content-Type: $mimes{$extension}\n\n";
     print <$FH>;
     close $FH;
     return 1;
 }
 
-sub serve_gzip {
-    my $file = shift;
-
-    open my $FH, '<', "$file" or
-        return serve_pretty_error( "unable to read $file: $!" );
+sub serve_gzip($file) {
+    open my $FH, '<', "$file"
+        or return serve_pretty_error("unable to read $file: $!");
     my $contents = do { local $/; <$FH> };    ## no critic (Local)
     close $FH;
 
-    my $decomp = substr($file, 0, -3);  # remove .gz suffix
-    my ($extension) = (split /\./, $decomp)[-1];
+    my $decomp = substr( $file, 0, -3 );             # remove .gz suffix
+    my ($extension) = ( split /\./, $decomp )[-1];
 
     # browser accepts gz encoding, serve compressed
     if ( grep {/gzip/} $ENV{HTTP_ACCEPT_ENCODING} ) {
@@ -169,13 +179,13 @@ Content-Encoding: gzip
 
 $contents
 EO_GZ
-;
+            ;
     }
 
     # browser doesn't support gzip, decompress and serve
     my $out;
     IO::Uncompress::Gunzip::gunzip( \$contents => \$out )
-         or return serve_pretty_error( "unable to decompress" );
+        or return serve_pretty_error("unable to decompress");
     my $length = length $out;
 
     return print <<"EO_UNGZ"
@@ -184,19 +194,17 @@ Content-Type: $mimes{$extension}
 
 $out
 EO_UNGZ
-;
+        ;
 }
 
-sub report_json_report {
-    my ($vars) = @_;
+sub report_json_report($vars) {
     print "Content-type: application/json\n\n";
-    my $reports = $report->store->backend->get_report( %$vars );
+    my $reports = $report->store->backend->get_report(%$vars);
     print encode_json $reports;
     return;
 }
 
-sub report_json_rr {
-    my ($vars) = @_;
+sub report_json_rr($vars) {
     print "Content-type: application/json\n\n";
     my $row = $report->store->backend->get_rr( rid => $vars->{rid} );
     print encode_json $row;
@@ -215,7 +223,7 @@ Mail::DMARC::HTTP - view stored reports via HTTP
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 SYNOPSIS
 
@@ -247,4 +255,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

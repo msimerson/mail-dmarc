@@ -1,27 +1,28 @@
 package Mail::DMARC::Report::URI;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 
 use Carp;
 use URI;
 
-sub new {
-    my $class = shift;
+sub new($class) {
     return bless {}, $class;
 }
 
-sub parse {
-    my $self = shift;
-    my $str = shift or croak "URI string is required!";
+sub parse( $self, $str = undef ) {
+    $str or croak "URI string is required!";
 
     my @valids = ();
     foreach my $raw ( split /,/, $str ) {
-#       warn "raw: $raw\n";
+
+        #       warn "raw: $raw\n";
         my ( $u, $size_f ) = split /!/, $raw;
         my $bytes = $self->get_size_limit($size_f);
-        my $uri = URI->new($u) or do {
+        my $uri   = URI->new($u) or do {
             carp "can't parse URI from $u";
             next;
         };
@@ -35,20 +36,19 @@ sub parse {
             next;
         }
 
-#       print "invalid URI scheme: $scheme in $u\n";
- # 12.1 Discovery - URI schemes found in "rua" tag that are not implemented by
- #                  a Mail Receiver MUST be ignored.
+       #       print "invalid URI scheme: $scheme in $u\n";
+       # 12.1 Discovery - URI schemes found in "rua" tag that are not implemented by
+       #                  a Mail Receiver MUST be ignored.
     }
     return \@valids;
 }
 
-sub get_size_limit {
-    my ( $self, $size ) = @_;
-    return 0 if !defined $size;          # no limit
+sub get_size_limit( $self, $size = undef ) {
+    return 0     if !defined $size;      # no limit
     return $size if $size =~ /^\d+$/;    # no units, raw byte count
 
-# 6.3 Formal Definition
-# units are considered to be powers of two; a kilobyte is 2^10, a megabyte is 2^20,
+ # 6.3 Formal Definition
+ # units are considered to be powers of two; a kilobyte is 2^10, a megabyte is 2^20,
     my $unit = lc chop $size;
     return $size * ( 2**10 ) if 'k' eq $unit;
     return $size * ( 2**20 ) if 'm' eq $unit;
@@ -69,7 +69,7 @@ Mail::DMARC::Report::URI - a DMARC report URI
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 SYNOPSIS
 
@@ -160,4 +160,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

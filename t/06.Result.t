@@ -1,9 +1,12 @@
 use strict;
 use warnings;
+use feature 'try';
+no warnings 'experimental::try';  ## no critic (ProhibitNoWarnings)
 
 use Data::Dumper;
 use Net::DNS::Resolver::Mock;
 use Test::More;
+use Test::Exception;
 
 use Test::File::ShareDir
   -share => { -dist => { 'Mail-DMARC' => 'share' } };
@@ -247,9 +250,7 @@ sub test_disposition {
 
     # negative tests
     foreach (qw/ non rejec quarantin NON REJEC QUARANTIN /) {
-        eval { $result->disposition($_) };
-        chomp $@;
-        ok( $@, "disposition, neg, $_, $@" );
+        dies_ok { $result->disposition($_) } "disposition, neg, $_";
     }
 }
 
@@ -268,12 +269,11 @@ sub test_dkim_meta {
 sub test_published_errors {
     my $res = Mail::DMARC::Result->new;
 
-    eval { $res->published() };
-    like( $@, qr/no policy discovered/i, 'published croaks when policy not set' );
+    throws_ok { $res->published() } qr/no policy discovered/i,
+        'published croaks when policy not set';
 
-    eval { $res->published( {} ) };
-    like( $@, qr/tag the policy object with a domain/i,
-        'published croaks when policy has no domain' );
+    throws_ok { $res->published( {} ) } qr/tag the policy object with a domain/i,
+        'published croaks when policy has no domain';
 }
 
 sub test_spf {
@@ -296,9 +296,7 @@ sub test_reason {
 
     # negative tests
     foreach (qw/ any reason not in above list /) {
-        eval { $result->reason( type => $_ ) };
-        chomp $@;
-        ok( $@, "reason, $_, $@" );
+        dies_ok { $result->reason( type => $_ ) } "reason, $_";
     }
 }
 
@@ -316,9 +314,7 @@ sub test_pass_fail {
 
     # negative tests
     foreach (qw/ pas fai PAS FAI /) {
-        eval { $result->$sub($_) };
-        chomp $@;
-        ok( $@, "$sub, neg, $_, $@" );
+        dies_ok { $result->$sub($_) } "$sub, neg, $_";
     }
 }
 
@@ -332,9 +328,6 @@ sub strict_relaxed {
 
     # negative tests
     foreach (qw/ stric relaxe STRIC RELAXE /) {
-        eval { $result->$sub($_) };
-        chomp $@;
-        ok( $@, "$sub, neg, $_, $@" );
+        dies_ok { $result->$sub($_) } "$sub, neg, $_";
     }
 }
-

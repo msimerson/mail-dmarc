@@ -1,21 +1,23 @@
 package Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF;
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 use strict;
+use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 use parent 'Mail::DMARC::Base';
 
-sub new {
-    my ( $class, @args ) = @_;
+sub new( $class, @args ) {
 
     my $self = bless {}, $class;
 
-    if (0 == scalar @args) {
+    if ( !@args ) {
         return $self;
     }
 
     # a bare hash
-    return $self->_from_hash(@args) if scalar @args > 1;
+    return $self->_from_hash(@args) if @args > 1;
 
     my $spf = shift @args;
     return $spf if ref $spf eq $class;
@@ -25,29 +27,29 @@ sub new {
     croak "invalid spf argument";
 }
 
-sub domain {
-    return $_[0]->{domain} if 1 == scalar @_;
-    return $_[0]->{domain} =  lc $_[1];
+sub domain( $self, $value = undef ) {
+    return $self->{domain} if @_ == 1;
+    return $self->{domain} = lc $value;
 }
 
-sub result {
-    return $_[0]->{result} if 1 == scalar @_;
-    croak if !$_[0]->is_valid_spf_result( $_[1] );
-    return $_[0]->{result} =  $_[1];
+sub result( $self, $value = undef ) {
+    return $self->{result} if @_ == 1;
+    croak                  if !$self->is_valid_spf_result($value);
+    return $self->{result} = $value;
 }
 
-sub scope {
-    return $_[0]->{scope} if 1 == scalar @_;
-    croak if ! $_[0]->is_valid_spf_scope( $_[1] );
-    return $_[0]->{scope} =  $_[1];
+sub scope( $self, $value = undef ) {
+    return $self->{scope} if @_ == 1;
+    croak                 if !$self->is_valid_spf_scope($value);
+    return $self->{scope} = $value;
 }
 
-sub _from_hash {
-    my ($self, %args) = @_;
+sub _from_hash( $self, %args ) {
 
     foreach my $key ( keys %args ) {
+
         # scope is frequently absent on received reports
-        next if ($key eq 'scope' && !$args{$key});
+        next if ( $key eq 'scope' && !$args{$key} );
         $self->$key( $args{$key} );
     }
 
@@ -55,16 +57,16 @@ sub _from_hash {
     return $self;
 }
 
-sub _from_hashref {
-    return $_[0]->_from_hash(%{ $_[1] });
+sub _from_hashref( $self, $spf ) {
+    return $self->_from_hash( %{$spf} );
 }
 
-sub is_valid {
-    my $self = shift;
+sub is_valid($self) {
 
     foreach my $f (qw/ domain result scope /) {
         next if $self->{$f};
-        if ($f ne 'scope') {
+        if ( $f ne 'scope' ) {
+
             # quite a few DMARC reporters don't include scope
             warn "SPF $f is required but missing!\n";
         }
@@ -91,7 +93,7 @@ Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF - auth_results/spf sec
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 AUTHORS
 
@@ -119,4 +121,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

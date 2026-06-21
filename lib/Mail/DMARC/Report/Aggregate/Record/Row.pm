@@ -1,13 +1,14 @@
 package Mail::DMARC::Report::Aggregate::Record::Row;
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 require Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated;
 
-sub new {
-    my ( $class, @args ) = @_;
+sub new( $class, @args ) {
     croak "invalid arguments" if @args % 2;
     my %args = @args;
     my $self = bless {}, $class;
@@ -17,31 +18,30 @@ sub new {
     return $self;
 }
 
-sub source_ip {
-    return $_[0]->{source_ip} if 1 == scalar @_;
-    return $_[0]->{source_ip} =  $_[1];
+sub source_ip( $self, $value = undef ) {
+    return $self->{source_ip} if @_ == 1;
+    return $self->{source_ip} = $value;
 }
 
-sub policy_evaluated {
-    my ($self, @args) = @_;
+sub policy_evaluated( $self, @args ) {
 
-    if (0 == scalar @args) {
+    if ( !@args ) {
         return $self->{policy_evaluated} if $self->{policy_evaluated};
     }
 
-    if (1 == scalar @args) {
-        if ('HASH' eq ref $args[0]) {
+    if ( @args == 1 ) {
+        if ( 'HASH' eq ref $args[0] ) {
             @args = %{ $args[0] };
-        }        
+        }
     }
 
-    return $self->{policy_evaluated} =
-        Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated->new(@args);
+    return $self->{policy_evaluated}
+        = Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated->new(@args);
 }
 
-sub count {
-    return $_[0]->{count} if 1 == scalar @_;
-    return $_[0]->{count} =  $_[1];
+sub count( $self, $value = undef ) {
+    return $self->{count} if @_ == 1;
+    return $self->{count} = $value;
 }
 
 1;
@@ -56,7 +56,7 @@ Mail::DMARC::Report::Aggregate::Record::Row - row section of a DMARC aggregate r
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 AUTHORS
 
@@ -84,4 +84,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

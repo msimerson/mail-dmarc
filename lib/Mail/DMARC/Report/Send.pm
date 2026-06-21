@@ -1,36 +1,35 @@
 package Mail::DMARC::Report::Send;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Send::SMTP;
 use Mail::DMARC::Report::Send::HTTP;
 
-sub http {
-    my $self = shift;
+sub http($self) {
     return $self->{http} if ref $self->{http};
     return $self->{http} = Mail::DMARC::Report::Send::HTTP->new();
 }
 
-sub smtp {
-    my $self = shift;
+sub smtp($self) {
     return $self->{smtp} if ref $self->{smtp};
     return $self->{smtp} = Mail::DMARC::Report::Send::SMTP->new();
 }
 
-sub too_big_report {
-    my ( $self, $arg_ref ) = @_;
+sub too_big_report( $self, $arg_ref ) {
 
-    my $OrgName   = $self->config->{organization}{org_name};
-    my $Domain    = $self->config->{organization}{domain};
-    my $ver       = $Mail::DMARC::Base::VERSION || ''; # undef in author environ
-    my $uri       = $arg_ref->{uri};
-    my $bytes     = $arg_ref->{report_bytes};
-    my $report_id = $arg_ref->{report_id};
-    my $rep_domain= $arg_ref->{report_domain};
-    my $date      = $self->smtp->get_timestamp_rfc2822;
+    my $OrgName = $self->config->{organization}{org_name};
+    my $Domain  = $self->config->{organization}{domain};
+    my $ver     = $Mail::DMARC::Base::VERSION || '';       # undef in author environ
+    my $uri     = $arg_ref->{uri};
+    my $bytes   = $arg_ref->{report_bytes};
+    my $report_id  = $arg_ref->{report_id};
+    my $rep_domain = $arg_ref->{report_domain};
+    my $date       = $self->smtp->get_timestamp_rfc2822;
 
     return <<"EO_TOO_BIG"
 
@@ -62,7 +61,7 @@ Mail::DMARC::Report::Send - report sending dispatch class
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 DESCRIPTION
 
@@ -118,4 +117,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
