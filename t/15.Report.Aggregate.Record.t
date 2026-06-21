@@ -21,26 +21,21 @@ done_testing();
 exit;
 
 sub test_identifiers {
+    my %vals = (
+        envelope_to   => 'to.example.com',
+        header_from   => 'from.example.com',
+        envelope_from => 'from.example.com',
+    );
+
     my $id = $rec->identifiers;
-
-    ok( $id->envelope_to( 'to.example.com' ), "envelope_to, set");
-    ok( $id->envelope_to eq 'to.example.com', "envelope_to, get");
-
-    ok( $id->header_from( 'from.example.com' ), "header_from, set");
-    ok( $id->header_from eq 'from.example.com', "header_from, get");
-
-    ok( $id->envelope_from( 'from.example.com' ), "envelope_from, set");
-    ok( $id->envelope_from eq 'from.example.com', "envelope_from, get");
+    for my $m ( sort keys %vals ) {
+        ok( $id->$m( $vals{$m} ), "$m, set" );
+        is( $id->$m, $vals{$m},   "$m, get" );
+    }
 
     # one shot
-    $id = $rec->identifiers(
-        envelope_to  => 'to.example.com',
-        header_from  => 'from.example.com',
-        envelope_from=> 'from.example.com',
-    );
-    ok( $id->envelope_to eq 'to.example.com', "envelope_to, get");
-    ok( $id->header_from eq 'from.example.com', "header_from, get");
-    ok( $id->envelope_from eq 'from.example.com', "envelope_from, get");
+    $id = $rec->identifiers( %vals );
+    is( $id->$_, $vals{$_}, "$_, get" ) for sort keys %vals;
 };
 
 sub test_auth_results {

@@ -21,7 +21,8 @@ use Mail::DMARC::Report::Aggregate::Record::Row;
 use Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated;
 
 sub clears_with_undef {
-    my ($label, $object, $method, $value) = @_;
+    my ($object, $method, $value) = @_;
+    my $label = ref($object) . "::$method";
     $object->$method($value);
     is( $object->$method, $value, "$label stores initial value" );
     $object->$method(undef);
@@ -29,78 +30,45 @@ sub clears_with_undef {
 }
 
 sub croaks_with_undef {
-    my ($label, $object, $method, $value) = @_;
+    my ($object, $method, $value) = @_;
+    my $label = ref($object) . "::$method";
     $object->$method($value);
     dies_ok { $object->$method(undef) } "$label treats explicit undef as a setter";
 }
 
-clears_with_undef( 'Mail::DMARC::local_policy', Mail::DMARC->new, 'local_policy', 'testing' );
-croaks_with_undef( 'Mail::DMARC::source_ip', Mail::DMARC->new, 'source_ip', '192.0.2.1' );
+clears_with_undef( Mail::DMARC->new, 'local_policy', 'testing' );
+croaks_with_undef( Mail::DMARC->new, 'source_ip', '192.0.2.1' );
 
-clears_with_undef( 'Mail::DMARC::Base::verbose', Mail::DMARC::Base->new, 'verbose', 1 );
+clears_with_undef( Mail::DMARC::Base->new, 'verbose', 1 );
 
-clears_with_undef( 'Mail::DMARC::Result::Reason::comment', Mail::DMARC::Result::Reason->new, 'comment', 'note' );
-croaks_with_undef( 'Mail::DMARC::Result::Reason::type', Mail::DMARC::Result::Reason->new, 'type', 'other' );
+clears_with_undef( Mail::DMARC::Result::Reason->new, 'comment', 'note' );
+croaks_with_undef( Mail::DMARC::Result::Reason->new, 'type', 'other' );
 
-clears_with_undef( 'Mail::DMARC::Result::dkim_meta', Mail::DMARC::Result->new, 'dkim_meta', 'meta' );
-croaks_with_undef( 'Mail::DMARC::Result::result', Mail::DMARC::Result->new, 'result', 'pass' );
+clears_with_undef( Mail::DMARC::Result->new, 'dkim_meta', 'meta' );
+croaks_with_undef( Mail::DMARC::Result->new, 'result', 'pass' );
 
-clears_with_undef( 'Mail::DMARC::Policy::domain', Mail::DMARC::Policy->new, 'domain', 'example.com' );
-croaks_with_undef( 'Mail::DMARC::Policy::p', Mail::DMARC::Policy->new, 'p', 'none' );
+clears_with_undef( Mail::DMARC::Policy->new, 'domain', 'example.com' );
+croaks_with_undef( Mail::DMARC::Policy->new, 'p', 'none' );
 
-clears_with_undef(
-    'Mail::DMARC::Report::Aggregate::Record::Identifiers::header_from',
-    Mail::DMARC::Report::Aggregate::Record::Identifiers->new,
-    'header_from',
-    'example.com',
-);
+clears_with_undef( Mail::DMARC::Report::Aggregate::Record::Identifiers->new, 'header_from', 'example.com' );
 
-clears_with_undef(
-    'Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated::dkim',
-    Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated->new,
-    'dkim',
-    'pass',
-);
-croaks_with_undef(
-    'Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated::disposition',
-    Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated->new,
-    'disposition',
-    'none',
-);
+clears_with_undef( Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated->new, 'dkim', 'pass' );
+croaks_with_undef( Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated->new, 'disposition', 'none' );
 
-clears_with_undef(
-    'Mail::DMARC::Report::Aggregate::Record::Row::count',
-    Mail::DMARC::Report::Aggregate::Record::Row->new,
-    'count',
-    42,
-);
+clears_with_undef( Mail::DMARC::Report::Aggregate::Record::Row->new, 'count', 42 );
 
 my $spf = Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF->new;
 $spf->result('pass');
-dies_ok { $spf->result(undef) }
-    'Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF::result treats explicit undef as a setter';
+dies_ok { $spf->result(undef) } ref($spf) . "::result treats explicit undef as a setter";
 
 my $dkim = Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new(
     domain => 'example.com',
     result => 'pass',
 );
-clears_with_undef(
-    'Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM::human_result',
-    $dkim,
-    'human_result',
-    'ok',
-);
+clears_with_undef( $dkim, 'human_result', 'ok' );
 
 my $metadata = Mail::DMARC::Report::Aggregate::Metadata->new;
-clears_with_undef(
-    'Mail::DMARC::Report::Aggregate::Metadata::report_id',
-    $metadata,
-    'report_id',
-    'abc123',
-);
-$metadata->begin(123);
-is( $metadata->begin, 123, 'Mail::DMARC::Report::Aggregate::Metadata::begin stores initial value' );
-$metadata->begin(undef);
-ok( !defined $metadata->begin, 'Mail::DMARC::Report::Aggregate::Metadata::begin clears with explicit undef' );
+clears_with_undef( $metadata, 'report_id', 'abc123' );
+clears_with_undef( $metadata, 'begin', 123 );
 
 done_testing();

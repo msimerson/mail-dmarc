@@ -415,30 +415,31 @@ sub test_is_whitelisted {
     };
 };
 
-sub test_validate {
-
-    my %sample_dmarc = (
+sub sample_dmarc {
+    return (
         config_file   => 'mail-dmarc.ini',
         source_ip     => '192.0.1.1',
         envelope_to   => 'example.com',
         envelope_from => 'cars4you.info',
-        header_from   => 'tnpi.net',
-        dkim          => [
+        dkim          => [],
+        spf           => [ { domain => 'unrelated.example.com', scope => 'mfrom', result => 'pass' } ],
+        @_,
+    );
+}
+
+sub test_validate {
+
+    $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
+        header_from => 'tnpi.net',
+        dkim        => [
             {   domain       => 'example.com',
                 selector     => 'apr2013',
                 result       => 'fail',
                 human_result => 'fail (body has been altered)',
             }
         ],
-        spf => [
-            {   domain => 'tnpi.net',
-                scope  => 'mfrom',
-                result => 'pass',
-            }
-        ],
-    );
-
-    $dmarc = Mail::DMARC::PurePerl->new(%sample_dmarc);
+        spf => [ { domain => 'tnpi.net', scope => 'mfrom', result => 'pass' } ],
+    ) );
     $dmarc->set_resolver($resolver);
     $dmarc->validate();
     #print Dumper($dmarc->result);
@@ -515,23 +516,10 @@ sub test_validate_invalid_sp {
         'invalid-sp-and-without-rua.example.com' => 'none',
     );
     while (my ($header_from, $expected_result) = each %subtests) {
-        my %sample_dmarc = (
-            config_file   => 'mail-dmarc.ini',
-            source_ip     => '192.0.1.1',
-            envelope_to   => 'example.com',
-            envelope_from => 'cars4you.info',
-            header_from   => $header_from,
-            dkim          => [],
-            spf           => [
-                {
-                    domain => $header_from,
-                    scope  => 'mfrom',
-                    result => 'pass',
-                }
-            ],
-        );
-
-        $dmarc = Mail::DMARC::PurePerl->new(%sample_dmarc);
+        $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
+            header_from => $header_from,
+            spf         => [ { domain => $header_from, scope => 'mfrom', result => 'pass' } ],
+        ) );
         $dmarc->set_resolver($resolver);
         $dmarc->validate();
         is($dmarc->result->result, $expected_result, "DMARC result is ${expected_result}") or diag Dumper($dmarc->result);
@@ -540,19 +528,9 @@ sub test_validate_invalid_sp {
 
 sub test_validate_psd_y {
     # psd=y record with no p= tag: $effective_p must default to 'none', no warnings
-    $dmarc = Mail::DMARC::PurePerl->new(
-        config_file   => 'mail-dmarc.ini',
-        source_ip     => '192.0.1.1',
-        envelope_to   => 'example.com',
-        envelope_from => 'cars4you.info',
-        header_from   => 'sub.psd.dmarctest.net',
-        dkim          => [],
-        spf           => [{
-            domain => 'unrelated.example.com',
-            scope  => 'mfrom',
-            result => 'pass',
-        }],
-    );
+    $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
+        header_from => 'sub.psd.dmarctest.net',
+    ) );
     $dmarc->set_resolver($resolver);
     my @warns;
     local $SIG{__WARN__} = sub { push @warns, @_ };
@@ -570,19 +548,7 @@ sub _run_np_subtests {
     my @subtests = @_;
     for my $t (@subtests) {
         my ($header_from, $expected_disp, $label) = @$t;
-        $dmarc = Mail::DMARC::PurePerl->new(
-            config_file   => 'mail-dmarc.ini',
-            source_ip     => '192.0.1.1',
-            envelope_to   => 'example.com',
-            envelope_from => 'cars4you.info',
-            header_from   => $header_from,
-            dkim          => [],
-            spf           => [{
-                domain => 'unrelated.example.com',
-                scope  => 'mfrom',
-                result => 'pass',
-            }],
-        );
+        $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc( header_from => $header_from ) );
         $dmarc->set_resolver($resolver);
         $dmarc->validate();
         is( $dmarc->result->disposition, $expected_disp, $label )
