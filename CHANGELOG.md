@@ -1,6 +1,10 @@
 ### Unreleased
 
-### 1.20260621
+### 2.20260621
+
+- chore: bump minimum supported Perl to 5.34.3
+
+### 2.20260621
 
 - feat: implement RFC 9990, aggrement reporting by @bigio (#301)
 - fix: SQL replace_into bug

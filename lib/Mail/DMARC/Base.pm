@@ -1,8 +1,8 @@
 package Mail::DMARC::Base;
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 use strict;
 use warnings;
-use 5.10.0;
+use 5.34.3;
 
 use Carp;
 use Config::Tiny;
@@ -353,7 +353,7 @@ Mail::DMARC::Base - DMARC utility functions
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 METHODS
 
@@ -419,4 +419,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

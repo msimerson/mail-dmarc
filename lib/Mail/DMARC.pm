@@ -2,7 +2,7 @@ package Mail::DMARC;
 use strict;
 use warnings;
 
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 
 use Carp;
 our $psl_loads = 0;
@@ -314,7 +314,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 SYNOPSIS
 

@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Send::HTTP;
 use strict;
 use warnings;
 
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 
 use Carp;
 
@@ -53,7 +53,7 @@ Mail::DMARC::Report::Send::HTTP - utility methods to send reports by HTTP
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 12.2.2. HTTP
 
@@ -95,4 +95,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

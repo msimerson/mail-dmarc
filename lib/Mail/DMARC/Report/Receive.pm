@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Receive;
 use strict;
 use warnings;
 
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 
 use Carp;
 use Data::Dumper;
@@ -469,7 +469,7 @@ Mail::DMARC::Report::Receive - process incoming DMARC reports
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 DESCRIPTION
 
@@ -539,4 +539,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

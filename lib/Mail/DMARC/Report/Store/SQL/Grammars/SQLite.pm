@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL::Grammars::SQLite;
-our $VERSION = '1.20260621';
+our $VERSION = '2.20260621';
 use strict;
 use warnings;
 
@@ -301,7 +301,7 @@ Mail::DMARC::Report::Store::SQL::Grammars::SQLite - Grammar for working with sql
 
 =head1 VERSION
 
-version 1.20260621
+version 2.20260621
 
 =head1 SYPNOSIS
 
