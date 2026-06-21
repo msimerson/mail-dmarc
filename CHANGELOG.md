@@ -2,6 +2,7 @@
 
 ### 2.20260621
 
+- doc(README): updated RFCs and fixed CPAN links
 - chore: bump minimum supported Perl to 5.34.3
 - refactor: use perl 5.20+ subroutine signatures
 - refactor: replace scalar array count checks with modern idioms
