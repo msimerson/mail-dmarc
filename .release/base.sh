@@ -34,8 +34,8 @@ assure_changes_has_entry()
 {
     THIS_VERSION=$(get_version)
 
-    if ! grep -q "$THIS_VERSION" Changes.md; then
-        echo "OOPS, Changes.md has no entry for version $THIS_VERSION"
+    if ! grep -q "$THIS_VERSION" CHANGELOG.md; then
+        echo "OOPS, CHANGELOG.md has no entry for version $THIS_VERSION"
         return 1
     fi
 
