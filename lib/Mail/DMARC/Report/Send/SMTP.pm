@@ -3,6 +3,8 @@ use strict;
 use warnings;
 use feature 'signatures';
 no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -19,11 +21,15 @@ use parent 'Mail::DMARC::Base';
 sub get_domain_mx( $self, $domain ) {
     print "getting MX for $domain\n";
     my $query;
-    eval { $query = $self->get_resolver->send( $domain, 'MX' ) or return []; }
-        or print $@;
+    try {
+        $query = $self->get_resolver->send( $domain, 'MX' ) or return [];
+    }
+    catch ($error) {
+        print $error;
+    }
 
     if ( !$query ) {
-        print "\terror:\n\t$@";
+        print "\terror:\n\t$query";
         return [];
     }
 

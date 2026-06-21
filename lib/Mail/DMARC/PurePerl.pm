@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use feature 'signatures';
 no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
@@ -52,12 +54,12 @@ sub validate( $self, $policy = undef ) {
     #         specifying that a pass from one authentication test allows one
     #         to skip the other(s). All are required for reporting.
 
-    eval { $self->is_dkim_aligned; };   # 11.2.3. DKIM signature verification checks
-    eval { $self->is_spf_aligned; };    # 11.2.4. SPF validation checks
+    try { $self->is_dkim_aligned; } catch ($e) { };   # 11.2.3. DKIM signature verification checks
+    try { $self->is_spf_aligned; } catch ($e) { };    # 11.2.4. SPF validation checks
     my $aligned = $self->is_aligned();    # 11.2.5. identifier alignment checks
 
     if ( $self->config->{report_store}{auto_save} ) {
-        eval { $self->save_aggregate(); };
+        try { $self->save_aggregate(); } catch ($e) { };
     }
 
     return $self->result if $aligned;
@@ -117,7 +119,9 @@ sub validate( $self, $policy = undef ) {
 
 sub save_aggregate($self) {
     my $pol;
-    eval { $pol = $self->result->published; };
+    try {
+        $pol = $self->result->published;
+    } catch ($e) { };
     if ( $pol && $self->has_valid_reporting_uri( $pol->rua ) ) {
         my @valid_report_uris = $self->get_valid_reporting_uri( $pol->rua );
 
@@ -158,11 +162,13 @@ sub discover_policy( $self, $from_dom = undef ) {
 
     my $policy;
     my $policy_str = "domain=$at_dom;" . $record_str;
-    eval { $policy = $self->policy($policy_str) };
-    if ($@) {
+    try {
+        $policy = $self->policy($policy_str);
+    }
+    catch ($error) {
         $self->result->reason(
             type    => 'other',
-            comment => "policy parse error: $@"
+            comment => "policy parse error: $error"
         );
         return;
     }
@@ -408,7 +414,11 @@ sub tree_walk( $self, $from_dom ) {
             }
             if ( @matches == 1 ) {
                 my $rec = $matches[0];
-                my $pol = eval { $self->policy->parse("domain=$target;$rec") };
+                my $pol;
+                try {
+                    $pol = $self->policy->parse("domain=$target;$rec");
+                }
+                catch ($e) { };
                 if ($pol) {
 
                   # Author domain takes precedence: save only the first record found
@@ -723,7 +733,7 @@ sub verify_external_reporting( $self, $uri_ref = undef ) {
         next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
         my $policy    = undef;
         my $dmarc_str = join( '', $rr->txtdata );               # join parts
-        eval { $policy = $self->policy->parse($dmarc_str) };    ## no critic (Eval)
+        try { $policy = $self->policy->parse($dmarc_str) } catch ($e) { };
         push @matches, $policy ? $policy : $dmarc_str;
     }
 

@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use feature 'signatures';
 no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 use parent 'Net::Server::HTTP';
 
@@ -96,20 +98,32 @@ sub serve_validator( $cgi = undef, $resolver = undef ) {
     if ( !$post ) { return return_json_error("missing POST data"); }
 
     my ( $input, $dmpp, $res );
-    eval { $input = $json->decode($post); };
-    if ($@) { return return_json_error($@); }
+    try {
+        $input = $json->decode($post);
+    }
+    catch ($error) {
+        return return_json_error($error);
+    }
 
     if ( !$input || !ref $input ) {
         return return_json_error("invalid request $post");
     }
 
-    eval { $dmpp = Mail::DMARC::PurePerl->new(%$input) };
-    if ($@) { return return_json_error($@); }
+    try {
+        $dmpp = Mail::DMARC::PurePerl->new(%$input);
+    }
+    catch ($error) {
+        return return_json_error($error);
+    }
 
     $dmpp->set_resolver($resolver) if $resolver;
 
-    eval { $res = $dmpp->validate(); };
-    if ($@) { return return_json_error($@); }
+    try {
+        $res = $dmpp->validate();
+    }
+    catch ($error) {
+        return return_json_error($error);
+    }
 
     my $return = $json->allow_blessed->convert_blessed->encode($res);
     print "$return\n";

@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use feature 'signatures';
 no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 use Data::Dumper;
 use Carp;
@@ -172,11 +174,11 @@ sub get_dkim_key($self) {
     my $report = $self->{report};
     return $self->{dkim_key} if $self->{dkim_key};
     if ( $report->config->{report_sign}->{keyfile} ) {
-        eval {
+        try {
             require Mail::DKIM::PrivateKey;
             require Mail::DKIM::Signer;
             require Mail::DKIM::TextWrap;
-        };
+        } catch ($e) { };
         if ( UNIVERSAL::can( 'Mail::DKIM::Signer', "new" ) ) {
             my $file = $report->config->{report_sign}->{keyfile};
             $self->{dkim_key} = Mail::DKIM::PrivateKey->load( 'File' => $file, );
@@ -227,8 +229,10 @@ sub run($self) {
     # 1. get reports, one at a time
 REPORT:
     while ( my $aggregate = $report->store->next_todo() ) {
-        eval { $self->send_report( $aggregate, $report ); };
-        if ( my $error = $@ ) {
+        try {
+            $self->send_report( $aggregate, $report );
+        }
+        catch ($error) {
             $self->log_output( 'error sending report: ' . $error );
         }
 
@@ -269,9 +273,11 @@ sub send_report( $self, $aggregate, $report ) {
     );
 
     # Generate the list of report receivers
-    my $report_receivers
-        = eval { $report->uri->parse( $aggregate->policy_published->rua ) };
-    if ( my $error = $@ ) {
+    my $report_receivers;
+    try {
+        $report_receivers = $report->uri->parse( $aggregate->policy_published->rua );
+    }
+    catch ($error) {
         $self->log_output(
             {   'id'    => $aggregate->metadata->report_id,
                 'error' => 'No valid ruas found - deleting report - ' . $error,
@@ -425,7 +431,7 @@ sub email( $self, $args ) {
         my $dkim_method    = $report->config->{report_sign}{method};
         my $dkim_domain    = $report->config->{report_sign}{domain};
         my $dkim_selector  = $report->config->{report_sign}{selector};
-        eval {
+        try {
             my $dkim = Mail::DKIM::Signer->new(
                 Algorithm => $dkim_algorithm,
                 Method    => $dkim_method,
@@ -439,8 +445,8 @@ sub email( $self, $args ) {
             my $signature = $dkim->signature;
             $body = $signature->as_string . "\015\012" . $body;
             $log_data->{dkim} = 1;
-        };
-        if ( my $error = $@ ) {
+        }
+        catch ($error) {
             print "DKIM Signing error\n\t$error\n" if $self->{verbose};
             $log_data->{error}        = 'DKIM Signing error';
             $log_data->{error_detail} = $error;
@@ -458,7 +464,7 @@ sub email( $self, $args ) {
     my $success;
     while ( my $transport = shift @transports ) {
         my $done = 0;
-        eval {
+        try {
             $success = sendmail(
                 $body,
                 {   from      => $report->config->{organization}{email},
@@ -470,8 +476,8 @@ sub email( $self, $args ) {
                 $log_data->{success} = $success->{message};
                 $done = 1;
             }
-        };
-        if ( my $error = $@ ) {
+        }
+        catch ($error) {
             next if @transports;
             my $code;
             my $message;

@@ -3,6 +3,8 @@ use strict;
 use warnings;
 use feature 'signatures';
 no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -33,8 +35,10 @@ sub from_imap($self) {
     my $port   = $self->config->{imap}{port} // 993;
 
     if ( $port != 143 ) {
-        eval "use IO::Socket::SSL";    ## no critic (Eval)
-        if ($@) {
+        try {
+            require IO::Socket::SSL;
+        }
+        catch ($error) {
             croak "Can't load IO::Socket::SSL: $!\n";
         }
 
@@ -211,39 +215,42 @@ sub from_email_simple( $self, $email ) {
         if (   $c_type eq 'application/zip'
             || $c_type eq 'application/x-zip-compressed' )
         {
-            eval {
+            try {
                 $self->get_submitter_from_filename($filename);
                 $unzipper->{zip}->( \$part->body, \$bigger );
                 $self->handle_body($bigger);
                 $rep_type = 'aggregate';
-            } or do {
-                warn "failure processing $filename: $@";
-            };
+            }
+            catch ($error) {
+                warn "failure processing $filename: $error";
+            }
             next;
         }
         if ( $c_type eq 'application/gzip' ) {
-            eval {
+            try {
                 $self->get_submitter_from_filename($filename);
                 $unzipper->{gz}->( \$part->body, \$bigger );
                 $self->handle_body($bigger);
                 $rep_type = 'aggregate';
-            } or do {
-                warn "failure processing $filename: $@";
-            };
+            }
+            catch ($error) {
+                warn "failure processing $filename: $error";
+            }
             next;
         }
         if ( $filename =~ /xml\.gz$/ ) {
             if (   $c_type eq 'application/octet-stream'
                 || $c_type eq 'multipart/alternative' )
             {
-                eval {
+                try {
                     $self->get_submitter_from_filename($filename);
                     $unzipper->{gz}->( \$part->body, \$bigger );
                     $self->handle_body($bigger);
                     $rep_type = 'aggregate';
-                } or do {
-                    warn "failure processing $filename: $@";
-                };
+                }
+                catch ($error) {
+                    warn "failure processing $filename: $error";
+                }
                 next;
             }
         }
@@ -353,7 +360,7 @@ sub do_node_policy_published( $self, $node ) {
     foreach my $n (qw/ domain adkim aspf p sp np t psd fo discovery_method /) {
         my $val = $node->findnodes("./$n")->string_value or next;
         $val =~ s/\s*//g;           # remove whitespace
-        eval { $pol->$n($val) };    # ignore unknown/invalid tag values
+        try { $pol->$n($val) } catch ($e) { };    # ignore unknown/invalid tag values
     }
 
     $self->report->aggregate->policy_published($pol);
