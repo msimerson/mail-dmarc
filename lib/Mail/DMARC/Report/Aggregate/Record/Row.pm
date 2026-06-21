@@ -3,12 +3,12 @@ our $VERSION = '2.20260621';
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 require Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated;
 
-sub new($class, @args) {
+sub new( $class, @args ) {
     croak "invalid arguments" if @args % 2;
     my %args = @args;
     my $self = bless {}, $class;
@@ -18,28 +18,28 @@ sub new($class, @args) {
     return $self;
 }
 
-sub source_ip($self, $value = undef) {
+sub source_ip( $self, $value = undef ) {
     return $self->{source_ip} if @_ == 1;
     return $self->{source_ip} = $value;
 }
 
-sub policy_evaluated($self, @args) {
+sub policy_evaluated( $self, @args ) {
 
-    if (!@args) {
+    if ( !@args ) {
         return $self->{policy_evaluated} if $self->{policy_evaluated};
     }
 
-    if (@args == 1) {
-        if ('HASH' eq ref $args[0]) {
+    if ( @args == 1 ) {
+        if ( 'HASH' eq ref $args[0] ) {
             @args = %{ $args[0] };
-        }        
+        }
     }
 
-    return $self->{policy_evaluated} =
-        Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated->new(@args);
+    return $self->{policy_evaluated}
+        = Mail::DMARC::Report::Aggregate::Record::Row::Policy_Evaluated->new(@args);
 }
 
-sub count($self, $value = undef) {
+sub count( $self, $value = undef ) {
     return $self->{count} if @_ == 1;
     return $self->{count} = $value;
 }

@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Send::HTTP;
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -14,7 +14,7 @@ use Carp;
 
 use parent 'Mail::DMARC::Base';
 
-sub post($self, $uri, $report, $gz) {
+sub post( $self, $uri, $report, $gz ) {
 
     carp "http send feature not complete!";
     return;
@@ -24,7 +24,7 @@ sub post($self, $uri, $report, $gz) {
     eval "require Net::HTTP" or return;
 
     my $ver = $Mail::DMARC::Base::VERSION;
-    my $s = Net::HTTP->new( Host => $uri->host ) or croak $@;
+    my $s   = Net::HTTP->new( Host => $uri->host ) or croak $@;
     $s->write_request(
         POST         => $uri->path,
         'User-Agent' => "Mail::DMARC/$ver"
@@ -35,7 +35,7 @@ sub post($self, $uri, $report, $gz) {
         my $buf;
         my $n = $s->read_entity_body( $buf, 1024 );
         croak "read failed: $!" unless defined $n;
-        last unless $n;
+        last                    unless $n;
         print $buf;
         return 1;
     }

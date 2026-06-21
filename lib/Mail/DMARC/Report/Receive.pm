@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Receive;
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -32,28 +32,33 @@ sub from_imap($self) {
     my $f_done = $self->config->{imap}{f_done};
     my $port   = $self->config->{imap}{port} // 993;
 
-    if ($port != 143) {
-        eval "use IO::Socket::SSL";  ## no critic (Eval)
-        if ( $@ ) {
+    if ( $port != 143 ) {
+        eval "use IO::Socket::SSL";    ## no critic (Eval)
+        if ($@) {
             croak "Can't load IO::Socket::SSL: $!\n";
-        };
+        }
 
-        if (defined $self->config->{imap}{SSL_verify_mode}) {
+        if ( defined $self->config->{imap}{SSL_verify_mode} ) {
             IO::Socket::SSL::set_ctx_defaults(
                 SSL_verifycn_scheme => 'imap',
-                SSL_verify_mode => $self->config->{imap}{SSL_verify_mode},
+                SSL_verify_mode     => $self->config->{imap}{SSL_verify_mode},
             );
         }
     }
 
-    no warnings qw(once);                ## no critic (Warn)
-    my $imap = Net::IMAP::Simple->new( $server, port => $port,
-           use_ssl => $port != 143,
+    no warnings qw(once);    ## no critic (Warn)
+    my $imap = Net::IMAP::Simple->new(
+        $server,
+        port    => $port,
+        use_ssl => $port != 143,
         )
         or do {
-            ## no critic (PackageVar)
-            my $err = $port == 143 ? $Net::IMAP::Simple::errstr : $Net::IMAP::Simple::SSL::errstr;
-            croak "Unable to connect to IMAP: $err\n";
+        ## no critic (PackageVar)
+        my $err
+            = $port == 143
+            ? $Net::IMAP::Simple::errstr
+            : $Net::IMAP::Simple::SSL::errstr;
+        croak "Unable to connect to IMAP: $err\n";
         };
 
     print "connected to IMAP server $server:$port\n" if $self->verbose;
@@ -66,9 +71,10 @@ sub from_imap($self) {
     my $nm = $imap->select( $self->config->{imap}{folder} );
     $imap->expunge_mailbox( $self->config->{imap}{folder} );
     my @mess = $imap->search( 'UNSEEN', 'DATE' );
-    if (!@mess) {
+    if ( !@mess ) {
+
         # imap server might not support SORT extension *Gmail*
-        @mess = $imap->search( 'UNSEEN' );
+        @mess = $imap->search('UNSEEN');
     }
 
     print "\tfound " . scalar @mess . " messages\n" if $self->verbose;
@@ -88,27 +94,27 @@ sub from_imap($self) {
             :                        croak "unknown type!";
 
         $imap->add_flags( $i, '\Seen' );
-        if ( $done_box ) {
+        if ($done_box) {
             $imap->copy( $i, $done_box ) or do {
                 carp $imap->errstr;
                 next;
             };
             $imap->add_flags( $i, '\Deleted' );
-        };
+        }
     }
 
     $imap->quit;
     return 1;
 }
 
-sub from_file($self, $file = undef) {
-    croak "missing message" if !$file;
+sub from_file( $self, $file = undef ) {
+    croak "missing message"        if !$file;
     croak "No such file $file: $!" if !-f $file;
 
     my $contents = $self->slurp($file);
 
     # Detect gzip by magic bytes \x1f\x8b
-    if ( substr($contents, 0, 2) eq "\x1f\x8b" ) {
+    if ( substr( $contents, 0, 2 ) eq "\x1f\x8b" ) {
         my $xml;
         IO::Uncompress::Gunzip::gunzip( \$contents, \$xml )
             or croak "gunzip failed: $IO::Uncompress::Gunzip::GunzipError";
@@ -117,7 +123,7 @@ sub from_file($self, $file = undef) {
     }
 
     # Detect zip by magic bytes PK\x03\x04
-    if ( substr($contents, 0, 4) eq "PK\x03\x04" ) {
+    if ( substr( $contents, 0, 4 ) eq "PK\x03\x04" ) {
         my $xml;
         IO::Uncompress::Unzip::unzip( \$contents, \$xml )
             or croak "unzip failed: $IO::Uncompress::Unzip::UnzipError";
@@ -131,10 +137,10 @@ sub from_file($self, $file = undef) {
         return $self->handle_body($contents) ? 'aggregate' : undef;
     }
 
-    return $self->from_email_simple(Email::Simple->new($contents));
+    return $self->from_email_simple( Email::Simple->new($contents) );
 }
 
-sub _init_for_file($self, $file) {
+sub _init_for_file( $self, $file ) {
     $self->report->init();
     $self->{_envelope_to} = undef;
     $self->{_header_from} = undef;
@@ -142,7 +148,7 @@ sub _init_for_file($self, $file) {
     return;
 }
 
-sub from_mbox($self, $file_name) {
+sub from_mbox( $self, $file_name ) {
     croak "missing mbox file" if !$file_name;
 
     # TODO: replace this module
@@ -152,13 +158,13 @@ sub from_mbox($self, $file_name) {
 
     #   my $file_handle = FileHandle->new($file_name);
 
-    my $folder_reader; #  = Mail::Mbox::MessageParser->new(
-    #       {   'file_name'    => $file_name,
-    #           'file_handle'  => $file_handle,
-    #           'enable_cache' => 1,
-    #           'enable_grep'  => 1,
-    #       }
-    #   );
+    my $folder_reader;    #  = Mail::Mbox::MessageParser->new(
+                          #       {   'file_name'    => $file_name,
+                          #           'file_handle'  => $file_handle,
+                          #           'enable_cache' => 1,
+                          #           'enable_grep'  => 1,
+                          #       }
+                          #   );
 
     croak $folder_reader unless ref $folder_reader;
 
@@ -172,7 +178,7 @@ sub from_mbox($self, $file_name) {
     return 1;
 }
 
-sub from_email_simple($self, $email) {
+sub from_email_simple( $self, $email ) {
 
     $self->report->init();
     $self->{_envelope_to} = undef;
@@ -186,15 +192,15 @@ sub from_email_simple($self, $email) {
 
     my $rep_type;
     foreach my $part ( Email::MIME->new( $email->as_string )->parts ) {
-        my ($c_type, @ignore) = split ';', ($part->content_type || '');
+        my ( $c_type, @ignore ) = split ';', ( $part->content_type || '' );
         next if $c_type =~ m{^text/(plain|html)$};
         if ( $c_type eq 'text/rfc822-headers' ) {
-            warn "TODO: handle forensic reports\n";  ## no critic (Carp)
+            warn "TODO: handle forensic reports\n";    ## no critic (Carp)
             $rep_type = 'forensic';
             next;
         }
         if ( $c_type eq 'message/feedback-report' ) {
-            warn "TODO: handle forensic reports\n";  ## no critic (Carp)
+            warn "TODO: handle forensic reports\n";    ## no critic (Carp)
             $rep_type = 'forensic';
             next;
         }
@@ -202,9 +208,11 @@ sub from_email_simple($self, $email) {
         my $bigger;
         my $filename = $part->{ct}{attributes}{name} || '';
 
-        if ( $c_type eq 'application/zip' || $c_type eq 'application/x-zip-compressed' ) {
+        if (   $c_type eq 'application/zip'
+            || $c_type eq 'application/x-zip-compressed' )
+        {
             eval {
-                $self->get_submitter_from_filename( $filename );
+                $self->get_submitter_from_filename($filename);
                 $unzipper->{zip}->( \$part->body, \$bigger );
                 $self->handle_body($bigger);
                 $rep_type = 'aggregate';
@@ -215,7 +223,7 @@ sub from_email_simple($self, $email) {
         }
         if ( $c_type eq 'application/gzip' ) {
             eval {
-                $self->get_submitter_from_filename( $filename );
+                $self->get_submitter_from_filename($filename);
                 $unzipper->{gz}->( \$part->body, \$bigger );
                 $self->handle_body($bigger);
                 $rep_type = 'aggregate';
@@ -225,10 +233,11 @@ sub from_email_simple($self, $email) {
             next;
         }
         if ( $filename =~ /xml\.gz$/ ) {
-            if ( $c_type eq 'application/octet-stream' ||
-                 $c_type eq 'multipart/alternative' ) {
+            if (   $c_type eq 'application/octet-stream'
+                || $c_type eq 'multipart/alternative' )
+            {
                 eval {
-                    $self->get_submitter_from_filename( $filename );
+                    $self->get_submitter_from_filename($filename);
                     $unzipper->{gz}->( \$part->body, \$bigger );
                     $self->handle_body($bigger);
                     $rep_type = 'aggregate';
@@ -239,23 +248,25 @@ sub from_email_simple($self, $email) {
             }
         }
 
-        if ($c_type eq 'multipart/alternative') {
-        } elsif ($c_type eq 'multipart/related') {
-        } else {
-            warn "Unknown message part $c_type\n";  ## no critic (Carp)
+        if ( $c_type eq 'multipart/alternative' ) {
+        }
+        elsif ( $c_type eq 'multipart/related' ) {
+        }
+        else {
+            warn "Unknown message part $c_type\n";    ## no critic (Carp)
         }
     }
     return $rep_type;
 }
 
-sub get_submitter_from_filename($self, $filename) {
-    return if $self->{_envelope_to};  # already parsed from Subject:
+sub get_submitter_from_filename( $self, $filename ) {
+    return if $self->{_envelope_to};    # already parsed from Subject:
     my ( $submitter_dom, $report_dom, $begin, $end ) = split /!/, $filename;
     $self->{_header_from} ||= $report_dom;
     return $self->{_envelope_to} = $submitter_dom;
 }
 
-sub get_submitter_from_subject($self, $subject) {
+sub get_submitter_from_subject( $self, $subject ) {
 
     # The 2013 DMARC spec section 12.2.1 suggests that the header SHOULD conform
     # to a supplied ABNF. Rather than "require" such conformance, this method is
@@ -263,24 +274,27 @@ sub get_submitter_from_subject($self, $subject) {
     $subject = lc Encode::decode( 'MIME-Header', $subject );
     print $subject . "\n";
     $subject = substr( $subject, 8 ) if 'subject:' eq substr( $subject, 0, 8 );
-    $subject =~ s/(?:report\sdomain|submitter|report-id)//gx; # strip keywords
-    $subject =~ s/\s+//g;    # remove white space
+    $subject =~ s/(?:report\sdomain|submitter|report-id)//gx;   # strip keywords
+    $subject =~ s/\s+//g;                                       # remove white space
     my ( undef, $report_dom, $sub_dom, $report_id ) = split /:/, $subject;
     my $meta = $self->report->aggregate->metadata;
+
     if ( $report_id && !$meta->uuid ) {
+
         # remove <containment brackets> if present
-        $report_id = substr($report_id,1) if '<' eq substr($report_id,0,1);
-        chop $report_id if '>' eq substr($report_id,-1,1);
+        $report_id = substr( $report_id, 1 ) if '<' eq substr( $report_id, 0, 1 );
+        chop $report_id if '>' eq substr( $report_id, -1, 1 );
         $meta->uuid($report_id);
-    };
+    }
     $self->{_header_from} ||= $report_dom;
     return $self->{_envelope_to} = $sub_dom;
 }
 
-sub handle_body($self, $body) {
+sub handle_body( $self, $body ) {
 
     print "handling decompressed body\n" if $self->{verbose};
-    if ($body =~ /xmlns=/) {
+    if ( $body =~ /xmlns=/ ) {
+
         # RFC 9990 defines xmlns="urn:ietf:params:xml:ns:dmarc-2.0" as the
         # official namespace. Strip it so un-namespaced XPath queries
         # (/feedback/...) continue to work with XML::LibXML.
@@ -290,7 +304,8 @@ sub handle_body($self, $body) {
 
     my $dom = XML::LibXML->load_xml( string => $body );
     $self->do_node_report_metadata( $dom->findnodes("/feedback/report_metadata") );
-    $self->do_node_policy_published( $dom->findnodes("/feedback/policy_published") );
+    $self->do_node_policy_published(
+        $dom->findnodes("/feedback/policy_published") );
 
     foreach my $record ( $dom->findnodes("/feedback/record") ) {
         $self->do_node_record($record);
@@ -304,7 +319,7 @@ sub report($self) {
     return $self->{report} = Mail::DMARC::Report->new();
 }
 
-sub do_node_report_metadata($self, $node) {
+sub do_node_report_metadata( $self, $node ) {
 
     foreach my $n (qw/ org_name email extra_contact_info /) {
         $self->report->aggregate->metadata->$n(
@@ -312,13 +327,13 @@ sub do_node_report_metadata($self, $node) {
     }
 
     my $rid = $node->findnodes("./report_id")->string_value;
-    $rid = substr($rid,1) if '<' eq substr($rid,0,1); # remove <
-    chop $rid if '>' eq substr($rid,-1,1);            # remove >
-    $self->report->aggregate->metadata->report_id( $rid );
+    $rid = substr( $rid, 1 ) if '<' eq substr( $rid, 0, 1 );    # remove <
+    chop $rid if '>' eq substr( $rid, -1, 1 );                  # remove >
+    $self->report->aggregate->metadata->report_id($rid);
 
-    if ( ! $self->report->aggregate->metadata->uuid ) {
-        $self->report->aggregate->metadata->uuid( $rid );
-    };
+    if ( !$self->report->aggregate->metadata->uuid ) {
+        $self->report->aggregate->metadata->uuid($rid);
+    }
 
     foreach my $n (qw/ begin end /) {
         $self->report->aggregate->metadata->$n(
@@ -331,13 +346,13 @@ sub do_node_report_metadata($self, $node) {
     return $self->report->aggregate->metadata;
 }
 
-sub do_node_policy_published($self, $node) {
+sub do_node_policy_published( $self, $node ) {
 
     my $pol = Mail::DMARC::Policy->new();
 
     foreach my $n (qw/ domain adkim aspf p sp np t psd fo discovery_method /) {
         my $val = $node->findnodes("./$n")->string_value or next;
-        $val =~ s/\s*//g;    # remove whitespace
+        $val =~ s/\s*//g;           # remove whitespace
         eval { $pol->$n($val) };    # ignore unknown/invalid tag values
     }
 
@@ -345,28 +360,27 @@ sub do_node_policy_published($self, $node) {
     return $pol;
 }
 
-sub do_node_record($self, $node) {
+sub do_node_record( $self, $node ) {
 
     my $rec = Mail::DMARC::Report::Aggregate::Record->new;
-    $self->do_node_record_auth(\$rec, $node);
+    $self->do_node_record_auth( \$rec, $node );
 
     foreach my $r (qw/ source_ip count /) {
-        $rec->row->$r(
-            $node->findnodes("./row/$r")->string_value
-        );
-    };
+        $rec->row->$r( $node->findnodes("./row/$r")->string_value );
+    }
 
     # policy_evaluated
     foreach my $pe (qw/ disposition dkim spf /) {
-        my $ResultType = $node->findnodes("./row/policy_evaluated/$pe")->string_value;
-        if ($pe eq 'disposition') {
-            if ($ResultType !~ /^(none|quarantine|reject)$/) {
-                $ResultType = 'none';  # invalid DispositionType (Facebook)
+        my $ResultType
+            = $node->findnodes("./row/policy_evaluated/$pe")->string_value;
+        if ( $pe eq 'disposition' ) {
+            if ( $ResultType !~ /^(none|quarantine|reject)$/ ) {
+                $ResultType = 'none';    # invalid DispositionType (Facebook)
             }
         }
         else {
-            if ($ResultType !~ /^(pass|fail)$/) {
-                $ResultType = 'pass';   # invalid ResultType (also FaceBook)
+            if ( $ResultType !~ /^(pass|fail)$/ ) {
+                $ResultType = 'pass';    # invalid ResultType (also FaceBook)
             }
         }
         $rec->row->policy_evaluated->$pe($ResultType);
@@ -377,24 +391,21 @@ sub do_node_record($self, $node) {
 
     # identifiers
     foreach my $i (qw/ envelope_to envelope_from header_from /) {
-        $rec->identifiers->$i(
-            $node->findnodes("./identifiers/$i")->string_value
-        );
+        $rec->identifiers->$i( $node->findnodes("./identifiers/$i")->string_value );
     }
 
     # for reports from junc.org with mis-labeled identifiers
     if ( !$rec->identifiers->header_from ) {
         $rec->identifiers->header_from(
-            $node->findnodes("./identities/header_from")->string_value
-        );
-    };
+            $node->findnodes("./identities/header_from")->string_value );
+    }
 
     # last resort...
-    if (!$rec->identifiers->envelope_to) {
-        $rec->identifiers->envelope_to($self->{_envelope_to});
+    if ( !$rec->identifiers->envelope_to ) {
+        $rec->identifiers->envelope_to( $self->{_envelope_to} );
     }
-    if (!$rec->identifiers->header_from) {
-        $rec->identifiers->header_from($self->{_header_from});
+    if ( !$rec->identifiers->header_from ) {
+        $rec->identifiers->header_from( $self->{_header_from} );
     }
 
     print Data::Dumper::Dumper($rec) if $self->verbose;
@@ -402,45 +413,49 @@ sub do_node_record($self, $node) {
     return $rec;
 }
 
-sub do_node_record_auth($self, $row, $node) {
+sub do_node_record_auth( $self, $row, $node ) {
 
-    my @spf  = qw/ domain scope result /;
+    my @spf = qw/ domain scope result /;
 
     foreach ( $node->findnodes("./auth_results/spf") ) {
-        my %spf = map { $_ => $node->findnodes("./auth_results/spf/$_")->string_value } @spf;
+        my %spf
+            = map { $_ => $node->findnodes("./auth_results/spf/$_")->string_value }
+            @spf;
 
-        if ( $spf{scope} && ! $self->is_valid_spf_scope( $spf{scope} ) ) {
+        if ( $spf{scope} && !$self->is_valid_spf_scope( $spf{scope} ) ) {
             carp "invalid scope: $spf{scope}, ignoring";
             delete $spf{scope};
-        };
+        }
+
         # this is for reports from ivenue.com with result=unknown
-        if ( $spf{result} && ! $self->is_valid_spf_result( $spf{result} ) ) {
+        if ( $spf{result} && !$self->is_valid_spf_result( $spf{result} ) ) {
             carp "invalid SPF result: $spf{result}, setting to temperror";
             $spf{result} = 'temperror';
-        };
-        $$row->auth_results->spf(\%spf);
-    };
+        }
+        $$row->auth_results->spf( \%spf );
+    }
 
     my @dkim = qw/ domain selector result human_result /;
     foreach ( $node->findnodes("./auth_results/dkim") ) {
-        my %dkim = map { $_ => $node->findnodes("./auth_results/dkim/$_")->string_value } @dkim;
-        $$row->auth_results->dkim(\%dkim);
-    };
+        my %dkim
+            = map { $_ => $node->findnodes("./auth_results/dkim/$_")->string_value }
+            @dkim;
+        $$row->auth_results->dkim( \%dkim );
+    }
 
     return;
 }
 
-sub do_node_record_reason($self, $row, $node) {
+sub do_node_record_reason( $self, $row, $node ) {
 
     #    my @types = qw/ forwarded sampled_out trusted_forwarder mailing_list
     #                    local_policy other /;
 
     foreach my $r ( $node->findnodes("./row/policy_evaluated/reason") ) {
-        my $type = $r->findnodes('./type')->string_value or next;
+        my $type    = $r->findnodes('./type')->string_value or next;
         my $comment = $r->findnodes('./comment')->string_value;
         $$row->row->policy_evaluated->reason(
-            { type => $type, comment => $comment }
-        );
+            { type => $type, comment => $comment } );
     }
     return;
 }

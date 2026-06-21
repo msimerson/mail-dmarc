@@ -3,11 +3,11 @@ our $VERSION = '2.20260621';
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
-sub new($class, @args) {
+sub new( $class, @args ) {
     croak "invalid arguments" if @args % 2;
     my %args = @args;
     my $self = bless { reason => [] }, $class;
@@ -17,26 +17,26 @@ sub new($class, @args) {
     return $self;
 }
 
-sub disposition($self, $value = undef) {
+sub disposition( $self, $value = undef ) {
     return $self->{disposition} if @_ == 1;
     croak 'invalid disposition: ' . ( $value // '(undef)' )
         if !defined $value || 0 == grep {/^$value$/ix} qw/ reject quarantine none /;
     return $self->{disposition} = $value;
 }
 
-sub dkim($self, $value = undef) {
+sub dkim( $self, $value = undef ) {
     return $self->{dkim} if @_ == 1;
     return $self->{dkim} = $value;
 }
 
-sub spf($self, $value = undef) {
+sub spf( $self, $value = undef ) {
     return $self->{spf} if @_ == 1;
     return $self->{spf} = $value;
 }
 
-sub reason($self, $value = undef) {
+sub reason( $self, $value = undef ) {
     return $self->{reason} if @_ == 1;
-    if ('ARRAY' eq ref $value) {    # one shot argument
+    if ( 'ARRAY' eq ref $value ) {    # one shot argument
         $self->{reason} = $value;
     }
     else {

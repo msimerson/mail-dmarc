@@ -3,11 +3,11 @@ our $VERSION = '2.20260621';
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
-sub new($class, @args) {
+sub new( $class, @args ) {
     croak "invalid arguments" if @args % 2;
     my %args = @args;
     my $self = bless {}, $class;
@@ -17,16 +17,17 @@ sub new($class, @args) {
     return $self;
 }
 
-sub type($self, $val = undef) {
+sub type( $self, $val = undef ) {
     return $self->{type} if @_ == 1;
     croak "invalid type"
-        if !defined $val || 0 == grep {/^$val$/ix}
+        if !defined $val
+        || 0 == grep {/^$val$/ix}
         qw/ forwarded sampled_out trusted_forwarder
-            mailing_list local_policy other /;
+        mailing_list local_policy other /;
     return $self->{type} = $val;
 }
 
-sub comment($self, $val = undef) {
+sub comment( $self, $val = undef ) {
     return $self->{comment} if @_ == 1;
 
     # comment is optional and requires no validation

@@ -3,7 +3,7 @@ our $VERSION = '2.20260621';
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
@@ -12,7 +12,7 @@ require Mail::DMARC::Report::Aggregate::Record::Identifiers;
 require Mail::DMARC::Report::Aggregate::Record::Auth_Results;
 require Mail::DMARC::Report::Aggregate::Record::Row;
 
-sub new($class, @args) {
+sub new( $class, @args ) {
     croak "invalid arguments" if @args % 2;
 
     my $self = bless {}, $class;
@@ -26,23 +26,23 @@ sub new($class, @args) {
     return $self;
 }
 
-sub identifiers($self, @args) {
+sub identifiers( $self, @args ) {
 
-    if (!@args) {
+    if ( !@args ) {
         return $self->{identifiers} if $self->{identifiers};
     }
 
-    if ('HASH' eq ref $args[0]) {
+    if ( 'HASH' eq ref $args[0] ) {
         @args = %{ $args[0] };
     }
 
-    return $self->{identifiers} =
-        Mail::DMARC::Report::Aggregate::Record::Identifiers->new(@args);
+    return $self->{identifiers}
+        = Mail::DMARC::Report::Aggregate::Record::Identifiers->new(@args);
 }
 
-sub auth_results($self, @args) {
+sub auth_results( $self, @args ) {
 
-    if (!@args) {
+    if ( !@args ) {
         return $self->{auth_results} if $self->{auth_results};
     }
 
@@ -50,13 +50,13 @@ sub auth_results($self, @args) {
         @args = %{ $args[0] };
     }
 
-    return $self->{auth_results} =
-        Mail::DMARC::Report::Aggregate::Record::Auth_Results->new(@args);
+    return $self->{auth_results}
+        = Mail::DMARC::Report::Aggregate::Record::Auth_Results->new(@args);
 }
 
-sub row($self, @args) {
+sub row( $self, @args ) {
 
-    if (!@args) {
+    if ( !@args ) {
         return $self->{row} if $self->{row};
     }
 
@@ -64,8 +64,7 @@ sub row($self, @args) {
         @args = %{ $args[0] };
     }
 
-    return $self->{row} =
-        Mail::DMARC::Report::Aggregate::Record::Row->new(@args);
+    return $self->{row} = Mail::DMARC::Report::Aggregate::Record::Row->new(@args);
 }
 
 1;

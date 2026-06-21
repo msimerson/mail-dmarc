@@ -22,8 +22,8 @@ my %command_line_options = (
     'geoip'         => \my $geoip_opt,
     'help'          => \my $help,
     'verbose'       => \my $verbose,
-    );
-GetOptions (%command_line_options);
+);
+GetOptions(%command_line_options);
 
 use Mail::DMARC::Report;
 my $report = Mail::DMARC::Report->new;
@@ -32,22 +32,22 @@ pod2usage if $help;
 
 $limit = 100 if !defined $limit;
 
-if ( defined $limit && ( $limit !~ /^\d+$/ || $limit < 1 ) ) {
+if (defined $limit && ($limit !~ /^\d+$/ || $limit < 1)) {
     die "--limit must be a positive integer\n";
 }
 
-my ( $sort_by, $sort_order ) = parse_sort_option($sort);
+my ($sort_by, $sort_order) = parse_sort_option($sort);
 
 my $reports = $report->store->retrieve(
-        (defined $rid       ? (rid         => $rid    ) : () ),
-        (defined $from      ? (from_domain => $from   ) : () ),
-        (defined $author    ? (author      => $author ) : () ),
-        (defined $begin     ? (begin       => $begin  ) : () ),
-        (defined $end       ? (end         => $end    ) : () ),
-        (defined $limit     ? (limit       => $limit  ) : () ),
-        (sort_by            => $sort_by),
-        (sort_order         => $sort_order),
-        );
+    (defined $rid    ? (rid         => $rid)    : ()),
+    (defined $from   ? (from_domain => $from)   : ()),
+    (defined $author ? (author      => $author) : ()),
+    (defined $begin  ? (begin       => $begin)  : ()),
+    (defined $end    ? (end         => $end)    : ()),
+    (defined $limit  ? (limit       => $limit)  : ()),
+    (sort_by    => $sort_by),
+    (sort_order => $sort_order),
+);
 
 my @display_data;
 my %max_width = (
@@ -62,29 +62,34 @@ my %max_width = (
     spf         => length('SPF'),
 );
 
-foreach my $r ( @$reports ) {
-    my $rows = $report->store->backend->get_rr( rid => $r->{rid} )->{data};
+foreach my $r (@$reports) {
+    my $rows = $report->store->backend->get_rr(rid => $r->{rid})->{data};
 
     my @filtered_rows;
-    foreach my $row ( @$rows ) {
-        no warnings;  ## no critic (NoWarn)
+    foreach my $row (@$rows) {
+        no warnings;    ## no critic (NoWarn)
         next if $disposition && !_matches($disposition, $row->{disposition});
-        next if $dkim && !_matches($dkim, $row->{dkim});
-        next if $spf  && !_matches($spf,  $row->{spf});
+        next if $dkim        && !_matches($dkim,        $row->{dkim});
+        next if $spf         && !_matches($spf,         $row->{spf});
 
-        $row->{reasons_str} = join '  ', map { $_->{type} . ($_->{comment} ? " ($_->{comment})" : "") } @{$row->{reasons} // []};
-        $row->{geoip_details} = get_geoip_details( $row->{source_ip} ) // '';
-        $row->{dns_hostname} = get_dns_hostname( $row->{source_ip} ) // '';
+        $row->{reasons_str} = join '  ',
+            map { $_->{type} . ($_->{comment} ? " ($_->{comment})" : "") }
+            @{ $row->{reasons} // [] };
+        $row->{geoip_details} = get_geoip_details($row->{source_ip}) // '';
+        $row->{dns_hostname}  = get_dns_hostname($row->{source_ip})  // '';
 
-        foreach my $field (qw/ count header_from source_ip disposition dkim spf reasons_str geoip_details /) {
+        foreach my $field (
+            qw/ count header_from source_ip disposition dkim spf reasons_str geoip_details /
+            )
+        {
             my $len = length($row->{$field} // '');
             $max_width{$field} = $len if $len > $max_width{$field};
         }
         push @filtered_rows, $row;
     }
 
-    if ( $disposition || $dkim || $spf ) {
-        next if ! @filtered_rows;
+    if ($disposition || $dkim || $spf) {
+        next if !@filtered_rows;
     }
 
     foreach my $field (qw/ rid author begin /) {
@@ -97,37 +102,39 @@ foreach my $r ( @$reports ) {
 
 # Print header
 printf "%*s  %-*s  %-*s\n",
-    $max_width{rid}, 'ID',
+    $max_width{rid},    'ID',
     $max_width{author}, 'Author',
-    $max_width{begin}, 'Report-Start';
+    $max_width{begin},  'Report-Start';
 
 printf "  | -- %*s %-*s %-*s %-*s %-*s %-*s\n",
-    $max_width{count}, 'Qty',
+    $max_width{count},       'Qty',
     $max_width{header_from}, 'From',
-    $max_width{source_ip}, 'IP',
+    $max_width{source_ip},   'IP',
     $max_width{disposition}, 'Disposition',
-    $max_width{dkim}, 'DKIM',
-    $max_width{spf}, 'SPF';
+    $max_width{dkim},        'DKIM',
+    $max_width{spf},         'SPF';
 print "\n";
 
-foreach my $d ( @display_data ) {
+foreach my $d (@display_data) {
     my $r = $d->{record};
     printf "%*s  %-*s  %-*s\n",
-        $max_width{rid}, $r->{rid},
+        $max_width{rid},    $r->{rid},
         $max_width{author}, $r->{author},
-        $max_width{begin}, $r->{begin};
+        $max_width{begin},  $r->{begin};
 
-    foreach my $row ( @{$d->{rows}} ) {
+    foreach my $row (@{ $d->{rows} }) {
         printf "  | -- %*s %-*s %-*s %-*s %-*s %-*s",
-            $max_width{count}, $row->{count},
+            $max_width{count},       $row->{count},
             $max_width{header_from}, $row->{header_from},
-            $max_width{source_ip}, $row->{source_ip},
+            $max_width{source_ip},   $row->{source_ip},
             $max_width{disposition}, $row->{disposition},
-            $max_width{dkim}, $row->{dkim},
-            $max_width{spf}, $row->{spf};
+            $max_width{dkim},        $row->{dkim},
+            $max_width{spf},         $row->{spf};
 
-        printf "  %-*s", $max_width{reasons_str}, $row->{reasons_str} if $max_width{reasons_str};
-        printf "  %-*s", $max_width{geoip_details}, $row->{geoip_details} if $max_width{geoip_details};
+        printf "  %-*s", $max_width{reasons_str}, $row->{reasons_str}
+            if $max_width{reasons_str};
+        printf "  %-*s", $max_width{geoip_details}, $row->{geoip_details}
+            if $max_width{geoip_details};
         print "  $row->{dns_hostname}" if $row->{dns_hostname};
         print "\n";
     }
@@ -136,8 +143,8 @@ foreach my $d ( @display_data ) {
 
 sub _matches {
     my ($filter, $value) = @_;
-    no warnings;  ## no critic (NoWarn)
-    if ( substr($filter, 0, 1) eq '!' ) { return $value ne substr($filter, 1); }
+    no warnings;    ## no critic (NoWarn)
+    if (substr($filter, 0, 1) eq '!') { return $value ne substr($filter, 1); }
     return $value eq $filter;
 }
 
@@ -170,18 +177,18 @@ sub parse_sort_option {
 sub get_geoip_details {
     my $ip = shift;
 
-    return if ! defined $geoip_opt;
+    return if !defined $geoip_opt;
 
     $gip ||= get_geoip_db();
-    return if ! $gip;
+    return if !$gip;
 
-    my $city = $gip->city(ip => $ip) or return '';
+    my $city   = $gip->city(ip => $ip) or return '';
     my $result = '';
     if ($city->continent->code) {
         $result .= $city->continent->code;
     }
     if ($city->country->iso_code) {
-        $result .= ', ' .$city->country->iso_code;
+        $result .= ', ' . $city->country->iso_code;
     }
     if ($city->most_specific_subdivision->name) {
         $result .= ', ' . $city->most_specific_subdivision->name;
@@ -195,37 +202,37 @@ sub get_geoip_details {
 sub get_geoip_db {
 
     return $gip if $gip;
-    eval "require GeoIP2::Database::Reader";  ## no critic (Eval)
+    eval "require GeoIP2::Database::Reader";    ## no critic (Eval)
     if ($@) {
         warn "unable to load GeoIP2\n";
         return;
-    };
+    }
 
-    foreach my $local ( '/usr/local', '/opt/local', '/usr' ) {
+    foreach my $local ('/usr/local', '/opt/local', '/usr') {
         my $db_dir = "$local/share/GeoIP";
 
         foreach my $db (qw/ GeoLite2-City GeoLite2-Country /) {
             if (-f "$db_dir/$db.mmdb") {
                 print "using db $db" if $verbose;
-                $gip = GeoIP2::Database::Reader->new( file => "$db_dir/$db.mmdb" );
+                $gip = GeoIP2::Database::Reader->new(file => "$db_dir/$db.mmdb");
             }
             last if $gip;
         }
         last if $gip;
-    };
+    }
     return $gip;
 }
 
 sub get_dns_hostname {
     my $ip = shift;
-    return if ! $dns_opt;
+    return if !$dns_opt;
 
     my @answers = $report->has_dns_rr('PTR', $ip);
-    return '' if 0 == scalar @answers;
+    return ''          if 0 == scalar @answers;
     return $answers[0] if scalar @answers >= 1;
     print Dumper(\@answers);
     return;
-};
+}
 
 exit;
 

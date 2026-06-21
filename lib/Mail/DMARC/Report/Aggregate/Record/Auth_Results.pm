@@ -3,13 +3,13 @@ our $VERSION = '2.20260621';
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 require Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF;
 require Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM;
 
-sub new($class, @args) {
+sub new( $class, @args ) {
     croak "invalid arguments" if @args % 2;
 
     my $self = bless { spf => [], dkim => [] }, $class;
@@ -23,16 +23,18 @@ sub new($class, @args) {
     return $self;
 }
 
-sub spf($self, @args) {
+sub spf( $self, @args ) {
     return $self->{spf} if !@args;
 
     # one shot
-    if (@args == 1 && ref $args[0] eq 'ARRAY') {
+    if ( @args == 1 && ref $args[0] eq 'ARRAY' ) {
+
         #warn "SPF one shot";
         my $iter = 0;
-        foreach my $d ( @{ $args[0] }) {
-            $self->{spf}->[$iter] = 
-                Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF->new($d);
+        foreach my $d ( @{ $args[0] } ) {
+            $self->{spf}->[$iter]
+                = Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF->new(
+                $d);
             $iter++;
         }
         return $self->{spf};
@@ -45,22 +47,24 @@ sub spf($self, @args) {
     return $self->{spf};
 }
 
-sub dkim($self, @args) {
+sub dkim( $self, @args ) {
     return $self->{dkim} if !@args;
 
-    if (@args == 1 && ref $args[0] eq 'ARRAY') {
+    if ( @args == 1 && ref $args[0] eq 'ARRAY' ) {
+
         #warn "dkim one shot";
         my $iter = 0;
-        foreach my $d ( @{ $args[0] }) {
-            $self->{dkim}->[$iter] =
-                Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new($d);
+        foreach my $d ( @{ $args[0] } ) {
+            $self->{dkim}->[$iter]
+                = Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new(
+                $d);
             $iter++;
         }
         return $self->{dkim};
     }
 
     #warn "dkim iterative";
-    push @{ $self->{dkim}},
+    push @{ $self->{dkim} },
         Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM->new(@args);
 
     return $self->{dkim};

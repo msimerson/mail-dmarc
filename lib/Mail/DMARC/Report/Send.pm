@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Send;
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -20,16 +20,16 @@ sub smtp($self) {
     return $self->{smtp} = Mail::DMARC::Report::Send::SMTP->new();
 }
 
-sub too_big_report($self, $arg_ref) {
+sub too_big_report( $self, $arg_ref ) {
 
-    my $OrgName   = $self->config->{organization}{org_name};
-    my $Domain    = $self->config->{organization}{domain};
-    my $ver       = $Mail::DMARC::Base::VERSION || ''; # undef in author environ
-    my $uri       = $arg_ref->{uri};
-    my $bytes     = $arg_ref->{report_bytes};
-    my $report_id = $arg_ref->{report_id};
-    my $rep_domain= $arg_ref->{report_domain};
-    my $date      = $self->smtp->get_timestamp_rfc2822;
+    my $OrgName = $self->config->{organization}{org_name};
+    my $Domain  = $self->config->{organization}{domain};
+    my $ver     = $Mail::DMARC::Base::VERSION || '';       # undef in author environ
+    my $uri     = $arg_ref->{uri};
+    my $bytes   = $arg_ref->{report_bytes};
+    my $report_id  = $arg_ref->{report_id};
+    my $rep_domain = $arg_ref->{report_domain};
+    my $date       = $self->smtp->get_timestamp_rfc2822;
 
     return <<"EO_TOO_BIG"
 

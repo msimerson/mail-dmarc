@@ -2,7 +2,7 @@ package Mail::DMARC::Report::Aggregate;
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -18,20 +18,20 @@ sub metadata($self) {
     return $self->{metadata} = Mail::DMARC::Report::Aggregate::Metadata->new;
 }
 
-sub policy_published($self, $policy = undef) {
-    return $self->{policy_published} if ! $policy;
-    croak "not a policy object!" if 'Mail::DMARC::Policy' ne ref $policy;
+sub policy_published( $self, $policy = undef ) {
+    return $self->{policy_published} if !$policy;
+    croak "not a policy object!"     if 'Mail::DMARC::Policy' ne ref $policy;
     return $self->{policy_published} = $policy;
 }
 
-sub record($self, $record = undef, @extra) {   ## no critic (Ambiguous)
-    if ( !$record) {
-       return $self->{record} || [];
+sub record( $self, $record = undef, @extra ) {    ## no critic (Ambiguous)
+    if ( !$record ) {
+        return $self->{record} || [];
     }
 
     if (@extra) { croak "invalid args"; }
 
-    if ('Mail::DMARC::Report::Aggregate::Record' ne ref $record) {
+    if ( 'Mail::DMARC::Report::Aggregate::Record' ne ref $record ) {
         croak "not a record object";
     }
 
@@ -40,7 +40,7 @@ sub record($self, $record = undef, @extra) {   ## no critic (Ambiguous)
     push @{ $self->{record} }, $record;
 
     return $self->{record};
-};
+}
 
 sub dump_report($self) {
     carp Dumper( $self->{metadata}, $self->{policy_published}, $self->{record} );
@@ -59,7 +59,7 @@ $meta
 $pubp
 $reco</feedback>
 EO_XML
-;
+        ;
 }
 
 sub get_record_as_xml($self) {
@@ -67,16 +67,16 @@ sub get_record_as_xml($self) {
     my $rec_xml = '';
     foreach my $rec ( @{ $self->{record} } ) {
         $rec_xml .= "\t<record>\n";
-        my $ip = $rec->{row}{source_ip} or croak "no source IP!?";
-        my $count = $rec->{row}{count} or croak "no count!?";
+        my $ip    = $rec->{row}{source_ip} or croak "no source IP!?";
+        my $count = $rec->{row}{count}     or croak "no count!?";
         $rec->{row}{policy_evaluated}{disposition} or croak "no disposition?";
-        $ip    = XML::LibXML::Text->new( $ip )->toString();
-        $count = XML::LibXML::Text->new( $count )->toString();
+        $ip    = XML::LibXML::Text->new($ip)->toString();
+        $count = XML::LibXML::Text->new($count)->toString();
         $rec_xml
-            .="\t\t<row>\n"
+            .= "\t\t<row>\n"
             . "\t\t\t<source_ip>$ip</source_ip>\n"
             . "\t\t\t<count>$count</count>\n"
-            . $self->get_policy_evaluated_as_xml( $rec )
+            . $self->get_policy_evaluated_as_xml($rec)
             . "\t\t</row>\n"
             . $self->get_identifiers_as_xml($rec)
             . $self->get_auth_results_as_xml($rec);
@@ -85,18 +85,18 @@ sub get_record_as_xml($self) {
     return $rec_xml;
 }
 
-sub get_identifiers_as_xml($self, $rec) {
+sub get_identifiers_as_xml( $self, $rec ) {
     my $id = "\t\t<identifiers>\n";
     foreach my $f (qw/ envelope_to envelope_from header_from /) {
-        if ( $f eq 'header_from' ) {        # min occurs = 1
-            croak "missing header_from!" if ! $rec->{identifiers}{$f};
+        if ( $f eq 'header_from' ) {    # min occurs = 1
+            croak "missing header_from!" if !$rec->{identifiers}{$f};
         }
-        elsif ( $f eq 'envelope_from') {    # min occurs = 1
-            $rec->{identifiers}{$f} = '' if ! $rec->{identifiers}{$f};
+        elsif ( $f eq 'envelope_from' ) {    # min occurs = 1
+            $rec->{identifiers}{$f} = '' if !$rec->{identifiers}{$f};
         }
-        elsif ( $f eq 'envelope_to' ) {     # min occurs = 0
-            next if ! $rec->{identifiers}{$f};
-        };
+        elsif ( $f eq 'envelope_to' ) {      # min occurs = 0
+            next if !$rec->{identifiers}{$f};
+        }
 
         my $val = XML::LibXML::Text->new( $rec->{identifiers}{$f} )->toString();
         $id .= "\t\t\t<$f>$val</$f>\n";
@@ -105,14 +105,15 @@ sub get_identifiers_as_xml($self, $rec) {
     return $id;
 }
 
-sub get_auth_results_as_xml($self, $rec) {
+sub get_auth_results_as_xml( $self, $rec ) {
     my $ar = "\t\t<auth_results>\n";
 
     foreach my $dkim_sig ( @{ $rec->{auth_results}{dkim} } ) {
         $ar .= "\t\t\t<dkim>\n";
         foreach my $g (qw/ domain selector result human_result /) {
             next if !defined $dkim_sig->{$g} && $g ne 'selector';
-            my $val = defined $dkim_sig->{$g}
+            my $val
+                = defined $dkim_sig->{$g}
                 ? XML::LibXML::Text->new( $dkim_sig->{$g} )->toString()
                 : '';
             $ar .= "\t\t\t\t<$g>$val</$g>\n";
@@ -135,10 +136,11 @@ sub get_auth_results_as_xml($self, $rec) {
 }
 
 sub get_policy_published_as_xml($self) {
-    my $pp = $self->policy_published or return '';
+    my $pp  = $self->policy_published or return '';
     my $xml = "\t<policy_published>\n\t\t<domain>$pp->{domain}</domain>\n";
     foreach my $f (qw/ adkim aspf p sp np t psd fo discovery_method /) {
         my $v = $pp->{$f};
+
         # Set some default values for missing optional fields if necessary
         if ( $f eq 'sp' && !defined $v ) {
             $v = $pp->{'p'};
@@ -147,35 +149,38 @@ sub get_policy_published_as_xml($self) {
             $v = '0';
         }
         next if !defined $v;
-        $v = XML::LibXML::Text->new( $v )->toString();
+        $v = XML::LibXML::Text->new($v)->toString();
         $xml .= "\t\t<$f>$v</$f>\n";
     }
     $xml .= "\t</policy_published>";
     return $xml;
 }
 
-sub get_policy_evaluated_as_xml($self, $rec) {
+sub get_policy_evaluated_as_xml( $self, $rec ) {
     my $pe = "\t\t\t<policy_evaluated>\n";
 
     foreach my $f (qw/ disposition dkim spf /) {
-        my $val = XML::LibXML::Text->new( $rec->{row}{policy_evaluated}{$f} )->toString();
+        my $val = XML::LibXML::Text->new( $rec->{row}{policy_evaluated}{$f} )
+            ->toString();
         $pe .= "\t\t\t\t<$f>$val</$f>\n";
     }
 
     my $reasons = $rec->{row}{policy_evaluated}{reason};
     if ( $reasons && scalar @$reasons ) {
-        foreach my $reason ( @$reasons ) {
+        foreach my $reason (@$reasons) {
             my $typeval = XML::LibXML::Text->new( $reason->{type} )->toString();
             $pe .= "\t\t\t\t<reason>\n";
             $pe .= "\t\t\t\t\t<type>$typeval</type>\n";
+
             # comment is minOccurs=0 in the RFC 7489 schema; only emit when present
             if ( defined $reason->{comment} && $reason->{comment} =~ /\S/ ) {
-                my $commentval = XML::LibXML::Text->new( $reason->{comment} )->toString();
+                my $commentval
+                    = XML::LibXML::Text->new( $reason->{comment} )->toString();
                 $pe .= "\t\t\t\t\t<comment>$commentval</comment>\n";
             }
             $pe .= "\t\t\t\t</reason>\n";
         }
-    };
+    }
     $pe .= "\t\t\t</policy_evaluated>\n";
     return $pe;
 }

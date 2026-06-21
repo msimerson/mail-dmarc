@@ -2,7 +2,7 @@ package Mail::DMARC::Policy;
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -10,12 +10,12 @@ use Carp;
 
 use Mail::DMARC::Report::URI;
 
-sub new($class, @args) {
+sub new( $class, @args ) {
     my $package = ref $class ? ref $class : $class;
-    my $self = bless {}, $package;
+    my $self    = bless {}, $package;
 
-    return $self if !@args;                # no args, empty pol
-    if (1 == @args) {                                 # a string
+    return $self if !@args;    # no args, empty pol
+    if ( 1 == @args ) {        # a string
         my $policy = $self->parse( $args[0] );
         $self->is_valid($policy);
         return $policy;
@@ -28,30 +28,32 @@ sub new($class, @args) {
     return bless $policy, $package;
 }
 
-sub parse($self, $str, @junk) {
+sub parse( $self, $str, @junk ) {
     croak "invalid parse request" if @junk;
     my $cleaned = $str;
-    $cleaned =~ s/\s//g;                             # remove whitespace
-    $cleaned =~ s/\\;/;/g;                           # replace \;  with ;
-    $cleaned =~ s/;;/;/g;                            # replace ;;  with ;
-    $cleaned =~ s/;0;/;/g;                           # replace ;0; with ;
-    chop $cleaned if ';' eq substr $cleaned, -1, 1;  # remove a trailing ;
+    $cleaned =~ s/\s//g;                               # remove whitespace
+    $cleaned =~ s/\\;/;/g;                             # replace \;  with ;
+    $cleaned =~ s/;;/;/g;                              # replace ;;  with ;
+    $cleaned =~ s/;0;/;/g;                             # replace ;0; with ;
+    chop $cleaned if ';' eq substr $cleaned, -1, 1;    # remove a trailing ;
     my @tag_vals = split /;/, $cleaned;
     my %policy;
     my $warned = 0;
+
     foreach my $tv (@tag_vals) {
-        my ($tag, $value) = split /=|:|-/, $tv, 2;
-        if ( !defined $tag || !defined $value || $value eq '') {
-            if (!$warned) {
+        my ( $tag, $value ) = split /=|:|-/, $tv, 2;
+        if ( !defined $tag || !defined $value || $value eq '' ) {
+            if ( !$warned ) {
+
                 #warn "tv: $tv\n";
-                warn "invalid DMARC record, please post this message to\n" .
-                    "\thttps://github.com/msimerson/mail-dmarc/issues/39\n" .
-                    "\t$str\n";
+                warn "invalid DMARC record, please post this message to\n"
+                    . "\thttps://github.com/msimerson/mail-dmarc/issues/39\n"
+                    . "\t$str\n";
             }
             $warned++;
             next;
         }
-        $policy{lc $tag} = $value;
+        $policy{ lc $tag } = $value;
     }
 
     # RFC 9989: an unrecognized value for an optional tag is ignored (the tag
@@ -73,9 +75,9 @@ sub stringify($self) {
     my %dmarc_record = %{$self};
     delete $dmarc_record{domain};
 
-    my $dmarc_txt = 'v=' . (delete $dmarc_record{v}); # "v" tag must be first
+    my $dmarc_txt = 'v=' . ( delete $dmarc_record{v} );    # "v" tag must be first
     foreach my $key ( keys %dmarc_record ) {
-     $dmarc_txt .= "; $key=$dmarc_record{$key}";
+        $dmarc_txt .= "; $key=$dmarc_record{$key}";
     }
     return $dmarc_txt;
 }
@@ -89,73 +91,73 @@ sub apply_defaults($self) {
     return 1;
 }
 
-sub v($self, $val = undef) {
-    return $self->{v} if @_ == 1;
+sub v( $self, $val = undef ) {
+    return $self->{v}                 if @_ == 1;
     croak "unsupported DMARC version" if 'DMARC1' ne uc $val;
     return $self->{v} = $val;
 }
 
-sub p($self, $val = undef) {
+sub p( $self, $val = undef ) {
     return $self->{p} if @_ == 1;
     croak "invalid p" if !$self->is_valid_p($val);
     return $self->{p} = $val;
 }
 
-sub sp($self, $val = undef) {
-    return $self->{sp} if @_ == 1;
+sub sp( $self, $val = undef ) {
+    return $self->{sp}        if @_ == 1;
     croak "invalid sp ($val)" if !$self->is_valid_p($val);
     return $self->{sp} = $val;
 }
 
-sub np($self, $val = undef) {
-    return $self->{np} if @_ == 1;
+sub np( $self, $val = undef ) {
+    return $self->{np}        if @_ == 1;
     croak "invalid np ($val)" if !$self->is_valid_p($val);
     return $self->{np} = $val;
 }
 
-sub psd($self, $val = undef) {
-    return $self->{psd} if @_ == 1;
+sub psd( $self, $val = undef ) {
+    return $self->{psd}        if @_ == 1;
     croak "invalid psd ($val)" if 0 == grep {/^\Q$val\E$/i} qw/ y n u /;
     return $self->{psd} = lc $val;
 }
 
-sub t($self, $val = undef) {
-    return $self->{t} if @_ == 1;
+sub t( $self, $val = undef ) {
+    return $self->{t}        if @_ == 1;
     croak "invalid t ($val)" if 0 == grep {/^\Q$val\E$/i} qw/ y n /;
     return $self->{t} = lc $val;
 }
 
-sub adkim($self, $val = undef) {
+sub adkim( $self, $val = undef ) {
     return $self->{adkim} if @_ == 1;
     croak "invalid adkim" if 0 == grep {/^\Q$val\E$/ix} qw/ r s /;
     return $self->{adkim} = $val;
 }
 
-sub aspf($self, $val = undef) {
+sub aspf( $self, $val = undef ) {
     return $self->{aspf} if @_ == 1;
     croak "invalid aspf" if 0 == grep {/^\Q$val\E$/ix} qw/ r s /;
     return $self->{aspf} = $val;
 }
 
-sub fo($self, $val = undef) {
-    return $self->{fo} if @_ == 1;
+sub fo( $self, $val = undef ) {
+    return $self->{fo}       if @_ == 1;
     croak "invalid fo: $val" if $val !~ /^[01ds](:[01ds])*$/ix;
     return $self->{fo} = $val;
 }
 
-sub rua($self, $val = undef) {
+sub rua( $self, $val = undef ) {
     return $self->{rua} if @_ == 1;
     croak "invalid rua" if !$self->is_valid_uri_list($val);
     return $self->{rua} = $val;
 }
 
-sub ruf($self, $val = undef) {
+sub ruf( $self, $val = undef ) {
     return $self->{ruf} if @_ == 1;
     croak "invalid rua" if !$self->is_valid_uri_list($val);
     return $self->{ruf} = $val;
 }
 
-sub rf($self, $val = undef) {
+sub rf( $self, $val = undef ) {
     return $self->{rf} if @_ == 1;
     foreach my $f ( split /,/, $val ) {
         croak "invalid format: $f" if !$self->is_valid_rf($f);
@@ -163,46 +165,46 @@ sub rf($self, $val = undef) {
     return $self->{rf} = $val;
 }
 
-sub ri($self, $val = undef) {
-    return $self->{ri} if @_ == 1;
+sub ri( $self, $val = undef ) {
+    return $self->{ri}          if @_ == 1;
     croak "not numeric ($val)!" if $val =~ /\D/;
-    croak "not an integer!" if $val != int $val;
-    croak "out of range" if ( $val < 0 || $val > 4294967295 );
+    croak "not an integer!"     if $val != int $val;
+    croak "out of range"        if ( $val < 0 || $val > 4294967295 );
     return $self->{ri} = $val;
 }
 
-sub pct($self, $val = undef) {
-    return $self->{pct} if @_ == 1;
+sub pct( $self, $val = undef ) {
+    return $self->{pct}         if @_ == 1;
     croak "not numeric ($val)!" if $val =~ /\D/;
-    croak "not an integer!" if $val != int $val;
-    croak "out of range" if $val < 0 || $val > 100;
+    croak "not an integer!"     if $val != int $val;
+    croak "out of range"        if $val < 0 || $val > 100;
     return $self->{pct} = $val;
 }
 
-sub domain($self, $val = undef) {
+sub domain( $self, $val = undef ) {
     return $self->{domain} if @_ == 1;
     return $self->{domain} = $val;
 }
 
-sub is_valid_rf($self, $f) {
+sub is_valid_rf( $self, $f ) {
     return ( grep {/^\Q$f\E$/i} qw/ iodef afrf / ) ? 1 : 0;
 }
 
-sub is_valid_p($self, $p) {
+sub is_valid_p( $self, $p ) {
     croak "unspecified p" if !defined $p;
     return ( grep {/^\Q$p\E$/i} qw/ none reject quarantine / ) ? 1 : 0;
 }
 
-sub is_valid_uri_list($self, $str) {
+sub is_valid_uri_list( $self, $str ) {
     $self->{uri} ||= Mail::DMARC::Report::URI->new;
     my $uris = $self->{uri}->parse($str);
     return scalar @$uris;
 }
 
-sub is_valid($self, $obj = undef) {
-    $obj = $self if !$obj;
+sub is_valid( $self, $obj = undef ) {
+    $obj = $self                      if !$obj;
     croak "missing version specifier" if !$obj->{v};
-    croak "invalid version" if 'DMARC1' ne uc $obj->{v};
+    croak "invalid version"           if 'DMARC1' ne uc $obj->{v};
 
     # psd=y domains (PSDs) are not required to have a p= tag
     my $is_psd = defined $obj->{psd} && lc $obj->{psd} eq 'y';

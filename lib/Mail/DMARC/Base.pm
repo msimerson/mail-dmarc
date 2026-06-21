@@ -2,7 +2,7 @@ package Mail::DMARC::Base;
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -18,46 +18,52 @@ use Socket;
 use Socket6 qw//;    # don't export symbols
 require URI::_idna;
 
-sub new($class, @args) {
+sub new( $class, @args ) {
     croak "invalid args" if @args % 2 != 0;
     return bless {
         config_file => 'mail-dmarc.ini',
-        @args,       # this may override config_file
+        @args,    # this may override config_file
     }, $class;
 }
 
 my $_fake_time;
-sub time ($self) { ## no critic
-    # Ability to return a fake time for testing
-    my $time = defined $Mail::DMARC::Base::_fake_time ? $Mail::DMARC::Base::_fake_time : time;
+
+sub time ($self) {    ## no critic
+                      # Ability to return a fake time for testing
+    my $time
+        = defined $Mail::DMARC::Base::_fake_time
+        ? $Mail::DMARC::Base::_fake_time
+        : time;
     return $time;
 }
-sub set_fake_time ($self, $time) {
+
+sub set_fake_time ( $self, $time ) {
     $Mail::DMARC::Base::_fake_time = $time;
     return;
 }
 
-sub config($self, $file = undef, @too_many) {
-    croak "invalid args" if @too_many;
+sub config( $self, $file = undef, @too_many ) {
+    croak "invalid args"   if @too_many;
     return $self->{config} if ref $self->{config} && !$file;
     return $self->{config} = $self->get_config($file);
 }
 
-sub get_prefix($self, $subdir = undef) {
-    return map { $_ . ($subdir ? $subdir : '') } qw[ /usr/local/ /opt/local/ / ./ ];
+sub get_prefix( $self, $subdir = undef ) {
+    return
+        map { $_ . ( $subdir ? $subdir : '' ) } qw[ /usr/local/ /opt/local/ / ./ ];
 }
 
-sub get_sharefile($self, $file) {
+sub get_sharefile( $self, $file ) {
     my $match = File::ShareDir::dist_file( 'Mail-DMARC', $file );
     print "using $match for $file\n" if $self->verbose;
     return $match;
 }
 
-sub get_config($self, $file = undef) {
+sub get_config( $self, $file = undef ) {
     $file ||= $ENV{MAIL_DMARC_CONFIG_FILE} || $self->{config_file};
-    croak if !$file;
-    return Config::Tiny->read($file) if -r $file;  # fully qualified
-    foreach my $d ($self->get_prefix('etc')) {
+    croak                            if !$file;
+    return Config::Tiny->read($file) if -r $file;    # fully qualified
+    foreach my $d ( $self->get_prefix('etc') ) {
         next                              if !-d $d;
         next                              if !-e "$d/$file";
         croak "unreadable file: $d/$file" if !-r "$d/$file";
@@ -65,13 +71,13 @@ sub get_config($self, $file = undef) {
         return Config::Tiny->read("$d/$file");
     }
 
-    if ($file ne 'mail-dmarc.ini') {
+    if ( $file ne 'mail-dmarc.ini' ) {
         croak "unable to find requested config file $file\n";
     }
     return Config::Tiny->read( $self->get_sharefile('mail-dmarc.ini') );
 }
 
-sub any_inet_ntop($self, $ip_bin) {
+sub any_inet_ntop( $self, $ip_bin ) {
     $ip_bin or croak "missing IP in request";
 
     if ( length $ip_bin == 16 ) {
@@ -81,7 +87,7 @@ sub any_inet_ntop($self, $ip_bin) {
     return Socket6::inet_ntop( AF_INET, $ip_bin );
 }
 
-sub any_inet_pton($self, $ip_txt) {
+sub any_inet_pton( $self, $ip_txt ) {
     $ip_txt or croak "missing IP in request";
 
     if ( $ip_txt =~ /:/ ) {
@@ -98,36 +104,37 @@ sub any_inet_pton($self, $ip_txt) {
     my $public_suffixes_stamp;
 
     sub get_public_suffix_list($self) {
-        if ( $public_suffixes ) { return $public_suffixes; }
-        no warnings 'once';  ## no critic
+        if ($public_suffixes) { return $public_suffixes; }
+        no warnings 'once';    ## no critic
         $Mail::DMARC::psl_loads++;
         my $file = $self->find_psl_file();
-        $public_suffixes_stamp = ( stat( $file ) )[9];
+        $public_suffixes_stamp = ( stat($file) )[9];
 
         open my $fh, '<:encoding(UTF-8)', $file
             or croak "unable to open $file for read: $!\n";
+
         # load PSL into hash for fast lookups, esp. for long running daemons
         my %psl = map { $_ => 1 }
-                  grep { $_ !~ /^[\/\s]/ } # weed out comments & whitespace
-                  map { chomp($_); $_ }    ## no critic, remove line endings
-                  <$fh>;
+            grep { $_ !~ /^[\/\s]/ }    # weed out comments & whitespace
+            map  { chomp($_); $_ }      ## no critic, remove line endings
+            <$fh>;
         close $fh;
         return $public_suffixes = \%psl;
     }
 
     sub check_public_suffix_list($self) {
-        my $file = $self->find_psl_file();
-        my $new_public_suffixes_stamp = ( stat( $file ) )[9];
+        my $file                      = $self->find_psl_file();
+        my $new_public_suffixes_stamp = ( stat($file) )[9];
         if ( $new_public_suffixes_stamp != $public_suffixes_stamp ) {
             $public_suffixes = undef;
             $self->get_public_suffix_list();
             return 1;
         }
         return 0;
-     }
- }
+    }
+}
 
-sub is_public_suffix($self, $zone) {
+sub is_public_suffix( $self, $zone ) {
     croak "missing zone name!" if !$zone;
 
     my $public_suffixes = $self->get_public_suffix_list();
@@ -142,7 +149,7 @@ sub is_public_suffix($self, $zone) {
 
     # Check for wildcard match
     my @labels = split /\./, $zone;
-    if (@labels > 1) {
+    if ( @labels > 1 ) {
         my $wildcard = join '.', '*', (@labels)[ 1 .. scalar(@labels) - 1 ];
         return 1 if $public_suffixes->{$wildcard};
     }
@@ -150,24 +157,26 @@ sub is_public_suffix($self, $zone) {
     return 0;
 }
 
-sub update_psl_file($self, $dryrun = undef) {
+sub update_psl_file( $self, $dryrun = undef ) {
     my $psl_file = $self->find_psl_file();
 
-    die "No Public Suffix List file found\n"                  if ( ! $psl_file );
-    die "Public suffix list file $psl_file not found\n"       if ( ! -f $psl_file );
-    die "Cannot write to Public Suffix List file $psl_file\n" if ( ! -w $psl_file );
+    die "No Public Suffix List file found\n"                  if ( !$psl_file );
+    die "Public suffix list file $psl_file not found\n"       if ( !-f $psl_file );
+    die "Cannot write to Public Suffix List file $psl_file\n" if ( !-w $psl_file );
 
     my $url = 'https://publicsuffix.org/list/effective_tld_names.dat';
-    if ( $dryrun ) {
-        print "Will attempt to update the Public Suffix List file at $psl_file (dryrun mode)\n";
+    if ($dryrun) {
+        print
+            "Will attempt to update the Public Suffix List file at $psl_file (dryrun mode)\n";
         return;
     }
 
     my $response = HTTP::Tiny->new->mirror( $url, $psl_file );
-    my $content = $response->{'content'};
+    my $content  = $response->{'content'};
     if ( !$response->{'success'} ) {
         my $status = $response->{'status'};
-        die "HTTP Request for Public Suffix List file failed with error $status ($content)\n";
+        die
+            "HTTP Request for Public Suffix List file failed with error $status ($content)\n";
     }
     else {
         if ( $response->{'status'} eq '304' ) {
@@ -181,15 +190,16 @@ sub update_psl_file($self, $dryrun = undef) {
 }
 
 sub find_psl_file($self) {
-    my $file = $self->config->{dns}{public_suffix_list} || 'share/public_suffix_list';
+    my $file
+        = $self->config->{dns}{public_suffix_list} || 'share/public_suffix_list';
     if ( $file =~ /^\// && -f $file && -r $file ) {
         print "using $file for Public Suffix List\n" if $self->verbose;
         return $file;
     }
 
-    foreach my $path ($self->get_prefix($file)) {
+    foreach my $path ( $self->get_prefix($file) ) {
         if ( -f $path && -r $path ) {
-            print "using $path for Public Suffix List\n"; # if $self->verbose;
+            print "using $path for Public Suffix List\n";    # if $self->verbose;
             return $path;
         }
     }
@@ -198,30 +208,31 @@ sub find_psl_file($self) {
     return $self->get_sharefile('public_suffix_list');
 }
 
-sub has_dns_rr($self, $type, $domain) {
+sub has_dns_rr( $self, $type, $domain ) {
     my @matches;
-    my $res     = $self->get_resolver();
-    my $query   = $res->query( $domain, $type ) or do {
-        return 0 if ! wantarray;
+    my $res   = $self->get_resolver();
+    my $query = $res->query( $domain, $type ) or do {
+        return 0 if !wantarray;
         return @matches;
     };
     for my $rr ( $query->answer ) {
         next if $rr->type ne $type;
-        push @matches, $rr->type eq  'A'   ? $rr->address
-                     : $rr->type eq 'PTR'  ? $rr->ptrdname
-                     : $rr->type eq  'NS'  ? $rr->nsdname
-                     : $rr->type eq  'TXT' ? $rr->txtdata
-                     : $rr->type eq  'SPF' ? $rr->txtdata
-                     : $rr->type eq 'AAAA' ? $rr->address
-                     : $rr->type eq  'MX'  ? $rr->exchange
-                     : $rr->answer;
+        push @matches,
+              $rr->type eq 'A'    ? $rr->address
+            : $rr->type eq 'PTR'  ? $rr->ptrdname
+            : $rr->type eq 'NS'   ? $rr->nsdname
+            : $rr->type eq 'TXT'  ? $rr->txtdata
+            : $rr->type eq 'SPF'  ? $rr->txtdata
+            : $rr->type eq 'AAAA' ? $rr->address
+            : $rr->type eq 'MX'   ? $rr->exchange
+            :                       $rr->answer;
     }
-    return scalar @matches if ! wantarray;
+    return scalar @matches if !wantarray;
     return @matches;
 }
 
-sub epoch_to_iso($self, $epoch) {
-    my @fields = localtime( $epoch );
+sub epoch_to_iso( $self, $epoch ) {
+    my @fields = localtime($epoch);
 
     my $ss = sprintf( "%02i", $fields[0] );    # seconds
     my $mn = sprintf( "%02i", $fields[1] );    # minutes
@@ -231,10 +242,10 @@ sub epoch_to_iso($self, $epoch) {
     my $mm = sprintf( "%02i", $fields[4] + 1 );    # month
     my $yy = ( $fields[5] + 1900 );                # year
 
-    return "$yy-$mm-$dd" .'T'."$hh:$mn:$ss";
+    return "$yy-$mm-$dd" . 'T' . "$hh:$mn:$ss";
 }
 
-sub get_resolver($self, $timeout = undef, $retrans = undef) {
+sub get_resolver( $self, $timeout = undef, $retrans = undef ) {
     $timeout ||= $self->config->{dns}{timeout} || 5;
     $retrans ||= $self->config->{dns}{retrans} || 5;
     return $self->{resolver} if defined $self->{resolver};
@@ -245,26 +256,28 @@ sub get_resolver($self, $timeout = undef, $retrans = undef) {
     return $self->{resolver};
 }
 
-sub set_resolver($self, $resolver) {
+sub set_resolver( $self, $resolver ) {
     $self->{resolver} = $resolver;
     return;
 }
 
-sub to_ascii_domain($self, $domain) {
-    return $domain unless $domain =~ /[^\x00-\x7F]/;  # fast path: ASCII only
-    # Convert each U-label to its A-label (punycode) equivalent per RFC 8616 §6
+sub to_ascii_domain( $self, $domain ) {
+    return $domain unless $domain =~ /[^\x00-\x7F]/;    # fast path: ASCII only
+        # Convert each U-label to its A-label (punycode) equivalent per RFC 8616 §6
     my @ascii_labels = map {
-        if ( /[^\x00-\x7F]/ ) {
+        if (/[^\x00-\x7F]/) {
             my $ascii = eval { URI::_idna::encode($_) };
             $ascii // $_;
-        } else {
+        }
+        else {
             $_;
         }
     } split /\./, $domain;
     return join '.', @ascii_labels;
 }
 
-sub is_valid_ip($self, $ip) {
+sub is_valid_ip( $self, $ip ) {
+
     # Using Regexp::Common removes perl 5.8 compat
     # Perl 5.008009 does not support the pattern $RE{net}{IPv6}.
     # You need Perl 5.01 or later
@@ -277,41 +290,42 @@ sub is_valid_ip($self, $ip) {
     return Net::IP->new( $ip, 4 );
 }
 
-sub is_valid_domain($self, $domain) {
+sub is_valid_domain( $self, $domain ) {
     return 0 if $domain !~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x;
     my $tld = ( split /\./, $domain )[-1];
     return 1 if $self->is_public_suffix($tld);
     return 0 if $domain eq 'localhost';
     return 0 if $tld eq 'localdomain';
-    return 0 if -1 == index($domain, '.');
+    return 0 if -1 == index( $domain, '.' );
     $tld = join( '.', ( split /\./, $domain )[ -2, -1 ] );
     return 1 if $self->is_public_suffix($tld);
     return 0;
 }
 
-sub is_valid_spf_scope($self, $scope) {
-    return if !defined $scope;
+sub is_valid_spf_scope( $self, $scope ) {
+    return           if !defined $scope;
     return lc $scope if grep { lc $scope eq $_ } qw/ mfrom helo /;
     carp "$scope is not a valid SPF scope";
     return;
 }
 
-sub is_valid_spf_result($self, $result) {
+sub is_valid_spf_result( $self, $result ) {
     return if !defined $result;
-    return 1 if grep { lc $result eq $_ }
+    return 1
+        if grep { lc $result eq $_ }
         qw/ fail neutral none pass permerror softfail temperror /;
     carp "$result is not a valid SPF result";
     return;
 }
 
-sub slurp($self, $file) {
+sub slurp( $self, $file ) {
     open my $FH, '<', $file or croak "unable to read $file: $!";
     my $contents = do { local $/; <$FH> };    ## no critic (Local)
     close $FH;
     return $contents;
 }
 
-sub verbose($self, $val = undef) {
+sub verbose( $self, $val = undef ) {
     return $self->{verbose} if @_ == 1;
     return $self->{verbose} = $val;
 }

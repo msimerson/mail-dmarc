@@ -3,7 +3,7 @@ our $VERSION = '2.20260621';
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
@@ -11,24 +11,24 @@ use parent 'Mail::DMARC';
 
 sub init($self) {
     $self->is_subdomain(0);
-    $self->{header_from} = undef;
+    $self->{header_from}     = undef;
     $self->{header_from_raw} = undef;
-    $self->{envelope_to} = undef;
-    $self->{envelope_from} = undef;
-    $self->{source_ip} = undef;
-    $self->{sender} = undef;
-    $self->{policy} = undef;
-    $self->{result} = undef;
-    $self->{report} = undef;
-    $self->{spf} = undef;
-    $self->{dkim} = undef;
-    $self->{_tw_cache} = {};
+    $self->{envelope_to}     = undef;
+    $self->{envelope_from}   = undef;
+    $self->{source_ip}       = undef;
+    $self->{sender}          = undef;
+    $self->{policy}          = undef;
+    $self->{result}          = undef;
+    $self->{report}          = undef;
+    $self->{spf}             = undef;
+    $self->{dkim}            = undef;
+    $self->{_tw_cache}       = {};
     return;
 }
 
-sub validate($self, $policy = undef) {
-    $self->result->result('fail');        # set a couple
-    $self->result->disposition('none');   # defaults
+sub validate( $self, $policy = undef ) {
+    $self->result->result('fail');         # set a couple
+    $self->result->disposition('none');    # defaults
 
     # 11.2.1 Extract RFC5322.From domain
     my $from_dom = $self->get_from_dom() or return $self->result;
@@ -36,8 +36,9 @@ sub validate($self, $policy = undef) {
     # 9.6. reject email if the domain appears to not exist
     $self->exists_in_dns() or return $self->result;
 
-    $policy ||= $self->discover_policy();  # 11.2.2 Query DNS for DMARC policy
-    if (!$policy) {
+    $policy ||= $self->discover_policy();    # 11.2.2 Query DNS for DMARC policy
+    if ( !$policy ) {
+
         # RFC7489 section 4.3 step 8:
         #  If a policy is found, it is combined with the Author's domain
         #  and the SPF and DKIM results to produce a DMARC policy result (a
@@ -51,24 +52,26 @@ sub validate($self, $policy = undef) {
     #         specifying that a pass from one authentication test allows one
     #         to skip the other(s). All are required for reporting.
 
-    eval { $self->is_dkim_aligned; };  # 11.2.3. DKIM signature verification checks
-    eval { $self->is_spf_aligned;  };  # 11.2.4. SPF validation checks
-    my $aligned = $self->is_aligned(); # 11.2.5. identifier alignment checks
+    eval { $self->is_dkim_aligned; };   # 11.2.3. DKIM signature verification checks
+    eval { $self->is_spf_aligned; };    # 11.2.4. SPF validation checks
+    my $aligned = $self->is_aligned();    # 11.2.5. identifier alignment checks
 
-    if ($self->config->{report_store}{auto_save}) {
+    if ( $self->config->{report_store}{auto_save} ) {
         eval { $self->save_aggregate(); };
     }
 
     return $self->result if $aligned;
 
     # Determine if the from domain is a non-existent subdomain (for np tag)
-    my $is_sub     = $self->is_subdomain;
-    my $sub_exists = !$is_sub
+    my $is_sub = $self->is_subdomain;
+    my $sub_exists
+        = !$is_sub
         || !defined $policy->np
         || $self->_subdomain_exists_in_dns($from_dom);
 
     my $effective_p;
     if ( $is_sub && !$sub_exists && defined $policy->np ) {
+
         # RFC 9989 §4.7 np tag: policy for non-existent subdomains
         $effective_p = $policy->np;
     }
@@ -85,8 +88,8 @@ sub validate($self, $policy = undef) {
 
     # RFC 9989 4.7 t tag: testing mode, apply one severity level lower
     if ( defined $policy->t && lc( $policy->t ) eq 'y' ) {
-        my $tested =
-              ( lc($effective_p) eq 'reject' )     ? 'quarantine'
+        my $tested
+            = ( lc($effective_p) eq 'reject' )     ? 'quarantine'
             : ( lc($effective_p) eq 'quarantine' ) ? 'none'
             :                                        $effective_p;
         if ( $tested ne $effective_p ) {
@@ -115,28 +118,33 @@ sub validate($self, $policy = undef) {
 sub save_aggregate($self) {
     my $pol;
     eval { $pol = $self->result->published; };
-    if ( $pol && $self->has_valid_reporting_uri($pol->rua) ) {
-        my @valid_report_uris = $self->get_valid_reporting_uri($pol->rua);
+    if ( $pol && $self->has_valid_reporting_uri( $pol->rua ) ) {
+        my @valid_report_uris = $self->get_valid_reporting_uri( $pol->rua );
 
-        my $filtered_report_uris = join( ',',
-            map { $_->{'uri'} . ( ( $_->{'max_bytes'} > 0 ) ? ( '!' . $_->{'max_bytes'} ) : q{} ) }
-                @valid_report_uris
+        my $filtered_report_uris = join(
+            ',',
+            map {
+                $_->{'uri'}
+                    . (
+                    ( $_->{'max_bytes'} > 0 ) ? ( '!' . $_->{'max_bytes'} ) : q{} )
+            } @valid_report_uris
         );
 
-        $self->result->published->rua( $filtered_report_uris );
+        $self->result->published->rua($filtered_report_uris);
 
         return $self->SUPER::save_aggregate();
     }
     return;
 }
 
-sub discover_policy($self, $from_dom = undef) {
+sub discover_policy( $self, $from_dom = undef ) {
     $from_dom ||= $self->header_from;
-    croak if !$from_dom;
+    croak                            if !$from_dom;
     print "Header From: $from_dom\n" if $self->verbose;
 
     # RFC 9989 4.10: DNS Tree Walk replaces PSL-based org domain lookup
     my ( $record_str, $org_dom, $at_dom ) = $self->tree_walk($from_dom);
+
     # Fall back to PSL when no DMARC records exist for org domain determination
     $org_dom //= $self->_psl_organizational_domain($from_dom);
     $self->is_subdomain( $org_dom eq $from_dom ? 0 : 1 );
@@ -163,7 +171,7 @@ sub discover_policy($self, $from_dom = undef) {
 
     # If a retrieved policy record does not contain a valid "p" tag, or
     # contains an "sp"/"np" tag that is not valid, then:
-    my $p_invalid  = $policy->p  && !$policy->is_valid_p( $policy->p );
+    my $p_invalid  = $policy->p          && !$policy->is_valid_p( $policy->p );
     my $sp_invalid = defined $policy->sp && !$policy->is_valid_p( $policy->sp );
     my $np_invalid = defined $policy->np && !$policy->is_valid_p( $policy->np );
 
@@ -189,6 +197,7 @@ sub discover_policy($self, $from_dom = undef) {
 }
 
 sub is_aligned($self) {
+
     # 11.2.5 Conduct identifier alignment checks.  With authentication checks
     #        and policy discovery performed, the Mail Receiver checks if
     #        Authenticated Identifiers fall into alignment as decribed in
@@ -230,7 +239,7 @@ sub is_dkim_aligned($self) {
             identity => '',                      # TODO, what is this?
         };
 
-        if ( $dkim_dom eq $from_dom ) { # strict alignment requires exact match
+        if ( $dkim_dom eq $from_dom ) {    # strict alignment requires exact match
             $self->result->dkim('pass');
             $self->result->dkim_align('strict');
             $self->result->dkim_meta($dkmeta);
@@ -255,7 +264,7 @@ sub is_dkim_aligned($self) {
     return;
 }
 
-sub is_spf_aligned($self, $spf_dom = undef) {
+sub is_spf_aligned( $self, $spf_dom = undef ) {
 
     if ( !$spf_dom && !$self->spf ) { croak "missing SPF!"; }
 
@@ -266,16 +275,17 @@ sub is_spf_aligned($self, $spf_dom = undef) {
 
     my @spf_results;
     if ($spf_dom) {
-        push @spf_results, { domain => lc $spf_dom, result => 'pass', scope => 'mfrom' };
+        push @spf_results,
+            { domain => lc $spf_dom, result => 'pass', scope => 'mfrom' };
     }
     else {
         my @all_results = @{ $self->spf };
+
         # RFC 7489 §4.3.2: only RFC5321.MailFrom (mfrom) is used for DMARC SPF
         # alignment. EHLO/HELO is not used. Results with no scope specified are
         # treated as mfrom for backward compatibility.
-        @spf_results = grep {
-            !defined $_->{scope} || lc $_->{scope} ne 'helo'
-        } @all_results;
+        @spf_results = grep { !defined $_->{scope} || lc $_->{scope} ne 'helo' }
+            @all_results;
     }
 
     foreach my $res (@spf_results) {
@@ -294,6 +304,7 @@ sub is_spf_aligned($self, $spf_dom = undef) {
         if ( $self->get_organizational_domain($s_dom) eq $from_org ) {
             $self->result->spf('pass');
             $self->result->spf_align('relaxed');
+
             # Don't return, we might find a strict match later. DMARC just
             # needs one, for reporting it's nice to have the best match
         }
@@ -303,41 +314,43 @@ sub is_spf_aligned($self, $spf_dom = undef) {
     return 0;
 }
 
-sub is_whitelisted($self, $s_ip = undef) {
+sub is_whitelisted( $self, $s_ip = undef ) {
     $s_ip ||= $self->source_ip;
-    return if ! defined $s_ip;
-    if ( ! $self->{_whitelist} ) {
+    return if !defined $s_ip;
+    if ( !$self->{_whitelist} ) {
         my $white_file = $self->config->{smtp}{whitelist} or return;
-        return if ! -f $white_file || ! -r $white_file;
+        return if !-f $white_file || !-r $white_file;
         foreach my $line ( split /\n/, $self->slurp($white_file) ) {
-            next if $line =~ /^#/; # ignore comments
-            my ($lip,$reason) = split /\s+/, $line, 2;
+            next if $line =~ /^#/;    # ignore comments
+            my ( $lip, $reason ) = split /\s+/, $line, 2;
             next if not defined $lip;
             $self->{_whitelist}{$lip} = $reason;
-        };
-    };
-    return if ! $self->{_whitelist}{$s_ip};
+        }
+    }
+    return if !$self->{_whitelist}{$s_ip};
 
-    my ($type, $comment) = split /\s+/, $self->{_whitelist}{$s_ip}, 2;
+    my ( $type, $comment ) = split /\s+/, $self->{_whitelist}{$s_ip}, 2;
+
     # Validate type against RFC 7489 PolicyOverrideType enum
-    my @valid_reason_types = qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /;
+    my @valid_reason_types
+        = qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /;
     if ( !$type || !grep { $_ eq lc $type } @valid_reason_types ) {
         $type = 'other';
     }
     $self->result->disposition('none');
     $self->result->reason(
-            type => $type,
-            ($comment && $comment =~ /\S/ ? ('comment' => $comment) : () ),
-            );
+        type => $type,
+        ( $comment && $comment =~ /\S/ ? ( 'comment' => $comment ) : () ),
+    );
     return $type;
 }
 
-sub has_valid_reporting_uri($self, $rua) {
-    my @valid_reporting_uris = $self->get_valid_reporting_uri( $rua );
+sub has_valid_reporting_uri( $self, $rua ) {
+    my @valid_reporting_uris = $self->get_valid_reporting_uri($rua);
     return scalar @valid_reporting_uris;
 }
 
-sub get_valid_reporting_uri($self, $rua) {
+sub get_valid_reporting_uri( $self, $rua ) {
     return unless $rua;
     my $recips_ref = $self->report->uri->parse($rua);
     my @has_permission;
@@ -362,7 +375,7 @@ sub get_dkim_pass_sigs($self) {
     return grep { 'pass' eq lc $_->{result} } @$dkim_sigs;
 }
 
-sub tree_walk($self, $from_dom) {
+sub tree_walk( $self, $from_dom ) {
     $from_dom = lc $from_dom;
 
     return @{ $self->{_tw_cache}{$from_dom} }
@@ -397,13 +410,15 @@ sub tree_walk($self, $from_dom) {
                 my $rec = $matches[0];
                 my $pol = eval { $self->policy->parse("domain=$target;$rec") };
                 if ($pol) {
-                    # Author domain takes precedence: save only the first record found
+
+                  # Author domain takes precedence: save only the first record found
                     if ( !defined $policy_record ) {
                         $policy_record = $rec;
                         $at_dom        = $target;
                     }
                     my $psd_val = defined $pol->psd ? lc $pol->psd : 'u';
                     if ( $psd_val eq 'n' ) {
+
                         # Lucky anchor: this domain is the Organizational Domain
                         print "Tree Walk anchor (psd=n): $target\n"
                             if $self->verbose;
@@ -412,6 +427,7 @@ sub tree_walk($self, $from_dom) {
                         return @result;
                     }
                     if ( $psd_val eq 'y' ) {
+
                         # PSD found; org domain is the child one label below it
                         my $below = $prev_target // $from_dom;
                         print "Tree Walk PSD (psd=y): $target, org=$below\n"
@@ -420,13 +436,19 @@ sub tree_walk($self, $from_dom) {
                         $self->{_tw_cache}{$from_dom} = \@result;
                         return @result;
                     }
+
                     # psd=u (default): update org_dom candidate, keep walking
                     $org_dom = $target;
                 }
-            } elsif ( @matches > 1 ) {
+            }
+            elsif ( @matches > 1 ) {
+
                 # 9.5. If the remaining set contains multiple records, processing
                 #      terminates and the Mail Receiver takes no action.
-                $self->result->reason( type => 'other', comment => "too many policies" );
+                $self->result->reason(
+                    type    => 'other',
+                    comment => "too many policies"
+                );
                 print "Too many DMARC records\n" if $self->verbose;
                 return;
             }
@@ -451,7 +473,7 @@ sub tree_walk($self, $from_dom) {
     return @result;
 }
 
-sub get_organizational_domain($self, $from_dom = undef) {
+sub get_organizational_domain( $self, $from_dom = undef ) {
     $from_dom ||= $self->header_from;
     croak "missing header_from!" if !$from_dom;
     $from_dom = lc $from_dom;
@@ -468,8 +490,8 @@ sub get_organizational_domain($self, $from_dom = undef) {
     return $org_dom;
 }
 
-sub _psl_organizational_domain($self, $from_dom) {
-    my @labels  = reverse split /\./, lc $from_dom;
+sub _psl_organizational_domain( $self, $from_dom ) {
+    my @labels   = reverse split /\./, lc $from_dom;
     my $greatest = 0;
     for ( my $i = 0; $i <= $#labels; $i++ ) {
         next if !$labels[$i];
@@ -480,7 +502,8 @@ sub _psl_organizational_domain($self, $from_dom) {
     return join '.', reverse( @labels[ 0 .. $greatest ] );
 }
 
-sub _subdomain_exists_in_dns($self, $dom) {
+sub _subdomain_exists_in_dns( $self, $dom ) {
+
     # RFC 9989 4.7: a subdomain is non-existent only when DNS consistently
     # returns NXDOMAIN. NOERROR/NODATA means the name exists but lacks that
     # record type. Timeouts and other errors are treated conservatively as
@@ -489,13 +512,14 @@ sub _subdomain_exists_in_dns($self, $dom) {
     for my $type (qw/ A AAAA MX NS /) {
         my $q = $self->get_resolver->send( $dom, $type );
         next unless $q;
-        return 1 if $q->header->rcode ne 'NXDOMAIN';  # NOERROR/NODATA or error → exists
+        return 1
+            if $q->header->rcode ne 'NXDOMAIN';   # NOERROR/NODATA or error → exists
         $got_response = 1;
     }
     return $got_response ? 0 : 1;
 }
 
-sub exists_in_dns($self, $from_dom = undef) {
+sub exists_in_dns( $self, $from_dom = undef ) {
     $from_dom ||= $self->header_from;
     croak "no header_from!" if !$from_dom;
 
@@ -530,14 +554,14 @@ sub exists_in_dns($self, $from_dom = undef) {
     return $matched;
 }
 
-sub fetch_dmarc_record($self, $zone, $org_dom = undef) {
+sub fetch_dmarc_record( $self, $zone, $org_dom = undef ) {
 
     # 1.  Mail Receivers MUST query the DNS for a DMARC TXT record at the
     #     DNS domain matching the one found in the RFC5322.From domain in
     #     the message. A possibly empty set of records is returned.
     my @matches = ();
-    my $query = $self->get_resolver->send( "_dmarc.$zone", 'TXT' )
-        or return (\@matches, $zone);
+    my $query   = $self->get_resolver->send( "_dmarc.$zone", 'TXT' )
+        or return ( \@matches, $zone );
 
     for my $rr ( $query->answer ) {
         next if $rr->type ne 'TXT';
@@ -549,7 +573,7 @@ sub fetch_dmarc_record($self, $zone, $org_dom = undef) {
         push @matches, join( '', $rr->txtdata );    # join long records
     }
     if (@matches) {
-        return \@matches, $zone;            # found one! (at least)
+        return \@matches, $zone;                    # found one! (at least)
     }
 
     #   3.  If the set is now empty, the Mail Receiver MUST query the DNS for
@@ -557,7 +581,7 @@ sub fetch_dmarc_record($self, $zone, $org_dom = undef) {
     #       Domain in place of the RFC5322.From domain in the message (if
     #       different).  This record can contain policy to be asserted for
     #       subdomains of the Organizational Domain.
-    if ( defined $org_dom ) {                              #  <- recursion break
+    if ( defined $org_dom ) {    #  <- recursion break
         if ( $org_dom ne $zone ) {
             return $self->fetch_dmarc_record($org_dom);    #  <- recursion
         }
@@ -591,14 +615,15 @@ sub get_from_dom($self) {
         $self->result->result('none');
         $self->result->reason(
             type    => 'other',
-            comment => 'multiple RFC5322.From domains; provide Sender header via $dmarc->sender',
+            comment =>
+                'multiple RFC5322.From domains; provide Sender header via $dmarc->sender',
         );
         return;
     }
 
     # Caller can pass in pre-parsed from_dom if this doesn't suit them.
-    my ($from_dom) = ( split /@/, $header )[-1]; # grab everything after the @
-    ($from_dom) = split /(\s+|>)/, lc $from_dom; # remove trailing cruft
+    my ($from_dom) = ( split /@/, $header )[-1];    # grab everything after the @
+    ($from_dom) = split /(\s+|>)/, lc $from_dom;    # remove trailing cruft
     if ( !$from_dom ) {
         $self->result->reason(
             type    => 'other',
@@ -613,30 +638,29 @@ sub get_from_dom($self) {
     return $self->header_from($from_dom);
 }
 
-sub external_report($self, $uri) {
+sub external_report( $self, $uri ) {
     my $dmarc_dom = $self->result->published->domain
         or croak "published policy not tagged!";
 
     if ( 'mailto' eq $uri->scheme ) {
         my $dest_email = lc $uri->path;
         my ($dest_host) = ( split /@/, $dest_email )[-1];
-        if ( $self->get_organizational_domain( $dest_host )
-                eq
-             $self->get_organizational_domain( $dmarc_dom )
-             ) {
+        if ( $self->get_organizational_domain($dest_host) eq
+            $self->get_organizational_domain($dmarc_dom) )
+        {
             print "$dest_host not external for $dmarc_dom\n" if $self->verbose;
             return 0;
-        };
+        }
         print "$dest_host is external for $dmarc_dom\n" if $self->verbose;
         return 1;
     }
 
     if ( $uri->scheme =~ /^https?$/ ) {
         if ( $uri->host eq $dmarc_dom ) {
-            print $uri->host ." not external for $dmarc_dom\n" if $self->verbose;
+            print $uri->host . " not external for $dmarc_dom\n" if $self->verbose;
             return 0;
-        };
-        print $uri->host ." is external for $dmarc_dom\n" if $self->verbose;
+        }
+        print $uri->host . " is external for $dmarc_dom\n" if $self->verbose;
         return 1;
     }
 
@@ -655,7 +679,7 @@ sub _uri_authority_host($uri) {
     return;
 }
 
-sub verify_external_reporting($self, $uri_ref = undef) {
+sub verify_external_reporting( $self, $uri_ref = undef ) {
     $uri_ref or croak "missing URI";
 
     #  1.  Extract the host portion of the authority component of the URI.
@@ -697,17 +721,17 @@ sub verify_external_reporting($self, $uri_ref = undef) {
         next if $rr->type ne 'TXT';
 
         next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
-        my $policy = undef;
-        my $dmarc_str = join( '', $rr->txtdata );    # join parts
-        eval { $policy = $self->policy->parse($dmarc_str) }; ## no critic (Eval)
+        my $policy    = undef;
+        my $dmarc_str = join( '', $rr->txtdata );               # join parts
+        eval { $policy = $self->policy->parse($dmarc_str) };    ## no critic (Eval)
         push @matches, $policy ? $policy : $dmarc_str;
     }
 
     #  6.  If the result includes no TXT resource records...stop
-    if (!@matches) {
+    if ( !@matches ) {
         print "\tno TXT match for $dest\n" if $self->verbose;
         return;
-    };
+    }
 
     #  7.  If > 1 TXT resource record remains, external reporting authorized
     #  8.  If a "rua" or "ruf" tag is discovered, replace the
@@ -715,6 +739,7 @@ sub verify_external_reporting($self, $uri_ref = undef) {
     my @overrides = grep { ref $_ && $_->{rua} } @matches;
     foreach my $or (@overrides) {
         my $recips_ref = $self->report->uri->parse( $or->{rua} ) or next;
+
         # the overriding URI MUST use the same destination host from step 1.
         my $override_host = _uri_authority_host( $recips_ref->[0]{uri} );
         next unless defined $override_host && $override_host eq $dest_host;

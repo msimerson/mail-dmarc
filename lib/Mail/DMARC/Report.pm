@@ -2,7 +2,7 @@ package Mail::DMARC::Report;
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -18,13 +18,14 @@ require Mail::DMARC::Report::Store;
 require Mail::DMARC::Report::Receive;
 require Mail::DMARC::Report::URI;
 
-sub compress($self, $xml_ref) {
+sub compress( $self, $xml_ref ) {
     croak "xml is not a reference!" if 'SCALAR' ne ref $xml_ref;
     my $shrunk;
     my $zipper = {
         gz  => \&IO::Compress::Gzip::gzip,    # 2013 draft
         zip => \&IO::Compress::Zip::zip,      # legacy format
     };
+
     # WARNING: changes here MAY require updates in SMTP::assemble_message
     my $cf = 'gz';
     $zipper->{$cf}->( $xml_ref, \$shrunk ) or croak "unable to compress: $!";

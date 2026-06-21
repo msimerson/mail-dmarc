@@ -3,30 +3,30 @@ our $VERSION = '2.20260621';
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
+no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 use Module::Load;
 
 use parent 'Mail::DMARC::Base';
 
-sub delete_report($self, @args) {
+sub delete_report( $self, @args ) {
     return $self->backend->delete_report(@args);
 }
 
-sub error($self, @args) {
+sub error( $self, @args ) {
     return $self->backend->insert_error(@args);
 }
 
-sub retrieve($self, @args) {
+sub retrieve( $self, @args ) {
     return $self->backend->retrieve(@args);
 }
 
-sub next_todo($self, @args) {
+sub next_todo( $self, @args ) {
     return $self->backend->next_todo(@args);
 }
 
-sub retrieve_todo($self, @args) {
+sub retrieve_todo( $self, @args ) {
     return $self->backend->retrieve_todo(@args);
 }
 
