@@ -338,7 +338,7 @@ DMARC: Domain-based Message Authentication, Reporting and Conformance
 
 =head1 DESCRIPTION
 
-This module is a suite of tools for implementing DMARC. It adheres to the 2013 DMARC draft, intending to implement every MUST and every SHOULD.
+This module is a suite of tools for implementing DMARC. It implements DMARCbis (L<RFC 9989|https://www.rfc-editor.org/rfc/rfc9989>) - including the DNS tree walk for Organizational Domain discovery and the C<np>, C<psd>, and C<t> policy tags - while remaining compatible with the original L<RFC 7489|https://www.rfc-editor.org/rfc/rfc7489>. It intends to implement every MUST and every SHOULD.
 
 This module can be used by...
 
@@ -414,7 +414,7 @@ L<Mail::DMARC::Report::View> - CLI and CGI methods for viewing reports
 
 =back
 
-L<Mail::DMARC::libopendmarc|http://search.cpan.org/~shari/Mail-DMARC-opendmarc> - an XS implementation using libopendmarc
+L<Mail::DMARC::libopendmarc|https://metacpan.org/pod/Mail::DMARC::libopendmarc> - an XS implementation using libopendmarc
 
 =head1 METHODS
 
@@ -597,9 +597,9 @@ If you deploy this in an environment where performance is insufficient, please p
 
 L<Mail::DMARC on GitHub|https://github.com/msimerson/mail-dmarc>
 
-2015-03 L<RFC 7489|https://tools.ietf.org/html/rfc7489>
+L<RFC 9989|https://www.rfc-editor.org/rfc/rfc9989> - DMARCbis, the current DMARC standard
 
-DMARC L<Best Current Practices|http://tools.ietf.org/html/draft-crocker-dmarc-bcp-03>
+L<RFC 7489|https://www.rfc-editor.org/rfc/rfc7489> - the original (2015) DMARC specification
 
 =head1 HISTORY
 

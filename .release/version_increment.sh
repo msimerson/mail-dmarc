@@ -19,12 +19,6 @@ update_modules()
     git add lib
 }
 
-update_readme()
-{
-    pod2markdown lib/Mail/DMARC.pm README.md
-    git add README.md
-}
-
 update_meta()
 {
     # update the version in META.* files
@@ -34,7 +28,6 @@ update_meta()
 }
 
 update_modules
-update_readme
 update_meta
 
 if ! repo_is_clean; then
