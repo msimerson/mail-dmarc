@@ -66,6 +66,7 @@ t/01.Policy.t
 t/03.Base.t
 t/04.PurePerl.t
 t/06.Result.t
+t/07.GetterSetter.Undef.t
 t/09.HTTP.t
 t/10.Report.t
 t/11.Report.Store.t
