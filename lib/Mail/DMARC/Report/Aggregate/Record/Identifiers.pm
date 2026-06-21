@@ -17,17 +17,17 @@ sub new {
 }
 
 sub envelope_to {
-    return $_[0]->{envelope_to} if 1 == scalar @_;
+    return $_[0]->{envelope_to} if @_ == 1;
     return $_[0]->{envelope_to} = $_[1];
 }
 
 sub envelope_from {
-    return $_[0]->{envelope_from} if 1 == scalar @_;
+    return $_[0]->{envelope_from} if @_ == 1;
     return $_[0]->{envelope_from} = $_[1];
 }
 
 sub header_from {
-    return $_[0]->{header_from} if 1 == scalar @_;
+    return $_[0]->{header_from} if @_ == 1;
     return $_[0]->{header_from} = $_[1];
 }
 

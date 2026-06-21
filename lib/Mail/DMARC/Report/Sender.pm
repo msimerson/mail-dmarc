@@ -269,7 +269,7 @@ sub send_report {
     }
 
     # Check we have some receivers
-    if ( scalar @$report_receivers == 0 ) {
+    if ( !@$report_receivers ) {
         $self->log_output({
             'id'    =>  $aggregate->metadata->report_id,
             'error' => 'No valid ruas found - deleting report',
@@ -442,7 +442,7 @@ sub email {
             }
         };
         if ( my $error = $@ ) {
-            next if scalar @transports;
+            next if @transports;
             my $code;
             my $message;
             if (ref $error eq 'Email::Sender::Failure') {

@@ -139,7 +139,7 @@ sub retrieve_todo {
     # list of Aggregate report objects with them.
     my $reports = $self->query( $self->grammar->select_todo_query, [ $self->time ] );
     my @reports_todo;
-    return \@reports_todo if ! scalar @$reports;
+    return \@reports_todo if !@$reports;
 
     foreach my $report ( @{ $reports } ) {
 
@@ -165,7 +165,7 @@ sub delete_report {
     my $rows = $self->query( $self->grammar->report_record_id, [$report_id] );
     my @row_ids = map { $_->{id} } @$rows;
 
-    if (scalar @row_ids) {
+    if (@row_ids) {
         foreach my $table (qw/ report_record_spf report_record_dkim report_record_reason /) {
             print "deleting $table rows " . join(',', @row_ids) . "\n" if $self->verbose;
             eval { $self->query( $self->grammar->delete_from_where_record_in($table), \@row_ids); };
@@ -187,7 +187,7 @@ sub get_domain_id {
     my ( $self, $domain ) = @_;
     croak "missing domain calling " . ( caller(0) )[3] if !$domain;
     my $r = $self->query( $self->grammar->select_domain_id, [$domain] );
-    if ( $r && scalar @$r ) {
+    if ( $r && @$r ) {
         return $r->[0]{id};
     }
     return $self->query( $self->grammar->insert_domain, [$domain]);
@@ -200,7 +200,7 @@ sub get_author_id {
         $self->grammar->select_author_id,
         [ $meta->org_name ]
     );
-    if ( $r && scalar @$r ) {
+    if ( $r && @$r ) {
         return $r->[0]{id};
     }
     carp "missing email" if !$meta->email;
@@ -237,7 +237,7 @@ sub get_report_id {
         );
     };
 
-    if ( scalar @$ids ) { # report already exists
+    if ( @$ids ) { # report already exists
         return $self->{report_id} = $ids->[0]{id};
     }
 
@@ -423,7 +423,7 @@ sub row_exists {
         [ $rid, $rec->{row}{source_ip}, $rec->{row}{count}, ]
     );
 
-    return 1 if scalar @$rows;
+    return 1 if @$rows;
     return;
 }
 

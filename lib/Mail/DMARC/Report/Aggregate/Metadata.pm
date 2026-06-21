@@ -9,49 +9,49 @@ use XML::LibXML;
 use parent 'Mail::DMARC::Base';
 
 sub org_name {
-    return $_[0]->{org_name} if 1 == scalar @_;
+    return $_[0]->{org_name} if @_ == 1;
     return $_[0]->{org_name} = $_[1];
 }
 
 sub email {
-    return $_[0]->{email} if 1 == scalar @_;
+    return $_[0]->{email} if @_ == 1;
     return $_[0]->{email} = $_[1];
 }
 
 sub extra_contact_info {
-    return $_[0]->{extra_contact_info} if 1 == scalar @_;
+    return $_[0]->{extra_contact_info} if @_ == 1;
     return $_[0]->{extra_contact_info} = $_[1];
 }
 
 sub report_id {
-    return $_[0]->{report_id} if 1 == scalar @_;
+    return $_[0]->{report_id} if @_ == 1;
     return $_[0]->{report_id} = $_[1];
 }
 
 sub date_range {
-    return $_[0]->{date_range} if 1 == scalar @_;
+    return $_[0]->{date_range} if @_ == 1;
 
     #   croak "invalid date_range" if ('HASH' ne ref $_->[1]);
     return $_[0]->{date_range} = $_[1];
 }
 
 sub begin {
-    return $_[0]->{date_range}{begin} if 1 == scalar @_;
+    return $_[0]->{date_range}{begin} if @_ == 1;
     return $_[0]->{date_range}{begin} = $_[1];
 }
 
 sub end {
-    return $_[0]->{date_range}{end} if 1 == scalar @_;
+    return $_[0]->{date_range}{end} if @_ == 1;
     return $_[0]->{date_range}{end} = $_[1];
 }
 
 sub error {
-    return $_[0]->{error} if 1 == scalar @_;
+    return $_[0]->{error} if @_ == 1;
     return push @{ $_[0]->{error} }, $_[1];
 }
 
 sub uuid {
-    return $_[0]->{uuid} if 1 == scalar @_;
+    return $_[0]->{uuid} if @_ == 1;
     return $_[0]->{uuid} = $_[1];
 }
 

@@ -34,51 +34,51 @@ sub published {
 }
 
 sub disposition {
-    return $_[0]->{disposition} if 1 == scalar @_;
+    return $_[0]->{disposition} if @_ == 1;
     croak "invalid disposition ($_[1]"
         if 0 == grep {/^$_[1]$/ix} qw/ reject quarantine none /;
     return $_[0]->{disposition} = $_[1];
 }
 
 sub dkim {
-    return $_[0]->{dkim} if 1 == scalar @_;
+    return $_[0]->{dkim} if @_ == 1;
     croak "invalid dkim" if 0 == grep {/^$_[1]$/ix} qw/ pass fail /;
     return $_[0]->{dkim} = $_[1];
 }
 
 sub dkim_align {
-    return $_[0]->{dkim_align} if 1 == scalar @_;
+    return $_[0]->{dkim_align} if @_ == 1;
     croak "invalid dkim_align"
         if 0 == grep {/^$_[1]$/ix} qw/ relaxed strict /;
     return $_[0]->{dkim_align} = $_[1];
 }
 
 sub dkim_meta {
-    return $_[0]->{dkim_meta} if 1 == scalar @_;
+    return $_[0]->{dkim_meta} if @_ == 1;
     return $_[0]->{dkim_meta} = $_[1];
 }
 
 sub spf {
-    return $_[0]->{spf} if 1 == scalar @_;
+    return $_[0]->{spf} if @_ == 1;
     croak "invalid spf" if 0 == grep {/^$_[1]$/ix} qw/ pass fail /;
     return $_[0]->{spf} = $_[1];
 }
 
 sub spf_align {
-    return $_[0]->{spf_align} if 1 == scalar @_;
+    return $_[0]->{spf_align} if @_ == 1;
     croak "invalid spf_align" if 0 == grep {/^$_[1]$/ix} qw/ relaxed strict /;
     return $_[0]->{spf_align} = $_[1];
 }
 
 sub result {
-    return $_[0]->{result} if 1 == scalar @_;
+    return $_[0]->{result} if @_ == 1;
     croak "invalid result" if 0 == grep {/^$_[1]$/ix} qw/ pass fail none /;
     return $_[0]->{result} = $_[1];
 }
 
 sub reason {
     my ($self, @args) = @_;
-    return $self->{reason} if ! scalar @args;
+    return $self->{reason} if !@args;
     push @{ $self->{reason}}, Mail::DMARC::Result::Reason->new(@args);
     return $self->{reason};
 }

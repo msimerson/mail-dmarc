@@ -15,7 +15,7 @@ sub new {
     croak "invalid arguments" if @args % 2;
 
     my $self = bless {}, $class;
-    return $self if 0 == scalar @args;
+    return $self if !@args;
 
     my %args = @args;
     foreach my $key ( keys %args ) {
@@ -28,7 +28,7 @@ sub new {
 sub identifiers {
     my ($self, @args) = @_;
 
-    if ( !scalar @args ) {
+    if (!@args) {
         return $self->{identifiers} if $self->{identifiers};
     }
 
@@ -43,11 +43,11 @@ sub identifiers {
 sub auth_results {
     my ($self, @args) = @_;
 
-    if ( !scalar @args ) {
+    if (!@args) {
         return $self->{auth_results} if $self->{auth_results};
     }
 
-    if ( 1 == scalar @args && 'HASH' eq ref $args[0] ) {
+    if ( @args == 1 && 'HASH' eq ref $args[0] ) {
         @args = %{ $args[0] };
     }
 
@@ -58,11 +58,11 @@ sub auth_results {
 sub row {
     my ($self, @args) = @_;
 
-    if ( 0 == scalar @args ) {
+    if (!@args) {
         return $self->{row} if $self->{row};
     }
 
-    if ( 1 == scalar @args && 'HASH' eq ref $args[0] ) {
+    if ( @args == 1 && 'HASH' eq ref $args[0] ) {
         @args = %{ $args[0] };
     }
 

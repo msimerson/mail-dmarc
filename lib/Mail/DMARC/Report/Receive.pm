@@ -65,7 +65,7 @@ sub from_imap {
     my $nm = $imap->select( $self->config->{imap}{folder} );
     $imap->expunge_mailbox( $self->config->{imap}{folder} );
     my @mess = $imap->search( 'UNSEEN', 'DATE' );
-    if (! scalar @mess) {
+    if (!@mess) {
         # imap server might not support SORT extension *Gmail*
         @mess = $imap->search( 'UNSEEN' );
     }

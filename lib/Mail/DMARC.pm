@@ -16,7 +16,7 @@ require Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM;
 
 sub new {
     my ( $class, @args ) = @_;
-    croak "invalid args" if scalar @args % 2;
+    croak "invalid args" if @args % 2;
     my %args = @args;
     my $self = bless {
         config_file => 'mail-dmarc.ini',
@@ -38,43 +38,43 @@ sub new {
 }
 
 sub source_ip {
-    return $_[0]->{source_ip} if 1 == scalar @_;
+    return $_[0]->{source_ip} if @_ == 1;
     croak "invalid source_ip" if !$_[0]->is_valid_ip( $_[1] );
     return $_[0]->{source_ip} = $_[1];
 }
 
 sub envelope_to {
-    return $_[0]->{envelope_to} if 1 == scalar @_;
+    return $_[0]->{envelope_to} if @_ == 1;
     croak "invalid envelope_to" if !$_[0]->is_valid_domain( lc $_[1] );
     return $_[0]->{envelope_to} = $_[1];
 }
 
 sub envelope_from {
-    return $_[0]->{envelope_from} if 1 == scalar @_;
+    return $_[0]->{envelope_from} if @_ == 1;
     croak "invalid envelope_from" if !$_[0]->is_valid_domain( lc $_[1] );
     return $_[0]->{envelope_from} = $_[1];
 }
 
 sub header_from {
-    return $_[0]->{header_from} if 1 == scalar @_;
+    return $_[0]->{header_from} if @_ == 1;
     croak "invalid header_from" if !$_[0]->is_valid_domain( lc $_[1] );
     return $_[0]->{header_from} = lc $_[1];
 }
 
 sub header_from_raw {
-    return $_[0]->{header_from_raw} if 1 == scalar @_;
+    return $_[0]->{header_from_raw} if @_ == 1;
 #croak "invalid header_from_raw: $_[1]" if 'from:' ne lc substr($_[1], 0, 5);
     return $_[0]->{header_from_raw} = lc $_[1];
 }
 
 sub sender {
-    return $_[0]->{sender} if 1 == scalar @_;
+    return $_[0]->{sender} if @_ == 1;
     croak "invalid sender" if !$_[0]->is_valid_domain( lc $_[1] );
     return $_[0]->{sender} = lc $_[1];
 }
 
 sub local_policy {
-    return $_[0]->{local_policy} if 1 == scalar @_;
+    return $_[0]->{local_policy} if @_ == 1;
 
     # TODO: document this, when and why it would be used
     return $_[0]->{local_policy} = $_[1];
@@ -83,13 +83,13 @@ sub local_policy {
 sub dkim {
     my ($self, @args) = @_;
 
-    if (0 == scalar @args) {
+    if (!@args) {
         $self->_unwrap('dkim');
         return $self->{dkim};
     }
 
     # one shot
-    if (1 == scalar @args) {
+    if (@args == 1) {
         # warn "one argument\n";
         if (ref $args[0] eq 'CODE') {
             return $self->{dkim} = $args[0];
@@ -163,16 +163,16 @@ sub _unwrap {
 
 sub spf {
    my ($self, @args) = @_;
-    if (0 == scalar @args) {
+    if (!@args) {
       $self->_unwrap('spf');
       return $self->{spf};
     }
 
-    if (1 == scalar @args && ref $args[0] eq 'CODE') {
+    if (@args == 1 && ref $args[0] eq 'CODE') {
       return $self->{spf} = $args[0];
     }
 
-    if (1 == scalar @args && ref $args[0] eq 'ARRAY') {
+    if (@args == 1 && ref $args[0] eq 'ARRAY') {
         # warn "SPF one shot";
         foreach my $d ( @{ $args[0] }) {
             push @{ $self->{spf} },
@@ -190,7 +190,7 @@ sub spf {
 
 sub policy {
     my ( $self, @args ) = @_;
-    return $self->{policy} if ref $self->{policy} && 0 == scalar @args;
+    return $self->{policy} if ref $self->{policy} && !@args;
     return $self->{policy} = Mail::DMARC::Policy->new(@args);
 }
 
@@ -207,7 +207,7 @@ sub result {
 }
 
 sub is_subdomain {
-    return $_[0]->{is_subdomain} if 1 == scalar @_;
+    return $_[0]->{is_subdomain} if @_ == 1;
     croak "invalid boolean" if 0 == grep {/^$_[1]$/ix} qw/ 0 1/;
     return $_[0]->{is_subdomain} = $_[1];
 }

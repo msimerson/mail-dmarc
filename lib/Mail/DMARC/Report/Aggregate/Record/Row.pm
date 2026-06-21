@@ -18,18 +18,18 @@ sub new {
 }
 
 sub source_ip {
-    return $_[0]->{source_ip} if 1 == scalar @_;
+    return $_[0]->{source_ip} if @_ == 1;
     return $_[0]->{source_ip} =  $_[1];
 }
 
 sub policy_evaluated {
     my ($self, @args) = @_;
 
-    if (0 == scalar @args) {
+    if (!@args) {
         return $self->{policy_evaluated} if $self->{policy_evaluated};
     }
 
-    if (1 == scalar @args) {
+    if (@args == 1) {
         if ('HASH' eq ref $args[0]) {
             @args = %{ $args[0] };
         }        
@@ -40,7 +40,7 @@ sub policy_evaluated {
 }
 
 sub count {
-    return $_[0]->{count} if 1 == scalar @_;
+    return $_[0]->{count} if @_ == 1;
     return $_[0]->{count} =  $_[1];
 }
 

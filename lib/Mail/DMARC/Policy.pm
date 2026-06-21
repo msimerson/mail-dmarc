@@ -13,7 +13,7 @@ sub new {
     my $package = ref $class ? ref $class : $class;
     my $self = bless {}, $package;
 
-    return $self if 0 == scalar @args;                # no args, empty pol
+    return $self if !@args;                # no args, empty pol
     if (1 == @args) {                                 # a string
         my $policy = $self->parse( $args[0] );
         $self->is_valid($policy);
@@ -29,7 +29,7 @@ sub new {
 
 sub parse {
     my ( $self, $str, @junk ) = @_;
-    croak "invalid parse request" if 0 != scalar @junk;
+    croak "invalid parse request" if @junk;
     my $cleaned = $str;
     $cleaned =~ s/\s//g;                             # remove whitespace
     $cleaned =~ s/\\;/;/g;                           # replace \;  with ;
@@ -94,73 +94,73 @@ sub apply_defaults {
 }
 
 sub v {
-    return $_[0]->{v} if 1 == scalar @_;
+    return $_[0]->{v} if @_ == 1;
     croak "unsupported DMARC version" if 'DMARC1' ne uc $_[1];
     return $_[0]->{v} = $_[1];
 }
 
 sub p {
-    return $_[0]->{p} if 1 == scalar @_;
+    return $_[0]->{p} if @_ == 1;
     croak "invalid p" if !$_[0]->is_valid_p( $_[1] );
     return $_[0]->{p} = $_[1];
 }
 
 sub sp {
-    return $_[0]->{sp} if 1 == scalar @_;
+    return $_[0]->{sp} if @_ == 1;
     croak "invalid sp ($_[1])" if !$_[0]->is_valid_p( $_[1] );
     return $_[0]->{sp} = $_[1];
 }
 
 sub np {
-    return $_[0]->{np} if 1 == scalar @_;
+    return $_[0]->{np} if @_ == 1;
     croak "invalid np ($_[1])" if !$_[0]->is_valid_p( $_[1] );
     return $_[0]->{np} = $_[1];
 }
 
 sub psd {
-    return $_[0]->{psd} if 1 == scalar @_;
+    return $_[0]->{psd} if @_ == 1;
     croak "invalid psd ($_[1])" if 0 == grep {/^\Q$_[1]\E$/i} qw/ y n u /;
     return $_[0]->{psd} = lc $_[1];
 }
 
 sub t {
-    return $_[0]->{t} if 1 == scalar @_;
+    return $_[0]->{t} if @_ == 1;
     croak "invalid t ($_[1])" if 0 == grep {/^\Q$_[1]\E$/i} qw/ y n /;
     return $_[0]->{t} = lc $_[1];
 }
 
 sub adkim {
-    return $_[0]->{adkim} if 1 == scalar @_;
+    return $_[0]->{adkim} if @_ == 1;
     croak "invalid adkim" if 0 == grep {/^\Q$_[1]\E$/ix} qw/ r s /;
     return $_[0]->{adkim} = $_[1];
 }
 
 sub aspf {
-    return $_[0]->{aspf} if 1 == scalar @_;
+    return $_[0]->{aspf} if @_ == 1;
     croak "invalid aspf" if 0 == grep {/^\Q$_[1]\E$/ix} qw/ r s /;
     return $_[0]->{aspf} = $_[1];
 }
 
 sub fo {
-    return $_[0]->{fo} if 1 == scalar @_;
+    return $_[0]->{fo} if @_ == 1;
     croak "invalid fo: $_[1]" if $_[1] !~ /^[01ds](:[01ds])*$/ix;
     return $_[0]->{fo} = $_[1];
 }
 
 sub rua {
-    return $_[0]->{rua} if 1 == scalar @_;
+    return $_[0]->{rua} if @_ == 1;
     croak "invalid rua" if !$_[0]->is_valid_uri_list( $_[1] );
     return $_[0]->{rua} = $_[1];
 }
 
 sub ruf {
-    return $_[0]->{ruf} if 1 == scalar @_;
+    return $_[0]->{ruf} if @_ == 1;
     croak "invalid rua" if !$_[0]->is_valid_uri_list( $_[1] );
     return $_[0]->{ruf} = $_[1];
 }
 
 sub rf {
-    return $_[0]->{rf} if 1 == scalar @_;
+    return $_[0]->{rf} if @_ == 1;
     foreach my $f ( split /,/, $_[1] ) {
         croak "invalid format: $f" if !$_[0]->is_valid_rf($f);
     }
@@ -168,7 +168,7 @@ sub rf {
 }
 
 sub ri {
-    return $_[0]->{ri}           if 1 == scalar @_;
+    return $_[0]->{ri}           if @_ == 1;
     croak "not numeric ($_[1])!" if $_[1] =~ /\D/;
     croak "not an integer!"      if $_[1] != int $_[1];
     croak "out of range" if ( $_[1] < 0 || $_[1] > 4294967295 );
@@ -176,7 +176,7 @@ sub ri {
 }
 
 sub pct {
-    return $_[0]->{pct}          if 1 == scalar @_;
+    return $_[0]->{pct}          if @_ == 1;
     croak "not numeric ($_[1])!" if $_[1] =~ /\D/;
     croak "not an integer!"      if $_[1] != int $_[1];
     croak "out of range" if $_[1] < 0 || $_[1] > 100;
@@ -184,7 +184,7 @@ sub pct {
 }
 
 sub domain {
-    return $_[0]->{domain} if 1 == scalar @_;
+    return $_[0]->{domain} if @_ == 1;
     return $_[0]->{domain} = $_[1];
 }
 

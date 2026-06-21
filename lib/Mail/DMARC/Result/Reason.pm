@@ -17,7 +17,7 @@ sub new {
 }
 
 sub type {
-    return $_[0]->{type} if 1 == scalar @_;
+    return $_[0]->{type} if @_ == 1;
     croak "invalid type"
         if 0 == grep {/^$_[1]$/ix}
         qw/ forwarded sampled_out trusted_forwarder
@@ -26,7 +26,7 @@ sub type {
 }
 
 sub comment {
-    return $_[0]->{comment} if 1 == scalar @_;
+    return $_[0]->{comment} if @_ == 1;
 
     # comment is optional and requires no validation
     return $_[0]->{comment} = $_[1];

@@ -182,7 +182,7 @@ sub assemble_message_object {
 
 sub get_timestamp_rfc2822 {
     my ($self, @args) = @_;
-    my @ts = scalar @args ? @args : localtime $self->time;
+    my @ts = @args ? @args : localtime $self->time;
     my $locale = setlocale(LC_CTYPE);
     setlocale(LC_ALL, 'C');
     my $timestamp = POSIX::strftime( '%a, %d %b %Y %H:%M:%S %z', @ts );

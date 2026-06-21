@@ -10,12 +10,12 @@ sub new {
 
     my $self = bless {}, $class;
 
-    if (0 == scalar @args) {
+    if (!@args) {
         return $self;
     }
 
     # a bare hash
-    return $self->_from_hash(@args) if scalar @args > 1;
+    return $self->_from_hash(@args) if @args > 1;
 
     my $spf = shift @args;
     return $spf if ref $spf eq $class;
@@ -26,18 +26,18 @@ sub new {
 }
 
 sub domain {
-    return $_[0]->{domain} if 1 == scalar @_;
+    return $_[0]->{domain} if @_ == 1;
     return $_[0]->{domain} =  lc $_[1];
 }
 
 sub result {
-    return $_[0]->{result} if 1 == scalar @_;
+    return $_[0]->{result} if @_ == 1;
     croak if !$_[0]->is_valid_spf_result( $_[1] );
     return $_[0]->{result} =  $_[1];
 }
 
 sub scope {
-    return $_[0]->{scope} if 1 == scalar @_;
+    return $_[0]->{scope} if @_ == 1;
     croak if ! $_[0]->is_valid_spf_scope( $_[1] );
     return $_[0]->{scope} =  $_[1];
 }

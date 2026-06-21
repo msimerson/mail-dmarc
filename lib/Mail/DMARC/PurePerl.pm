@@ -399,7 +399,7 @@ sub tree_walk {
     #   longer); when a psd=y PSD is found, that child is the Organizational Domain
     my ( $policy_record, $at_dom, $org_dom, $prev_target );
 
-    while ( $query_count < 8 && scalar @labels > 0 ) {
+    while ( $query_count < 8 && @labels > 0 ) {
         $query_count++;
         my $query = $self->get_resolver->send( "_dmarc.$target", 'TXT' );
         if ($query) {
@@ -409,7 +409,7 @@ sub tree_walk {
                 next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
                 push @matches, join( '', $rr->txtdata );
             }
-            if ( scalar @matches == 1 ) {
+            if ( @matches == 1 ) {
                 my $rec = $matches[0];
                 my $pol = eval { $self->policy->parse("domain=$target;$rec") };
                 if ($pol) {
@@ -439,7 +439,7 @@ sub tree_walk {
                     # psd=u (default): update org_dom candidate, keep walking
                     $org_dom = $target;
                 }
-            } elsif ( scalar @matches > 1 ) {
+            } elsif ( @matches > 1 ) {
                 # 9.5. If the remaining set contains multiple records, processing
                 #      terminates and the Mail Receiver takes no action.
                 $self->result->reason( type => 'other', comment => "too many policies" );
@@ -450,7 +450,7 @@ sub tree_walk {
 
         # Remove leftmost label; apply >=8-label reduction rule (RFC 9989 4.10)
         $prev_target = $target;
-        my $n = scalar @labels;
+        my $n = @labels;
         if ( $n >= 8 ) {
             my $trim = $n - 7;
             splice @labels, 0, $trim;
@@ -495,7 +495,7 @@ sub _psl_organizational_domain {
         my $tld = join '.', reverse( @labels[ 0 .. $i ] );
         $greatest = $i + 1 if $self->is_public_suffix($tld);
     }
-    return $from_dom if $greatest == scalar @labels;
+    return $from_dom if $greatest == @labels;
     return join '.', reverse( @labels[ 0 .. $greatest ] );
 }
 
@@ -569,7 +569,7 @@ sub fetch_dmarc_record {
         print "\n" . $rr->txtdata . "\n\n" if $self->verbose;
         push @matches, join( '', $rr->txtdata );    # join long records
     }
-    if (scalar @matches) {
+    if (@matches) {
         return \@matches, $zone;            # found one! (at least)
     }
 
@@ -729,7 +729,7 @@ sub verify_external_reporting {
     }
 
     #  6.  If the result includes no TXT resource records...stop
-    if ( !scalar @matches ) {
+    if (!@matches) {
         print "\tno TXT match for $dest\n" if $self->verbose;
         return;
     };

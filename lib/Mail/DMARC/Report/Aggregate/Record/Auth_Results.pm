@@ -12,7 +12,7 @@ sub new {
     croak "invalid arguments" if @args % 2;
 
     my $self = bless { spf => [], dkim => [] }, $class;
-    return $self if 0 == scalar @args;
+    return $self if !@args;
 
     my %args = @args;
     foreach my $key ( keys %args ) {
@@ -24,10 +24,10 @@ sub new {
 
 sub spf {
     my ($self, @args) = @_;
-    return $self->{spf} if 0 == scalar @args;
+    return $self->{spf} if !@args;
 
     # one shot
-    if (1 == scalar @args && ref $args[0] eq 'ARRAY') {
+    if (@args == 1 && ref $args[0] eq 'ARRAY') {
         #warn "SPF one shot";
         my $iter = 0;
         foreach my $d ( @{ $args[0] }) {
@@ -47,9 +47,9 @@ sub spf {
 
 sub dkim {
     my ($self, @args) = @_;
-    return $self->{dkim} if 0 == scalar @args;
+    return $self->{dkim} if !@args;
 
-    if (1 == scalar @args && ref $args[0] eq 'ARRAY') {
+    if (@args == 1 && ref $args[0] eq 'ARRAY') {
         #warn "dkim one shot";
         my $iter = 0;
         foreach my $d ( @{ $args[0] }) {

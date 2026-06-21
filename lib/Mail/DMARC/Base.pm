@@ -18,7 +18,7 @@ require URI::_idna;
 
 sub new {
     my ( $class, @args ) = @_;
-    croak "invalid args" if scalar @args % 2 != 0;
+    croak "invalid args" if @args % 2 != 0;
     return bless {
         config_file => 'mail-dmarc.ini',
         @args,       # this may override config_file
@@ -40,7 +40,7 @@ sub set_fake_time {
 
 sub config {
     my ( $self, $file, @too_many ) = @_;
-    croak "invalid args" if scalar @too_many;
+    croak "invalid args" if @too_many;
     return $self->{config} if ref $self->{config} && !$file;
     return $self->{config} = $self->get_config($file);
 }
@@ -153,7 +153,7 @@ sub is_public_suffix {
 
     # Check for wildcard match
     my @labels = split /\./, $zone;
-    if (scalar @labels > 1) {
+    if (@labels > 1) {
         my $wildcard = join '.', '*', (@labels)[ 1 .. scalar(@labels) - 1 ];
         return 1 if $public_suffixes->{$wildcard};
     }
@@ -337,7 +337,7 @@ sub slurp {
 }
 
 sub verbose {
-    return $_[0]->{verbose} if 1 == scalar @_;
+    return $_[0]->{verbose} if @_ == 1;
     return $_[0]->{verbose} = $_[1];
 }
 

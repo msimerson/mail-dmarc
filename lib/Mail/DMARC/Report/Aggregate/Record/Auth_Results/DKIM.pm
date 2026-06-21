@@ -7,12 +7,12 @@ use Carp;
 sub new {
     my ( $class, @args ) = @_;
 
-    croak "missing arguments" if 0 == scalar @args;
+    croak "missing arguments" if !@args;
 
     my $self = bless {}, $class;
 
     # a bare hash
-    return $self->_from_hash(@args) if scalar @args > 1;
+    return $self->_from_hash(@args) if @args > 1;
 
     my $dkim = shift @args;
     croak "dkim argument not a ref" if ! ref $dkim;
@@ -25,24 +25,24 @@ sub new {
 }
 
 sub domain {
-    return $_[0]->{domain} if 1 == scalar @_;
+    return $_[0]->{domain} if @_ == 1;
     return $_[0]->{domain} =  $_[1];
 }
 
 sub selector {
-    return $_[0]->{selector} if 1 == scalar @_;
+    return $_[0]->{selector} if @_ == 1;
     return $_[0]->{selector} =  $_[1];
 }
 
 sub result {
-    return $_[0]->{result} if 1 == scalar @_;
+    return $_[0]->{result} if @_ == 1;
     croak "invalid DKIM result" if ! grep { $_ eq $_[1] }
         qw/ pass fail neutral none permerror policy temperror /;
     return $_[0]->{result} =  $_[1];
 }
 
 sub human_result {
-    return $_[0]->{human_result} if 1 == scalar @_;
+    return $_[0]->{human_result} if @_ == 1;
     return $_[0]->{human_result} =  $_[1];
 }
 
