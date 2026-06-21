@@ -1,4 +1,5 @@
 .DS_Store
+.claude
 .coveralls.yml
 .git
 .test
