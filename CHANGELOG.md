@@ -2,14 +2,14 @@
 
 ### 2.20260621
 
-- doc(README): updated RFCs and fixed CPAN links
-- chore: bump minimum supported Perl to 5.34.3
+- doc(README): updated RFCs and fixed CPAN links #305
+- chore: bump minimum supported Perl to 5.34.3 #303
 - refactor: use perl 5.20+ subroutine signatures
 - refactor: replace scalar array count checks with modern idioms
 
 ### 1.20260621
 
-- feat: implement RFC 9990, aggrement reporting by @bigio (#301)
+- feat: implement RFC 9990, aggrement reporting by @bigio #301
 - fix: SQL replace_into bug
 
 ### 1.20260612
