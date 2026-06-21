@@ -6,7 +6,7 @@ set -e
 
 assure_repo_is_clean
 
-pod2markdown --perldoc-url-prefix=sco lib/Mail/DMARC.pm > README.md
+pod2markdown lib/Mail/DMARC.pm > README.md
 
 if ! repo_is_clean; then
     git add README.md

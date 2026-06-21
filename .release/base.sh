@@ -4,7 +4,8 @@ set -e
 
 get_version()
 {
-    echo "1.$(date '+%Y%m%d')"
+    major=$(sed -n "s/.*VERSION = '\([0-9][0-9]*\)\..*/\1/p" lib/Mail/DMARC.pm | head -1)
+    echo "${major}.$(date '+%Y%m%d')"
 }
 
 repo_is_clean()
