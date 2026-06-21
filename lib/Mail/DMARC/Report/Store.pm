@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use feature 'signatures';
 no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 use Module::Load;
@@ -37,9 +39,11 @@ sub backend($self) {
 
     return $self->{$backend} if ref $self->{$backend};
     my $module = "Mail::DMARC::Report::Store::$backend";
-    load $module;
-    if ($@) {
-        croak "Unable to load backend $backend: $@\n";
+    try {
+        load $module;
+    }
+    catch ($error) {
+        croak "Unable to load backend $backend: $error\n";
     }
 
     return $self->{$backend} = $module->new;

@@ -25,8 +25,12 @@ require Mail::DMARC::Report;
 require Mail::DMARC::Report::Aggregate::Record;
 
 sub from_imap($self) {
-    load "Net::IMAP::Simple";
-    croak "Net::IMAP::Simple seems to not work, is it installed?" if $@;
+    try {
+        load "Net::IMAP::Simple";
+    }
+    catch ($error) {
+        croak "Net::IMAP::Simple seems to not work, is it installed? $error";
+    }
 
     my $server = $self->config->{imap}{server} or croak "no imap server conf";
     my $folder = $self->config->{imap}{folder} or croak "no imap folder conf";
@@ -39,7 +43,7 @@ sub from_imap($self) {
             require IO::Socket::SSL;
         }
         catch ($error) {
-            croak "Can't load IO::Socket::SSL: $!\n";
+            croak "Can't load IO::Socket::SSL: $error\n";
         }
 
         if ( defined $self->config->{imap}{SSL_verify_mode} ) {

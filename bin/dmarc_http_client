@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use feature 'try';
-no warnings 'experimental::try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 use Data::Dumper;
 use Getopt::Long;

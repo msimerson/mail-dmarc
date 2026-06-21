@@ -22,16 +22,12 @@ sub get_domain_mx( $self, $domain ) {
     print "getting MX for $domain\n";
     my $query;
     try {
-        $query = $self->get_resolver->send( $domain, 'MX' ) or return [];
+        $query = $self->get_resolver->send( $domain, 'MX' );
     }
     catch ($error) {
-        print $error;
+        print "\terror: $error";
     }
-
-    if ( !$query ) {
-        print "\terror:\n\t$query";
-        return [];
-    }
+    return [] if !$query;
 
     my @mx;
     for my $rr ( $query->answer ) {
