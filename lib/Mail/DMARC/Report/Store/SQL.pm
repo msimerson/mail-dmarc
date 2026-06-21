@@ -2,6 +2,8 @@ package Mail::DMARC::Report::Store::SQL;
 our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 use Carp;
 use Data::Dumper;
@@ -15,8 +17,7 @@ use Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL;
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate;
 
-sub save_aggregate {
-    my ( $self, $agg ) = @_;
+sub save_aggregate($self, $agg) {
 
     $self->db_connect();
 
@@ -44,8 +45,8 @@ sub save_aggregate {
     return $rid;
 }
 
-sub retrieve {
-    my ( $self, %args ) = @_;
+sub retrieve($self, @args) {
+    my %args = @args;
 
     my $query = $self->grammar->select_report_query;
     my @params;
@@ -99,16 +100,14 @@ sub retrieve {
     return $reports;
 }
 
-sub _negate_arg {
-    my ( $self, $val ) = @_;
+sub _negate_arg($self, $val) {
     if ( substr($val, 0, 1) eq '!' ) {
         return ( '!=', substr($val, 1) );
     }
     return ( '=', $val );
 }
 
-sub next_todo {
-    my ( $self ) = @_;
+sub next_todo($self) {
 
     if ( ! exists $self->{ _todo_list } ) {
         $self->{_todo_list} = $self->query( $self->grammar->select_todo_query, [ $self->time ] );
@@ -132,8 +131,7 @@ sub next_todo {
     return $agg;
 }
 
-sub retrieve_todo {
-    my ( $self, @args ) = @_;
+sub retrieve_todo($self, @args) {
 
     # this method extracts the data from the SQL tables and populates a
     # list of Aggregate report objects with them.
@@ -156,9 +154,8 @@ sub retrieve_todo {
     return \@reports_todo;
 }
 
-sub delete_report {
-    my $self = shift;
-    my $report_id = shift or croak "missing report ID";
+sub delete_report($self, $report_id = undef) {
+    $report_id or croak "missing report ID";
     print "deleting report $report_id\n" if $self->verbose;
 
     # deletes with FK don't cascade in SQLite? Clean each table manually
@@ -183,8 +180,7 @@ sub delete_report {
     return 1;
 }
 
-sub get_domain_id {
-    my ( $self, $domain ) = @_;
+sub get_domain_id($self, $domain) {
     croak "missing domain calling " . ( caller(0) )[3] if !$domain;
     my $r = $self->query( $self->grammar->select_domain_id, [$domain] );
     if ( $r && @$r ) {
@@ -193,8 +189,7 @@ sub get_domain_id {
     return $self->query( $self->grammar->insert_domain, [$domain]);
 }
 
-sub get_author_id {
-    my ( $self, $meta ) = @_;
+sub get_author_id($self, $meta) {
     croak "missing author name" if !$meta->org_name;
     my $r = $self->query( 
         $self->grammar->select_author_id,
@@ -210,8 +205,7 @@ sub get_author_id {
     );
 }
 
-sub get_report_id {
-    my ( $self, $aggr ) = @_;
+sub get_report_id($self, $aggr) {
 
     my $meta = $aggr->metadata;
     my $pol  = $aggr->policy_published;
@@ -250,8 +244,7 @@ sub get_report_id {
     return $rid;
 }
 
-sub get_report {
-    my ($self,@args) = @_;
+sub get_report($self, @args) {
     croak "invalid parameters" if @args % 2;
     my %args = @args;
 
@@ -314,16 +307,14 @@ sub get_report {
     };
 }
 
-sub get_report_policy_published {
-    my ($self, $rid) = @_;
+sub get_report_policy_published($self, $rid) {
     my $pp = $self->query($self->grammar->select_report_policy_published, [ $rid ] )->[0];
     $pp->{p} ||= 'none';
     $pp = Mail::DMARC::Policy->new( v=>'DMARC1', %$pp );
     return $pp;
 }
 
-sub get_rr {
-    my ($self, @args) = @_;
+sub get_rr($self, @args) {
     croak "invalid parameters" if @args % 2;
     my %args = @args;
     # warn Dumper(\%args);
@@ -339,8 +330,7 @@ sub get_rr {
     };
 }
 
-sub populate_agg_metadata {
-    my ($self, $agg_ref, $report_ref) = @_;
+sub populate_agg_metadata($self, $agg_ref, $report_ref) {
 
     $$agg_ref->metadata->report_id( $$report_ref->{rid} );
 
@@ -360,8 +350,7 @@ sub populate_agg_metadata {
     return 1;
 }
 
-sub populate_agg_records {
-    my ($self, $agg_ref, $rid) = @_;
+sub populate_agg_records($self, $agg_ref, $rid) {
 
     my $recs = $self->query( $self->grammar->select_rr_query, [ $rid ] );
 
@@ -410,8 +399,7 @@ sub populate_agg_records {
     return $$agg_ref->record;
 }
 
-sub row_exists {
-    my ($self, $rid, $rec ) = @_;
+sub row_exists($self, $rid, $rec) {
 
     if ( ! defined $rec->{row}{count} ) {
         print "new record\n" if $self->verbose;
@@ -427,8 +415,7 @@ sub row_exists {
     return;
 }
 
-sub insert_agg_record {
-    my ($self, $report_id, $rec) = @_;
+sub insert_agg_record($self, $report_id, $rec) {
 
     return 1 if $self->row_exists( $report_id, $rec);
 
@@ -460,8 +447,7 @@ sub insert_agg_record {
     return 1;
 }
 
-sub insert_error {
-    my ( $self, $rid, $error ) = @_;
+sub insert_error($self, $rid, $error) {
     # wait >5m before trying to deliver this report again
     $self->query($self->grammar->insert_error(0), [$self->time + (5*60), $rid]);
 
@@ -471,16 +457,14 @@ sub insert_error {
     );
 }
 
-sub insert_rr_reason {
-    my ( $self, $row_id, $type, $comment ) = @_;
+sub insert_rr_reason($self, $row_id, $type, $comment) {
     return $self->query(
         $self->grammar->insert_rr_reason,
         [ $row_id, $type, ($comment || '') ]
     );
 }
 
-sub insert_rr_dkim {
-    my ( $self, $row_id, $dkim ) = @_;
+sub insert_rr_dkim($self, $row_id, $dkim) {
     my (@fields, @values);
     foreach ( qw/ domain selector result human_result / ) {
         next if ! defined $dkim->{$_};
@@ -497,8 +481,7 @@ sub insert_rr_dkim {
     return 1;
 }
 
-sub insert_rr_spf {
-    my ( $self, $row_id, $spf ) = @_;
+sub insert_rr_spf($self, $row_id, $spf) {
     my (@fields, @values);
     for ( qw/ domain scope result / ) {
         next if ! defined $spf->{$_};
@@ -515,8 +498,7 @@ sub insert_rr_spf {
     return 1;
 }
 
-sub insert_rr {
-    my ( $self, $report_id, $rec ) = @_;
+sub insert_rr($self, $report_id, $rec) {
     $report_id or croak "report ID required?!";
     my $query = $self->grammar->insert_rr;
 
@@ -535,8 +517,7 @@ sub insert_rr {
     return $self->{report_row_id} = $rr_id;
 }
 
-sub insert_policy_published {
-    my ( $self, $id, $pub ) = @_;
+sub insert_policy_published($self, $id, $pub) {
     my $query = $self->grammar->insert_policy_published;
     $self->query( $query,
         [ $id, @$pub{ qw/ adkim aspf p sp pct rua /} ]
@@ -544,8 +525,7 @@ sub insert_policy_published {
     return 1;
 }
 
-sub db_connect {
-    my $self = shift;
+sub db_connect($self) {
 
     my $dsn  = $self->config->{report_store}{dsn} or croak;
     my $user = $self->config->{report_store}{user};
@@ -592,8 +572,7 @@ sub db_connect {
     return $self->{dbix};
 }
 
-sub db_check_err {
-    my ( $self, $err ) = @_;
+sub db_check_err($self, $err) {
     ## no critic (PackageVars)
     return if !defined $DBI::errstr;
     return if !$DBI::errstr;
@@ -601,10 +580,9 @@ sub db_check_err {
     croak $err . $DBI::errstr;
 }
 
-sub dbix { return $_[0]->{dbix} if $_[0]->{dbix}; return $_[0]->db_connect(); }
+sub dbix($self) { return $self->{dbix} if $self->{dbix}; return $self->db_connect(); }
 
-sub apply_db_schema {
-    my ( $self, $file ) = @_;
+sub apply_db_schema($self, $file) {
     my $setup = $self->slurp($file);
     foreach ( split /;/, $setup ) {
     # warn "$_\n";
@@ -613,14 +591,12 @@ sub apply_db_schema {
     return;
 }
 
-sub get_db_schema {
-    my ( $self, $file ) = @_;
+sub get_db_schema($self, $file) {
     return "share/$file" if -f "share/$file";    # when testing
     return File::ShareDir::dist_file( 'Mail-DMARC', $file );  # when installed
 }
 
-sub query {
-    my ( $self, $query, $params, @extra ) = @_;
+sub query($self, $query, $params = undef, @extra) {
 
     my @c = caller;
     my $err = sprintf( "query called by %s, %s\n", $c[0], $c[2] )
@@ -643,8 +619,7 @@ sub query {
     return $self->query_any( $query, $err, @params );
 }
 
-sub query_any {
-    my ( $self, $query, $err, @params ) = @_;
+sub query_any($self, $query, $err, @params) {
     # warn "query: $query\n" . join(", ", @params) . "\n";
     my $r;
     eval { $r = $self->dbix->query( $query, @params )->hashes; } or print '';
@@ -653,8 +628,7 @@ sub query_any {
     return $r;
 }
 
-sub query_insert {
-    my ( $self, $query, $err, @params ) = @_;
+sub query_insert($self, $query, $err, @params) {
     eval { $self->dbix->query( $query, @params ) } or do {
         warn DBIx::Simple->error . "\n";
         croak $err;
@@ -669,37 +643,31 @@ sub query_insert {
     return $self->dbix->last_insert_id( undef, undef, $table, undef );
 }
 
-sub query_replace {
-    my ( $self, $query, $err, @params ) = @_;
+sub query_replace($self, $query, $err, @params) {
     $self->dbix->query( $query, @params ) or croak $err;
     $self->db_check_err($err);
     return 1;    # sorry, no indication of success
 }
 
-sub query_delete {
-    my ( $self, $query, $err, @params ) = @_;
+sub query_delete($self, $query, $err, @params) {
     my $affected = $self->dbix->query( $query, @params )->rows or croak $err;
     $self->db_check_err($err);
     return $affected;
 }
 
-sub get_row_spf {
-    my ($self, $rowid) = @_;
+sub get_row_spf($self, $rowid) {
     return $self->query( $self->grammar->select_row_spf, [ $rowid ] );
 }
 
-sub get_row_dkim {
-    my ($self, $rowid) = @_;
+sub get_row_dkim($self, $rowid) {
     return $self->query( $self->grammar->select_row_dkim, [ $rowid ] );
 }
 
-sub get_row_reason {
-    my ($self, $rowid) = @_;
+sub get_row_reason($self, $rowid) {
     return $self->query( $self->grammar->select_row_reason, [ $rowid ] );
 }
 
-sub grammar {
-    my $self = shift;
+sub grammar($self) {
     $self->db_connect();
     return $self->{grammar};
 }

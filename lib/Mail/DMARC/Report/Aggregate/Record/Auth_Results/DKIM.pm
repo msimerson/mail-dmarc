@@ -1,11 +1,13 @@
 package Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM;
 our $VERSION = '2.20260621';
 use strict;
+use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
-sub new {
-    my ( $class, @args ) = @_;
+sub new($class, @args) {
 
     croak "missing arguments" if !@args;
 
@@ -24,30 +26,29 @@ sub new {
     croak "invalid dkim argument";
 }
 
-sub domain {
-    return $_[0]->{domain} if @_ == 1;
-    return $_[0]->{domain} =  $_[1];
+sub domain($self, $value = undef) {
+    return $self->{domain} if @_ == 1;
+    return $self->{domain} = $value;
 }
 
-sub selector {
-    return $_[0]->{selector} if @_ == 1;
-    return $_[0]->{selector} =  $_[1];
+sub selector($self, $value = undef) {
+    return $self->{selector} if @_ == 1;
+    return $self->{selector} = $value;
 }
 
-sub result {
-    return $_[0]->{result} if @_ == 1;
-    croak "invalid DKIM result" if ! grep { $_ eq $_[1] }
+sub result($self, $value = undef) {
+    return $self->{result} if @_ == 1;
+    croak "invalid DKIM result" if ! grep { $_ eq $value }
         qw/ pass fail neutral none permerror policy temperror /;
-    return $_[0]->{result} =  $_[1];
+    return $self->{result} = $value;
 }
 
-sub human_result {
-    return $_[0]->{human_result} if @_ == 1;
-    return $_[0]->{human_result} =  $_[1];
+sub human_result($self, $value = undef) {
+    return $self->{human_result} if @_ == 1;
+    return $self->{human_result} = $value;
 }
 
-sub _from_hash {
-    my ($self, %args) = @_;
+sub _from_hash($self, %args) {
 
     foreach my $key ( keys %args ) {
         $self->$key( $args{$key} );
@@ -57,12 +58,11 @@ sub _from_hash {
     return $self;
 }
 
-sub _from_hashref {
-    return $_[0]->_from_hash(%{ $_[1] });
+sub _from_hashref($self, $dkim) {
+    return $self->_from_hash(%{$dkim});
 }
 
-sub is_valid {
-    my $self = shift;
+sub is_valid($self) {
 
     foreach my $f (qw/ domain result /) {
         if ( ! defined $self->{$f} ) {

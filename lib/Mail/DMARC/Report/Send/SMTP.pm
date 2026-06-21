@@ -1,6 +1,8 @@
 package Mail::DMARC::Report::Send::SMTP;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -13,8 +15,7 @@ use POSIX;
 
 use parent 'Mail::DMARC::Base';
 
-sub get_domain_mx {
-    my ( $self, $domain ) = @_;
+sub get_domain_mx($self, $domain) {
     print "getting MX for $domain\n";
     my $query;
     eval {
@@ -38,9 +39,8 @@ sub get_domain_mx {
     return \@mx;
 }
 
-sub get_smtp_hosts {
-    my $self = shift;
-    my $email = shift or croak "missing email!";
+sub get_smtp_hosts($self, $email = undef) {
+    $email or croak "missing email!";
 
     my ($domain) = ( split /@/, $email )[-1];
     my @mx = map  { $_->{addr} }
@@ -52,8 +52,7 @@ sub get_smtp_hosts {
     return @mx;
 }
 
-sub get_subject {
-    my ( $self, $agg_ref ) = @_;
+sub get_subject($self, $agg_ref) {
 
 
     my $rid = $$agg_ref->metadata->report_id || $self->time;
@@ -66,8 +65,7 @@ sub get_subject {
     return "Report Domain: $pol_dom Submitter: $us Report-ID:$id";
 }
 
-sub human_summary {
-    my ( $self, $agg_ref ) = @_;
+sub human_summary($self, $agg_ref) {
 
     my $records = scalar @{ $$agg_ref->{record} };
     my $OrgName = $self->config->{organization}{org_name};
@@ -95,8 +93,7 @@ EO_REPORT
         ;
 }
 
-sub get_filename {
-    my ( $self, $agg_ref ) = @_;
+sub get_filename($self, $agg_ref) {
 
     #  2013 DMARC Draft, 12.2.1 Email
     #
@@ -112,8 +109,7 @@ sub get_filename {
     ) . '.xml';
 }
 
-sub assemble_too_big_message_object {
-    my ( $self, $to, $body ) = @_;
+sub assemble_too_big_message_object($self, $to, $body) {
 
     my @parts    = Email::MIME->create(
         attributes => {
@@ -137,8 +133,7 @@ sub assemble_too_big_message_object {
     return $email;
 }
 
-sub assemble_message_object {
-    my ( $self, $agg_ref, $to, $shrunk ) = @_;
+sub assemble_message_object($self, $agg_ref, $to, $shrunk) {
 
     my $filename = $self->get_filename($agg_ref);
 # WARNING: changes made here MAY affect Send::compress. Check it!
@@ -180,8 +175,7 @@ sub assemble_message_object {
     return $email;
 }
 
-sub get_timestamp_rfc2822 {
-    my ($self, @args) = @_;
+sub get_timestamp_rfc2822($self, @args) {
     my @ts = @args ? @args : localtime $self->time;
     my $locale = setlocale(LC_CTYPE);
     setlocale(LC_ALL, 'C');
@@ -190,15 +184,13 @@ sub get_timestamp_rfc2822 {
     return $timestamp;
 }
 
-sub get_helo_hostname {
-    my $self = shift;
+sub get_helo_hostname($self) {
     my $host = $self->config->{smtp}{hostname};
     return $host if $host && $host ne 'mail.example.com';
     return Sys::Hostname::hostname;
 };
 
-sub get_message_id {
-    my $self = shift;
+sub get_message_id($self) {
     my $host = $self->get_helo_hostname;
 
     my ($ss, $mm, $hh, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);

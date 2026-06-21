@@ -2,10 +2,11 @@ package Mail::DMARC::Test::Transport;
 # VERSION
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 use Email::Sender::Transport::Test;
 
-sub new {
-    my $class = shift;
+sub new($class) {
     my $self = {};
     return bless $self, $class;
 };
@@ -17,8 +18,7 @@ sub new {
   }
 }
 
-sub get_transports_for {
-  my ( $self,$args ) = @_;
+sub get_transports_for($self, $args = undef) {
   my @transports;
   push @transports, $self->get_test_transport;
   return @transports;

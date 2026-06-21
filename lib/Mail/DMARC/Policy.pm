@@ -1,6 +1,8 @@
 package Mail::DMARC::Policy;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -8,8 +10,7 @@ use Carp;
 
 use Mail::DMARC::Report::URI;
 
-sub new {
-    my ( $class, @args ) = @_;
+sub new($class, @args) {
     my $package = ref $class ? ref $class : $class;
     my $self = bless {}, $package;
 
@@ -27,8 +28,7 @@ sub new {
     return bless $policy, $package;
 }
 
-sub parse {
-    my ( $self, $str, @junk ) = @_;
+sub parse($self, $str, @junk) {
     croak "invalid parse request" if @junk;
     my $cleaned = $str;
     $cleaned =~ s/\s//g;                             # remove whitespace
@@ -69,9 +69,7 @@ sub parse {
     return bless \%policy, ref $self;    # inherited defaults + overrides
 }
 
-sub stringify {
-    my $self = shift;
-
+sub stringify($self) {
     my %dmarc_record = %{$self};
     delete $dmarc_record{domain};
 
@@ -82,9 +80,7 @@ sub stringify {
     return $dmarc_txt;
 }
 
-sub apply_defaults {
-    my $self = shift;
-
+sub apply_defaults($self) {
     $self->adkim('r') if !defined $self->adkim;
     $self->aspf('r')  if !defined $self->aspf;
     $self->fo(0)      if !defined $self->fo;
@@ -93,121 +89,117 @@ sub apply_defaults {
     return 1;
 }
 
-sub v {
-    return $_[0]->{v} if @_ == 1;
-    croak "unsupported DMARC version" if 'DMARC1' ne uc $_[1];
-    return $_[0]->{v} = $_[1];
+sub v($self, $val = undef) {
+    return $self->{v} if @_ == 1;
+    croak "unsupported DMARC version" if 'DMARC1' ne uc $val;
+    return $self->{v} = $val;
 }
 
-sub p {
-    return $_[0]->{p} if @_ == 1;
-    croak "invalid p" if !$_[0]->is_valid_p( $_[1] );
-    return $_[0]->{p} = $_[1];
+sub p($self, $val = undef) {
+    return $self->{p} if @_ == 1;
+    croak "invalid p" if !$self->is_valid_p($val);
+    return $self->{p} = $val;
 }
 
-sub sp {
-    return $_[0]->{sp} if @_ == 1;
-    croak "invalid sp ($_[1])" if !$_[0]->is_valid_p( $_[1] );
-    return $_[0]->{sp} = $_[1];
+sub sp($self, $val = undef) {
+    return $self->{sp} if @_ == 1;
+    croak "invalid sp ($val)" if !$self->is_valid_p($val);
+    return $self->{sp} = $val;
 }
 
-sub np {
-    return $_[0]->{np} if @_ == 1;
-    croak "invalid np ($_[1])" if !$_[0]->is_valid_p( $_[1] );
-    return $_[0]->{np} = $_[1];
+sub np($self, $val = undef) {
+    return $self->{np} if @_ == 1;
+    croak "invalid np ($val)" if !$self->is_valid_p($val);
+    return $self->{np} = $val;
 }
 
-sub psd {
-    return $_[0]->{psd} if @_ == 1;
-    croak "invalid psd ($_[1])" if 0 == grep {/^\Q$_[1]\E$/i} qw/ y n u /;
-    return $_[0]->{psd} = lc $_[1];
+sub psd($self, $val = undef) {
+    return $self->{psd} if @_ == 1;
+    croak "invalid psd ($val)" if 0 == grep {/^\Q$val\E$/i} qw/ y n u /;
+    return $self->{psd} = lc $val;
 }
 
-sub t {
-    return $_[0]->{t} if @_ == 1;
-    croak "invalid t ($_[1])" if 0 == grep {/^\Q$_[1]\E$/i} qw/ y n /;
-    return $_[0]->{t} = lc $_[1];
+sub t($self, $val = undef) {
+    return $self->{t} if @_ == 1;
+    croak "invalid t ($val)" if 0 == grep {/^\Q$val\E$/i} qw/ y n /;
+    return $self->{t} = lc $val;
 }
 
-sub adkim {
-    return $_[0]->{adkim} if @_ == 1;
-    croak "invalid adkim" if 0 == grep {/^\Q$_[1]\E$/ix} qw/ r s /;
-    return $_[0]->{adkim} = $_[1];
+sub adkim($self, $val = undef) {
+    return $self->{adkim} if @_ == 1;
+    croak "invalid adkim" if 0 == grep {/^\Q$val\E$/ix} qw/ r s /;
+    return $self->{adkim} = $val;
 }
 
-sub aspf {
-    return $_[0]->{aspf} if @_ == 1;
-    croak "invalid aspf" if 0 == grep {/^\Q$_[1]\E$/ix} qw/ r s /;
-    return $_[0]->{aspf} = $_[1];
+sub aspf($self, $val = undef) {
+    return $self->{aspf} if @_ == 1;
+    croak "invalid aspf" if 0 == grep {/^\Q$val\E$/ix} qw/ r s /;
+    return $self->{aspf} = $val;
 }
 
-sub fo {
-    return $_[0]->{fo} if @_ == 1;
-    croak "invalid fo: $_[1]" if $_[1] !~ /^[01ds](:[01ds])*$/ix;
-    return $_[0]->{fo} = $_[1];
+sub fo($self, $val = undef) {
+    return $self->{fo} if @_ == 1;
+    croak "invalid fo: $val" if $val !~ /^[01ds](:[01ds])*$/ix;
+    return $self->{fo} = $val;
 }
 
-sub rua {
-    return $_[0]->{rua} if @_ == 1;
-    croak "invalid rua" if !$_[0]->is_valid_uri_list( $_[1] );
-    return $_[0]->{rua} = $_[1];
+sub rua($self, $val = undef) {
+    return $self->{rua} if @_ == 1;
+    croak "invalid rua" if !$self->is_valid_uri_list($val);
+    return $self->{rua} = $val;
 }
 
-sub ruf {
-    return $_[0]->{ruf} if @_ == 1;
-    croak "invalid rua" if !$_[0]->is_valid_uri_list( $_[1] );
-    return $_[0]->{ruf} = $_[1];
+sub ruf($self, $val = undef) {
+    return $self->{ruf} if @_ == 1;
+    croak "invalid rua" if !$self->is_valid_uri_list($val);
+    return $self->{ruf} = $val;
 }
 
-sub rf {
-    return $_[0]->{rf} if @_ == 1;
-    foreach my $f ( split /,/, $_[1] ) {
-        croak "invalid format: $f" if !$_[0]->is_valid_rf($f);
+sub rf($self, $val = undef) {
+    return $self->{rf} if @_ == 1;
+    foreach my $f ( split /,/, $val ) {
+        croak "invalid format: $f" if !$self->is_valid_rf($f);
     }
-    return $_[0]->{rf} = $_[1];
+    return $self->{rf} = $val;
 }
 
-sub ri {
-    return $_[0]->{ri}           if @_ == 1;
-    croak "not numeric ($_[1])!" if $_[1] =~ /\D/;
-    croak "not an integer!"      if $_[1] != int $_[1];
-    croak "out of range" if ( $_[1] < 0 || $_[1] > 4294967295 );
-    return $_[0]->{ri} = $_[1];
+sub ri($self, $val = undef) {
+    return $self->{ri} if @_ == 1;
+    croak "not numeric ($val)!" if $val =~ /\D/;
+    croak "not an integer!" if $val != int $val;
+    croak "out of range" if ( $val < 0 || $val > 4294967295 );
+    return $self->{ri} = $val;
 }
 
-sub pct {
-    return $_[0]->{pct}          if @_ == 1;
-    croak "not numeric ($_[1])!" if $_[1] =~ /\D/;
-    croak "not an integer!"      if $_[1] != int $_[1];
-    croak "out of range" if $_[1] < 0 || $_[1] > 100;
-    return $_[0]->{pct} = $_[1];
+sub pct($self, $val = undef) {
+    return $self->{pct} if @_ == 1;
+    croak "not numeric ($val)!" if $val =~ /\D/;
+    croak "not an integer!" if $val != int $val;
+    croak "out of range" if $val < 0 || $val > 100;
+    return $self->{pct} = $val;
 }
 
-sub domain {
-    return $_[0]->{domain} if @_ == 1;
-    return $_[0]->{domain} = $_[1];
+sub domain($self, $val = undef) {
+    return $self->{domain} if @_ == 1;
+    return $self->{domain} = $val;
 }
 
-sub is_valid_rf {
-    my ( $self, $f ) = @_;
+sub is_valid_rf($self, $f) {
     return ( grep {/^\Q$f\E$/i} qw/ iodef afrf / ) ? 1 : 0;
 }
 
-sub is_valid_p {
-    my ( $self, $p ) = @_;
+sub is_valid_p($self, $p) {
     croak "unspecified p" if !defined $p;
     return ( grep {/^\Q$p\E$/i} qw/ none reject quarantine / ) ? 1 : 0;
 }
 
-sub is_valid_uri_list {
-    my ( $self, $str ) = @_;
+sub is_valid_uri_list($self, $str) {
     $self->{uri} ||= Mail::DMARC::Report::URI->new;
     my $uris = $self->{uri}->parse($str);
     return scalar @$uris;
 }
 
-sub is_valid {
-    my ( $self, $obj ) = @_;
+sub is_valid($self, $obj = undef) {
     $obj = $self if !$obj;
     croak "missing version specifier" if !$obj->{v};
     croak "invalid version" if 'DMARC1' ne uc $obj->{v};

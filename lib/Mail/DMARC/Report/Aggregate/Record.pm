@@ -2,6 +2,8 @@ package Mail::DMARC::Report::Aggregate::Record;
 our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
@@ -10,8 +12,7 @@ require Mail::DMARC::Report::Aggregate::Record::Identifiers;
 require Mail::DMARC::Report::Aggregate::Record::Auth_Results;
 require Mail::DMARC::Report::Aggregate::Record::Row;
 
-sub new {
-    my ( $class, @args ) = @_;
+sub new($class, @args) {
     croak "invalid arguments" if @args % 2;
 
     my $self = bless {}, $class;
@@ -25,8 +26,7 @@ sub new {
     return $self;
 }
 
-sub identifiers {
-    my ($self, @args) = @_;
+sub identifiers($self, @args) {
 
     if (!@args) {
         return $self->{identifiers} if $self->{identifiers};
@@ -40,8 +40,7 @@ sub identifiers {
         Mail::DMARC::Report::Aggregate::Record::Identifiers->new(@args);
 }
 
-sub auth_results {
-    my ($self, @args) = @_;
+sub auth_results($self, @args) {
 
     if (!@args) {
         return $self->{auth_results} if $self->{auth_results};
@@ -55,8 +54,7 @@ sub auth_results {
         Mail::DMARC::Report::Aggregate::Record::Auth_Results->new(@args);
 }
 
-sub row {
-    my ($self, @args) = @_;
+sub row($self, @args) {
 
     if (!@args) {
         return $self->{row} if $self->{row};

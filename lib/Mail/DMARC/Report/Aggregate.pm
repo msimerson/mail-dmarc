@@ -1,6 +1,8 @@
 package Mail::DMARC::Report::Aggregate;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -11,21 +13,18 @@ use XML::LibXML;
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate::Metadata;
 
-sub metadata {
-    my $self = shift;
+sub metadata($self) {
     return $self->{metadata} if ref $self->{metadata};
     return $self->{metadata} = Mail::DMARC::Report::Aggregate::Metadata->new;
 }
 
-sub policy_published {
-    my ( $self, $policy ) = @_;
+sub policy_published($self, $policy = undef) {
     return $self->{policy_published} if ! $policy;
     croak "not a policy object!" if 'Mail::DMARC::Policy' ne ref $policy;
     return $self->{policy_published} = $policy;
 }
 
-sub record {   ## no critic (Ambiguous)
-    my ($self, $record, @extra) = @_;
+sub record($self, $record = undef, @extra) {   ## no critic (Ambiguous)
     if ( !$record) {
        return $self->{record} || [];
     }
@@ -43,14 +42,12 @@ sub record {   ## no critic (Ambiguous)
     return $self->{record};
 };
 
-sub dump_report {
-    my $self = shift;
+sub dump_report($self) {
     carp Dumper( $self->{metadata}, $self->{policy_published}, $self->{record} );
     return;
 }
 
-sub as_xml {
-    my $self = shift;
+sub as_xml($self) {
     my $meta = $self->metadata->as_xml;
     my $pubp = $self->get_policy_published_as_xml;
     my $reco = $self->get_record_as_xml;
@@ -65,8 +62,7 @@ EO_XML
 ;
 }
 
-sub get_record_as_xml {
-    my $self = shift;
+sub get_record_as_xml($self) {
 
     my $rec_xml = '';
     foreach my $rec ( @{ $self->{record} } ) {
@@ -89,8 +85,7 @@ sub get_record_as_xml {
     return $rec_xml;
 }
 
-sub get_identifiers_as_xml {
-    my ( $self, $rec ) = @_;
+sub get_identifiers_as_xml($self, $rec) {
     my $id = "\t\t<identifiers>\n";
     foreach my $f (qw/ envelope_to envelope_from header_from /) {
         if ( $f eq 'header_from' ) {        # min occurs = 1
@@ -110,8 +105,7 @@ sub get_identifiers_as_xml {
     return $id;
 }
 
-sub get_auth_results_as_xml {
-    my ( $self, $rec ) = @_;
+sub get_auth_results_as_xml($self, $rec) {
     my $ar = "\t\t<auth_results>\n";
 
     foreach my $dkim_sig ( @{ $rec->{auth_results}{dkim} } ) {
@@ -140,8 +134,7 @@ sub get_auth_results_as_xml {
     return $ar;
 }
 
-sub get_policy_published_as_xml {
-    my $self = shift;
+sub get_policy_published_as_xml($self) {
     my $pp = $self->policy_published or return '';
     my $xml = "\t<policy_published>\n\t\t<domain>$pp->{domain}</domain>\n";
     foreach my $f (qw/ adkim aspf p sp np t psd fo discovery_method /) {
@@ -161,8 +154,7 @@ sub get_policy_published_as_xml {
     return $xml;
 }
 
-sub get_policy_evaluated_as_xml {
-    my ( $self, $rec ) = @_;
+sub get_policy_evaluated_as_xml($self, $rec) {
     my $pe = "\t\t\t<policy_evaluated>\n";
 
     foreach my $f (qw/ disposition dkim spf /) {

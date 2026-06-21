@@ -2,39 +2,35 @@ package Mail::DMARC::Report::Store;
 our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 use Carp;
 use Module::Load;
 
 use parent 'Mail::DMARC::Base';
 
-sub delete_report {
-    my $self = shift;
-    return $self->backend->delete_report(@_);
+sub delete_report($self, @args) {
+    return $self->backend->delete_report(@args);
 }
 
-sub error {
-    my $self = shift;
-    return $self->backend->insert_error(@_);
+sub error($self, @args) {
+    return $self->backend->insert_error(@args);
 }
 
-sub retrieve {
-    my $self = shift;
-    return $self->backend->retrieve(@_);
+sub retrieve($self, @args) {
+    return $self->backend->retrieve(@args);
 }
 
-sub next_todo {
-    my $self = shift;
-    return $self->backend->next_todo(@_);
+sub next_todo($self, @args) {
+    return $self->backend->next_todo(@args);
 }
 
-sub retrieve_todo {
-    my $self = shift;
-    return $self->backend->retrieve_todo(@_);
+sub retrieve_todo($self, @args) {
+    return $self->backend->retrieve_todo(@args);
 }
 
-sub backend {
-    my $self    = shift;
+sub backend($self) {
     my $backend = $self->config->{report_store}{backend};
 
     croak "no backend defined?!" if !$backend;

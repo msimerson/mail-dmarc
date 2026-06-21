@@ -2,13 +2,14 @@ package Mail::DMARC::PurePerl;
 our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 use Carp;
 
 use parent 'Mail::DMARC';
 
-sub init {
-    my $self = shift;
+sub init($self) {
     $self->is_subdomain(0);
     $self->{header_from} = undef;
     $self->{header_from_raw} = undef;
@@ -25,10 +26,7 @@ sub init {
     return;
 }
 
-sub validate {
-    my $self   = shift;
-    my $policy = shift;
-
+sub validate($self, $policy = undef) {
     $self->result->result('fail');        # set a couple
     $self->result->disposition('none');   # defaults
 
@@ -114,9 +112,7 @@ sub validate {
     return $self->result;
 }
 
-sub save_aggregate {
-    my ( $self ) = @_;
-
+sub save_aggregate($self) {
     my $pol;
     eval { $pol = $self->result->published; };
     if ( $pol && $self->has_valid_reporting_uri($pol->rua) ) {
@@ -134,9 +130,9 @@ sub save_aggregate {
     return;
 }
 
-sub discover_policy {
-    my $self     = shift;
-    my $from_dom = shift || $self->header_from or croak;
+sub discover_policy($self, $from_dom = undef) {
+    $from_dom ||= $self->header_from;
+    croak if !$from_dom;
     print "Header From: $from_dom\n" if $self->verbose;
 
     # RFC 9989 4.10: DNS Tree Walk replaces PSL-based org domain lookup
@@ -192,9 +188,7 @@ sub discover_policy {
     return $policy;
 }
 
-sub is_aligned {
-    my $self = shift;
-
+sub is_aligned($self) {
     # 11.2.5 Conduct identifier alignment checks.  With authentication checks
     #        and policy discovery performed, the Mail Receiver checks if
     #        Authenticated Identifiers fall into alignment as decribed in
@@ -214,9 +208,7 @@ sub is_aligned {
     return 0;
 }
 
-sub is_dkim_aligned {
-    my $self = shift;
-
+sub is_dkim_aligned($self) {
     $self->result->dkim('fail');    # our 'default' result
     $self->get_dkim_pass_sigs() or return;
 
@@ -263,9 +255,7 @@ sub is_dkim_aligned {
     return;
 }
 
-sub is_spf_aligned {
-    my $self    = shift;
-    my $spf_dom = shift;
+sub is_spf_aligned($self, $spf_dom = undef) {
 
     if ( !$spf_dom && !$self->spf ) { croak "missing SPF!"; }
 
@@ -313,9 +303,8 @@ sub is_spf_aligned {
     return 0;
 }
 
-sub is_whitelisted {
-    my $self = shift;
-    my $s_ip = shift || $self->source_ip;
+sub is_whitelisted($self, $s_ip = undef) {
+    $s_ip ||= $self->source_ip;
     return if ! defined $s_ip;
     if ( ! $self->{_whitelist} ) {
         my $white_file = $self->config->{smtp}{whitelist} or return;
@@ -343,14 +332,12 @@ sub is_whitelisted {
     return $type;
 }
 
-sub has_valid_reporting_uri {
-    my ( $self, $rua ) = @_;
+sub has_valid_reporting_uri($self, $rua) {
     my @valid_reporting_uris = $self->get_valid_reporting_uri( $rua );
     return scalar @valid_reporting_uris;
 }
 
-sub get_valid_reporting_uri {
-    my ( $self, $rua ) = @_;
+sub get_valid_reporting_uri($self, $rua) {
     return unless $rua;
     my $recips_ref = $self->report->uri->parse($rua);
     my @has_permission;
@@ -365,9 +352,7 @@ sub get_valid_reporting_uri {
     return @has_permission;
 }
 
-sub get_dkim_pass_sigs {
-    my $self = shift;
-
+sub get_dkim_pass_sigs($self) {
     my $dkim_sigs = $self->dkim or return ();    # message not signed
 
     if ( 'ARRAY' ne ref $dkim_sigs ) {
@@ -377,8 +362,7 @@ sub get_dkim_pass_sigs {
     return grep { 'pass' eq lc $_->{result} } @$dkim_sigs;
 }
 
-sub tree_walk {
-    my ( $self, $from_dom ) = @_;
+sub tree_walk($self, $from_dom) {
     $from_dom = lc $from_dom;
 
     return @{ $self->{_tw_cache}{$from_dom} }
@@ -467,10 +451,9 @@ sub tree_walk {
     return @result;
 }
 
-sub get_organizational_domain {
-    my $self     = shift;
-    my $from_dom = shift || $self->header_from
-        or croak "missing header_from!";
+sub get_organizational_domain($self, $from_dom = undef) {
+    $from_dom ||= $self->header_from;
+    croak "missing header_from!" if !$from_dom;
     $from_dom = lc $from_dom;
 
     my ( undef, $org_dom ) = $self->tree_walk($from_dom);
@@ -485,9 +468,7 @@ sub get_organizational_domain {
     return $org_dom;
 }
 
-sub _psl_organizational_domain {
-    my ( $self, $from_dom ) = @_;
-
+sub _psl_organizational_domain($self, $from_dom) {
     my @labels  = reverse split /\./, lc $from_dom;
     my $greatest = 0;
     for ( my $i = 0; $i <= $#labels; $i++ ) {
@@ -499,8 +480,7 @@ sub _psl_organizational_domain {
     return join '.', reverse( @labels[ 0 .. $greatest ] );
 }
 
-sub _subdomain_exists_in_dns {
-    my ( $self, $dom ) = @_;
+sub _subdomain_exists_in_dns($self, $dom) {
     # RFC 9989 4.7: a subdomain is non-existent only when DNS consistently
     # returns NXDOMAIN. NOERROR/NODATA means the name exists but lacks that
     # record type. Timeouts and other errors are treated conservatively as
@@ -515,9 +495,9 @@ sub _subdomain_exists_in_dns {
     return $got_response ? 0 : 1;
 }
 
-sub exists_in_dns {
-    my $self = shift;
-    my $from_dom = shift || $self->header_from or croak "no header_from!";
+sub exists_in_dns($self, $from_dom = undef) {
+    $from_dom ||= $self->header_from;
+    croak "no header_from!" if !$from_dom;
 
     # rfc7489 6.6.3
     #   If the set produced by the mechanism above contains no DMARC policy
@@ -550,8 +530,7 @@ sub exists_in_dns {
     return $matched;
 }
 
-sub fetch_dmarc_record {
-    my ( $self, $zone, $org_dom ) = @_;
+sub fetch_dmarc_record($self, $zone, $org_dom = undef) {
 
     # 1.  Mail Receivers MUST query the DNS for a DMARC TXT record at the
     #     DNS domain matching the one found in the RFC5322.From domain in
@@ -587,8 +566,7 @@ sub fetch_dmarc_record {
     return \@matches, $zone;
 }
 
-sub get_from_dom {
-    my ($self) = @_;
+sub get_from_dom($self) {
     return $self->header_from if $self->header_from;
 
     my $header = $self->header_from_raw or do {
@@ -635,8 +613,7 @@ sub get_from_dom {
     return $self->header_from($from_dom);
 }
 
-sub external_report {
-    my ( $self, $uri ) = @_;
+sub external_report($self, $uri) {
     my $dmarc_dom = $self->result->published->domain
         or croak "published policy not tagged!";
 
@@ -666,8 +643,7 @@ sub external_report {
     return 1;
 }
 
-sub _uri_authority_host {
-    my ($uri) = @_;
+sub _uri_authority_host($uri) {
     my $scheme = $uri->scheme // '';
     if ( $scheme eq 'mailto' ) {
         my $path = $uri->path or return;
@@ -679,9 +655,8 @@ sub _uri_authority_host {
     return;
 }
 
-sub verify_external_reporting {
-    my $self = shift;
-    my $uri_ref = shift or croak "missing URI";
+sub verify_external_reporting($self, $uri_ref = undef) {
+    $uri_ref or croak "missing URI";
 
     #  1.  Extract the host portion of the authority component of the URI.
     #      Call this the "destination host".

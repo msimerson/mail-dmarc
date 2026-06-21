@@ -2,13 +2,14 @@ package Mail::DMARC::Report::Aggregate::Record::Auth_Results;
 our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 use Carp;
 require Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF;
 require Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM;
 
-sub new {
-    my ( $class, @args ) = @_;
+sub new($class, @args) {
     croak "invalid arguments" if @args % 2;
 
     my $self = bless { spf => [], dkim => [] }, $class;
@@ -22,8 +23,7 @@ sub new {
     return $self;
 }
 
-sub spf {
-    my ($self, @args) = @_;
+sub spf($self, @args) {
     return $self->{spf} if !@args;
 
     # one shot
@@ -45,8 +45,7 @@ sub spf {
     return $self->{spf};
 }
 
-sub dkim {
-    my ($self, @args) = @_;
+sub dkim($self, @args) {
     return $self->{dkim} if !@args;
 
     if (@args == 1 && ref $args[0] eq 'ARRAY') {

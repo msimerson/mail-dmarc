@@ -1,6 +1,8 @@
 package Mail::DMARC::Report::Receive;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -20,8 +22,7 @@ require Mail::DMARC::Policy;
 require Mail::DMARC::Report;
 require Mail::DMARC::Report::Aggregate::Record;
 
-sub from_imap {
-    my $self = shift;
+sub from_imap($self) {
     load "Net::IMAP::Simple";
     croak "Net::IMAP::Simple seems to not work, is it installed?" if $@;
 
@@ -100,8 +101,7 @@ sub from_imap {
     return 1;
 }
 
-sub from_file {
-    my ( $self, $file ) = @_;
+sub from_file($self, $file = undef) {
     croak "missing message" if !$file;
     croak "No such file $file: $!" if !-f $file;
 
@@ -134,8 +134,7 @@ sub from_file {
     return $self->from_email_simple(Email::Simple->new($contents));
 }
 
-sub _init_for_file {
-    my ( $self, $file ) = @_;
+sub _init_for_file($self, $file) {
     $self->report->init();
     $self->{_envelope_to} = undef;
     $self->{_header_from} = undef;
@@ -143,8 +142,7 @@ sub _init_for_file {
     return;
 }
 
-sub from_mbox {
-    my ( $self, $file_name ) = @_;
+sub from_mbox($self, $file_name) {
     croak "missing mbox file" if !$file_name;
 
     # TODO: replace this module
@@ -174,8 +172,7 @@ sub from_mbox {
     return 1;
 }
 
-sub from_email_simple {
-    my ( $self, $email ) = @_;
+sub from_email_simple($self, $email) {
 
     $self->report->init();
     $self->{_envelope_to} = undef;
@@ -251,16 +248,14 @@ sub from_email_simple {
     return $rep_type;
 }
 
-sub get_submitter_from_filename {
-    my ( $self, $filename ) = @_;
+sub get_submitter_from_filename($self, $filename) {
     return if $self->{_envelope_to};  # already parsed from Subject:
     my ( $submitter_dom, $report_dom, $begin, $end ) = split /!/, $filename;
     $self->{_header_from} ||= $report_dom;
     return $self->{_envelope_to} = $submitter_dom;
 }
 
-sub get_submitter_from_subject {
-    my ( $self, $subject ) = @_;
+sub get_submitter_from_subject($self, $subject) {
 
     # The 2013 DMARC spec section 12.2.1 suggests that the header SHOULD conform
     # to a supplied ABNF. Rather than "require" such conformance, this method is
@@ -282,8 +277,7 @@ sub get_submitter_from_subject {
     return $self->{_envelope_to} = $sub_dom;
 }
 
-sub handle_body {
-    my ( $self, $body ) = @_;
+sub handle_body($self, $body) {
 
     print "handling decompressed body\n" if $self->{verbose};
     if ($body =~ /xmlns=/) {
@@ -305,14 +299,12 @@ sub handle_body {
     return $self->report->save_aggregate();
 }
 
-sub report {
-    my $self = shift;
+sub report($self) {
     return $self->{report} if ref $self->{report};
     return $self->{report} = Mail::DMARC::Report->new();
 }
 
-sub do_node_report_metadata {
-    my ( $self, $node ) = @_;
+sub do_node_report_metadata($self, $node) {
 
     foreach my $n (qw/ org_name email extra_contact_info /) {
         $self->report->aggregate->metadata->$n(
@@ -339,8 +331,7 @@ sub do_node_report_metadata {
     return $self->report->aggregate->metadata;
 }
 
-sub do_node_policy_published {
-    my ( $self, $node ) = @_;
+sub do_node_policy_published($self, $node) {
 
     my $pol = Mail::DMARC::Policy->new();
 
@@ -354,8 +345,7 @@ sub do_node_policy_published {
     return $pol;
 }
 
-sub do_node_record {
-    my ( $self, $node ) = @_;
+sub do_node_record($self, $node) {
 
     my $rec = Mail::DMARC::Report::Aggregate::Record->new;
     $self->do_node_record_auth(\$rec, $node);
@@ -412,8 +402,7 @@ sub do_node_record {
     return $rec;
 }
 
-sub do_node_record_auth {
-    my ($self, $row, $node) = @_;
+sub do_node_record_auth($self, $row, $node) {
 
     my @spf  = qw/ domain scope result /;
 
@@ -441,8 +430,7 @@ sub do_node_record_auth {
     return;
 }
 
-sub do_node_record_reason {
-    my ($self, $row, $node) = @_;
+sub do_node_record_reason($self, $row, $node) {
 
     #    my @types = qw/ forwarded sampled_out trusted_forwarder mailing_list
     #                    local_policy other /;

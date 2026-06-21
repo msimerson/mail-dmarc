@@ -2,6 +2,8 @@ package Mail::DMARC::HTTP;
 our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 use parent 'Net::Server::HTTP';
 
@@ -22,14 +24,12 @@ my %mimes  = (
     json => 'application/json',
 );
 
-sub new {
-    my $class = shift;
+sub new($class) {
     return bless {}, $class;
 }
 
-sub dmarc_httpd {
-    my $self = shift;
-    $report = shift;
+sub dmarc_httpd($self, $http_report) {
+    $report = $http_report;
 
     my $port   = $report->config->{http}{port}   || 8080;
     my $ports  = $report->config->{https}{port};
@@ -49,9 +49,7 @@ sub dmarc_httpd {
     return;
 }
 
-sub dmarc_dispatch {
-    my $self = shift;
-
+sub dmarc_dispatch($self) {
     my $path = $self->{request_info}{request_path};
     if ($path) {
         warn "path: $path\n";
@@ -67,8 +65,8 @@ sub dmarc_dispatch {
     return serve_file('/dmarc/index.html');
 }
 
-sub serve_pretty_error {
-    my $error = shift || 'Sorry, that operation is not supported.';
+sub serve_pretty_error($error = undef) {
+    $error ||= 'Sorry, that operation is not supported.';
     return print <<"EO_ERROR"
 Content-Type: text/html
 
@@ -78,17 +76,15 @@ EO_ERROR
 ;
 }
 
-sub return_json_error {
-    my ($err) = @_;
+sub return_json_error($err) {
     #warn $err;
     print JSON->new->utf8->encode( { err => $err } );  # to HTTP client
     print "\n";
     return $err;  # to caller
 }
 
-sub serve_validator {
-    my $cgi  = shift || CGI->new();  # passed in $cgi for testing
-    my $resolver = shift; # passed in $resolver for testing
+sub serve_validator($cgi = undef, $resolver = undef) {
+    $cgi ||= CGI->new();  # passed in $cgi for testing
     my $json = JSON->new->utf8;
 
     print $cgi->header("application/json");
@@ -117,9 +113,7 @@ sub serve_validator {
     return $return;
 }
 
-sub serve_file {
-    my ($path) = @_;
-
+sub serve_file($path) {
     my @bits = split /\//, $path;
     shift @bits;
     return serve_pretty_error("file not found") if (!$bits[0] || 'dmarc' ne $bits[0]);
@@ -148,9 +142,7 @@ sub serve_file {
     return 1;
 }
 
-sub serve_gzip {
-    my $file = shift;
-
+sub serve_gzip($file) {
     open my $FH, '<', "$file" or
         return serve_pretty_error( "unable to read $file: $!" );
     my $contents = do { local $/; <$FH> };    ## no critic (Local)
@@ -187,16 +179,14 @@ EO_UNGZ
 ;
 }
 
-sub report_json_report {
-    my ($vars) = @_;
+sub report_json_report($vars) {
     print "Content-type: application/json\n\n";
     my $reports = $report->store->backend->get_report( %$vars );
     print encode_json $reports;
     return;
 }
 
-sub report_json_rr {
-    my ($vars) = @_;
+sub report_json_rr($vars) {
     print "Content-type: application/json\n\n";
     my $row = $report->store->backend->get_rr( rid => $vars->{rid} );
     print encode_json $row;

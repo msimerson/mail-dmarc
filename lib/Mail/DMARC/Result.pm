@@ -2,12 +2,13 @@ package Mail::DMARC::Result;
 our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 use Carp;
 require Mail::DMARC::Result::Reason;
 
-sub new {
-    my $class = shift;
+sub new($class) {
     return bless {
         dkim => '',
         spf  => '',
@@ -16,9 +17,7 @@ sub new {
         $class;
 }
 
-sub published {
-    my ( $self, $policy ) = @_;
-
+sub published($self, $policy = undef) {
     if ( !$policy ) {
         if ( !defined $self->{published} ) {
             croak
@@ -33,51 +32,50 @@ sub published {
     return $self->{published} = $policy;
 }
 
-sub disposition {
-    return $_[0]->{disposition} if @_ == 1;
-    croak "invalid disposition ($_[1]"
-        if 0 == grep {/^$_[1]$/ix} qw/ reject quarantine none /;
-    return $_[0]->{disposition} = $_[1];
+sub disposition($self, $val = undef) {
+    return $self->{disposition} if @_ == 1;
+    croak 'invalid disposition: ' . ( $val // '(undef)' )
+        if !defined $val || 0 == grep {/^$val$/ix} qw/ reject quarantine none /;
+    return $self->{disposition} = $val;
 }
 
-sub dkim {
-    return $_[0]->{dkim} if @_ == 1;
-    croak "invalid dkim" if 0 == grep {/^$_[1]$/ix} qw/ pass fail /;
-    return $_[0]->{dkim} = $_[1];
+sub dkim($self, $val = undef) {
+    return $self->{dkim} if @_ == 1;
+    croak "invalid dkim" if 0 == grep {/^$val$/ix} qw/ pass fail /;
+    return $self->{dkim} = $val;
 }
 
-sub dkim_align {
-    return $_[0]->{dkim_align} if @_ == 1;
+sub dkim_align($self, $val = undef) {
+    return $self->{dkim_align} if @_ == 1;
     croak "invalid dkim_align"
-        if 0 == grep {/^$_[1]$/ix} qw/ relaxed strict /;
-    return $_[0]->{dkim_align} = $_[1];
+        if 0 == grep {/^$val$/ix} qw/ relaxed strict /;
+    return $self->{dkim_align} = $val;
 }
 
-sub dkim_meta {
-    return $_[0]->{dkim_meta} if @_ == 1;
-    return $_[0]->{dkim_meta} = $_[1];
+sub dkim_meta($self, $val = undef) {
+    return $self->{dkim_meta} if @_ == 1;
+    return $self->{dkim_meta} = $val;
 }
 
-sub spf {
-    return $_[0]->{spf} if @_ == 1;
-    croak "invalid spf" if 0 == grep {/^$_[1]$/ix} qw/ pass fail /;
-    return $_[0]->{spf} = $_[1];
+sub spf($self, $val = undef) {
+    return $self->{spf} if @_ == 1;
+    croak "invalid spf" if 0 == grep {/^$val$/ix} qw/ pass fail /;
+    return $self->{spf} = $val;
 }
 
-sub spf_align {
-    return $_[0]->{spf_align} if @_ == 1;
-    croak "invalid spf_align" if 0 == grep {/^$_[1]$/ix} qw/ relaxed strict /;
-    return $_[0]->{spf_align} = $_[1];
+sub spf_align($self, $val = undef) {
+    return $self->{spf_align} if @_ == 1;
+    croak "invalid spf_align" if 0 == grep {/^$val$/ix} qw/ relaxed strict /;
+    return $self->{spf_align} = $val;
 }
 
-sub result {
-    return $_[0]->{result} if @_ == 1;
-    croak "invalid result" if 0 == grep {/^$_[1]$/ix} qw/ pass fail none /;
-    return $_[0]->{result} = $_[1];
+sub result($self, $val = undef) {
+    return $self->{result} if @_ == 1;
+    croak "invalid result" if !defined $val || 0 == grep {/^$val$/ix} qw/ pass fail none /;
+    return $self->{result} = $val;
 }
 
-sub reason {
-    my ($self, @args) = @_;
+sub reason($self, @args) {
     return $self->{reason} if !@args;
     push @{ $self->{reason}}, Mail::DMARC::Result::Reason->new(@args);
     return $self->{reason};

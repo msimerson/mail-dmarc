@@ -1,6 +1,8 @@
 package Mail::DMARC::Report::Send::HTTP;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -12,8 +14,7 @@ use Carp;
 
 use parent 'Mail::DMARC::Base';
 
-sub post {
-    my ( $self, $uri, $report, $gz ) = @_;
+sub post($self, $uri, $report, $gz) {
 
     carp "http send feature not complete!";
     return;

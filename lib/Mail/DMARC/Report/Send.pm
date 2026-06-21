@@ -1,6 +1,8 @@
 package Mail::DMARC::Report::Send;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -8,20 +10,17 @@ use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Send::SMTP;
 use Mail::DMARC::Report::Send::HTTP;
 
-sub http {
-    my $self = shift;
+sub http($self) {
     return $self->{http} if ref $self->{http};
     return $self->{http} = Mail::DMARC::Report::Send::HTTP->new();
 }
 
-sub smtp {
-    my $self = shift;
+sub smtp($self) {
     return $self->{smtp} if ref $self->{smtp};
     return $self->{smtp} = Mail::DMARC::Report::Send::SMTP->new();
 }
 
-sub too_big_report {
-    my ( $self, $arg_ref ) = @_;
+sub too_big_report($self, $arg_ref) {
 
     my $OrgName   = $self->config->{organization}{org_name};
     my $Domain    = $self->config->{organization}{domain};

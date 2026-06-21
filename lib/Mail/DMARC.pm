@@ -1,6 +1,8 @@
 package Mail::DMARC;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -14,8 +16,7 @@ require Mail::DMARC::Result;
 require Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF;
 require Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM;
 
-sub new {
-    my ( $class, @args ) = @_;
+sub new($class, @args) {
     croak "invalid args" if @args % 2;
     my %args = @args;
     my $self = bless {
@@ -37,52 +38,50 @@ sub new {
     return $self;
 }
 
-sub source_ip {
-    return $_[0]->{source_ip} if @_ == 1;
-    croak "invalid source_ip" if !$_[0]->is_valid_ip( $_[1] );
-    return $_[0]->{source_ip} = $_[1];
+sub source_ip($self, $val = undef) {
+    return $self->{source_ip} if @_ == 1;
+    croak "invalid source_ip" if !$self->is_valid_ip($val);
+    return $self->{source_ip} = $val;
 }
 
-sub envelope_to {
-    return $_[0]->{envelope_to} if @_ == 1;
-    croak "invalid envelope_to" if !$_[0]->is_valid_domain( lc $_[1] );
-    return $_[0]->{envelope_to} = $_[1];
+sub envelope_to($self, $val = undef) {
+    return $self->{envelope_to} if @_ == 1;
+    croak "invalid envelope_to" if !$self->is_valid_domain( lc $val );
+    return $self->{envelope_to} = $val;
 }
 
-sub envelope_from {
-    return $_[0]->{envelope_from} if @_ == 1;
-    croak "invalid envelope_from" if !$_[0]->is_valid_domain( lc $_[1] );
-    return $_[0]->{envelope_from} = $_[1];
+sub envelope_from($self, $val = undef) {
+    return $self->{envelope_from} if @_ == 1;
+    croak "invalid envelope_from" if !$self->is_valid_domain( lc $val );
+    return $self->{envelope_from} = $val;
 }
 
-sub header_from {
-    return $_[0]->{header_from} if @_ == 1;
-    croak "invalid header_from" if !$_[0]->is_valid_domain( lc $_[1] );
-    return $_[0]->{header_from} = lc $_[1];
+sub header_from($self, $val = undef) {
+    return $self->{header_from} if @_ == 1;
+    croak "invalid header_from" if !$self->is_valid_domain( lc $val );
+    return $self->{header_from} = lc $val;
 }
 
-sub header_from_raw {
-    return $_[0]->{header_from_raw} if @_ == 1;
-#croak "invalid header_from_raw: $_[1]" if 'from:' ne lc substr($_[1], 0, 5);
-    return $_[0]->{header_from_raw} = lc $_[1];
+sub header_from_raw($self, $val = undef) {
+    return $self->{header_from_raw} if @_ == 1;
+#croak "invalid header_from_raw: $val" if 'from:' ne lc substr($val, 0, 5);
+    return $self->{header_from_raw} = lc $val;
 }
 
-sub sender {
-    return $_[0]->{sender} if @_ == 1;
-    croak "invalid sender" if !$_[0]->is_valid_domain( lc $_[1] );
-    return $_[0]->{sender} = lc $_[1];
+sub sender($self, $val = undef) {
+    return $self->{sender} if @_ == 1;
+    croak "invalid sender" if !$self->is_valid_domain( lc $val );
+    return $self->{sender} = lc $val;
 }
 
-sub local_policy {
-    return $_[0]->{local_policy} if @_ == 1;
+sub local_policy($self, $val = undef) {
+    return $self->{local_policy} if @_ == 1;
 
     # TODO: document this, when and why it would be used
-    return $_[0]->{local_policy} = $_[1];
+    return $self->{local_policy} = $val;
 }
 
-sub dkim {
-    my ($self, @args) = @_;
-
+sub dkim($self, @args) {
     if (!@args) {
         $self->_unwrap('dkim');
         return $self->{dkim};
@@ -116,9 +115,7 @@ sub dkim {
     return $self->{dkim};
 }
 
-sub _from_mail_dkim {
-    my ( $self, $dkim ) = @_;
-
+sub _from_mail_dkim($self, $dkim) {
     my $signatures = 0;
 
     # A DKIM verifier will have result and signature methods.
@@ -152,8 +149,7 @@ sub _from_mail_dkim {
     return;
 }
 
-sub _unwrap {
-    my ( $self, $key ) = @_;
+sub _unwrap($self, $key) {
     if ($self->{$key} and ref $self->{$key} eq 'CODE') {
         my $code = delete $self->{$key};
         $self->$key( $self->$code );
@@ -161,15 +157,14 @@ sub _unwrap {
     return;
 }
 
-sub spf {
-   my ($self, @args) = @_;
+sub spf($self, @args) {
     if (!@args) {
-      $self->_unwrap('spf');
-      return $self->{spf};
+        $self->_unwrap('spf');
+        return $self->{spf};
     }
 
     if (@args == 1 && ref $args[0] eq 'CODE') {
-      return $self->{spf} = $args[0];
+        return $self->{spf} = $args[0];
     }
 
     if (@args == 1 && ref $args[0] eq 'ARRAY') {
@@ -188,33 +183,28 @@ sub spf {
     return $self->{spf};
 }
 
-sub policy {
-    my ( $self, @args ) = @_;
+sub policy($self, @args) {
     return $self->{policy} if ref $self->{policy} && !@args;
     return $self->{policy} = Mail::DMARC::Policy->new(@args);
 }
 
-sub report {
-    my $self = shift;
+sub report($self) {
     return $self->{report} if ref $self->{report};
     return $self->{report} = Mail::DMARC::Report->new();
 }
 
-sub result {
-    my $self = shift;
+sub result($self) {
     return $self->{result} if ref $self->{result};
     return $self->{result} = Mail::DMARC::Result->new();
 }
 
-sub is_subdomain {
-    return $_[0]->{is_subdomain} if @_ == 1;
-    croak "invalid boolean" if 0 == grep {/^$_[1]$/ix} qw/ 0 1/;
-    return $_[0]->{is_subdomain} = $_[1];
+sub is_subdomain($self, $val = undef) {
+    return $self->{is_subdomain} if @_ == 1;
+    croak "invalid boolean" if 0 == grep {/^$val$/ix} qw/ 0 1/;
+    return $self->{is_subdomain} = $val;
 }
 
-sub get_report_window {
-    my ( $self, $interval, $now ) = @_;
-
+sub get_report_window($self, $interval = undef, $now = undef) {
     my $min_interval = $self->config->{'report_sending'}{'min_interval'};
     my $max_interval = $self->config->{'report_sending'}{'max_interval'};
 
@@ -243,15 +233,12 @@ sub get_report_window {
     return ( $begin, $end );
 }
 
-sub get_start_of_zulu_day {
-    my ( $self, $t ) = @_;
+sub get_start_of_zulu_day($self, $t) {
     my $start_of_zulu_day = $t - ( $t % 86400 );
     return $start_of_zulu_day;
 }
 
-sub save_aggregate {
-    my ($self) = @_;
-
+sub save_aggregate($self) {
     my $agg = $self->report->aggregate;
 
     # put config information in report metadata
@@ -289,9 +276,8 @@ sub save_aggregate {
     return $self->report->save_aggregate;
 }
 
-sub init {
+sub init($self) {
     # used for testing
-    my $self = shift;
     map { delete $self->{$_} } qw/ spf spf_ar dkim dkim_ar /;
     return;
 }

@@ -1,20 +1,20 @@
 package Mail::DMARC::Report::URI;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
 use Carp;
 use URI;
 
-sub new {
-    my $class = shift;
+sub new($class) {
     return bless {}, $class;
 }
 
-sub parse {
-    my $self = shift;
-    my $str = shift or croak "URI string is required!";
+sub parse($self, $str = undef) {
+    $str or croak "URI string is required!";
 
     my @valids = ();
     foreach my $raw ( split /,/, $str ) {
@@ -42,8 +42,7 @@ sub parse {
     return \@valids;
 }
 
-sub get_size_limit {
-    my ( $self, $size ) = @_;
+sub get_size_limit($self, $size = undef) {
     return 0 if !defined $size;          # no limit
     return $size if $size =~ /^\d+$/;    # no units, raw byte count
 

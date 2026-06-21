@@ -2,9 +2,10 @@ package Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL;
 our $VERSION = '2.20260621';
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
-sub new {
-   my $class = shift;
+sub new($class) {
    my $self = { };
    bless $self, $class;
    return $self;
@@ -18,8 +19,7 @@ sub dsn {
     return 'Pg';
 }
 
-sub and_arg {
-    my ($self, $column, $operator) = @_;
+sub and_arg($self, $column, $operator = undef) {
     $operator //= '=';
     $column =~ s/(\w+)\.(\w+)/"$1"."$2"/ if $column =~ /\./;
 
@@ -30,13 +30,11 @@ sub report_record_id {
     return 'SELECT "id" FROM "report_record" WHERE "report_id"=?';
 }
 
-sub delete_from_where_record_in {
-    my ($self, $table, $row_ids) = @_;
+sub delete_from_where_record_in($self, $table, $row_ids = undef) {
     return "DELETE FROM \"$table\" WHERE \"report_record_id\" IN (??)"
 }
 
-sub delete_from_where_report {
-    my ($self, $table) = @_;
+sub delete_from_where_report($self, $table) {
     return "DELETE FROM \"$table\" WHERE \"report_id\"=?";
 }
 
@@ -72,8 +70,7 @@ sub insert_report {
     return 'INSERT INTO "report" ("from_domain_id", "begin", "end", "author_id", "uuid") VALUES (?,?,?,?,?)';
 }
 
-sub order_by {
-    my ($self, $arg, $order) = @_;
+sub order_by($self, $arg, $order) {
     return " ORDER BY \"$arg\" $order";
 }
 
@@ -81,16 +78,14 @@ sub count_reports {
     return 'SELECT COUNT(*) FROM "report"';
 }
 
-sub limit {
-    my ($self, $number_of_entries) = @_;
+sub limit($self, $number_of_entries = undef) {
     $number_of_entries //= 1;
     return " LIMIT $number_of_entries";
 }
 
-sub limit_args {
-    my ($self, $number_of_entries) = @_;
-    my $return = ' LIMIT ?';
+sub limit_args($self, $number_of_entries = undef) {
     $number_of_entries //= 1;
+    my $return = ' LIMIT ?';
     if ($number_of_entries > 1) {
         $return = " OFFSET ? $return";
     }
@@ -213,8 +208,7 @@ EO_SQL
     ;
 }
 
-sub insert_error {
-    my ( $self, $which ) = @_;
+sub insert_error($self, $which) {
     if ( $which == 0 ) {
         return 'UPDATE "report" SET "end"=? WHERE "id"=?';
     } else {
@@ -226,8 +220,7 @@ sub insert_rr_reason {
     return 'INSERT INTO "report_record_reason" ("report_record_id", "type", "comment") VALUES (?,?,?)'
 }
 
-sub insert_rr_dkim {
-    my ( $self, $fields ) = @_;
+sub insert_rr_dkim($self, $fields) {
     my $fields_str = join '", "', @$fields;
     return <<"EO_DKIM"
 INSERT INTO "report_record_dkim"
@@ -237,8 +230,7 @@ EO_DKIM
     ;
 }
 
-sub insert_rr_spf {
-    my ( $self, $fields ) = @_;
+sub insert_rr_spf($self, $fields) {
     my $fields_str = join '", "', @$fields;
     return "INSERT INTO \"report_record_spf\" (\"report_record_id\", \"$fields_str\") VALUES(??)";
 }
@@ -262,8 +254,7 @@ EO_RPP
     ;
 }
 
-sub select_from {
-    my ($self, $columns, $table) = @_;
+sub select_from($self, $columns, $table) {
     my $colStr = '*';
     if ( @{$columns}[0] ne '*' ) {
         my @cols;
@@ -279,25 +270,21 @@ sub select_from {
     return "SELECT $colStr FROM \"$table\" WHERE 1=1";
 }
 
-sub insert_into {
-    my ($self, $table, $cols) = @_;
+sub insert_into($self, $table, $cols) {
     my $columns = '"' . join( '", "', @$cols ) . '"';
     return "INSERT INTO \"$table\" ($columns) VALUES (??)";
 }
 
-sub update {
-    my ($self, $table, $cols) = @_;
+sub update($self, $table, $cols) {
     my $columns = '"' . join( '" = ?, "', @$cols ) . '" = ?';
     return "UPDATE \"$table\" SET $columns WHERE 1=1";
 }
 
-sub delete_from {
-    my ($self, $table) = @_;
+sub delete_from($self, $table) {
     return "DELETE FROM \"$table\" WHERE 1=1";
 }
 
-sub replace_into {
-    my ($self, $table, $cols) = @_;
+sub replace_into($self, $table, $cols) {
     my $insertColumns = '"' . join( '", "', @$cols ) . '"';
     my @ucols;
     foreach my $col (@$cols) {

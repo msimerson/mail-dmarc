@@ -2,6 +2,8 @@ package Mail::DMARC::Report::Sender;
 
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 use Data::Dumper;
 use Carp;
@@ -15,9 +17,8 @@ use Email::Sender::Transport::SMTP;
 use Email::Sender::Transport::SMTP::Persistent;
 use Module::Load;
 
-sub new {
-    my $class = shift;
-    my $args = shift;
+sub new($class, $args = undef) {
+    $args ||= {};
     my $self = {
         send_delay => $args->{delay} // 5,
         batch_size => $args->{batch} // 1,
@@ -32,14 +33,12 @@ sub new {
     return bless $self, $class;
 };
 
-sub set_transports_object {
-    my ( $self,$transports_object ) = @_;
+sub set_transports_object($self, $transports_object) {
     $self->{transports_object} = $transports_object;
     return;
 }
 
-sub set_transports_method {
-    my ( $self,$transports_method ) = @_;
+sub set_transports_method($self, $transports_method) {
     $self->{transports_method} = $transports_method;
     return;
     # Transports method is a sub which returns
@@ -47,8 +46,7 @@ sub set_transports_method {
 }
 
 # Return a list of transports to try in order.
-sub get_transports_for {
-    my ( $self, $args ) = @_;
+sub get_transports_for($self, $args) {
     # Have we passed a custom transports generation class?
     if ( $self->{transports_method} ) {
         my @transports = &{$self->{transports_method}}( $args );
@@ -153,8 +151,7 @@ sub get_transports_for {
     return @transports;
 }
 
-sub get_dkim_key {
-    my ( $self ) = @_;
+sub get_dkim_key($self) {
     my $report = $self->{report};
     return $self->{dkim_key} if $self->{dkim_key};
     if ( $report->config->{report_sign}->{keyfile} ) {
@@ -181,8 +178,7 @@ sub get_dkim_key {
 }
 
 
-sub run {
-    my ( $self ) = @_;
+sub run($self) {
 
     GetOptions (
         'verbose+'   => \$self->{verbose},
@@ -244,9 +240,8 @@ sub run {
 # PODNAME: dmarc_send_reports
 # ABSTRACT: send aggregate reports
 
-sub send_report {
+sub send_report($self, $aggregate, $report) {
 
-    my ( $self, $aggregate, $report ) = @_;
 
     alarm($self->{alarm_at});
 
@@ -334,8 +329,7 @@ sub send_report {
     return;
 }
 
-sub send_too_big_email {
-    my ($self, $too_big, $bytes, $aggregate) = @_;
+sub send_too_big_email($self, $too_big, $bytes, $aggregate) {
     my $report = $self->{report};
 
     BIGURI:
@@ -355,8 +349,7 @@ sub send_too_big_email {
     return;
 };
 
-sub email {
-    my ($self, $args) = @_;
+sub email($self, $args) {
 
     my $to = $args->{to};
     if ( !$to ) {
@@ -478,8 +471,7 @@ sub email {
     return 0;
 }
 
-sub log_output {
-    my ( $self, $args ) = @_;
+sub log_output($self, $args) {
 
     my $log_level = LOG_INFO;
     my $log_entry = '';

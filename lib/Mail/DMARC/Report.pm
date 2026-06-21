@@ -1,6 +1,8 @@
 package Mail::DMARC::Report;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';  ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 
@@ -16,8 +18,7 @@ require Mail::DMARC::Report::Store;
 require Mail::DMARC::Report::Receive;
 require Mail::DMARC::Report::URI;
 
-sub compress {
-    my ( $self, $xml_ref ) = @_;
+sub compress($self, $xml_ref) {
     croak "xml is not a reference!" if 'SCALAR' ne ref $xml_ref;
     my $shrunk;
     my $zipper = {
@@ -30,50 +31,42 @@ sub compress {
     return $shrunk;
 }
 
-sub init {
-    my $self = shift;
+sub init($self) {
     delete $self->{dmarc};
     delete $self->{aggregate};
     return;
 }
 
-sub aggregate {
-    my $self = shift;
+sub aggregate($self) {
     return $self->{aggregate} if ref $self->{aggregate};
     return $self->{aggregate} = Mail::DMARC::Report::Aggregate->new();
 }
 
-sub dmarc {
-    my $self = shift;
+sub dmarc($self) {
     return $self->{dmarc};
 }
 
-sub receive {
-    my $self = shift;
+sub receive($self) {
     return $self->{receive} if ref $self->{receive};
     return $self->{receive} = Mail::DMARC::Report::Receive->new;
 }
 
-sub sendit {
-    my $self = shift;
+sub sendit($self) {
     return $self->{sendit} if ref $self->{sendit};
     return $self->{sendit} = Mail::DMARC::Report::Send->new();
 }
 
-sub store {
-    my $self = shift;
+sub store($self) {
     return $self->{store} if ref $self->{store};
     return $self->{store} = Mail::DMARC::Report::Store->new();
 }
 
-sub uri {
-    my $self = shift;
+sub uri($self) {
     return $self->{uri} if ref $self->{uri};
     return $self->{uri} = Mail::DMARC::Report::URI->new();
 }
 
-sub save_aggregate {
-    my $self = shift;
+sub save_aggregate($self) {
     return $self->store->backend->save_aggregate( $self->aggregate );
 }
 
