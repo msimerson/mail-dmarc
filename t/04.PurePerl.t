@@ -532,6 +532,7 @@ sub test_validate_psd_y {
         header_from => 'sub.psd.dmarctest.net',
     ) );
     $dmarc->set_resolver($resolver);
+    $dmarc->config;    # warm cache so the one-time no-ini warning fires outside the trap
     my @warns;
     local $SIG{__WARN__} = sub { push @warns, @_ };
     $dmarc->validate();

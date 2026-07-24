@@ -2,7 +2,6 @@ package Mail::DMARC::Report::Receive;
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 use feature 'try';
 no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 

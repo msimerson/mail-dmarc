@@ -4,7 +4,6 @@ package Mail::DMARC::Test::Transport;
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 use Email::Sender::Transport::Test;
 
 sub new($class) {

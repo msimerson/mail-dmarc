@@ -2,7 +2,6 @@ package Mail::DMARC::Report::Aggregate;
 use strict;
 use warnings;
 use feature 'signatures';
-no warnings 'experimental::signatures';    ## no critic (ProhibitNoWarnings)
 
 our $VERSION = '2.20260621';
 

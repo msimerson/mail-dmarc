@@ -1,5 +1,11 @@
 ### Unreleased
 
+### 2.20260724
+
+- add <prefix>/etc/mail to search path
+- warn when mail-dmarc.ini not found
+- chore: bump minimum supported Perl to 5.40.2
+
 ### 2.20260621
 
 - doc(README): updated RFCs and fixed CPAN links #305

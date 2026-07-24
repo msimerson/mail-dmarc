@@ -3,7 +3,10 @@ use warnings;
 use feature 'try';
 no warnings 'experimental::try';  ## no critic (ProhibitNoWarnings)
 
+use Cwd;
 use Data::Dumper;
+use File::Path qw(make_path);
+use File::Temp qw(tempdir);
 use Net::DNS::Resolver::Mock;
 use Test::More;
 use Test::Exception;
@@ -38,6 +41,8 @@ __is_valid_ip();
 __is_valid_domain();
 __epoch_to_iso();
 __get_prefix();
+__get_config_etc_mail();
+__get_config_fallback_warns();
 __get_sharefile();
 __psl_cached();
 __psl_cached_reload();
@@ -166,6 +171,33 @@ sub __get_prefix {
         [ '/usr/local/share', '/opt/local/share', '/share', './share' ],
         "get_prefix(share): /usr/local/share, /opt/local/share, /share, ./share",
     );
+}
+
+sub __get_config_etc_mail {
+    # mail daemons (and FreeBSD ports) install to <prefix>/etc/mail/, which
+    # get_config must search in addition to <prefix>/etc/ (github #296)
+    my $cwd = getcwd();
+    my $dir = tempdir( CLEANUP => 1 );
+    make_path("$dir/etc/mail");
+    my $dsn = 'dbi:SQLite:dbname=/var/db/dmarc/reports.sqlite';
+    open my $fh, '>', "$dir/etc/mail/mail-dmarc.ini" or die $!;
+    print {$fh} "[report_store]\ndsn = $dsn\n";
+    close $fh;
+
+    chdir $dir or die $!;
+    my $config = $mod->new->get_config('mail-dmarc.ini');
+    chdir $cwd or die $!;
+
+    is( $config->{report_store}{dsn},
+        $dsn, "get_config finds mail-dmarc.ini in etc/mail/" );
+}
+
+sub __get_config_fallback_warns {
+    my @warns;
+    local $SIG{__WARN__} = sub { push @warns, @_ };
+    $mod->new->get_config('mail-dmarc.ini');
+    ok( ( grep {/using bundled defaults/} @warns ),
+        "get_config warns when falling back to bundled defaults" );
 }
 
 sub __get_sharefile {
