@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use feature 'signatures';
 
-our $VERSION = '2.20260621';
+our $VERSION = '2.20260724';
 
 use Carp;
 use IO::Compress::Gzip;
@@ -82,7 +82,7 @@ Mail::DMARC::Report - A DMARC report interface
 
 =head1 VERSION
 
-version 2.20260621
+version 2.20260724
 
 =head1 DESCRIPTION
 

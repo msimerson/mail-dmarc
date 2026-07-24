@@ -5,7 +5,7 @@ use feature 'signatures';
 use feature 'try';
 no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
-our $VERSION = '2.20260621';
+our $VERSION = '2.20260724';
 
 use Carp;
 use English '-no_match_vars';
@@ -218,7 +218,7 @@ Mail::DMARC::Report::Send::SMTP - utility methods for sending reports via SMTP
 
 =head1 VERSION
 
-version 2.20260621
+version 2.20260724
 
 =head2 SUBJECT FIELD
 

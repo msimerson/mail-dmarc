@@ -4,7 +4,7 @@ use warnings;
 use feature 'signatures';
 no warnings 'experimental::args_array_with_signatures';    ## no critic (ProhibitNoWarnings)
 
-our $VERSION = '2.20260621';
+our $VERSION = '2.20260724';
 
 use XML::LibXML;
 
@@ -98,7 +98,7 @@ Mail::DMARC::Report::Aggregate::Metadata - metadata section of aggregate report
 
 =head1 VERSION
 
-version 2.20260621
+version 2.20260724
 
 =head1 AUTHORS
 
