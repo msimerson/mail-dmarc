@@ -63,17 +63,21 @@ sub get_config( $self, $file = undef ) {
     $file ||= $ENV{MAIL_DMARC_CONFIG_FILE} || $self->{config_file};
     croak                            if !$file;
     return Config::Tiny->read($file) if -r $file;    # fully qualified
-    foreach my $d ( $self->get_prefix('etc') ) {
+
+    # search <prefix>/etc and the mail/ subdir where mail daemons (and
+    # FreeBSD ports, e.g. authentication_milter) conventionally install it
+    foreach my $d ( map { ( $_, "$_/mail" ) } $self->get_prefix('etc') ) {
         next                              if !-d $d;
         next                              if !-e "$d/$file";
         croak "unreadable file: $d/$file" if !-r "$d/$file";
-        my $Config = Config::Tiny->new;
         return Config::Tiny->read("$d/$file");
     }
 
     if ( $file ne 'mail-dmarc.ini' ) {
         croak "unable to find requested config file $file\n";
     }
+
+    carp "no mail-dmarc.ini found; using bundled defaults.\n";
     return Config::Tiny->read( $self->get_sharefile('mail-dmarc.ini') );
 }
 
