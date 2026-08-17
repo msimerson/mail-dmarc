@@ -48,6 +48,11 @@ $resolver->zonefile_parse(join("\n",
 '_dmarc.ttest.dmarctest.net.                    600 TXT "v=DMARC1; p=reject; t=y; rua=mailto:dmarc@ttest.dmarctest.net"',
 'ttest.dmarctest.net.                           600 MX  10 mail.ttest.dmarctest.net.',
 
+# org domain publishing only TXT: no A/AAAA/MX/NS anywhere in its tree, so
+# exists_in_dns() has nothing but the NOERROR/NODATA rcode to go on
+'_dmarc.txtonly.dmarctest.net.                  600 TXT "v=DMARC1; p=reject; rua=mailto:dmarc@txtonly.dmarctest.net"',
+'txtonly.dmarctest.net.                         600 TXT "v=spf1 -all"',
+
 # np tag: sub exists but ghost.np.dmarctest.net is NXDOMAIN
 '_dmarc.np.dmarctest.net.                       600 TXT "v=DMARC1; p=none; np=reject; rua=mailto:dmarc@np.dmarctest.net"',
 'np.dmarctest.net.                              600 MX  10 mail.np.dmarctest.net.',
@@ -558,7 +563,7 @@ sub _run_np_subtests {
 }
 
 sub test_validate_np_tag {
-    # Tests that use the real _subdomain_exists_in_dns: the mock resolver returns
+    # Tests that use the real _author_domain_exists: the mock resolver returns
     # NOERROR/NODATA for names in the zone that lack the queried record type, which
     # is enough to exercise the NODATA-handling fix.
     _run_np_subtests(
@@ -570,11 +575,9 @@ sub test_validate_np_tag {
 
     # Ghost-subdomain tests: Net::DNS::Resolver::Mock returns NOERROR/NODATA for
     # unknown names, whereas real DNS returns NXDOMAIN.
-    # Override _subdomain_exists_in_dns to simulate NXDOMAIN so we can test that
-    # validate() correctly applies the np= tag when the subdomain is non-existent.
     {
         no warnings 'redefine';
-        local *Mail::DMARC::PurePerl::_subdomain_exists_in_dns = sub { 0 };
+        local *Mail::DMARC::PurePerl::_author_domain_exists = sub { 0 };
         _run_np_subtests(
             [ 'ghost.np.dmarctest.net',       'reject',     'np tag: non-existent subdomain uses np=reject' ],
             [ 'ghost.npnosp.dmarctest.net',   'quarantine', 'np absent: NXDOMAIN subdomain uses sp=quarantine' ],
@@ -585,20 +588,35 @@ sub test_validate_np_tag {
 }
 
 sub test_exists_in_dns {
-    my %tests = (
+    # RFC 9989 3.2.13 makes NXDOMAIN the only signal for non-existence, and
+    # Net::DNS::Resolver::Mock always answers NOERROR, so every name reachable
+    # through the mock resolver exists.
+    my %exists = (
         'tnpi.net'                 => 1,
         'fake.mail-dmarc.tnpi.net' => 1,    # organizational name exists
-        'no-such-made-up-name-should-exist.com.uk.nonsense' => 0,
-        # TXT-only domain (no A/AAAA/MX/NS): NOERROR/NODATA means the name
-        # exists, it just doesn't publish those record types.
-        'txtonly.np.dmarctest.net' => 1,
+        # TXT-only, and its organizational domain has no A/AAAA/MX/NS either:
+        # NOERROR/NODATA means the name exists, it just doesn't publish those
+        # record types
+        'txtonly.dmarctest.net' => 1,
     );
 
-    foreach my $dom ( keys %tests ) {
+    foreach my $dom ( sort keys %exists ) {
         $dmarc->init;
         my $r = $dmarc->exists_in_dns($dom);
-        ok( $r >= $tests{$dom}, "exists_in_dns, $dom, $r" );
+        is( $r ? 1 : 0, $exists{$dom}, "exists_in_dns, $dom" );
     }
+
+    # The mock resolver cannot synthesize NXDOMAIN, so drive the non-existent
+    # case through _dns_name_exists directly.
+    no warnings 'redefine';    ## no critic (ProhibitNoWarnings)
+    local *Mail::DMARC::PurePerl::_dns_name_exists = sub { 0 };
+    my $gone = 'no-such-made-up-name-should-exist.com.uk.nonsense';
+    $dmarc->init;
+    ok( !$dmarc->exists_in_dns($gone), "exists_in_dns, $gone" );
+    is( $dmarc->result->result,      'none', "$gone, result none" );
+    is( $dmarc->result->disposition, 'none', "$gone, disposition none" );
+    like( $dmarc->result->reason->[0]->comment,
+        qr/not in DNS/, "$gone, reason not in DNS" );
 }
 
 sub test_get_organizational_domain {

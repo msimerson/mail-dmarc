@@ -17,10 +17,11 @@ my %dns_responses;
     return $dns_responses{$domain}{$type} || 0;
 };
 
-# exists_in_dns()'s existence gate is exercised on its own in
-# t/04.PurePerl.t; here every subtest is testing post-existence DMARC
-# logic (policy/alignment/whitelisting), so just say "it exists".
-*Mail::DMARC::PurePerl::_dns_name_exists = sub { return 1; };
+# exists_in_dns() checks DNS rcodes directly so it needs its own mock.
+*Mail::DMARC::PurePerl::_dns_name_exists = sub {
+    my ($self, $domain) = @_;
+    return $dns_responses{$domain}{'NXDOMAIN'} ? 0 : 1;
+};
 
 # DMARCbis: discover_policy now uses tree_walk; mock it to read %dns_responses
 *Mail::DMARC::PurePerl::tree_walk = sub {
@@ -70,6 +71,22 @@ subtest 'Basic Pass' => sub {
     my $result = $dmarc->validate;
     is($result->result, 'pass', 'Result is pass');
     is($result->disposition, 'none', 'Disposition is none');
+};
+
+subtest 'Non-existent domain short circuits validation' => sub {
+    $dmarc->init;
+    $dmarc->header_from('no-such-domain.com');
+    $dmarc->dkim({ domain => 'no-such-domain.com', result => 'pass', selector => 's1' });
+    $dmarc->spf({ domain => 'no-such-domain.com', scope => 'mfrom', result => 'pass' });
+
+    %dns_responses = (
+        'no-such-domain.com' => { NXDOMAIN => 1 },
+    );
+
+    my $result = $dmarc->validate;
+    is($result->result, 'none', 'Result is none');
+    is($result->disposition, 'none', 'Disposition is none');
+    like($result->reason->[0]->comment, qr/not in DNS/, 'Reason is not in DNS');
 };
 
 subtest 'SPF helo scope should not satisfy DMARC alignment' => sub {

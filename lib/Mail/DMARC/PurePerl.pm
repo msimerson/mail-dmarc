@@ -68,7 +68,7 @@ sub validate( $self, $policy = undef ) {
     my $sub_exists
         = !$is_sub
         || !defined $policy->np
-        || $self->_subdomain_exists_in_dns($from_dom);
+        || $self->_author_domain_exists($from_dom);
 
     my $effective_p;
     if ( $is_sub && !$sub_exists && defined $policy->np ) {
@@ -511,9 +511,9 @@ sub _psl_organizational_domain( $self, $from_dom ) {
     return join '.', reverse( @labels[ 0 .. $greatest ] );
 }
 
-sub _dns_name_exists {
-    my ( $self, $dom ) = @_;
-    # RFC 9989 4.7/9.6: a name is non-existent only when DNS consistently
+sub _dns_name_exists( $self, $dom ) {
+
+    # RFC 9989 3.2.13: a name is non-existent only when DNS consistently
     # returns NXDOMAIN. NOERROR/NODATA means the name exists but lacks that
     # record type. Timeouts and other errors are treated conservatively as
     # existing.
@@ -528,14 +528,13 @@ sub _dns_name_exists {
     return $got_response ? 0 : 1;
 }
 
-sub _subdomain_exists_in_dns {
-    my ( $self, $dom ) = @_;
+sub _author_domain_exists( $self, $dom ) {
     return $self->_dns_name_exists($dom);
 }
 
-sub exists_in_dns {
-    my $self = shift;
-    my $from_dom = shift || $self->header_from or croak "no header_from!";
+sub exists_in_dns( $self, $from_dom = undef ) {
+    $from_dom ||= $self->header_from;
+    croak "no header_from!" if !$from_dom;
 
     # rfc7489 6.6.3
     #   If the set produced by the mechanism above contains no DMARC policy
