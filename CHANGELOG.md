@@ -1,5 +1,7 @@
 ### Unreleased
 
+- feat(dmarc_httpd): opt-in reverse DNS hostnames beneath source IPs #309
+
 ### 2.20260724
 
 - add <prefix>/etc/mail to search path

@@ -74,6 +74,18 @@ A L<Sample Report|http://search.cpan.org/dist/Mail-DMARC/example/report_cgi.png>
 
 Web server settings are in the [http] and [https] sections of mail-dmarc.ini.
 
+Ticking "Show reverse DNS hostnames" resolves the PTR record of each source IP
+in an expanded report and shows the hostname beneath the IP address. It is off
+by default because it sends those source IPs to a third party DNS-over-HTTPS
+resolver. Cloudflare and Google are offered in the adjacent menu, and "Other"
+accepts any DoH server that answers JSON queries with CORS headers, including
+your own. A hand-entered resolver is checked as you type, with a single query
+for a fixed public name, and is only adopted once it answers. Both settings
+are remembered per browser.
+
+The lookups happen in the browser rather than the server, so the many source
+IPs with no PTR record can't stall dmarc_httpd.
+
 =head1 THANKS
 
 jQuery - http://www.jquery.com/
