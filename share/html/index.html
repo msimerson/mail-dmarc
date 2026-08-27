@@ -171,10 +171,19 @@ const lookupPtr = (ip) => {
   if (!ptrEnabled) return Promise.resolve('');
   if (ptrCache.has(ip)) return ptrCache.get(ip);
 
-  const name  = reverseName(ip);
-  const query = name && dohQuery(dohUrl, name);
+  const name       = reverseName(ip);
+  const query      = name && dohQuery(dohUrl, name);
+  const generation = ptrGeneration;
   const result = !query ? Promise.resolve('') : new Promise(resolve => {
     ptrQueue.push(() => {
+      // The queue outlives an opt-out or a resolver change, and a job dequeued
+      // afterwards would disclose a source IP the user just withdrew.
+      if (!ptrEnabled || generation !== ptrGeneration) {
+        ptrCache.delete(ip);    // let a later opt-in ask again
+        resolve('');
+        return Promise.resolve();
+      }
+
       const ctl   = new AbortController();
       const timer = setTimeout(() => ctl.abort(), PTR_TIMEOUT_MS);
       return fetch(query, {
@@ -228,11 +237,16 @@ const PROBE_NAME = '8.8.8.8.in-addr.arpa';
 
 let probeCtl;
 
+const cancelProbe = () => {
+  probeCtl?.abort();
+  probeCtl = null;
+};
+
 const probeResolver = (url) => {
   const query = dohQuery(url, PROBE_NAME);
   if (!query) return Promise.reject(new Error('enter an http(s) URL'));
 
-  probeCtl?.abort();
+  cancelProbe();
   probeCtl = new AbortController();
   const ctl   = probeCtl;
   const timer = setTimeout(() => { ctl.timedOut = true; ctl.abort(); }, PTR_TIMEOUT_MS);
@@ -319,6 +333,7 @@ jQuery(document).ready(() => {
   let checkTimer;
   preset.on('change', function() {
     clearTimeout(checkTimer);
+    cancelProbe();
     setStatus('', '');
     if (this.value) {
       custom.prop('hidden', true).val(setDohUrl(this.value));
@@ -447,7 +462,8 @@ jQuery(document).ready(() => {
 <p class="ptr-controls">
  <label><input type="checkbox" id="ptr-enable" /> Show reverse DNS hostnames</label>
  <label>resolver <select id="doh-preset"></select></label>
- <input type="text" id="doh-url" spellcheck="false" hidden /><span id="doh-status" class="doh-status"></span>
+ <input type="text" id="doh-url" spellcheck="false" hidden
+        aria-label="Custom DNS-over-HTTPS resolver URL" /><span id="doh-status" class="doh-status" role="status"></span>
  <span class="ptr-note">source IPs are sent to this DNS-over-HTTPS resolver</span>
 </p>
 
