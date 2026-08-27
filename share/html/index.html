@@ -179,7 +179,6 @@ const lookupPtr = (ip) => {
       // The queue outlives an opt-out or a resolver change, and a job dequeued
       // afterwards would disclose a source IP the user just withdrew.
       if (!ptrEnabled || generation !== ptrGeneration) {
-        ptrCache.delete(ip);    // let a later opt-in ask again
         resolve('');
         return Promise.resolve();
       }
@@ -218,8 +217,12 @@ const showHostnames = (container) => {
   });
 };
 
+// Every cached promise belongs to the generation that created it, so the two
+// are invalidated together; a survivor would resolve empty at the dispatch
+// check below and leave its row permanently blank.
 const clearHostnames = () => {
   ptrGeneration++;
+  ptrCache.clear();
   jQuery('span.ptr-host').text('');
 };
 
@@ -269,7 +272,6 @@ const setDohUrl = (url) => {
   if ((url || DEFAULT_DOH_URL) === dohUrl) return dohUrl;
   dohUrl = url || DEFAULT_DOH_URL;
   storeSet(DOH_URL_KEY, dohUrl);
-  ptrCache.clear();
   clearHostnames();
   showHostnames(document);
   return dohUrl;
@@ -321,11 +323,12 @@ jQuery(document).ready(() => {
     setStatus('', 'checking\u2026');
     probeResolver(value)
       .then(() => {
+        if (custom.val().trim() !== value) return;
         setStatus('ok', '\u2713 responding');
         setDohUrl(value);
       })
       .catch(err => {
-        if (err.name === 'AbortError') return;
+        if (err.name === 'AbortError' || custom.val().trim() !== value) return;
         setStatus('bad', `\u2717 ${err.message === 'Failed to fetch' ? 'unreachable, or no CORS headers' : err.message}`);
       });
   };
@@ -345,6 +348,8 @@ jQuery(document).ready(() => {
 
   custom.on('input', () => {
     clearTimeout(checkTimer);
+    cancelProbe();    // the probe in flight is for text that is already stale
+    setStatus('', 'checking\u2026');
     checkTimer = setTimeout(checkCustom, 500);
   });
   custom.on('change', () => {
