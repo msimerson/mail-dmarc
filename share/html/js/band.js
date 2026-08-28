@@ -1,11 +1,9 @@
-// The one visual primitive on this page, at three scales: the hero alignment
-// band, one column per day in the volume chart, and an inline band per table
-// row. All of it is HTML and CSS, so it reflows and themes for free.
+// One primitive at three scales: the hero band, a column per day, an inline
+// band per row. HTML and CSS only, so it reflows and themes for free.
 
 import { el, num, pct } from './core.js';
 
-// Ordered worst-last, because the ramp encodes how well a message
-// authenticated rather than an arbitrary category.
+// Worst last: the ramp is ordered, not categorical.
 export const BUCKETS = [
   { key: 'aligned_both', seg: 'seg-both', token: '--v-both',
     label: 'SPF + DKIM',  note: 'aligned both ways' },
@@ -57,8 +55,7 @@ export const rowBand = (row) => {
 
 const DAY = 86400;
 
-// Steps to aggregate into, so a long window stays readable. Real stores hold
-// reports spanning years, and one column per day would be sub pixel.
+// A store spanning years would draw sub pixel columns without these.
 const STEPS = [
   { days: 1,   label: 'Daily' },
   { days: 7,   label: 'Weekly' },
@@ -71,10 +68,8 @@ const MAX_COLUMNS = 92;
 const SUMMED = [...BUCKETS.map((b) => b.key), 'messages',
   'disp_none', 'disp_quarantine', 'disp_reject'];
 
-// Buckets the store returns only days that carry reports, so drawing one
-// column per returned row would compress a reporting gap into nothing and
-// make a multi day outage invisible. Fill the calendar, then aggregate to a
-// step that fits.
+// The store returns only days carrying reports, so a column per row would
+// compress a gap to nothing and hide an outage. Fill, then aggregate.
 export const bucketDays = (rows) => {
   if (!rows.length) return { rows: [], step: STEPS[0] };
 
@@ -110,9 +105,7 @@ export const bucketDays = (rows) => {
   return { rows: filled, step };
 };
 
-// One column per step, each column a band. Heights are relative to the busiest
-// column so the shape of the traffic is readable; the readout carries the
-// absolute figures.
+// Heights are relative to the busiest column; the readout carries absolutes.
 export const dayColumns = (rows, onHover) => {
   const peak = rows.reduce((max, row) => Math.max(max, Number(row.messages) || 0), 0);
 

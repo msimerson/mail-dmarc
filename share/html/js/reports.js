@@ -6,9 +6,8 @@ import * as ptr from './ptr.js';
 
 const PAGE = 50;
 
-// A store also queues the reports this host is preparing to send, which are
-// about other people's domains. The other views leave those out; here, where
-// the list is an audit trail, they are shown by default and can be separated.
+// The other views exclude this host's own outgoing queue; an audit trail
+// should not.
 const KINDS = [
   { key: 'all',      label: 'All reports' },
   { key: 'received', label: 'Received about your domains' },
@@ -20,9 +19,8 @@ const verdictCell = (value) => value
       text: value })
   : document.createTextNode('—');
 
-// The report's own From domain leads, since that is what it is a report about
-// and what the list sorts on. The recipient domains come from its records and
-// are the part you would otherwise expand to find.
+// From is what the report is about and what the list sorts on; To comes from
+// its records, and is what you would otherwise expand to find.
 const domainsCell = (row) => {
   const summary = row.summary || {};
   const from = summary.header_from && summary.header_from.length
@@ -51,11 +49,8 @@ const windowCell = (row) => el('span', { class: 'stack' }, [
   el('span', {}, el('span', { class: 'val', text: isoStamp(row.end) })),
 ]);
 
-// What the report concluded, as three indicators rather than a bar: whether
-// DMARC passed, and which of the two mechanisms carried it. A report covering
-// many messages is rarely all one thing, so the colour is mixed by the share
-// that passed and the whole ramp runs red, through the amber already used for
-// SPF-only, to green.
+// Whether DMARC passed and which mechanism carried it. Colour is mixed by the
+// share that passed, along the same red/amber/green ramp used elsewhere.
 const RATES = [
   { label: 'aligned',
     of: (s) => (Number(s.messages) || 0) - (Number(s.aligned_none) || 0),
@@ -75,9 +70,8 @@ const hue = (rate) => (rate >= 0.5
 // Colour alone must not carry the verdict, so the extremes are also marked.
 const weight = (rate) => (rate === 0 ? ' none' : rate < 1 ? ' partial' : '');
 
-// Small reports get a dot per message, which says 4 of 5 exactly rather than
-// approximately. Past this many the dots stop being countable and the hue and
-// underline carry it instead.
+// A dot per message says 4 of 5 exactly. Past this many they stop being
+// countable, so the hue and underline carry it.
 const MAX_DOTS = 12;
 
 const dots = (passed, failed) => {
@@ -139,8 +133,7 @@ const rowsFor = async (report) => {
       render: (row) => document.createTextNode(row.envelope_to || '—') },
     { label: 'Envelope From',
       render: (row) => document.createTextNode(row.envelope_from || '—') },
-    // Receivers explain overrides here; the old viewer fetched these and never
-    // showed them.
+    // receiver overrides, fetched by the old viewer but never shown
     { label: 'Reasons', render: (row) => document.createTextNode(
         (row.reasons || []).map((r) => r.comment
           ? `${r.type}: ${r.comment}` : r.type).join(', ') || '—') },

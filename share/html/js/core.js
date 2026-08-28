@@ -1,9 +1,7 @@
 // Element building, formatting and the JSON API client.
 
-// Report data is written by whoever operated the sending or reporting system,
-// so it is never interpolated into markup. Text always arrives through
-// textContent and attributes through setAttribute, which makes escaping a
-// property of the builder rather than something each caller has to remember.
+// Report data is attacker supplied, so it never reaches markup: text goes
+// through textContent, attributes through setAttribute.
 export const el = (tag, opts = {}, children = []) => {
   const node = document.createElement(tag);
 
@@ -52,8 +50,7 @@ export const num = (n) => NUM.format(Number(n) || 0);
 export const pct = (part, whole, places = 1) => {
   if (!whole) return '0%';
   const value = (Number(part) / Number(whole)) * 100;
-  // A failure rate that rounds to 0.0% but is not zero misreads as "none
-  // failed", which is the one conclusion this page must not get wrong.
+  // 0.0% for a nonzero failure rate reads as "none failed".
   if (value > 0 && value < 0.1) return '<0.1%';
   if (value < 100 && value > 99.9) return '>99.9%';
   return `${value.toFixed(places)}%`;
@@ -65,7 +62,7 @@ export const day = (epoch) =>
   new Date(Number(epoch) * 1000).toLocaleDateString(undefined,
     { month: 'short', day: 'numeric' });
 
-// Long spans need the year, or a 1970 bucket reads as a December in this one.
+// Without the year a 1970 bucket reads as a December in this one.
 export const dayOrYear = (epoch, withYear) => (withYear
   ? new Date(Number(epoch) * 1000).toLocaleDateString(undefined,
       { year: 'numeric', month: 'short' })

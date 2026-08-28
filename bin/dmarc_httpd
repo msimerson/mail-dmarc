@@ -40,127 +40,71 @@ Connect with a web browser to L<http://localhost:8080|http://localhost:8080/>.
 
 =head1 DESCRIPTION
 
-The HTTP server handles these types of requests:
+Serves the report viewer and a JSON API. The viewer is one HTML file, a
+stylesheet and a few JavaScript modules in the share directory, with no
+external dependencies, so it works on a host with no route to the internet.
+
+=head2 Endpoints
 
 =over 4
 
-=item * /
+=item * / - the report viewer
 
-Serves the report viewer from the perl share directory of the Mail::DMARC
-module: one HTML file, one stylesheet and a handful of JavaScript modules.
-They have no external dependencies and are loaded from this server alone, so
-the viewer works on a host with no route to the internet.
+=item * /dmarc/json/validate - POST a JSON request, get a DMARC result. See
+dmarc_http_client for a usage example.
 
-=item * /dmarc/json/validate - DMARC validation requests
+=item * /dmarc/json/report - the report list
 
-Accepts a JSON encoded HTTP POST request. Validates the request, performs a
-DMARC validation and returns a JSON encoded result object. This is the API
-for non-perl applications to utilize Mail::DMARC.
+=item * /dmarc/json/row - one report's rows
 
-See the dmarc_http_client app for a usage example.
+=item * /dmarc/json/domains - domains reports arrived for
 
-=item * /dmarc/json/report
+=item * /dmarc/json/summary - volume by alignment and disposition, with the
+preceding window for comparison
 
-Accepts AJAX requests from the browser and returns JSON encoded DMARC reports.
+=item * /dmarc/json/timeseries - the same, one row per UTC day
 
-=item * /dmarc/json/row
+=item * /dmarc/json/sources - one row per sending IP, ranked by failing
+volume, each bucketed C<aligned>, C<forwarded> or C<failing>
 
-Accepts AJAX requests from the browser and returns JSON encoded DMARC report rows.
-
-=item * /dmarc/json/domains
-
-Returns every domain reports have been received for, with a report count and
-the epoch bounds of the reporting windows seen.
-
-=item * /dmarc/json/summary
-
-Returns message volume for a reporting window, broken down by DMARC alignment
-and by disposition, alongside the same figures for the equal length window
-immediately before it.
-
-=item * /dmarc/json/timeseries
-
-Returns the same breakdown as the summary, one row per UTC day. A report whose
-window straddles a day boundary is attributed to the day its window begins.
-
-=item * /dmarc/json/sources
-
-Returns one row per sending IP, ranked by the volume of mail that failed
-DMARC, with the disposition reasons reporters supplied. Each source is bucketed
-as C<aligned> (nothing failed), C<forwarded> (the failures are accounted for by
-forwarding or mailing list reasons), or C<failing> (needs attention).
-
-=item * /dmarc/json/source
-
-Returns the detail behind one source IP: volume per header From domain,
-disposition and alignment, and the SPF domains and DKIM domains and selectors
-the source presented. Buckets the source as C<aligned>, C<broken> (it presented
-authentication that did not pass or align) or C<unauthenticated> (it presented
-none), which is the distinction between a misconfigured sender and a spoof.
+=item * /dmarc/json/source - one IP in detail: the From domains, and the SPF
+and DKIM it presented. Buckets it C<aligned>, C<broken> or C<unauthenticated>,
+which separates a misconfigured sender from a spoof.
 
 =back
 
-A store also holds the reports this installation is preparing to send, which
-are about other people's domains as seen here, rather than about your domains
-as seen by others. Blending the two answers neither question, so the summary,
-timeseries, sources and domain views count only reports received from others.
-Pass C<reports=outgoing> for the queue alone or C<reports=all> for both. The
-report list is an audit trail and shows both unless asked otherwise. The two
-are told apart by the report's author, so C<org_name> in the [organization]
-section of mail-dmarc.ini must match the name this host reports under.
+=head2 Parameters
 
-The aggregate views above accept these query parameters. C<since> and C<until>
-are epoch seconds compared against the report window start, and default to the
-last 30 days. C<from_domain> and C<author> restrict results to one From domain
-or one reporting organization. C<source_ip> selects a single source and is
-required by /dmarc/json/source. C<sources> also accepts C<start>, C<length>
-and C<sort_col> (C<messages> to rank by total volume instead of failures).
-Volumes are weighted by the message count in each report record, and all times
-in these responses are epoch seconds. A record with no count is one message:
-the local evaluation path writes a row per message and fills the count in when
-the report is aggregated for sending.
+C<since> and C<until> are epoch seconds, compared against the report window
+start, defaulting to the last 30 days. C<from_domain> and C<author> narrow to
+one domain or reporter. C<source_ip> selects one source, required by /source.
+/sources also takes C<start>, C<length> and C<sort_col>. Times in these
+responses are epoch seconds. Volumes are weighted by each record's message
+count; a record with no count is one message.
 
-An implementation that uses the http validation service is the included <dmarc_http_client> and another is the dmarc plugin in the <Haraka mail server|http://haraka.github.io>.
+=head2 Received and outgoing reports
 
-The web interface is implemented almost entirely in JavaScript, and opens on
-the question an operator actually has: what share of this domain's mail
-authenticates, and which sending sources are breaking the rest. It has three
-views.
+A store also queues the reports this host is preparing to send, which are
+about other people's domains. The summary, timeseries, sources and domain
+views count only reports received from others; the report list shows both.
+Pass C<reports=outgoing> or C<reports=all> to change that. They are told apart
+by author, so C<org_name> must match the name this host reports under.
 
-B<Overview> states the share of mail that would survive C<p=reject>, breaks the
-volume down by whether SPF, DKIM, both or neither aligned, compares the window
-against the one before it, and charts daily volume by alignment.
+=head1 REVERSE DNS
 
-B<Sources> lists sending IPs ranked by the volume of mail they are failing,
-each assessed as C<aligned>, C<forwarded> or C<failing>. Expanding a source
-shows the SPF domains and the DKIM domains and selectors it presented, which
-is what separates a misconfigured sender from one that authenticates nothing
-at all. A source's detail has its own link, so one offending sender can be
-pasted into a ticket.
+Ticking "Resolve hostnames" looks up the PTR of each source IP on display. It
+is off by default because it sends those IPs to a third party DNS-over-HTTPS
+resolver. Cloudflare and Google are offered, and "Other" accepts any DoH
+server answering JSON with CORS headers. A hand-entered resolver is checked as
+you type and adopted only once it answers. Both settings are per browser.
 
-B<Reports> is the audit trail, one row per aggregate report received, expanding
-to the rows it contained along with any override reasons the receiver supplied.
-
-The selected domain and reporting window apply to every view, and all view
-state is kept in the URL.
+Lookups happen in the browser so the many IPs with no PTR cannot stall
+dmarc_httpd.
 
 Web server settings are in the [http] and [https] sections of mail-dmarc.ini.
 
-Ticking "Resolve hostnames" looks up the PTR record of each source IP on
-display and shows the hostname beneath the address. It is off by default
-because it sends those source IPs to a third party DNS-over-HTTPS resolver. Cloudflare and Google are offered in the adjacent menu, and "Other"
-accepts any DoH server that answers JSON queries with CORS headers, including
-your own. A hand-entered resolver is checked as you type, with a single query
-for a fixed public name, and is only adopted once it answers. Both settings
-are remembered per browser.
-
-The lookups happen in the browser rather than the server, so the many source
-IPs with no PTR record can't stall dmarc_httpd.
-
-Databases created before Mail::DMARC 2.2 lack indexes that the aggregate views
-need; without them every lookup by report id scans the whole report_record
-table. F<share/mail_dmarc_indexes.*> adds them to an existing database, one
-file per supported engine.
+Databases created before Mail::DMARC 2.2 lack indexes the aggregate views
+need. F<share/mail_dmarc_indexes.*> adds them, one file per engine.
 
 =head1 THANKS
 

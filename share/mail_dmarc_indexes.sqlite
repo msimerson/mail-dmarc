@@ -1,22 +1,6 @@
--- Indexes required by the aggregate report views in dmarc_httpd.
---
--- Databases created before Mail::DMARC 2.2 have no indexes beyond the
--- implicit primary keys. Every lookup by report_id was therefore a full scan
--- of report_record, whose cost grows with the whole table rather than with
--- the rows wanted, and which is I/O bound once the database outgrows the page
--- cache. Expanding a single report row in the web interface paid that cost
--- once for the row query and again for each of its reason lookups.
---
--- Measured on a generated store of 65,700 reports / 1.1M report records:
---
---   expand one report row (get_rr)   32.2 ms -> 0.1 ms
---   source detail, 30 days          132.5 ms -> 7.5 ms
---   summary, 30 days                101.8 ms -> 18.1 ms
---   report list, first page           0.6 ms -> 0.3 ms
---
--- Cost is about 7% on report record insert throughput.
---
--- Safe to re-run: every statement is IF NOT EXISTS.
+-- Indexes the aggregate views in dmarc_httpd need. Databases created before
+-- Mail::DMARC 2.2 have none beyond the primary keys, so every lookup by
+-- report_id scans report_record. Safe to re-run.
 --
 --   sqlite3 /path/to/reports.sqlite < mail_dmarc_indexes.sqlite
 

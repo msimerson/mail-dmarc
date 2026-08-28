@@ -1,5 +1,11 @@
 ### Unreleased
 
+- feat(dmarc_httpd): rebuild the viewer, drop jquery and DataTables
+- feat(dmarc_httpd): add overview, sources and reports views
+- feat(store): aggregate queries for volume, alignment and sources
+- fix(dmarc_httpd): reject path traversal in serve_file
+- fix(dmarc_httpd): escape report data rendered by the viewer
+- perf(store): index report.begin and report_record.source_ip
 - fix(sender): try a smart host on 25, 587, then cleartext
 - fix(sender): try every MX encrypted, then in the clear
 - fix(sender): never offer credentials over opportunistic TLS

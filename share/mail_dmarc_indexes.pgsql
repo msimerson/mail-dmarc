@@ -1,8 +1,5 @@
--- Indexes required by the aggregate report views in dmarc_httpd.
---
--- PostgreSQL does not index foreign keys automatically, so databases created
--- before Mail::DMARC 2.2 are missing indexes that every windowed aggregation
--- needs. Safe to re-run: every statement is IF NOT EXISTS.
+-- Indexes the aggregate views in dmarc_httpd need. PostgreSQL does not index
+-- foreign keys automatically. Safe to re-run.
 --
 --   psql dmarc_report < mail_dmarc_indexes.pgsql
 
