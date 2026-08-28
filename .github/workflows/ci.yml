@@ -41,10 +41,7 @@ jobs:
             DBD::SQLite
             DBD::Pg
             DBD::mysql
-            Net::IP
-            Socket6
             Email::MIME
-            Net::SMTPS
             XML::LibXML
             Email::Sender
             DBIx::Simple

@@ -6,13 +6,11 @@ use feature 'signatures';
 use feature 'try';
 no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
-use Data::Dumper;
 use Carp;
 use Encode;
 use Getopt::Long;
 use Sys::Syslog qw(:standard :macros);
 use Mail::DMARC::Report;
-use Email::Sender;
 use Email::Sender::Simple qw{ sendmail };
 use Email::Sender::Transport::SMTP;
 use Email::Sender::Transport::SMTP::Persistent;

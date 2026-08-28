@@ -24,6 +24,4 @@ NOTE: Most of the dependencies are optionally required for the DMARC reporting f
     Config::Tiny
     File::ShareDir
     Net::DNS::Resolver
-    Net::IP
-    Socket6
 

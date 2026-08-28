@@ -9,7 +9,6 @@ no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 use parent 'Net::Server::HTTP';
 
 use CGI;
-use Data::Dumper;
 use File::ShareDir;
 use IO::Uncompress::Gunzip;
 use JSON -convert_blessed_universally;

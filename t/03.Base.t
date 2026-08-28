@@ -90,7 +90,7 @@ sub __is_valid_ip {
     }
 
     # negative tests
-    foreach (qw/ 256.1.1.1 a 1.1.1.256 /) {
+    foreach (qw/ 256.1.1.1 a 1.1.1.256 1.1.1 /) {
         ok( !$base->is_valid_ip($_), "is_valid_ip, neg, $_" );
     }
 }
