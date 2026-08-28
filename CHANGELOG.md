@@ -1,5 +1,7 @@
 ### Unreleased
 
+### 2.20260827
+
 - feat(dmarc_httpd): post_max setting, defaults to 10MB
 - perf: lazy load the reporting stack, 40% faster startup
 - chore(deps): drop Regexp::Common, CGI
