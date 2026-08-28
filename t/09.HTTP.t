@@ -62,7 +62,7 @@ sub __post_max {
     $Mail::DMARC::HTTP::report->config->{http}{post_max} = 4096;
     is( Mail::DMARC::HTTP::post_max(), 4096, 'post_max, from config' );
 
-    for my $bogus ( '', 'lots', '-1' ) {
+    for my $bogus ( '', 'lots', '-1', '0', '00', '01', '007', ' 8', '8 ', '1e6' ) {
         $Mail::DMARC::HTTP::report->config->{http}{post_max} = $bogus;
         is( Mail::DMARC::HTTP::post_max(), 10 * 1024 * 1024,
             "post_max, falls back on '$bogus'" );
@@ -102,7 +102,7 @@ sub __discard_post_body {
 }
 
 sub __warn_unusable_post_max {
-    for my $bad ( '0', '20M', '-1' ) {
+    for my $bad ( '0', '00', '01', '20M', '-1', '1e6' ) {
         $Mail::DMARC::HTTP::report->config->{http}{post_max} = $bad;
         stderr_like { Mail::DMARC::HTTP::warn_unusable_post_max() }
             qr/post_max '\Q$bad\E' is not a byte count/,

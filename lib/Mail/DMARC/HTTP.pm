@@ -97,18 +97,19 @@ sub return_json_error($err) {
 }
 
 my $POST_MAX_DEFAULT = 10 * 1024 * 1024;
+my $BYTE_COUNT       = qr/^[1-9][0-9]*$/;
 
 # 0 is not a way to lift the cap; say so rather than quietly using the default
 sub warn_unusable_post_max() {
     my $max = $report->config->{http}{post_max};
-    return if !defined $max || $max eq '' || $max =~ /^[1-9][0-9]*$/;
+    return if !defined $max || $max eq '' || $max =~ $BYTE_COUNT;
     warn "post_max '$max' is not a byte count; using " . post_max() . "\n";
     return;
 }
 
 sub post_max() {
     my $max = $report ? $report->config->{http}{post_max} : undef;
-    return $max && $max =~ /^([0-9]+)$/ ? $1 : $POST_MAX_DEFAULT;
+    return defined $max && $max =~ $BYTE_COUNT ? $max : $POST_MAX_DEFAULT;
 }
 
 # The client is still sending when we refuse an oversized body. Closing with
