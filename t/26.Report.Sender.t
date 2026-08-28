@@ -313,6 +313,34 @@ subtest 'a host that answered is not retried without encryption' => sub {
     cmp_ok( $cleartext->sent, '==', 0, 'the cleartext rung is skipped' );
 };
 
+subtest 'a timeout keeps the errors from earlier routes' => sub {
+    queue_one_report();
+
+    my $refused = Mail::DMARC::Test::Transport::Answered->new(
+        ssl => 'starttls' );
+    my $timed_out = Mail::DMARC::Test::Transport::Timeout->new(
+        ssl => 'starttls' );
+
+    my $sender = Mail::DMARC::Report::Sender->new;
+    $sender->{verbose} = 1;
+    $sender->set_transports_method( sub { return ( $refused, $timed_out ) } );
+
+    my $output = '';
+    {
+        local *STDOUT;
+        open STDOUT, '>', \$output or die "cannot capture STDOUT: $!";
+        $sender->run;
+    }
+
+    # log_output encodes commas, so the joined message arrives as
+    # "greylisted#044 try again#044 timeout"
+    like( $output, qr/greylisted/,
+        'the earlier route is still reported' );
+    like( $output, qr/timeout/, 'along with the timeout that stopped it' );
+    like( $output, qr/send_error_code=451\S*\s*error/,
+        'and both codes are kept in order' );
+};
+
 subtest 'the report alarm stops the ladder rather than advancing it' => sub {
     queue_one_report();
 

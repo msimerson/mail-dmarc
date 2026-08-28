@@ -544,15 +544,7 @@ sub email( $self, $args ) {
             # it, and the rungs are ports on that same host.
             $permanent ||= $code =~ /^5/x;
 
-            # The alarm in send_report bounds the report, not each rung, and
-            # is not rearmed; carrying on would leave the ladder unbounded and
-            # could resend a message the server already took.
-            if ( 'timeout' eq $message ) {
-                $log_data->{send_error}      = $message;
-                $log_data->{send_error_code} = $code;
-                $report->store->error( $rid, $message );
-                last;
-            }
+            my $timed_out = 'timeout' eq $message;
 
             $code = join( ', ', $log_data->{send_error_code}, $code )
                 if exists $log_data->{send_error_code};
@@ -560,6 +552,14 @@ sub email( $self, $args ) {
                 if exists $log_data->{send_error};
             $log_data->{send_error}      = $message;
             $log_data->{send_error_code} = $code;
+
+            # The alarm in send_report bounds the report, not each rung, and
+            # is not rearmed; carrying on would leave the ladder unbounded and
+            # could resend a message the server already took.
+            if ($timed_out) {
+                $report->store->error( $rid, $message );
+                last;
+            }
 
             next if @transports;
 
