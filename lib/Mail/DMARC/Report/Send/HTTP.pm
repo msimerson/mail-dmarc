@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use feature 'signatures';
 
-our $VERSION = '2.20260724';
+our $VERSION = '2.20260827';
 
 use Carp;
 
@@ -53,7 +53,7 @@ Mail::DMARC::Report::Send::HTTP - utility methods to send reports by HTTP
 
 =head1 VERSION
 
-version 2.20260724
+version 2.20260827
 
 =head1 12.2.2. HTTP
 

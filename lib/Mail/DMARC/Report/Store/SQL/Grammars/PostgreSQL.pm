@@ -1,5 +1,5 @@
 package Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL;
-our $VERSION = '2.20260724';
+our $VERSION = '2.20260827';
 use strict;
 use warnings;
 use feature 'signatures';
@@ -490,7 +490,7 @@ Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL - Grammar for working with
 
 =head1 VERSION
 
-version 2.20260724
+version 2.20260827
 
 =head1 SYPNOSIS
 
