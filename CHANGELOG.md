@@ -1,5 +1,6 @@
 ### Unreleased
 
+- feat(dmarc_httpd): post_max setting, defaults to 10MB
 - perf: lazy load the reporting stack, 40% faster startup
 - chore(deps): drop Regexp::Common, CGI
 - chore(deps): drop Socket6, Net::IP, LWP, Net::SSLeay, Net::SMTPS, CPAN
@@ -9,7 +10,6 @@
 - feat(dmarc_httpd): add overview, sources and reports views
 - feat(store): aggregate queries for volume, alignment and sources
 - fix(dmarc_httpd): reject path traversal in serve_file
-- fix(dmarc_httpd): escape report data rendered by the viewer
 - perf(store): index report.begin and report_record.source_ip
 - fix(sender): try a smart host on 25, 587, then cleartext
 - fix(sender): try every MX encrypted, then in the clear

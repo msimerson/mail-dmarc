@@ -52,6 +52,98 @@ $r = Mail::DMARC::HTTP::serve_validator('{"header_from":"tnpi.net","dkim":[{"dom
 like($r, qr/"spf":""/, "serve_validator, missing SPF");
 like($r, qr/"dkim":"pass"/, "serve_validator, pass DKIM");
 
+__post_max();
+
+sub __post_max {
+    is( Mail::DMARC::HTTP::post_max(), 10 * 1024 * 1024,
+        'post_max, default when no config is loaded' );
+
+    local $Mail::DMARC::HTTP::report = Mail::DMARC::PurePerl->new->report;
+    $Mail::DMARC::HTTP::report->config->{http}{post_max} = 4096;
+    is( Mail::DMARC::HTTP::post_max(), 4096, 'post_max, from config' );
+
+    for my $bogus ( '', 'lots', '-1', '0', '00', '01', '007', ' 8', '8 ', '1e6' ) {
+        $Mail::DMARC::HTTP::report->config->{http}{post_max} = $bogus;
+        is( Mail::DMARC::HTTP::post_max(), 10 * 1024 * 1024,
+            "post_max, falls back on '$bogus'" );
+    }
+
+    # read_post_body reports an oversized body as undef so that
+    # serve_validator can tell it apart from a request with no body at all
+    $Mail::DMARC::HTTP::report->config->{http}{post_max} = 16;
+    local $ENV{CONTENT_LENGTH} = 17;
+    my ( undef, $over ) = with_stdin( 'x' x 17,
+        sub { Mail::DMARC::HTTP::read_post_body() } );
+    is( $over, undef, 'read_post_body, undef over post_max' );
+
+    $Mail::DMARC::HTTP::report->config->{http}{post_max} = 128;
+    my $r = capture_validator( 129, $resolver );
+    like( $r, qr/larger than post_max of 128 bytes/,
+        'serve_validator, refuses over post_max' );
+
+    __discard_post_body();
+    __warn_unusable_post_max();
+}
+
+# an oversized body has to come off the wire before the error is written, or
+# the close answers RST and the client never sees it
+sub __discard_post_body {
+    $Mail::DMARC::HTTP::report->config->{http}{post_max} = 1024;
+    my $body = 'x' x 2000;
+
+    my ($left) = with_stdin( $body,
+        sub { Mail::DMARC::HTTP::discard_post_body( length $body ) } );
+    is( length $left, 0, 'discard_post_body, drains the body' );
+
+    # past twice post_max we leave it unread and let the connection reset
+    ($left) = with_stdin( $body,
+        sub { Mail::DMARC::HTTP::discard_post_body(3000) } );
+    is( length $left, 2000, 'discard_post_body, leaves a huge body unread' );
+}
+
+sub __warn_unusable_post_max {
+    for my $bad ( '0', '00', '01', '20M', '-1', '1e6' ) {
+        $Mail::DMARC::HTTP::report->config->{http}{post_max} = $bad;
+        stderr_like { Mail::DMARC::HTTP::warn_unusable_post_max() }
+            qr/post_max '\Q$bad\E' is not a byte count/,
+            "warn_unusable_post_max, warns on '$bad'";
+    }
+    for my $ok ( undef, '', '4096' ) {
+        $Mail::DMARC::HTTP::report->config->{http}{post_max} = $ok;
+        stderr_is { Mail::DMARC::HTTP::warn_unusable_post_max() } '',
+            'warn_unusable_post_max, silent on ' . ( $ok // 'undef' );
+    }
+}
+
+# Anything that reads a POST body must be handed an in-memory STDIN. The real
+# one is a terminal when this file is run by hand but a pipe under prove, where
+# a read of it never returns. Returns what the body left unread, then $code's
+# return values.
+sub with_stdin {
+    my ( $body, $code ) = @_;
+    open my $saved, '<&', \*STDIN or die $!;
+    close STDIN;
+    open STDIN, '<', \$body or die $!;
+    my @rv = $code->();
+    my $left = do { local $/; <STDIN> };
+    close STDIN;
+    open STDIN, '<&', $saved or die $!;
+    return ( $left // '', @rv );
+}
+
+sub capture_validator {
+    my ( $content_length, $res ) = @_;
+    local $ENV{CONTENT_LENGTH} = $content_length;
+    my $out;
+    open my $fh, '>', \$out or die $!;
+    my $old = select $fh;    ## no critic (ProhibitOneArgSelect)
+    my ( undef, $r )
+        = with_stdin( '', sub { Mail::DMARC::HTTP::serve_validator( undef, $res ) } );
+    select $old;             ## no critic (ProhibitOneArgSelect)
+    close $fh;
+    return $r;
+}
+
 # agg_params guards the aggregate report views: it coerces what it recognizes
 # and silently drops everything else, so a hand-built query string cannot
 # reach the store with junk in it.

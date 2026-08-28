@@ -35,6 +35,8 @@ sub dmarc_httpd( $self, $http_report ) {
     my $sslkey = $report->config->{https}{ssl_key};
     my $sslcrt = $report->config->{https}{ssl_crt};
 
+    warn_unusable_post_max();
+
     Net::Server::HTTP->run(
         app  => sub {&dmarc_dispatch},
         port => [ $port, ( ( $ports && $sslkey && $sslcrt ) ? "$ports/ssl" : () ) ],
@@ -94,8 +96,47 @@ sub return_json_error($err) {
     return $err;                                         # to caller
 }
 
+my $POST_MAX_DEFAULT = 10 * 1024 * 1024;
+my $BYTE_COUNT       = qr/^[1-9][0-9]*$/;
+
+# 0 is not a way to lift the cap; say so rather than quietly using the default
+sub warn_unusable_post_max() {
+    my $max = $report->config->{http}{post_max};
+    return if !defined $max || $max eq '' || $max =~ $BYTE_COUNT;
+    warn "post_max '$max' is not a byte count; using " . post_max() . "\n";
+    return;
+}
+
+sub post_max() {
+    my $max = $report ? $report->config->{http}{post_max} : undef;
+    return defined $max && $max =~ $BYTE_COUNT ? $max : $POST_MAX_DEFAULT;
+}
+
+# The client is still sending when we refuse an oversized body. Closing with
+# its bytes unread makes the kernel answer RST, which discards the error we
+# just queued, so read them off the wire and drop them. Only up to post_max
+# again: past that the caller is not worth the bandwidth and gets the reset.
+sub discard_post_body($len) {
+    my $max = post_max();
+    return if $len > 2 * $max;
+
+    my $seen = 0;
+    while ( $seen < $len ) {
+        my $want = $len - $seen;
+        my $got = read STDIN, my $chunk, $want < 65536 ? $want : 65536;
+        last if !$got;
+        $seen += $got;
+    }
+    return;
+}
+
+# '' when there is no body, undef when it is larger than post_max
 sub read_post_body() {
     my ($len) = ( $ENV{CONTENT_LENGTH} // '' ) =~ /^([0-9]+)$/ or return '';
+    if ( $len > post_max() ) {
+        discard_post_body($len);
+        return;
+    }
 
     # a short read would truncate the JSON and leave the rest of the body to be
     # parsed as the next request on a keep-alive connection
@@ -109,11 +150,19 @@ sub read_post_body() {
 }
 
 sub serve_validator( $post = undef, $resolver = undef ) {
-    $post //= read_post_body();    # passed in for testing
+    my $too_large;
+    if ( !defined $post ) {    # passed in for testing
+        $post      = read_post_body();
+        $too_large = !defined $post;
+    }
     my $json = JSON->new->utf8;
 
     print "Content-Type: application/json\n\n";
 
+    if ($too_large) {
+        return return_json_error(
+            'POST data larger than post_max of ' . post_max() . ' bytes' );
+    }
     if ( !$post ) { return return_json_error("missing POST data"); }
 
     my ( $input, $dmpp, $res );
