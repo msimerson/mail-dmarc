@@ -170,7 +170,8 @@ export const render = async (mount, scope, state, rerender) => {
     length: PAGE,
     sort_col: sort.col,
     sort_dir: sort.dir,
-    search_domain: scope.from_domain || null,
+    // exact, matching the other views; search_domain is a substring LIKE
+    'fd.domain': scope.from_domain || null,
     since: scope.since || null,
     until: scope.until,
     reports: kind,

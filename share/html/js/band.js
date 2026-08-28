@@ -70,11 +70,18 @@ const SUMMED = [...BUCKETS.map((b) => b.key), 'messages',
 
 // The store returns only days carrying reports, so a column per row would
 // compress a gap to nothing and hide an outage. Fill, then aggregate.
-export const bucketDays = (rows) => {
+export const bucketDays = (rows, since, until) => {
   if (!rows.length) return { rows: [], step: STEPS[0] };
 
-  const first = Number(rows[0].day);
-  const last = Number(rows[rows.length - 1].day);
+  // Bounded by the selected window, or an outage at either edge would simply
+  // not be drawn.
+  const floor = (t) => Math.floor(Number(t) / DAY) * DAY;
+  const first = since
+    ? Math.min( Number(rows[0].day), floor(since) )
+    : Number(rows[0].day);
+  const last = until
+    ? Math.max( Number(rows[rows.length - 1].day), floor(until - DAY) )
+    : Number(rows[rows.length - 1].day);
   const span = Math.round((last - first) / DAY) + 1;
 
   const step = STEPS.find((s) => span / s.days <= MAX_COLUMNS)

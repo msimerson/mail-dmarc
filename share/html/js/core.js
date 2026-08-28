@@ -58,19 +58,21 @@ export const pct = (part, whole, places = 1) => {
 
 const DAY = 86400;
 
+// Day values are UTC bucket boundaries; local formatting shifts them a day
+// west of UTC.
 export const day = (epoch) =>
   new Date(Number(epoch) * 1000).toLocaleDateString(undefined,
-    { month: 'short', day: 'numeric' });
+    { timeZone: 'UTC', month: 'short', day: 'numeric' });
 
 // Without the year a 1970 bucket reads as a December in this one.
 export const dayOrYear = (epoch, withYear) => (withYear
   ? new Date(Number(epoch) * 1000).toLocaleDateString(undefined,
-      { year: 'numeric', month: 'short' })
+      { timeZone: 'UTC', year: 'numeric', month: 'short' })
   : day(epoch));
 
 export const dayFull = (epoch) =>
   new Date(Number(epoch) * 1000).toLocaleDateString(undefined,
-    { year: 'numeric', month: 'short', day: 'numeric' });
+    { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' });
 
 export const stamp = (epoch) =>
   new Date(Number(epoch) * 1000).toLocaleString(undefined,

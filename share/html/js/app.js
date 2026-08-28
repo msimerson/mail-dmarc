@@ -73,11 +73,22 @@ const describe = (scope) => (scope.since
   : 'all reports on file');
 
 let routing = false;
+let queued  = false;
 
 const route = async () => {
-  if (routing) return;
+  if (routing) { queued = true; return; }
   routing = true;
+  try {
+    do {
+      queued = false;
+      await renderCurrent();
+    } while (queued);
+  } finally {
+    routing = false;
+  }
+};
 
+const renderCurrent = async () => {
   const { view, state } = parseHash();
   const scope = scopeFrom(state);
 
@@ -95,8 +106,21 @@ const route = async () => {
 
   const rerender = (patch) => writeHash(view, { ...state, ...patch });
 
+  // Records view state in the URL without re-rendering, so an expanded row
+  // stays open while its link stays copyable.
+  const restate = (patch) => {
+    const next = { ...state, ...patch };
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(next)) {
+      if (value === null || value === undefined || value === '') continue;
+      query.set(key, value);
+    }
+    history.replaceState(null, '',
+      `#/${view}${query.toString() ? `?${query}` : ''}`);
+  };
+
   try {
-    await VIEWS[view].render(mount, scope, state, rerender);
+    await VIEWS[view].render(mount, scope, state, rerender, restate);
   } catch (error) {
     replace(mount, el('div', { class: 'failed' }, [
       el('h2', { text: 'Could not read the reports' }),
@@ -105,8 +129,6 @@ const route = async () => {
         text: 'The report store may be unreachable, or this build of '
             + 'dmarc_httpd may predate the aggregate views.' }),
     ]));
-  } finally {
-    routing = false;
   }
 };
 

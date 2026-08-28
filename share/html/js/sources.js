@@ -59,7 +59,7 @@ const detail = async (source, scope) => {
                 + 'authentication it presented narrows that down.' })
         : null,
       source.reasons && source.reasons.length
-        ? el('p', { class: 'note', text: `Receivers cited: ${source.reasons
+        ? el('p', { class: 'note', text: `Cited for the failures: ${source.reasons
             .map((r) => (r.comment ? `${r.type} “${r.comment}”` : r.type)
               + ` (${num(r.messages)})`).join(', ')}` })
         : null,
@@ -105,7 +105,7 @@ const RANKS = [
   { key: 'messages', label: 'most mail first' },
 ];
 
-export const render = async (mount, scope, state, rerender) => {
+export const render = async (mount, scope, state, rerender, restate) => {
   const start = Number(state.start) || 0;
   const rank = state.rank === 'messages' ? 'messages' : '';
 
@@ -163,7 +163,7 @@ export const render = async (mount, scope, state, rerender) => {
     // sender straight into a ticket.
     rowKey: (row) => row.source_ip,
     openKey: state.open || null,
-    onOpen: (key) => { state.open = key || ''; },
+    onOpen: (key) => restate({ open: key || null }),
     page: { start, length: PAGE, total, unit: 'sources',
             onPage: (next) => rerender({ start: next }) },
   });

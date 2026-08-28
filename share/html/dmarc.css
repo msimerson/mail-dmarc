@@ -460,9 +460,22 @@ thead th {
   z-index: 1;
 }
 
-thead th.sortable { cursor: pointer; }
-thead th.sortable:hover { color: var(--ink); }
 thead th[aria-sort] { color: var(--ink); }
+
+.th-sort {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.th-sort:hover { color: var(--ink); }
+
+th.num .th-sort { float: right; }
 
 th .arrow { color: var(--ink-3); font-weight: 400; }
 

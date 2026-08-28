@@ -417,6 +417,10 @@ EO_SRC_SPF
 # without being expanded. Returned one row per (report, From, To) rather than
 # aggregated into a string, because GROUP_CONCAT, group_concat and string_agg
 # are spelled differently in all three engines; the caller assembles the sets.
+sub and_failing {
+    return " AND COALESCE(rr.dkim,'')<>'pass' AND COALESCE(rr.spf,'')<>'pass'";
+}
+
 sub select_report_summary_query {
     my ($self) = @_;
     my $buckets = $self->outcome_buckets;

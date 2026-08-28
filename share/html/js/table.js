@@ -14,23 +14,28 @@ export const table = ({ caption, columns, rows, empty, sort, onSort,
       const clickable = Boolean(column.sortKey && onSort);
       const sorted = sort && column.sortKey && sort.col === column.sortKey;
       const arrow = sorted ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ' ↕';
-      const cell = el('th', {
+
+      // The control is a button so it can be reached and fired from the
+      // keyboard; aria-sort stays on the column header where readers expect it.
+      const label = clickable
+        ? el('button', {
+            type: 'button',
+            class: 'th-sort',
+            on: { click: () => onSort({ col: column.sortKey,
+                    dir: sorted && sort.dir === 'desc' ? 'asc' : 'desc' }) },
+          }, [
+            document.createTextNode(column.label),
+            el('span', { class: 'arrow', text: arrow }),
+          ])
+        : document.createTextNode(column.label);
+
+      return el('th', {
         class: [column.align === 'num' ? 'num' : '',
                 clickable ? 'sortable' : ''].join(' ').trim(),
         'aria-sort': sorted
           ? (sort.dir === 'asc' ? 'ascending' : 'descending') : null,
         title: column.title,
-      }, [
-        document.createTextNode(column.label),
-        clickable ? el('span', { class: 'arrow', text: arrow }) : null,
-      ]);
-      if (clickable) {
-        cell.addEventListener('click', () => {
-          onSort({ col: column.sortKey,
-                   dir: sorted && sort.dir === 'desc' ? 'asc' : 'desc' });
-        });
-      }
-      return cell;
+      }, label);
     }),
   ]);
 

@@ -823,6 +823,8 @@ sub _agg_where( $self, $args ) {
             : $self->any_inet_pton( $args->{source_ip} );
     }
 
+    $where .= $self->grammar->and_failing if $args->{failing_only};
+
     my ( $origin, $origin_params )
         = $self->_origin_filter( $args->{reports} // 'received' );
     $where .= $origin;
@@ -903,8 +905,10 @@ sub get_sources( $self, @args ) {
     my ( $where, $params ) = $self->_agg_where( \%args );
     my $sources
         = $self->query( $self->grammar->select_sources_query($where), $params );
+    my ( $fwhere, $fparams )
+        = $self->_agg_where( { %args, failing_only => 1 } );
     my $reasons = $self->query(
-        $self->grammar->select_source_reasons_query($where), $params );
+        $self->grammar->select_source_reasons_query($fwhere), $fparams );
 
     $self->_agg_ips_to_text($sources);
     $self->_agg_ips_to_text($reasons);
@@ -961,9 +965,12 @@ sub _classify_source($source) {
     return 'aligned' if !$failing;
     return 'aligned' if $total && ( $failing / $total ) < $FAILING_TOLERANCE;
 
+    # The largest single reason, not their sum: one record may carry several,
+    # and each row already counts that record's whole volume.
     my $forwarded = 0;
     foreach my $reason ( @{ $source->{reasons} } ) {
-        $forwarded += $reason->{messages} if _explains_forwarding($reason);
+        next if !_explains_forwarding($reason);
+        $forwarded = $reason->{messages} if $reason->{messages} > $forwarded;
     }
     return 'forwarded' if $forwarded >= $failing * $FORWARDING_SHARE;
 
@@ -991,10 +998,18 @@ sub get_source_detail( $self, @args ) {
         foreach grep { 'pass' ne ( $_->{dkim} // '' ) && 'pass' ne ( $_->{spf} // '' ) }
         @$records;
 
+    my ( $fwhere, $fparams )
+        = $self->_agg_where( { %args, failing_only => 1 } );
+    my $failing_auth
+        = @{ $self->query( $self->grammar->select_source_dkim_query($fwhere),
+            $fparams ) }
+        || @{ $self->query( $self->grammar->select_source_spf_query($fwhere),
+            $fparams ) };
+
     my $bucket
-        = !$failing            ? 'aligned'
-        : ( @$dkim || @$spf )  ? 'broken'
-        :                        'unauthenticated';
+        = !$failing      ? 'aligned'
+        : $failing_auth  ? 'broken'
+        :                  'unauthenticated';
 
     return {
         source_ip => $args{source_ip},

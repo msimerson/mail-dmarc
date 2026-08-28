@@ -210,6 +210,79 @@ sub test_aggregates {
     test_report_summaries( $begin );
     test_arc_override();
     test_origin_filter();
+    test_reason_accounting();
+}
+
+# Reasons ride on passing records too, and one record may carry several. Both
+# used to inflate the volume treated as explained by forwarding.
+sub test_reason_accounting {
+    my $org   = 'Reason Test Co';
+    my $begin = 1670000000 - ( 1670000000 % 86400 );
+
+    my $report = Mail::DMARC::Report->new();
+    $report->aggregate->metadata->org_name($org);
+    $report->aggregate->metadata->email('dmarc@reason.example');
+    $report->aggregate->metadata->begin($begin);
+    $report->aggregate->metadata->end( $begin + 86399 );
+    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject');
+    $pol->apply_defaults;
+    $pol->domain('reason.example.com');
+    $pol->rua('mailto:dmarc@reason.example');
+    $report->aggregate->policy_published($pol);
+
+    my $rid = $sql->get_report_id( $report->aggregate );
+    ok( $rid, 'test_reason_accounting, report created' );
+
+    # ip, count, dkim, spf, [reasons], present auth
+    my @records = (
+        [ '10.3.0.1', 100, 'pass', 'pass', ['forwarded'],                 1 ],
+        [ '10.3.0.1',  20, 'fail', 'fail', [],                            1 ],
+        [ '10.3.0.2',  30, 'fail', 'fail', [ 'forwarded', 'mailing_list' ], 0 ],
+        [ '10.3.0.2',  70, 'fail', 'fail', [],                            0 ],
+        [ '10.3.0.3', 100, 'pass', 'pass', [],                            1 ],
+        [ '10.3.0.3',  50, 'fail', 'fail', [],                            0 ],
+    );
+
+    foreach my $r (@records) {
+        my ( $ip, $count, $dkim, $spf, $reasons, $auth ) = @$r;
+        my $rec = Mail::DMARC::Report::Aggregate::Record->new;
+        $rec->identifiers(
+            header_from   => 'reason.example.com',
+            envelope_to   => 'rcpt.example.com',
+            envelope_from => 'reason.example.com',
+        );
+        $rec->row(
+            source_ip        => $ip,
+            count            => $count,
+            policy_evaluated =>
+                { disposition => 'none', dkim => $dkim, spf => $spf },
+        );
+        my $rr_id = $sql->insert_rr( $rid, $rec );
+        $sql->insert_rr_reason( $rr_id, $_, undef ) foreach @$reasons;
+        next if !$auth;
+        $sql->insert_rr_dkim( $rr_id,
+            { domain => 'reason.example.com', selector => 's1', result => $dkim } );
+        $sql->insert_rr_spf( $rr_id,
+            { domain => 'reason.example.com', scope => 'mfrom', result => $spf } );
+    }
+
+    my %window = ( author => $org, since => $begin, until => $begin );
+    my %by_ip  = map { $_->{source_ip} => $_ }
+        @{ $sql->get_sources(%window)->{data} };
+
+    # 100 forwarded messages passed; only 20 failed, and none were forwarded
+    is( $by_ip{'10.3.0.1'}{bucket}, 'failing',
+        'a reason on a passing record does not explain a failure' );
+
+    # 30 of 100 failing carry two reasons; summing them reaches 60 and would
+    # clear the half-of-failures bar that 30 alone does not
+    is( $by_ip{'10.3.0.2'}{bucket}, 'failing',
+        'two reasons on one record are not counted twice' );
+
+    # authentication belongs to the passing records only
+    my $detail = $sql->get_source_detail( %window, source_ip => '10.3.0.3' );
+    is( $detail->{bucket}, 'unauthenticated',
+        'auth on passing records does not make failures look broken' );
 }
 
 # Reports this host authored are its outgoing queue, about other people's

@@ -105,8 +105,8 @@ const malformed = (series) => {
         + 'chart back to their date.' });
 };
 
-const volume = (series) => {
-  const { rows, step } = bucketDays(series);
+const volume = (series, scope) => {
+  const { rows, step } = bucketDays(series, scope.since, scope.until);
   const readout = el('div', { class: 'readout' });
   const period = step.days === 1 ? 'day' : `${step.days} days`;
 
@@ -200,6 +200,6 @@ export const render = async (mount, scope, state, rerender) => {
       alignLegend(current),
     ]),
     ledger(current, summary.previous, windowDays),
-    rows.length > 1 ? volume(rows) : null,
+    rows.length > 1 ? volume(rows, scope) : null,
   ]);
 };
