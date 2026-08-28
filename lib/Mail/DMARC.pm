@@ -11,8 +11,8 @@ our $psl_loads = 0;
 
 use parent 'Mail::DMARC::Base';
 require Mail::DMARC::Policy;
-require Mail::DMARC::Report;
 require Mail::DMARC::Result;
+require Mail::DMARC::Report::Aggregate::Record;
 require Mail::DMARC::Report::Aggregate::Record::Auth_Results::SPF;
 require Mail::DMARC::Report::Aggregate::Record::Auth_Results::DKIM;
 
@@ -194,6 +194,7 @@ sub policy( $self, @args ) {
 
 sub report($self) {
     return $self->{report} if ref $self->{report};
+    require Mail::DMARC::Report;
     return $self->{report} = Mail::DMARC::Report->new();
 }
 

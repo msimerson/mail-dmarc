@@ -12,7 +12,6 @@ use File::ShareDir;
 use HTTP::Tiny;
 use IO::File;
 use Net::DNS::Resolver;
-use Regexp::Common 2013031301 qw /net/;
 use Socket;
 require URI::_idna;
 
@@ -285,8 +284,13 @@ sub is_valid_ip( $self, $ip ) {
     return defined Socket::inet_pton( $family, $ip ) ? 1 : 0;
 }
 
+# RFC 1101 host name: dot-joined LDH labels that do not spell a dotted quad
+my $dotted_quad = qr/(?:25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})/;
+my $not_an_ip   = qr/(?!(?:$dotted_quad[.]$dotted_quad[.]$dotted_quad[.]$dotted_quad)(?:[.]|$))/;
+my $host_label  = qr/$not_an_ip[A-Za-z0-9](?:[-A-Za-z0-9]{0,61}[A-Za-z0-9])?/;
+
 sub is_valid_domain( $self, $domain ) {
-    return 0 if $domain !~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x;
+    return 0 if $domain !~ /^$host_label(?:\.$host_label)*$/x;
     my $tld = ( split /\./, $domain )[-1];
     return 1 if $self->is_public_suffix($tld);
     return 0 if $domain eq 'localhost';

@@ -34,7 +34,6 @@ jobs:
         continue-on-error: true
         with:
           install: |
-            Regexp::Common
             Config::Tiny
             File::ShareDir
             Net::DNS::Resolver
@@ -49,7 +48,6 @@ jobs:
             Test::File::ShareDir
             Test::Output
             Test::Exception
-            CGI
             XML::Validator::Schema
             Net::DNS::Resolver::Mock
           sudo: false

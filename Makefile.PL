@@ -36,7 +36,6 @@ my %META = (
     },
     "runtime" => {
       "recommends" => {
-        "CGI" => 0,
         "GeoIP2" => 0,
         "JSON" => 0,
         "Mail::DKIM" => 0,
@@ -66,7 +65,6 @@ my %META = (
         "Net::DNS::Resolver" => 0,
         "POSIX" => 0,
         "Pod::Usage" => 0,
-        "Regexp::Common" => "2013031301",
         "Socket" => 0,
         "Sys::Hostname" => 0,
         "Sys::Syslog" => 0,
@@ -119,7 +117,6 @@ my %META = (
       "prereqs" => {
         "runtime" => {
           "requires" => {
-            "CGI" => 0,
             "JSON" => 0,
             "Net::Server::HTTP" => 0,
           }

@@ -11,10 +11,6 @@ use IO::Compress::Zip;
 
 use parent 'Mail::DMARC::Base';
 
-require Mail::DMARC::Report::Aggregate;
-require Mail::DMARC::Report::Send;
-require Mail::DMARC::Report::Store;
-require Mail::DMARC::Report::Receive;
 require Mail::DMARC::Report::URI;
 
 sub compress( $self, $xml_ref ) {
@@ -39,6 +35,7 @@ sub init($self) {
 
 sub aggregate($self) {
     return $self->{aggregate} if ref $self->{aggregate};
+    require Mail::DMARC::Report::Aggregate;
     return $self->{aggregate} = Mail::DMARC::Report::Aggregate->new();
 }
 
@@ -48,16 +45,19 @@ sub dmarc($self) {
 
 sub receive($self) {
     return $self->{receive} if ref $self->{receive};
+    require Mail::DMARC::Report::Receive;
     return $self->{receive} = Mail::DMARC::Report::Receive->new;
 }
 
 sub sendit($self) {
     return $self->{sendit} if ref $self->{sendit};
+    require Mail::DMARC::Report::Send;
     return $self->{sendit} = Mail::DMARC::Report::Send->new();
 }
 
 sub store($self) {
     return $self->{store} if ref $self->{store};
+    require Mail::DMARC::Report::Store;
     return $self->{store} = Mail::DMARC::Report::Store->new();
 }
 
