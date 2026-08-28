@@ -2,38 +2,52 @@
 
 set -e
 
+# shellcheck source=.release/base.sh
 . .release/base.sh
 
 assure_repo_is_clean
 
 TAG_NAME="v$(get_version)"
-echo "tag $TAG_NAME"
+# tag.gpgsign makes an unadorned 'git tag' want a message from an editor, which
+# a script has no way to answer
+TAG_MSG="release $(get_version)"
+HEAD_COMMIT=$(git rev-parse HEAD)
+TAGGED_COMMIT=$(tag_commit "$TAG_NAME" || true)
+FORCE=''
 
-git tag "$TAG_NAME"
-git push --tags
+if [ -z "$TAGGED_COMMIT" ]; then
+    echo "tag $TAG_NAME"
+    git tag -m "$TAG_MSG" "$TAG_NAME"
+elif [ "$TAGGED_COMMIT" = "$HEAD_COMMIT" ]; then
+    echo "tag $TAG_NAME is already on this commit"
+elif release_exists "$TAG_NAME"; then
+    echo "ERROR: $TAG_NAME has a release but points at $TAGGED_COMMIT, not HEAD."
+    echo "Delete that release and tag, or release a new version."
+    exit 1
+else
+    # earlier steps commit as they go, so a re-run that picks up a new PSL
+    # leaves the tag behind HEAD. Nothing refers to it yet, so move it.
+    echo "moving $TAG_NAME to $HEAD_COMMIT"
+    git tag -f -m "$TAG_MSG" "$TAG_NAME"
+    FORCE='--force'
+fi
 
-#PREV_TAG_NAME=$(gh release list --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName')
-PREV_TAG_NAME=$(gh release view --json tagName --jq .tagName)
+# a single tag, not --tags: this should not push unrelated local tags
+# shellcheck disable=SC2086
+git push $FORCE origin "refs/tags/$TAG_NAME"
 
-gh release create \
-  "$TAG_NAME" \
-  --title "$TAG_NAME" \
-  --target master \
-  --draft \
-  --generate-notes \
-  --notes-start-tag "$PREV_TAG_NAME" \
+if release_exists "$TAG_NAME"; then
+    echo "release $TAG_NAME already exists"
+    exit 0
+fi
 
-# GitHub CLI api
-# https://cli.github.com/manual/gh_api
+PREV_TAG_NAME=$(gh release list --exclude-drafts --exclude-pre-releases \
+    --limit 1 --json tagName --jq '.[0].tagName // empty')
 
-#gh api \
-#  --method POST \
-#  -H "Accept: application/vnd.github+json" \
-#  -H "X-GitHub-Api-Version: 2022-11-28" \
-#  /repos/msimerson/mail-dmarc/releases \
-# -f tag_name="$TAG_NAME" \
-# -f target_commitish='master' \
-# -f name="$TAG_NAME" \
-# -F draft=true \
-# -F prerelease=false \
-# -F generate_release_notes=true
+# no --target: the tag is already pushed, so the release takes its commit
+set -- "$TAG_NAME" --title "$TAG_NAME" --draft --generate-notes
+if [ -n "$PREV_TAG_NAME" ]; then
+    set -- "$@" --notes-start-tag "$PREV_TAG_NAME"
+fi
+
+gh release create "$@"

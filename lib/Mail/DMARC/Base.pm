@@ -4,7 +4,7 @@ use warnings;
 use feature 'signatures';
 no warnings 'experimental::args_array_with_signatures';    ## no critic (ProhibitNoWarnings)
 
-our $VERSION = '2.20260724';
+our $VERSION = '2.20260827';
 
 use Carp;
 use Config::Tiny;
@@ -341,7 +341,7 @@ Mail::DMARC::Base - DMARC utility functions
 
 =head1 VERSION
 
-version 2.20260724
+version 2.20260827
 
 =head1 METHODS
 

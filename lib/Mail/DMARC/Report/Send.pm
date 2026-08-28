@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use feature 'signatures';
 
-our $VERSION = '2.20260724';
+our $VERSION = '2.20260827';
 
 use parent 'Mail::DMARC::Base';
 
@@ -60,7 +60,7 @@ Mail::DMARC::Report::Send - report sending dispatch class
 
 =head1 VERSION
 
-version 2.20260724
+version 2.20260827
 
 =head1 DESCRIPTION
 

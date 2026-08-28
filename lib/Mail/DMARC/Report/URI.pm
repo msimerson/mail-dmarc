@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use feature 'signatures';
 
-our $VERSION = '2.20260724';
+our $VERSION = '2.20260827';
 
 use Carp;
 use URI;
@@ -68,7 +68,7 @@ Mail::DMARC::Report::URI - a DMARC report URI
 
 =head1 VERSION
 
-version 2.20260724
+version 2.20260827
 
 =head1 SYNOPSIS
 
