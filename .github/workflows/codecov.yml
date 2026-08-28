@@ -32,18 +32,13 @@ jobs:
         continue-on-error: true
         with:
           install: |
-            Regexp::Common
             Config::Tiny
             File::ShareDir
             Net::DNS::Resolver
             DBD::SQLite
             DBD::Pg
             DBD::mysql
-            Net::IP
-            Socket6
             Email::MIME
-            Net::HTTP
-            Net::SMTPS
             XML::LibXML
             Email::Sender
             DBIx::Simple
@@ -51,7 +46,6 @@ jobs:
             Test::File::ShareDir
             Test::Output
             Test::Exception
-            CGI
             XML::Validator::Schema
             Devel::Cover::Report::Coveralls
             Net::DNS::Resolver::Mock

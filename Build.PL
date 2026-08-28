@@ -23,10 +23,11 @@ my $module_build_args = {
   "release_status" => "stable",
   "add_to_cleanup" => [ "dmarc_reports.sqlite", "t/reports-test.sqlite"],
   "recommends" => {
+    "GeoIP2" => 0,
+    "JSON" => 0,
     "Mail::DKIM" => 0,
-    # "MIME::Lite" => 0,
     "Net::IMAP::Simple" => 0,
-    "Net::SMTPS" => 0,
+    "Net::Server::HTTP" => 0,
   },
   "requires" => {
     "perl" => "5.34.3",
@@ -36,32 +37,24 @@ my $module_build_args = {
     "DBIx::Simple" => "1.35",
     "Data::Dumper" => 0,
     "Email::MIME" => 0,
-    "Email::Sender" => 0,
     "Email::Sender::Simple" => "2.000",
     "Email::Simple" => 0,
     "Encode" => 0,
-    "English" => 0,
     "File::ShareDir" => 0,
     "Getopt::Long" => 0,
     "HTTP::Tiny" => 0,
     "IO::Compress::Gzip" => 0,
     "IO::Compress::Zip" => 0,
     "IO::File" => 0,
-    "IO::Socket::SSL" => 0,
     "IO::Uncompress::Gunzip" => 0,
     "IO::Uncompress::Unzip" => 0,
     "Module::Load" => 0,
     "Net::DNS::Resolver" => 0,
-    "Net::IP" => 0,
-    "Net::SSLeay" => 0,
     "POSIX" => 0,
     "Pod::Usage" => 0,
-    "Regexp::Common" => "2013031301",
-    "Socket" => 0,
-    "Socket6" => "0.23",
+    "Socket" => "2.000",
     "Sys::Hostname" => 0,
     "Sys::Syslog" => 0,
-    "Test::File::ShareDir" => 0,
     "URI" => 0,
     "XML::LibXML" => 0,
   },
@@ -91,11 +84,7 @@ my $module_build_args = {
       "prereqs" => {
         "runtime" => {
           "requires" => {
-            "CGI" => 0,
-            "HTTP::Request" => 0,
             "JSON" => 0,
-            "LWP::UserAgent" => 0,
-            "Net::HTTP" => 0,
             "Net::Server::HTTP" => 0,
             "Net::Server" => 2,
           }
@@ -106,10 +95,10 @@ my $module_build_args = {
       "description" => "Send DMARC reports via SMTP",
       "prereqs" => {
         "runtime" => {
-          "Net::SMTPS" => 0,
-          "Mail::DKIM::PrivateKey" => 0,
-          "Mail::DKIM::Signer" => 0,
-          "Mail::DKIM::TextWrap" => 0,
+          "requires" => {
+            "Email::Sender::Simple" => "2.000",
+            "Mail::DKIM" => 0,
+          }
         }
       }
     },
@@ -117,7 +106,10 @@ my $module_build_args = {
       "description" => "Retrieve DMARC reports from an IMAP account",
       "prereqs" => {
         "runtime" => {
-          "Net::IMAP::Simple" => 0,
+          "requires" => {
+            "IO::Socket::SSL" => 0,
+            "Net::IMAP::Simple" => 0,
+          }
         }
       }
     }

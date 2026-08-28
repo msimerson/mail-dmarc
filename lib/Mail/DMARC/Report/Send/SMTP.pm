@@ -8,7 +8,6 @@ no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 our $VERSION = '2.20260724';
 
 use Carp;
-use English '-no_match_vars';
 use Email::MIME;
 
 #use Mail::Sender;  # something to consider

@@ -1,5 +1,10 @@
 ### Unreleased
 
+- perf: lazy load the reporting stack, 40% faster startup
+- chore(deps): drop Regexp::Common, CGI
+- chore(deps): drop Socket6, Net::IP, LWP, Net::SSLeay, Net::SMTPS, CPAN
+- chore(deps): optional IO::Socket::SSL for imap_fetch
+- fix(Build.PL): smtp_sending, imap_fetch missing requires
 - feat(dmarc_httpd): rebuild the viewer, drop jquery and DataTables
 - feat(dmarc_httpd): add overview, sources and reports views
 - feat(store): aggregate queries for volume, alignment and sources

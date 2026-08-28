@@ -12,10 +12,7 @@ use File::ShareDir;
 use HTTP::Tiny;
 use IO::File;
 use Net::DNS::Resolver;
-use Net::IP;
-use Regexp::Common 2013031301 qw /net/;
 use Socket;
-use Socket6 qw//;    # don't export symbols
 require URI::_idna;
 
 sub new( $class, @args ) {
@@ -85,21 +82,21 @@ sub any_inet_ntop( $self, $ip_bin ) {
     $ip_bin or croak "missing IP in request";
 
     if ( length $ip_bin == 16 ) {
-        return Socket6::inet_ntop( AF_INET6, $ip_bin );
+        return Socket::inet_ntop( AF_INET6, $ip_bin );
     }
 
-    return Socket6::inet_ntop( AF_INET, $ip_bin );
+    return Socket::inet_ntop( AF_INET, $ip_bin );
 }
 
 sub any_inet_pton( $self, $ip_txt ) {
     $ip_txt or croak "missing IP in request";
 
     if ( $ip_txt =~ /:/ ) {
-        return Socket6::inet_pton( AF_INET6, $ip_txt )
+        return Socket::inet_pton( AF_INET6, $ip_txt )
             || croak "invalid IPv6: $ip_txt";
     }
 
-    return Socket6::inet_pton( AF_INET, $ip_txt )
+    return Socket::inet_pton( AF_INET, $ip_txt )
         || croak "invalid IPv4: $ip_txt";
 }
 
@@ -281,21 +278,19 @@ sub to_ascii_domain( $self, $domain ) {
 }
 
 sub is_valid_ip( $self, $ip ) {
-
-    # Using Regexp::Common removes perl 5.8 compat
-    # Perl 5.008009 does not support the pattern $RE{net}{IPv6}.
-    # You need Perl 5.01 or later
     return 0 if !defined $ip;
 
-    if ( $ip =~ /:/ ) {
-        return Net::IP->new( $ip, 6 );
-    }
-
-    return Net::IP->new( $ip, 4 );
+    my $family = $ip =~ /:/ ? AF_INET6 : AF_INET;
+    return defined Socket::inet_pton( $family, $ip ) ? 1 : 0;
 }
 
+# RFC 1101
+my $dotted_quad = qr/(?:25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})/;
+my $not_an_ip   = qr/(?!(?:$dotted_quad[.]$dotted_quad[.]$dotted_quad[.]$dotted_quad)(?:[.]|$))/;
+my $host_label  = qr/$not_an_ip[A-Za-z0-9](?:[-A-Za-z0-9]{0,61}[A-Za-z0-9])?/;
+
 sub is_valid_domain( $self, $domain ) {
-    return 0 if $domain !~ /^$RE{net}{domain}{-rfc1101}{-nospace}$/x;
+    return 0 if $domain !~ /^$host_label(?:\.$host_label)*$/x;
     my $tld = ( split /\./, $domain )[-1];
     return 1 if $self->is_public_suffix($tld);
     return 0 if $domain eq 'localhost';

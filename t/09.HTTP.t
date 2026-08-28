@@ -11,7 +11,7 @@ use Test::File::ShareDir
 
 use lib 'lib';
 
-foreach my $req ( 'CGI', 'DBD::SQLite 1.31', 'JSON', 'Net::Server::HTTP' ) {
+foreach my $req ( 'DBD::SQLite 1.31', 'JSON', 'Net::Server::HTTP' ) {
     eval "use $req";
     if ($@) {
         plan( skip_all => "$req not available" );
@@ -31,30 +31,24 @@ use_ok($mod);
 my $http = $mod->new;
 isa_ok( $http, $mod );
 
-my $cgi = CGI->new();
-my $r = Mail::DMARC::HTTP::serve_validator($cgi, $resolver);
+my $r = Mail::DMARC::HTTP::serve_validator('', $resolver);
 ok($r eq 'missing POST data', "serve_validator, missing POST data");
 
-$cgi->param('POSTDATA', 'foo');
-$r = Mail::DMARC::HTTP::serve_validator($cgi, $resolver);
+$r = Mail::DMARC::HTTP::serve_validator('foo', $resolver);
 like($r, qr/expected/, "serve_validator, invalid JSON");
 
-$cgi->param('POSTDATA', '{"foo":"bar"}');
-$r = Mail::DMARC::HTTP::serve_validator($cgi, $resolver);
+$r = Mail::DMARC::HTTP::serve_validator('{"foo":"bar"}', $resolver);
 like($r, qr/no header_from/, "serve_validator, missing header_from");
 
-$cgi->param('POSTDATA', '{"header_from":"tnpi.net"}');
-$r = Mail::DMARC::HTTP::serve_validator($cgi, $resolver);
+$r = Mail::DMARC::HTTP::serve_validator('{"header_from":"tnpi.net"}', $resolver);
 like($r, qr/"spf":""/, "serve_validator, missing SPF");
 like($r, qr/"dkim":"fail"/, "serve_validator, missing DKIM");
 
-$cgi->param('POSTDATA', '{"header_from":"tnpi.net","spf":[{"domain":"tnpi.net","scope":"mfrom","result":"pass"}]}');
-$r = Mail::DMARC::HTTP::serve_validator($cgi, $resolver);
+$r = Mail::DMARC::HTTP::serve_validator('{"header_from":"tnpi.net","spf":[{"domain":"tnpi.net","scope":"mfrom","result":"pass"}]}', $resolver);
 like($r, qr/"spf":"pass"/, "serve_validator, pass SPF");
 like($r, qr/"dkim":"fail"/, "serve_validator, missing DKIM");
 
-$cgi->param('POSTDATA', '{"header_from":"tnpi.net","dkim":[{"domain":"tnpi.net","selector":"mar2013","result":"pass"}]}');
-$r = Mail::DMARC::HTTP::serve_validator($cgi, $resolver);
+$r = Mail::DMARC::HTTP::serve_validator('{"header_from":"tnpi.net","dkim":[{"domain":"tnpi.net","selector":"mar2013","result":"pass"}]}', $resolver);
 like($r, qr/"spf":""/, "serve_validator, missing SPF");
 like($r, qr/"dkim":"pass"/, "serve_validator, pass DKIM");
 

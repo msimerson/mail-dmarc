@@ -10,6 +10,14 @@ use Test::Exception;
 $Data::Dumper::Sortkeys = 1;
 
 use lib 'lib';
+
+# must precede the requires below, which would mask a missing load in Store::SQL
+require Mail::DMARC::Report::Store::SQL;
+ok( Mail::DMARC::Policy->can('new'),
+    'Store::SQL loads Mail::DMARC::Policy' );
+ok( Mail::DMARC::Report::Aggregate::Record->can('new'),
+    'Store::SQL loads Mail::DMARC::Report::Aggregate::Record' );
+
 require Mail::DMARC::Report;
 require Mail::DMARC::Policy;
 require Mail::DMARC::Report::Aggregate::Record;

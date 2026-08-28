@@ -8,8 +8,6 @@ no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 use parent 'Net::Server::HTTP';
 
-use CGI;
-use Data::Dumper;
 use File::ShareDir;
 use IO::Uncompress::Gunzip;
 use JSON -convert_blessed_universally;
@@ -96,13 +94,26 @@ sub return_json_error($err) {
     return $err;                                         # to caller
 }
 
-sub serve_validator( $cgi = undef, $resolver = undef ) {
-    $cgi ||= CGI->new();    # passed in $cgi for testing
+sub read_post_body() {
+    my ($len) = ( $ENV{CONTENT_LENGTH} // '' ) =~ /^([0-9]+)$/ or return '';
+
+    # a short read would truncate the JSON and leave the rest of the body to be
+    # parsed as the next request on a keep-alive connection
+    my $body = '';
+    while ( length $body < $len ) {
+        my $got = read STDIN, my $chunk, $len - length $body;
+        last if !$got;
+        $body .= $chunk;
+    }
+    return $body;
+}
+
+sub serve_validator( $post = undef, $resolver = undef ) {
+    $post //= read_post_body();    # passed in for testing
     my $json = JSON->new->utf8;
 
-    print $cgi->header("application/json");
+    print "Content-Type: application/json\n\n";
 
-    my $post = $cgi->param('POSTDATA');
     if ( !$post ) { return return_json_error("missing POST data"); }
 
     my ( $input, $dmpp, $res );

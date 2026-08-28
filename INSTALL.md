@@ -20,10 +20,8 @@ Copy the mail-dmarc.ini file to your systems preferred local etc directory (/etc
 
 NOTE: Most of the dependencies are optionally required for the DMARC reporting features. Mail::DMARC will perform validation with only these modules:
 
-    Regexp::Common
     Config::Tiny
     File::ShareDir
     Net::DNS::Resolver
-    Net::IP
-    Socket6
+    URI
 
