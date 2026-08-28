@@ -21,8 +21,10 @@ update_modules()
 
 update_meta()
 {
-    # update the version in META.* files
+    # Build.PL does not touch META.*; distmeta is what rewrites them, and it
+    # needs the Build script that distclean then removes
     perl Build.PL
+    ./Build distmeta
     ./Build distclean
     git add META.*
 }
