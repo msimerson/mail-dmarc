@@ -102,6 +102,7 @@ Lookups happen in the browser so the many IPs with no PTR cannot stall
 dmarc_httpd.
 
 Web server settings are in the [http] and [https] sections of mail-dmarc.ini.
+C<post_max> caps the size of a POST body, in bytes, defaulting to 10MB.
 
 Databases created before Mail::DMARC 2.2 lack indexes the aggregate views
 need. F<share/mail_dmarc_indexes.*> adds them, one file per engine.

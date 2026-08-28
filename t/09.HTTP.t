@@ -52,6 +52,47 @@ $r = Mail::DMARC::HTTP::serve_validator('{"header_from":"tnpi.net","dkim":[{"dom
 like($r, qr/"spf":""/, "serve_validator, missing SPF");
 like($r, qr/"dkim":"pass"/, "serve_validator, pass DKIM");
 
+__post_max();
+
+sub __post_max {
+    is( Mail::DMARC::HTTP::post_max(), 10 * 1024 * 1024,
+        'post_max, default when no config is loaded' );
+
+    local $Mail::DMARC::HTTP::report = Mail::DMARC::PurePerl->new->report;
+    $Mail::DMARC::HTTP::report->config->{http}{post_max} = 4096;
+    is( Mail::DMARC::HTTP::post_max(), 4096, 'post_max, from config' );
+
+    for my $bogus ( '', 'lots', '-1' ) {
+        $Mail::DMARC::HTTP::report->config->{http}{post_max} = $bogus;
+        is( Mail::DMARC::HTTP::post_max(), 10 * 1024 * 1024,
+            "post_max, falls back on '$bogus'" );
+    }
+
+    # read_post_body reports an oversized body as undef so that
+    # serve_validator can tell it apart from a request with no body at all
+    $Mail::DMARC::HTTP::report->config->{http}{post_max} = 16;
+    local $ENV{CONTENT_LENGTH} = 17;
+    is( Mail::DMARC::HTTP::read_post_body(), undef,
+        'read_post_body, undef over post_max' );
+
+    $Mail::DMARC::HTTP::report->config->{http}{post_max} = 128;
+    my $r = capture_validator( 129, $resolver );
+    like( $r, qr/larger than post_max of 128 bytes/,
+        'serve_validator, refuses over post_max' );
+}
+
+sub capture_validator {
+    my ( $content_length, $res ) = @_;
+    local $ENV{CONTENT_LENGTH} = $content_length;
+    my $out;
+    open my $fh, '>', \$out or die $!;
+    my $old = select $fh;    ## no critic (ProhibitOneArgSelect)
+    my $r = Mail::DMARC::HTTP::serve_validator( undef, $res );
+    select $old;             ## no critic (ProhibitOneArgSelect)
+    close $fh;
+    return $r;
+}
+
 # agg_params guards the aggregate report views: it coerces what it recognizes
 # and silently drops everything else, so a hand-built query string cannot
 # reach the store with junk in it.

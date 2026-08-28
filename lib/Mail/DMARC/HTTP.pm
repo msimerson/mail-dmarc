@@ -94,8 +94,17 @@ sub return_json_error($err) {
     return $err;                                         # to caller
 }
 
+my $POST_MAX_DEFAULT = 10 * 1024 * 1024;
+
+sub post_max() {
+    my $max = $report ? $report->config->{http}{post_max} : undef;
+    return $max && $max =~ /^([0-9]+)$/ ? $1 : $POST_MAX_DEFAULT;
+}
+
+# '' when there is no body, undef when it is larger than post_max
 sub read_post_body() {
     my ($len) = ( $ENV{CONTENT_LENGTH} // '' ) =~ /^([0-9]+)$/ or return '';
+    return if $len > post_max();
 
     # a short read would truncate the JSON and leave the rest of the body to be
     # parsed as the next request on a keep-alive connection
@@ -109,11 +118,19 @@ sub read_post_body() {
 }
 
 sub serve_validator( $post = undef, $resolver = undef ) {
-    $post //= read_post_body();    # passed in for testing
+    my $too_large;
+    if ( !defined $post ) {    # passed in for testing
+        $post      = read_post_body();
+        $too_large = !defined $post;
+    }
     my $json = JSON->new->utf8;
 
     print "Content-Type: application/json\n\n";
 
+    if ($too_large) {
+        return return_json_error(
+            'POST data larger than post_max of ' . post_max() . ' bytes' );
+    }
     if ( !$post ) { return return_json_error("missing POST data"); }
 
     my ( $input, $dmpp, $res );
