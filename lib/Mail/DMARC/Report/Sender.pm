@@ -17,6 +17,7 @@ use Email::Sender::Simple qw{ sendmail };
 use Email::Sender::Transport::SMTP;
 use Email::Sender::Transport::SMTP::Persistent;
 use Module::Load;
+use Scalar::Util qw(blessed refaddr);
 
 sub new( $class, $args = undef ) {
     $args ||= {};
@@ -47,6 +48,100 @@ sub set_transports_method( $self, $transports_method ) {
     # a list of transports for the given args.
 }
 
+my %SMART_SSL = map { $_ => 1 } qw/ starttls maybestarttls ssl /;
+
+# The submission ports each imply how TLS is negotiated on them.
+my %PORT_TLS = ( 465 => 'ssl', 587 => 'starttls' );
+
+sub smarthost_transports( $self, $report ) {
+    my $smtp = $report->config->{smtp};
+
+    my %common = (
+        host    => $smtp->{smarthost},
+        helo    => $report->sendit->smtp->get_helo_hostname,
+        timeout => 32,
+    );
+
+    my %auth;
+    if ( $smtp->{smartuser} ) {
+        $auth{sasl_username} = $smtp->{smartuser};
+        $auth{sasl_password} = $smtp->{smartpass} if $smtp->{smartpass};
+    }
+
+    my $configured = $self->smarthost_ssl_configured($report);
+
+    if ( my $port = $smtp->{smartport} ) {
+        return $self->smarthost_route( \%common, \%auth, $port,
+            $self->smarthost_ssl($report) )
+            if $configured;
+        return $self->smarthost_route( \%common, \%auth, $port,
+            $PORT_TLS{$port} )
+            if $PORT_TLS{$port};
+        return $self->smarthost_route( \%common, \%auth, $port,
+            %auth ? 'starttls' : 'maybestarttls' );
+    }
+
+    if ($configured) {
+        my $ssl = $self->smarthost_ssl($report);
+        return $self->smarthost_route( \%common, \%auth,
+            ( 'ssl' eq ( $ssl || q{} ) ? 465 : 25 ), $ssl );
+    }
+
+    return (
+        $self->smarthost_route( \%common, \%auth, 465, 'ssl' ),
+        $self->smarthost_route( \%common, \%auth, 587, 'starttls' ),
+        $self->smarthost_route( \%common, \%auth, 25, 'starttls' ),
+    ) if %auth;
+
+    # maybestarttls fails closed when STARTTLS is advertised but the handshake
+    # does not complete, which a relay with a self signed certificate does
+    # every time. Cleartext last is what opportunistic delivery means
+    # (RFC 7435): the alternative is not TLS, it is the report being dropped.
+    # Credentials never reach here, and never get maybestarttls either, which
+    # authenticates over plaintext when STARTTLS is not advertised.
+    return (
+        $self->smarthost_route( \%common, {}, 25, 'maybestarttls' ),
+        $self->smarthost_route( \%common, {}, 587, 'starttls' ),
+        $self->smarthost_route( \%common, {}, 25, 0 ),
+    );
+}
+
+sub smarthost_route( $self, $common, $auth, $port, $ssl ) {
+    return Email::Sender::Transport::SMTP::Persistent->new(
+        { %$common, %$auth, port => $port, ssl => $ssl } );
+}
+
+sub smarthost_ssl_configured( $self, $report ) {
+    my $ssl = $report->config->{smtp}{smartssl};
+    return defined $ssl && $ssl =~ /\S/x ? 1 : 0;
+}
+
+sub smarthost_ssl( $self, $report ) {
+    my $ssl = lc $report->config->{smtp}{smartssl};
+    $ssl =~ s/\A\s+|\s+\z//gx;
+
+    croak "unknown smtp.smartssl '$ssl', expected one of: none, "
+        . join( ', ', sort keys %SMART_SSL )
+        if 'none' ne $ssl && !$SMART_SSL{$ssl};
+
+    return 0 if 'none' eq $ssl;
+    return $ssl;
+}
+
+sub builds_smarthost_routes( $self, $report ) {
+    return 0 if $self->{transports_method} || $self->{transports_object};
+    return 0 if $self->{smarthost};
+    return $report->config->{smtp}{smarthost} ? 1 : 0;
+}
+
+# A route that never answers costs a connect timeout on every message.
+sub keep_smarthost_route( $self, $transport ) {
+    return if 'ARRAY' ne ref $self->{smarthost};
+    return if !grep { refaddr($_) == refaddr($transport) } @{ $self->{smarthost} };
+    $self->{smarthost} = [$transport];
+    return;
+}
+
 # Return a list of transports to try in order.
 sub get_transports_for( $self, $args ) {
 
@@ -62,108 +157,41 @@ sub get_transports_for( $self, $args ) {
 
     my $report = $args->{report};
 
-    my $transport_can_maybetls = $Email::Sender::VERSION > 2.0;
-
-    # Do we have a smart host?
     if ( $report->config->{smtp}{smarthost} ) {
-        return ( $self->{smarthost} ) if $self->{smarthost};
-        my $transport_data = {
-            host    => $report->config->{smtp}->{smarthost},
-            ssl     => 'starttls',
-            port    => 587,
-            helo    => $report->sendit->smtp->get_helo_hostname,
-            timeout => 32,
-        };
-        $transport_data->{sasl_username} = $report->config->{smtp}->{smartuser}
-            if $report->config->{smtp}->{smartuser};
-        $transport_data->{sasl_password} = $report->config->{smtp}->{smartpass}
-            if $report->config->{smtp}->{smartpass};
-        my $transport
-            = Email::Sender::Transport::SMTP::Persistent->new($transport_data);
-        $self->{smarthost} = $transport;
-        return ( $self->{smarthost} );
+        return @{ $self->{smarthost} } if 'ARRAY' eq ref $self->{smarthost};
+        return ( $self->{smarthost} )   if $self->{smarthost};
+        $self->{smarthost} = [ $self->smarthost_transports($report) ];
+        return @{ $self->{smarthost} };
     }
 
     my @smtp_hosts = $report->sendit->smtp->get_smtp_hosts( $args->{to} );
 
     my $log_data = $args->{log_data};
-    my @transports;
     $log_data->{smtp_host} = join( ',', @smtp_hosts );
 
-    if ( Email::Sender::Transport::SMTP->can('hosts') ) {
-        if ($transport_can_maybetls) {
-            push @transports,
-                Email::Sender::Transport::SMTP->new(
-                {   hosts   => \@smtp_hosts,
-                    ssl     => 'maybestarttls',
-                    port    => 25,
-                    helo    => $report->sendit->smtp->get_helo_hostname,
-                    timeout => 32,
-                }
-                );
-        }
-        else {
-            push @transports,
-                Email::Sender::Transport::SMTP->new(
-                {   hosts   => \@smtp_hosts,
-                    ssl     => 'starttls',
-                    port    => 25,
-                    helo    => $report->sendit->smtp->get_helo_hostname,
-                    timeout => 32,
-                }
-                );
-            push @transports,
-                Email::Sender::Transport::SMTP->new(
-                {   hosts   => \@smtp_hosts,
-                    ssl     => 0,
-                    port    => 25,
-                    helo    => $report->sendit->smtp->get_helo_hostname,
-                    timeout => 32,
-                }
-                );
-        }
-    }
-    else {
-        # We can't pass hosts to the transport, so pass a list of transports
-        # for each possible host.
+    my %common = (
+        port    => 25,
+        helo    => $report->sendit->smtp->get_helo_hostname,
+        timeout => 32,
+    );
 
-        if ($transport_can_maybetls) {
-            foreach my $host (@smtp_hosts) {
-                push @transports,
-                    Email::Sender::Transport::SMTP->new(
-                    {   host    => $host,
-                        ssl     => 'maybestarttls',
-                        port    => 25,
-                        helo    => $report->sendit->smtp->get_helo_hostname,
-                        timeout => 32,
-                    }
-                    );
-            }
-        }
-        else {
-            foreach my $host (@smtp_hosts) {
-                push @transports,
-                    Email::Sender::Transport::SMTP->new(
-                    {   host    => $host,
-                        ssl     => 'starttls',
-                        port    => 25,
-                        helo    => $report->sendit->smtp->get_helo_hostname,
-                        timeout => 32,
-                    }
-                    );
-            }
-            foreach my $host (@smtp_hosts) {
-                push @transports,
-                    Email::Sender::Transport::SMTP->new(
-                    {   host    => $host,
-                        ssl     => 0,
-                        port    => 25,
-                        helo    => $report->sendit->smtp->get_helo_hostname,
-                        timeout => 32,
-                    }
-                    );
-            }
-        }
+    # Every MX is tried encrypted before any is tried in the clear. A receiver
+    # whose certificate cannot be verified still fails the handshake closed,
+    # and its reports would otherwise be dropped undelivered.
+    if ( Email::Sender::Transport::SMTP->can('hosts') ) {
+        return map {
+            Email::Sender::Transport::SMTP->new(
+                { %common, hosts => \@smtp_hosts, ssl => $_ } )
+        } ( 'maybestarttls', 0 );
+    }
+
+    # Older transports take one host, so each MX needs its own.
+    my @transports;
+    foreach my $ssl ( 'maybestarttls', 0 ) {
+        push @transports,
+            Email::Sender::Transport::SMTP->new(
+            { %common, host => $_, ssl => $ssl } )
+            foreach @smtp_hosts;
     }
 
     return @transports;
@@ -220,6 +248,10 @@ sub run($self) {
         my $transports_object = $package->new();
         $self->set_transports_object($transports_object);
     }
+
+    $self->smarthost_ssl($report)
+        if $self->builds_smarthost_routes($report)
+        && $self->smarthost_ssl_configured($report);
 
     local $SIG{'ALRM'} = sub { die "timeout\n" };
 
@@ -461,7 +493,16 @@ sub email( $self, $args ) {
         }
     );
     my $success;
+    my $permanent = 0;
+    my $answered  = 0;
     while ( my $transport = shift @transports ) {
+
+        # A cleartext retry is for a handshake that never completed. Once a
+        # host has answered in SMTP it has seen the session, and repeating it
+        # unencrypted would put the report on the wire for a greylisting or a
+        # content rejection.
+        next if $answered && $transport->can('ssl') && !$transport->ssl;
+
         my $done = 0;
         try {
             $success = sendmail(
@@ -474,28 +515,55 @@ sub email( $self, $args ) {
             if ($success) {
                 $log_data->{success} = $success->{message};
                 $done = 1;
+                $self->keep_smarthost_route($transport);
             }
         }
         catch ($error) {
-            next if @transports;
             my $code;
             my $message;
-            if ( ref $error eq 'Email::Sender::Failure' ) {
+
+            # A connect, TLS or AUTH failure arrives as a plain string, and
+            # ->code on that threw past the code that retires the report.
+            if ( blessed($error) && $error->isa('Email::Sender::Failure') ) {
                 $code    = $error->code;
                 $message = $error->message;
             }
             else {
                 $code    = 'error';
-                $message = $error;
+                $message = "$error";
                 chomp $message;
             }
+            $code    //= 'error';
+            $message //= 'unknown send failure';
+
+            # Connect and STARTTLS failures carry no code; anything else means
+            # the host answered.
+            $answered ||= $code ne 'error';
+
+            # Any rung answering 5xx settles the report: the host has refused
+            # it, and the rungs are ports on that same host.
+            $permanent ||= $code =~ /^5/x;
+
+            my $timed_out = 'timeout' eq $message;
+
             $code = join( ', ', $log_data->{send_error_code}, $code )
                 if exists $log_data->{send_error_code};
             $message = join( ', ', $log_data->{send_error}, $message )
                 if exists $log_data->{send_error};
             $log_data->{send_error}      = $message;
             $log_data->{send_error_code} = $code;
-            if ( $error->code && $error->code =~ /^5/ ) {
+
+            # The alarm in send_report bounds the report, not each rung, and
+            # is not rearmed; carrying on would leave the ladder unbounded and
+            # could resend a message the server already took.
+            if ($timed_out) {
+                $report->store->error( $rid, $message );
+                last;
+            }
+
+            next if @transports;
+
+            if ($permanent) {
 
                 # Perma error
                 $log_data->{deleted} = 1;
@@ -503,7 +571,7 @@ sub email( $self, $args ) {
                 $success = 0;
                 last;
             }
-            $report->store->error( $rid, $error->message );
+            $report->store->error( $rid, $message );
         }
         last if $done;
     }

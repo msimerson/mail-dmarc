@@ -1,5 +1,15 @@
 ### Unreleased
 
+- fix(sender): try a smart host on 25, 587, then cleartext
+- fix(sender): try every MX encrypted, then in the clear
+- fix(sender): never offer credentials over opportunistic TLS
+- fix(sender): stop the ladder when the report alarm fires
+- fix(sender): retire reports failing with non-Failure errors
+- fix(sender): keep only the smart host route that worked
+- fix(sender): record send errors from every route tried
+- feat(sender): add smtp.smartport and smtp.smartssl
+- doc(dmarc_send_reports): document smart host routing
+- chore: require Email::Sender::Simple 2.000
 - feat(dmarc_httpd): opt-in reverse DNS hostnames beneath source IPs #309
 
 ### 2.20260724

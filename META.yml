@@ -119,7 +119,7 @@ requires:
   Data::Dumper: '0'
   Email::MIME: '0'
   Email::Sender: '0'
-  Email::Sender::Simple: '1.300032'
+  Email::Sender::Simple: '2.000'
   Email::Simple: '0'
   Encode: '0'
   English: '0'

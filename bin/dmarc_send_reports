@@ -13,6 +13,67 @@ __END__
 
 dmarc_send_reports: send aggregate reports
 
+=head1 DESCRIPTION
+
+Sends each stored aggregate report to the addresses in the C<rua> tag of the
+policy it was collected under, then removes it from the store. A report that
+cannot be delivered is removed too, so a failing recipient does not accumulate.
+
+=head1 SMART HOST
+
+Without C<smtp.smarthost>, reports go to the recipient domain's MX on port 25:
+every MX with opportunistic TLS, then every MX without, so that a receiver
+presenting a certificate this host cannot verify still gets its reports.
+
+With a smart host set, every report is relayed through it instead, and the
+route is chosen as follows.
+
+=over 4
+
+=item * smarthost alone
+
+Port 25 with opportunistic TLS, then port 587 with STARTTLS, then port 25
+without TLS. Most smart hosts are relays on 25; submission is tried second for
+a host that offers only that, authorized by source address. In practice
+submission usually demands AUTH, so a host answering there generally wants
+C<smartuser> and C<smartpass> as well.
+
+The last rung matters for a relay presenting a certificate this host cannot
+verify, a self signed one for instance: opportunistic TLS fails closed once
+STARTTLS has been advertised, and without a cleartext attempt the report is
+dropped rather than delivered. Set C<smartssl> to pin an encrypted route if
+that trade is the wrong one here.
+
+=item * smtp.smartport
+
+Used as given, and it is the only route tried. Ports 465 and 587 imply their
+own TLS, smtps and STARTTLS respectively; anything else gets opportunistic TLS.
+
+=item * smtp.smartssl
+
+Governs TLS whatever the port: C<starttls>, C<maybestarttls>, C<ssl> or
+C<none>. It is the only route tried. Without a port, C<ssl> uses 465 and the
+rest use 25. An unrecognised value stops the run at startup rather than once
+per report.
+
+=item * smtp.smartuser and smtp.smartpass
+
+Port 465 with smtps, then 587 with STARTTLS, then port 25 with STARTTLS.
+Credentials are offered on each, and never over opportunistic TLS, which
+authenticates in the clear against a host that does not advertise STARTTLS.
+Setting C<smartport> or C<smartssl> alongside them pins one route instead,
+including an unencrypted one: a relay on a private network is the operator's
+to configure.
+
+=back
+
+Where a smart host offers more than one route, the first that delivers is the
+only one tried for the rest of the run, so a relay with broken TLS costs one
+failed handshake per run rather than one per report. MX routes are worked out
+per recipient domain and are not remembered. A rejection on one route does not stand for the
+others, since the ports are different services, so the ladder continues; a
+report is retired once every route has been tried.
+
 =head1 AUTHORS
 
 =over 4
