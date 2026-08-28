@@ -1,11 +1,14 @@
 ### Unreleased
 
-- fix(sender): default a smart host to port 25
+- fix(sender): try a smart host on 25, 587, then cleartext
+- fix(sender): try every MX encrypted, then in the clear
 - fix(sender): try 465, 587, 25 for authed smart hosts
 - fix(sender): retire reports failing with non-Failure errors
 - fix(sender): keep only the smart host route that worked
-- fix(sender): stop retrying a route after a 5xx rejection
+- fix(sender): record send errors from every route tried
 - feat(sender): add smtp.smartport and smtp.smartssl
+- doc(dmarc_send_reports): document smart host routing
+- chore: require Email::Sender::Simple 2.000
 - feat(dmarc_httpd): opt-in reverse DNS hostnames beneath source IPs #309
 
 ### 2.20260724

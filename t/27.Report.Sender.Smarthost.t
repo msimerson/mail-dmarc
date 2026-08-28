@@ -42,11 +42,22 @@ sub routes {
         transports_for(@_);
 }
 
-subtest 'a smart host alone is the relay port' => sub {
-    is( routes(), '25/maybestarttls', 'just the relay port' );
+subtest 'a smart host alone tries relay, submission, then cleartext' => sub {
+    is( routes(), '25/maybestarttls -> 587/starttls -> 25/none',
+        'encrypted first, cleartext rather than not delivering' );
     is( routes( smartport => '', smartssl => '', smartuser => '',
             smartpass => '' ),
-        '25/maybestarttls', 'empty settings are not settings' );
+        '25/maybestarttls -> 587/starttls -> 25/none',
+        'empty settings are not settings' );
+};
+
+subtest 'credentials are never offered over cleartext' => sub {
+    my @t = transports_for( smartuser => 'u', smartpass => 'p' );
+    is( scalar( grep { !$_->ssl } @t ), 0, 'no unencrypted rung' );
+
+    # the operator can still ask for one
+    is( routes( smartuser => 'u', smartpass => 'p', smartssl => 'none' ),
+        '25/none', 'unless they say so' );
 };
 
 subtest 'a port is taken as given' => sub {
@@ -123,11 +134,38 @@ subtest 'a transport supplied to the constructor still wins' => sub {
     is( $t[0]->host, 'given.example.com', 'and nothing else is built' );
 };
 
+subtest 'a custom transports class is left to its own routing' => sub {
+    my ( $fh, $ini ) = tempfile( SUFFIX => '.ini' );
+    print {$fh} <<"EO_INI";
+[organization]
+domain   = dmarc-test.example.net
+org_name = Test
+email    = dmarc\@example.com
+
+[report_store]
+backend = SQL
+dsn     = dbi:SQLite:dbname=t/reports-test.sqlite
+
+[smtp]
+hostname   = mail.example.com
+smarthost  = relay.example.com
+smartssl   = tls
+transports = Mail::DMARC::Test::Transport
+EO_INI
+    close $fh;
+
+    unlink 't/reports-test.sqlite' if -e 't/reports-test.sqlite';
+    local $ENV{MAIL_DMARC_CONFIG_FILE} = $ini;
+    lives_ok { Mail::DMARC::Report::Sender->new->run }
+        'smartssl is not consulted when it will never be used';
+    unlink $ini;
+};
+
 subtest 'an unusable smartssl stops the run before any report is touched' => sub {
     my ( $fh, $ini ) = tempfile( SUFFIX => '.ini' );
     print {$fh} <<"EO_INI";
 [organization]
-domain   = example.com
+domain   = dmarc-test.example.net
 org_name = Test
 email    = dmarc\@example.com
 

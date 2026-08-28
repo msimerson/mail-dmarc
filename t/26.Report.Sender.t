@@ -3,6 +3,7 @@ use warnings;
 
 use Test::More;
 use Test::Exception;
+use File::Temp ();
 use Net::DNS::Resolver::Mock;
 
 $ENV{MAIL_DMARC_CONFIG_FILE} = 't/mail-dmarc.ini';
@@ -149,7 +150,7 @@ foreach my $callback_type ( qw{ method object fail fallback } ) {
     }
 }
 
-subtest 'a permanent rejection is not retried on the next route' => sub {
+sub queue_one_report {
     unlink 't/reports-test.sqlite' if -e 't/reports-test.sqlite';
 
     my $dmarc = Mail::DMARC::PurePerl->new;
@@ -168,6 +169,54 @@ subtest 'a permanent rejection is not retried on the next route' => sub {
     $dmarc->validate($policy);
     $dmarc->save_aggregate;
     $dmarc->set_fake_time( time + 86400 );
+    return;
+}
+
+sub reports_queued {
+    return scalar @{ Mail::DMARC::Report->new->store->backend->get_report->{data} };
+}
+
+sub smarthost_ini {
+    my ( $fh, $ini ) = File::Temp::tempfile( SUFFIX => '.ini' );
+    print {$fh} <<"EO_INI";
+[organization]
+domain   = dmarc-test.example.net
+org_name = Test
+email    = dmarc\@example.com
+
+[report_store]
+backend = SQL
+dsn     = dbi:SQLite:dbname=t/reports-test.sqlite
+
+[smtp]
+hostname  = mail.example.com
+smarthost = relay.example.com
+EO_INI
+    close $fh;
+    return $ini;
+}
+
+subtest 'a 5xx on one rung does not stop the ladder' => sub {
+    queue_one_report();
+
+    my $rejected = Mail::DMARC::Test::Transport::Permanent->new;
+    my $working  = Email::Sender::Transport::Test->new;
+
+    my $ini = smarthost_ini();
+    local $ENV{MAIL_DMARC_CONFIG_FILE} = $ini;
+
+    my $sender = Mail::DMARC::Report::Sender->new;
+    $sender->{smarthost} = [ $rejected, $working ];
+    $sender->run;
+
+    # A relay refusing on 25 is exactly what the later rung is for.
+    is( scalar $working->deliveries, 1, 'the next rung is still tried' );
+    cmp_ok( reports_queued(), '==', 0, 'and the report is retired' );
+    unlink $ini;
+};
+
+subtest 'a 5xx still falls back where the routes are different hosts' => sub {
+    queue_one_report();
 
     my $rejected = Mail::DMARC::Test::Transport::Permanent->new;
     my $working  = Email::Sender::Transport::Test->new;
@@ -176,12 +225,8 @@ subtest 'a permanent rejection is not retried on the next route' => sub {
     $sender->set_transports_method( sub { return ( $rejected, $working ) } );
     $sender->run;
 
-    is( scalar $working->deliveries, 0,
-        'the later route is not tried after a 5xx' );
-
-    my $store = Mail::DMARC::Report->new->store;
-    cmp_ok( scalar @{ $store->backend->get_report->{data} }, '==', 0,
-        'and the report is retired straight away' );
+    is( scalar $working->deliveries, 1,
+        'a custom transports list keeps its fallback' );
 };
 
 subtest 'a send failure that is not a Failure object still retires the report'
@@ -217,6 +262,36 @@ subtest 'a send failure that is not a Failure object still retires the report'
 
     cmp_ok( scalar @{ $store->backend->get_report->{data} }, '==', 0,
         'the failed report is retired rather than left to fail forever' );
+};
+
+# Direct to MX has the same exposure as a smart host: a receiver whose
+# certificate cannot be verified fails the handshake closed, and its reports
+# would be dropped rather than delivered.
+subtest 'every MX is tried encrypted before any is tried in the clear' => sub {
+    my $dmarc = Mail::DMARC::PurePerl->new;
+    $dmarc->set_resolver($resolver);
+    my $report = $dmarc->report;
+    $report->config->{smtp}{smarthost} = '';
+
+    my @t = Mail::DMARC::Report::Sender->new->get_transports_for(
+        {   report   => $report,
+            to       => 'rua@fastmaildmarc.com',
+            log_data => {},
+        }
+    );
+
+    cmp_ok( scalar @t, '>=', 2, 'more than one route' );
+    is( $t[0]->ssl, 'maybestarttls', 'encrypted first' );
+    ok( !$t[-1]->ssl, 'cleartext last' );
+
+    my @encrypted = grep { $_->ssl } @t;
+    my @clear     = grep { !$_->ssl } @t;
+    ok( @encrypted && @clear, 'both passes present' );
+
+    my @first = $t[0]->hosts;
+    ok( scalar @first, 'the MX list reaches the transport' );
+    is_deeply( [ $t[-1]->hosts ], \@first,
+        'and the cleartext pass covers the same hosts' );
 };
 
 done_testing;
