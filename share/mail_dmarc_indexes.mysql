@@ -1,0 +1,30 @@
+-- Indexes the aggregate views in dmarc_httpd need. MySQL has no CREATE INDEX
+-- IF NOT EXISTS, so each is added through a procedure that checks first.
+-- Safe to re-run, and to re-run after new indexes are added below.
+--
+--   mysql dmarc_report < mail_dmarc_indexes.mysql
+
+DROP PROCEDURE IF EXISTS mail_dmarc_add_index;
+
+DELIMITER //
+CREATE PROCEDURE mail_dmarc_add_index(
+    IN tbl VARCHAR(64), IN idx VARCHAR(64), IN cols VARCHAR(255))
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = tbl
+          AND INDEX_NAME = idx
+    ) THEN
+        SET @ddl = CONCAT('CREATE INDEX `', idx, '` ON `', tbl, '` (', cols, ')');
+        PREPARE stmt FROM @ddl;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END//
+DELIMITER ;
+
+CALL mail_dmarc_add_index('report', 'report_begin_idx', '`begin`');
+CALL mail_dmarc_add_index('report_record', 'report_record_source_ip_idx', '`source_ip`');
+
+DROP PROCEDURE mail_dmarc_add_index;

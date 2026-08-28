@@ -280,3 +280,12 @@ CREATE TABLE `report_record_spf` (
   CONSTRAINT `report_record_spf_ibfk_3` FOREIGN KEY (`result`) REFERENCES `fk_spf_result` (`result`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
 
+
+--
+-- Indexes
+-- Keep in sync with share/mail_dmarc_indexes.mysql, which upgrades
+-- databases created before these indexes existed.
+--
+
+CREATE INDEX `report_begin_idx` ON `report` (`begin`);
+CREATE INDEX `report_record_source_ip_idx` ON `report_record` (`source_ip`);

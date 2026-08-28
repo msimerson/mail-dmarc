@@ -4,6 +4,7 @@ use warnings;
 use Data::Dumper;
 use Net::DNS::Resolver::Mock;
 use Test::More;
+use Test::Output;
 
 use Test::File::ShareDir
   -share => { -dist => { 'Mail-DMARC' => 'share' } };
@@ -56,6 +57,105 @@ $cgi->param('POSTDATA', '{"header_from":"tnpi.net","dkim":[{"domain":"tnpi.net",
 $r = Mail::DMARC::HTTP::serve_validator($cgi, $resolver);
 like($r, qr/"spf":""/, "serve_validator, missing SPF");
 like($r, qr/"dkim":"pass"/, "serve_validator, pass DKIM");
+
+# agg_params guards the aggregate report views: it coerces what it recognizes
+# and silently drops everything else, so a hand-built query string cannot
+# reach the store with junk in it.
+my %defaulted = Mail::DMARC::HTTP::agg_params( {} );
+ok( $defaulted{since} && $defaulted{until}, "agg_params, window defaults" );
+cmp_ok( $defaulted{until} - $defaulted{since}, '==', 30 * 86400,
+    "agg_params, default window is 30 days" );
+
+my %explicit = Mail::DMARC::HTTP::agg_params(
+    { since => '1700000000', until => '1700086400' } );
+cmp_ok( $explicit{since}, '==', 1700000000, "agg_params, since honored" );
+cmp_ok( $explicit{until}, '==', 1700086400, "agg_params, until honored" );
+
+foreach my $junk ( 'abc', '1e9', '2024-01-01', '12; DROP TABLE report',
+    '99999999999999' )
+{
+    my %args = Mail::DMARC::HTTP::agg_params( { since => $junk } );
+    cmp_ok( $args{since}, '==', $args{until} - 30 * 86400,
+        "agg_params, rejects since=$junk" );
+}
+
+my %paged = Mail::DMARC::HTTP::agg_params( { start => '10', length => '25' } );
+cmp_ok( $paged{start},  '==', 10, "agg_params, start" );
+cmp_ok( $paged{length}, '==', 25, "agg_params, length" );
+
+my %strs = Mail::DMARC::HTTP::agg_params( {
+        from_domain => 'example.com',
+        author      => 'google.com',
+        source_ip   => '192.0.2.1',
+        sort_col    => 'messages',
+        empty       => '',
+        unknown     => 'nope',
+    } );
+is( $strs{from_domain}, 'example.com', "agg_params, from_domain" );
+is( $strs{source_ip},   '192.0.2.1',   "agg_params, source_ip" );
+is( $strs{sort_col},    'messages',    "agg_params, sort_col" );
+ok( !exists $strs{unknown}, "agg_params, drops unknown params" );
+ok( !exists $strs{empty},   "agg_params, drops empty params" );
+
+my %toolong = Mail::DMARC::HTTP::agg_params( { from_domain => 'a' x 254 } );
+ok( !exists $toolong{from_domain}, "agg_params, drops oversized string" );
+
+my %blank = Mail::DMARC::HTTP::agg_params( { from_domain => undef } );
+ok( !exists $blank{from_domain}, "agg_params, drops undef" );
+
+# serve_file resolves a request path under the share directory. Only names
+# matching the viewer's own assets may reach the filesystem: a path that can
+# name a parent directory reads any .js, .css, .html or .json file the daemon
+# can open, which on a mail server is a good deal more than the viewer.
+my @traversals = (
+    '/dmarc/../../META.json',
+    '/dmarc/js/../../../META.json',
+    '/dmarc/./../META.json',
+    '/dmarc/..%2f..%2fMETA.json',
+    '/dmarc/....//META.json',
+    '/dmarc/.hidden.js',
+    '/dmarc//index.html',
+);
+
+foreach my $path (@traversals) {
+    my $output = '';
+    {
+        local *STDOUT;
+        open STDOUT, '>', \$output or die "cannot capture STDOUT: $!";
+        Mail::DMARC::HTTP::serve_file($path);
+    }
+    unlike( $output, qr/"abstract"/,
+        "serve_file, no file served outside share for $path" );
+    like( $output, qr/no such file/,
+        "serve_file, rejects $path" );
+}
+
+# the viewer's own assets still resolve, including one in a subdirectory
+my %assets = (
+    '/dmarc/index.html'  => qr{text/html},
+    '/dmarc/dmarc.css'   => qr{text/css},
+    '/dmarc/js/app.js'   => qr{application/javascript},
+);
+
+foreach my $path ( sort keys %assets ) {
+    my $output = '';
+    {
+        local *STDOUT;
+        open STDOUT, '>', \$output or die "cannot capture STDOUT: $!";
+        Mail::DMARC::HTTP::serve_file($path);
+    }
+    like( $output, $assets{$path}, "serve_file, serves $path" );
+    cmp_ok( length $output, '>', 100, "serve_file, $path has content" );
+}
+
+my $unknown = '';
+{
+    local *STDOUT;
+    open STDOUT, '>', \$unknown or die "cannot capture STDOUT: $!";
+    Mail::DMARC::HTTP::serve_file('/dmarc/mail-dmarc.ini');
+}
+like( $unknown, qr/not recognized/,
+    'serve_file, rejects an extension with no mime type' );
 
 # this starts up the httpd daemon
 #$http->dmarc_httpd();
