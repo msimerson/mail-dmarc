@@ -17,6 +17,7 @@ use Email::Sender::Simple qw{ sendmail };
 use Email::Sender::Transport::SMTP;
 use Email::Sender::Transport::SMTP::Persistent;
 use Module::Load;
+use Scalar::Util qw(blessed);
 
 sub new( $class, $args = undef ) {
     $args ||= {};
@@ -47,6 +48,77 @@ sub set_transports_method( $self, $transports_method ) {
     # a list of transports for the given args.
 }
 
+my %SMART_SSL = map { $_ => 1 } qw/ starttls maybestarttls ssl /;
+
+# Submission on 587 is the right first guess for a smart host, but plenty of
+# relays only listen on 25, and one that offers submission may demand AUTH the
+# operator has no credentials for. Where nothing is configured, try submission
+# and fall back to the relay port rather than failing outright.
+sub smarthost_transports( $self, $report ) {
+    my $smtp = $report->config->{smtp};
+
+    my %common = (
+        host    => $smtp->{smarthost},
+        helo    => $report->sendit->smtp->get_helo_hostname,
+        timeout => 32,
+    );
+
+    my %auth;
+    $auth{sasl_username} = $smtp->{smartuser} if $smtp->{smartuser};
+    $auth{sasl_password} = $smtp->{smartpass} if $smtp->{smartpass};
+
+    # An explicit port or TLS mode is an instruction, and credentials mean the
+    # operator wants an authenticated session. Either way there is one way in,
+    # and quietly retrying elsewhere would ignore what they asked for.
+    if ( $smtp->{smartport} || $self->smarthost_ssl_configured($report) || %auth )
+    {
+        return Email::Sender::Transport::SMTP::Persistent->new(
+            {   %common, %auth,
+                port => $smtp->{smartport} || 587,
+                ssl  => $self->smarthost_ssl($report),
+            }
+        );
+    }
+
+    my @transports = Email::Sender::Transport::SMTP::Persistent->new(
+        { %common, port => 587, ssl => 'starttls' } );
+
+    if ( $Email::Sender::VERSION > 2.0 ) {
+        push @transports, Email::Sender::Transport::SMTP::Persistent->new(
+            { %common, port => 25, ssl => 'maybestarttls' } );
+        return @transports;
+    }
+
+    push @transports, Email::Sender::Transport::SMTP::Persistent->new(
+        { %common, port => 25, ssl => 'starttls' } );
+    push @transports, Email::Sender::Transport::SMTP::Persistent->new(
+        { %common, port => 25, ssl => 0 } );
+    return @transports;
+}
+
+sub smarthost_ssl_configured( $self, $report ) {
+    my $ssl = $report->config->{smtp}{smartssl};
+    return defined $ssl && $ssl =~ /\S/x ? 1 : 0;
+}
+
+sub smarthost_ssl( $self, $report ) {
+    my $ssl = lc( $report->config->{smtp}{smartssl} // 'starttls' );
+    $ssl =~ s/\A\s+|\s+\z//gx;
+
+    return 0 if $ssl eq '' || $ssl eq 'none';
+
+    croak "unknown smtp.smartssl '$ssl', expected one of: none, "
+        . join( ', ', sort keys %SMART_SSL )
+        if !$SMART_SSL{$ssl};
+
+    # Falling back to starttls keeps the session encrypted; sending in the
+    # clear because the installed Email::Sender is old would not.
+    return 'starttls'
+        if 'maybestarttls' eq $ssl && !( $Email::Sender::VERSION > 2.0 );
+
+    return $ssl;
+}
+
 # Return a list of transports to try in order.
 sub get_transports_for( $self, $args ) {
 
@@ -66,22 +138,10 @@ sub get_transports_for( $self, $args ) {
 
     # Do we have a smart host?
     if ( $report->config->{smtp}{smarthost} ) {
-        return ( $self->{smarthost} ) if $self->{smarthost};
-        my $transport_data = {
-            host    => $report->config->{smtp}->{smarthost},
-            ssl     => 'starttls',
-            port    => 587,
-            helo    => $report->sendit->smtp->get_helo_hostname,
-            timeout => 32,
-        };
-        $transport_data->{sasl_username} = $report->config->{smtp}->{smartuser}
-            if $report->config->{smtp}->{smartuser};
-        $transport_data->{sasl_password} = $report->config->{smtp}->{smartpass}
-            if $report->config->{smtp}->{smartpass};
-        my $transport
-            = Email::Sender::Transport::SMTP::Persistent->new($transport_data);
-        $self->{smarthost} = $transport;
-        return ( $self->{smarthost} );
+        return @{ $self->{smarthost} } if 'ARRAY' eq ref $self->{smarthost};
+        return ( $self->{smarthost} )   if $self->{smarthost};
+        $self->{smarthost} = [ $self->smarthost_transports($report) ];
+        return @{ $self->{smarthost} };
     }
 
     my @smtp_hosts = $report->sendit->smtp->get_smtp_hosts( $args->{to} );
@@ -480,22 +540,32 @@ sub email( $self, $args ) {
             next if @transports;
             my $code;
             my $message;
-            if ( ref $error eq 'Email::Sender::Failure' ) {
+
+            # Email::Sender throws subclasses of Failure, never Failure
+            # itself, and a connect, TLS or AUTH problem beneath it arrives as
+            # a plain string. Asking either for ->code without checking threw
+            # from inside this handler, which aborted the whole run and left
+            # every remaining report queued.
+            if ( blessed($error) && $error->isa('Email::Sender::Failure') ) {
                 $code    = $error->code;
                 $message = $error->message;
             }
             else {
                 $code    = 'error';
-                $message = $error;
+                $message = "$error";
                 chomp $message;
             }
+            $code    //= 'error';
+            $message //= 'unknown send failure';
+
             $code = join( ', ', $log_data->{send_error_code}, $code )
                 if exists $log_data->{send_error_code};
             $message = join( ', ', $log_data->{send_error}, $message )
                 if exists $log_data->{send_error};
             $log_data->{send_error}      = $message;
             $log_data->{send_error_code} = $code;
-            if ( $error->code && $error->code =~ /^5/ ) {
+
+            if ( $code =~ /^5/x ) {
 
                 # Perma error
                 $log_data->{deleted} = 1;
@@ -503,7 +573,7 @@ sub email( $self, $args ) {
                 $success = 0;
                 last;
             }
-            $report->store->error( $rid, $error->message );
+            $report->store->error( $rid, $message );
         }
         last if $done;
     }

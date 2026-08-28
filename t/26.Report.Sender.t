@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Test::Exception;
 use Net::DNS::Resolver::Mock;
 
 $ENV{MAIL_DMARC_CONFIG_FILE} = 't/mail-dmarc.ini';
@@ -127,6 +128,55 @@ foreach my $callback_type ( qw{ method object fail fallback } ) {
     };
 
 }
+
+# A connect, TLS or AUTH problem beneath Email::Sender arrives as a plain
+# string, not a Failure object; Email::Sender::Simple passes it through
+# untouched. Asking that string for ->code threw from inside the handler meant
+# to record the failure, and the exception unwound past the code that retires
+# the report, so it stayed queued and failed the same way on every later run.
+{
+    package Mail::DMARC::Test::Transport::PlainDie;
+    use Moo;
+    with 'Email::Sender::Transport';
+    sub send_email {
+        die "SMTP connect failed: 530 5.7.0 Authentication required\n";
+    }
+}
+
+subtest 'a send failure that is not a Failure object still retires the report'
+    => sub {
+    unlink 't/reports-test.sqlite' if -e 't/reports-test.sqlite';
+
+    my $dmarc = Mail::DMARC::PurePerl->new;
+    $dmarc->set_resolver($resolver);
+    $dmarc->set_fake_time( time - 86400 );
+    $dmarc->init();
+    $dmarc->source_ip('66.128.51.165');
+    $dmarc->envelope_to('fastmaildmarc.com');
+    $dmarc->envelope_from('fastmaildmarc.com');
+    $dmarc->header_from('fastmaildmarc.com');
+    $dmarc->dkim( [ { domain => 'tnpi.net', selector => 'jan2015',
+                result => 'fail', human_result => 'fail (body has been altered)' } ] );
+    $dmarc->spf( [ { domain => 'tnpi.net', scope => 'mfrom', result => 'pass' } ] );
+
+    my $policy = $dmarc->discover_policy;
+    $dmarc->validate($policy);
+    $dmarc->save_aggregate;
+    $dmarc->set_fake_time( time + 86400 );
+
+    my $store = Mail::DMARC::Report->new->store;
+    cmp_ok( scalar @{ $store->backend->get_report->{data} }, '==', 1,
+        'one report is queued' );
+
+    my $sender = Mail::DMARC::Report::Sender->new;
+    my $transport = Mail::DMARC::Test::Transport::PlainDie->new;
+    $sender->set_transports_method( sub { return ($transport) } );
+
+    lives_ok { $sender->run } 'the run completes';
+
+    cmp_ok( scalar @{ $store->backend->get_report->{data} }, '==', 0,
+        'the failed report is retired rather than left to fail forever' );
+};
 
 done_testing;
 

@@ -82,6 +82,7 @@ t/22.Report.Send.SMTP.t
 t/23.Report.Send.HTTP.t
 t/25.Report.Receive.t
 t/26.Report.Sender.t
+t/27.Report.Sender.Smarthost.t
 t/30.Validate.t
 t/backends/mail-dmarc.sql.mysql.ini
 t/backends/mail-dmarc.sql.Pg.ini
