@@ -16,6 +16,38 @@ use Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL;
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate;
 
+my @AGG_FIELDS = qw/ messages aligned_both aligned_dkim aligned_spf aligned_none
+    disp_none disp_quarantine disp_reject /;
+
+my %FORWARDING_REASON
+    = map { $_ => 1 } qw/ forwarded mailing_list trusted_forwarder /;
+
+# A source is called aligned while its failures stay under this share of its
+# own volume. Requiring exactly zero would label almost every real source as
+# failing: retries, odd forwarders and low volume abuse of your domain put a
+# few failures behind nearly everyone, and a bucket that catches everything
+# sorts nothing.
+my $FAILING_TOLERANCE = 0.02;
+
+# Forwarding rarely accounts for every failure at a source that also has other
+# problems, so the reasons only have to explain the bulk of them.
+my $FORWARDING_SHARE = 0.5;
+
+# ARC exists to carry authentication across a forwarding hop, so a receiver
+# that overrode its policy on a passing ARC chain is telling you the mail was
+# legitimately forwarded. The aggregate format has no field for that, so
+# receivers report it as local_policy with the result in free text.
+my $ARC_PASS = qr/\barc = pass\b/xi;
+
+sub _explains_forwarding($reason) {
+    return 1 if $FORWARDING_REASON{ $reason->{type} // '' };
+    return 1
+        if 'local_policy' eq ( $reason->{type} // '' )
+        && defined $reason->{comment}
+        && $reason->{comment} =~ $ARC_PASS;
+    return 0;
+}
+
 sub save_aggregate( $self, $agg ) {
 
     $self->db_connect();
@@ -259,6 +291,22 @@ sub get_report( $self, @args ) {
     my $where = '';
     my @where_params;
 
+    # Optional reporting window, so a caller can scope the list the same way
+    # the aggregate views are scoped. Compared against begin, matching how
+    # those views attribute a report to a day.
+    for my $pair ( [ since => 'r.begin', '>=' ], [ until => 'r.begin', '<=' ] ) {
+        my ( $param, $column, $op ) = @$pair;
+        next if !defined $args{$param};
+        next if $args{$param} !~ /\A-?[0-9]+\z/x;
+        $where .= $self->grammar->and_arg( $column, $op );
+        push @where_params, $args{$param};
+    }
+
+    my ( $origin, $origin_params )
+        = $self->_origin_filter( $args{reports} // 'all' );
+    $where .= $origin;
+    push @where_params, @$origin_params;
+
     # Per-column LIKE searches
     for my $pair ( [ search_domain => 'fd.domain' ],
         [ search_author => 'a.org_name' ] )
@@ -309,11 +357,56 @@ sub get_report( $self, @args ) {
         $_->{begin} = $self->epoch_to_iso( $_->{begin} );
         $_->{end}   = $self->epoch_to_iso( $_->{end} );
     }
+
+    $self->attach_report_summaries($reports) if $args{summary};
+
     return {
         recordsTotal    => $total_recs,
         recordsFiltered => $filtered_recs,
         data            => $reports,
     };
+}
+
+# What each report contains, so a viewer has less reason to expand every row.
+# Opt in from get_report: the callers that only want the report envelope should
+# not pay for a second query.
+sub attach_report_summaries( $self, $reports ) {
+    my @rids = map { $_->{rid} } @$reports;
+    return if !@rids;
+
+    my $rows = $self->query( $self->grammar->select_report_summary_query, \@rids );
+
+    my %by_rid;
+    foreach my $row (@$rows) {
+        my $summary = $by_rid{ $row->{rid} } ||= {
+            ( map { $_ => 0 } @AGG_FIELDS ),
+            header_from => {},
+            envelope_to => {},
+        };
+        $summary->{$_} += $row->{$_} || 0 foreach @AGG_FIELDS;
+
+        # A report names one domain per record; the set is usually a single
+        # entry, occasionally a handful.
+        foreach my $field (qw/ header_from envelope_to /) {
+            next if !defined $row->{$field} || '' eq $row->{$field};
+            $summary->{$field}{ $row->{$field} } = 1;
+        }
+    }
+
+    foreach my $report (@$reports) {
+        my $found = $by_rid{ $report->{rid} };
+        if ( !$found ) {
+            $report->{summary}
+                = { ( map { $_ => 0 } @AGG_FIELDS ),
+                    header_from => [], envelope_to => [] };
+            next;
+        }
+        my %summary = map { $_ => $found->{$_} + 0 } @AGG_FIELDS;
+        $summary{$_} = [ sort keys %{ $found->{$_} } ]
+            foreach qw/ header_from envelope_to /;
+        $report->{summary} = \%summary;
+    }
+    return;
 }
 
 sub get_report_policy_published( $self, $rid ) {
@@ -684,6 +777,245 @@ sub get_row_dkim( $self, $rowid ) {
 
 sub get_row_reason( $self, $rowid ) {
     return $self->query( $self->grammar->select_row_reason, [$rowid] );
+}
+
+# A store doubles as the queue for reports this installation is preparing to
+# send, and those are about other people's domains as seen by us. Reports about
+# our domains as seen by others are a different population, and blending the
+# two makes the headline pass rate answer neither question. They are told apart
+# by who authored the report, which is the only signal the schema carries; an
+# installation that has changed its org_name will read its older outgoing
+# reports as received.
+sub _origin_filter( $self, $kind ) {
+    return ( '', [] ) if 'all' eq ( $kind // '' );
+
+    my $org = $self->config->{organization}{org_name};
+    return ( '', [] ) if !$org;
+
+    my $op = 'outgoing' eq ( $kind // '' ) ? '=' : '<>';
+    return ( $self->grammar->and_arg( 'a.org_name', $op ), [$org] );
+}
+
+# Reports are attributed to the day their window begins, matching the day
+# bucketing in the grammar, so a window filter compares against begin alone.
+sub _agg_where( $self, $args ) {
+    my ( $where, @params ) = ('');
+
+    my @filters = (
+        [ since       => 'r.begin',     '>=' ],
+        [ until       => 'r.begin',     '<=' ],
+        [ from_domain => 'fd.domain',   '=' ],
+        [ author      => 'a.org_name',  '=' ],
+    );
+
+    foreach my $filter (@filters) {
+        my ( $arg, $column, $op ) = @$filter;
+        next if !defined $args->{$arg};
+        $where .= $self->grammar->and_arg( $column, $op );
+        push @params, $args->{$arg};
+    }
+
+    if ( defined $args->{source_ip} ) {
+        $where .= $self->grammar->and_arg('rr.source_ip');
+        push @params,
+            $self->grammar->language eq 'postgresql'
+            ? $args->{source_ip}
+            : $self->any_inet_pton( $args->{source_ip} );
+    }
+
+    my ( $origin, $origin_params )
+        = $self->_origin_filter( $args->{reports} // 'received' );
+    $where .= $origin;
+    push @params, @$origin_params;
+
+    return ( $where, \@params );
+}
+
+# DBI hands back aggregates as strings; the JSON views need numbers.
+sub _agg_numify($rows) {
+    foreach my $row (@$rows) {
+        foreach my $field ( @AGG_FIELDS,
+            qw/ day reporters first_seen last_seen reports / )
+        {
+            $row->{$field} += 0 if defined $row->{$field};
+        }
+    }
+    return $rows;
+}
+
+sub _agg_ips_to_text( $self, $rows ) {
+    return $rows if $self->grammar->language eq 'postgresql';
+    foreach my $row (@$rows) {
+        $row->{source_ip} = $self->any_inet_ntop( $row->{source_ip} )
+            if $row->{source_ip};
+    }
+    return $rows;
+}
+
+sub get_timeseries( $self, @args ) {
+    croak "invalid parameters" if @args % 2;
+    my %args = @args;
+
+    my ( $where, $params ) = $self->_agg_where( \%args );
+    my $rows
+        = $self->query( $self->grammar->select_timeseries_query($where), $params );
+
+    return { data => _agg_numify($rows) };
+}
+
+# Totals are summed from the daily buckets rather than queried separately, so
+# the tiles and the chart can never disagree.
+sub _sum_timeseries( $self, %args ) {
+    my $days = $self->get_timeseries(%args)->{data};
+
+    my %totals = map { $_ => 0 } @AGG_FIELDS;
+    foreach my $day (@$days) {
+        $totals{$_} += $day->{$_} || 0 for @AGG_FIELDS;
+    }
+    $totals{dmarc_pass} = $totals{messages} - $totals{aligned_none};
+    $totals{days}       = scalar @$days;
+
+    return \%totals;
+}
+
+sub get_summary( $self, @args ) {
+    croak "invalid parameters" if @args % 2;
+    my %args = @args;
+
+    my %summary = ( current => $self->_sum_timeseries(%args) );
+
+    # An equal-length window immediately before this one, for the deltas.
+    if ( defined $args{since} && defined $args{until} ) {
+        my $span = $args{until} - $args{since};
+        $summary{previous} = $self->_sum_timeseries( %args,
+            since => $args{since} - $span - 1,
+            until => $args{since} - 1,
+        );
+    }
+
+    return \%summary;
+}
+
+sub get_sources( $self, @args ) {
+    croak "invalid parameters" if @args % 2;
+    my %args = @args;
+
+    my ( $where, $params ) = $self->_agg_where( \%args );
+    my $sources
+        = $self->query( $self->grammar->select_sources_query($where), $params );
+    my $reasons = $self->query(
+        $self->grammar->select_source_reasons_query($where), $params );
+
+    $self->_agg_ips_to_text($sources);
+    $self->_agg_ips_to_text($reasons);
+    _agg_numify($sources);
+
+    my %by_ip;
+    foreach my $reason (@$reasons) {
+        push @{ $by_ip{ $reason->{source_ip} } },
+            {
+            type     => $reason->{type},
+            comment  => $reason->{comment},
+            messages => ( $reason->{messages} || 0 ) + 0,
+            };
+    }
+
+    foreach my $source (@$sources) {
+        $source->{reasons} = $by_ip{ $source->{source_ip} } || [];
+        $source->{bucket}  = _classify_source($source);
+    }
+
+    my $sort = $args{sort_col} && $args{sort_col} eq 'messages'
+        ? sub { $b->{messages} <=> $a->{messages} }
+        : sub { $b->{aligned_none} <=> $a->{aligned_none}
+                    || $b->{messages} <=> $a->{messages} };
+    my @sorted = sort $sort @$sources;
+
+    my $total = scalar @sorted;
+
+    # Summed before paging: a caller showing each source's share of the window
+    # cannot derive the denominator from one page.
+    my $messages = 0;
+    $messages += $_->{messages} || 0 foreach @sorted;
+
+    if ( $args{length} ) {
+        my $start = $args{start} || 0;
+        $start = 0 if $start < 0;
+        @sorted = splice @sorted, $start, $args{length};
+    }
+
+    return {
+        recordsTotal  => $total,
+        messagesTotal => $messages,
+        data          => \@sorted,
+    };
+}
+
+# Ranks a source by whether it needs attention. Telling a misconfigured sender
+# apart from an unauthenticated one needs the auth detail tables, which the
+# list query does not join; get_source_detail makes that distinction.
+sub _classify_source($source) {
+    my $failing = $source->{aligned_none} || 0;
+    my $total   = $source->{messages}     || 0;
+
+    return 'aligned' if !$failing;
+    return 'aligned' if $total && ( $failing / $total ) < $FAILING_TOLERANCE;
+
+    my $forwarded = 0;
+    foreach my $reason ( @{ $source->{reasons} } ) {
+        $forwarded += $reason->{messages} if _explains_forwarding($reason);
+    }
+    return 'forwarded' if $forwarded >= $failing * $FORWARDING_SHARE;
+
+    return 'failing';
+}
+
+sub get_source_detail( $self, @args ) {
+    croak "invalid parameters" if @args % 2;
+    my %args = @args;
+    croak "missing source_ip" if !defined $args{source_ip};
+
+    my ( $where, $params ) = $self->_agg_where( \%args );
+
+    my $records
+        = $self->query( $self->grammar->select_source_detail_query($where), $params );
+    my $dkim
+        = $self->query( $self->grammar->select_source_dkim_query($where), $params );
+    my $spf
+        = $self->query( $self->grammar->select_source_spf_query($where), $params );
+
+    _agg_numify($_) for $records, $dkim, $spf;
+
+    my $failing = 0;
+    $failing += $_->{messages}
+        foreach grep { 'pass' ne ( $_->{dkim} // '' ) && 'pass' ne ( $_->{spf} // '' ) }
+        @$records;
+
+    my $bucket
+        = !$failing            ? 'aligned'
+        : ( @$dkim || @$spf )  ? 'broken'
+        :                        'unauthenticated';
+
+    return {
+        source_ip => $args{source_ip},
+        bucket    => $bucket,
+        records   => $records,
+        dkim      => $dkim,
+        spf       => $spf,
+    };
+}
+
+sub get_report_domains( $self, @args ) {
+    croak "invalid parameters" if @args % 2;
+    my %args = @args;
+
+    my ( $where, $params )
+        = $self->_origin_filter( $args{reports} // 'received' );
+    my $rows
+        = $self->query( $self->grammar->select_report_domains_query($where),
+        $params );
+
+    return { data => _agg_numify($rows) };
 }
 
 sub grammar($self) {

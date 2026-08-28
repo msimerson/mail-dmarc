@@ -1,0 +1,32 @@
+-- Indexes required by the aggregate report views in dmarc_httpd.
+--
+-- Databases created before Mail::DMARC 2.2 have no indexes beyond the
+-- implicit primary keys. Every lookup by report_id was therefore a full scan
+-- of report_record, whose cost grows with the whole table rather than with
+-- the rows wanted, and which is I/O bound once the database outgrows the page
+-- cache. Expanding a single report row in the web interface paid that cost
+-- once for the row query and again for each of its reason lookups.
+--
+-- Measured on a generated store of 65,700 reports / 1.1M report records:
+--
+--   expand one report row (get_rr)   32.2 ms -> 0.1 ms
+--   source detail, 30 days          132.5 ms -> 7.5 ms
+--   summary, 30 days                101.8 ms -> 18.1 ms
+--   report list, first page           0.6 ms -> 0.3 ms
+--
+-- Cost is about 7% on report record insert throughput.
+--
+-- Safe to re-run: every statement is IF NOT EXISTS.
+--
+--   sqlite3 /path/to/reports.sqlite < mail_dmarc_indexes.sqlite
+
+CREATE INDEX IF NOT EXISTS report_begin_idx ON report(`begin`);
+CREATE INDEX IF NOT EXISTS report_author_id_idx ON report(author_id);
+CREATE INDEX IF NOT EXISTS report_from_domain_id_idx ON report(from_domain_id);
+CREATE INDEX IF NOT EXISTS report_error_report_id_idx ON report_error(report_id);
+CREATE INDEX IF NOT EXISTS report_policy_published_report_id_idx ON report_policy_published(report_id);
+CREATE INDEX IF NOT EXISTS report_record_report_id_idx ON report_record(report_id);
+CREATE INDEX IF NOT EXISTS report_record_source_ip_idx ON report_record(source_ip);
+CREATE INDEX IF NOT EXISTS report_record_reason_report_record_id_idx ON report_record_reason(report_record_id);
+CREATE INDEX IF NOT EXISTS report_record_dkim_report_record_id_idx ON report_record_dkim(report_record_id);
+CREATE INDEX IF NOT EXISTS report_record_spf_report_record_id_idx ON report_record_spf(report_record_id);

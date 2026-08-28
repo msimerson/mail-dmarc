@@ -12,6 +12,7 @@ $Data::Dumper::Sortkeys = 1;
 use lib 'lib';
 require Mail::DMARC::Report;
 require Mail::DMARC::Policy;
+require Mail::DMARC::Report::Aggregate::Record;
 
 my ($report_id, $rr_id, $policy, $reasons);
 my $begin = time - 10000;
@@ -107,6 +108,8 @@ while ( my $file = readdir( $dir ) ) {
     test_populate_agg_metadata();
     test_populate_agg_records();
 
+    test_aggregates();
+
     test_cleanup( $provider );
 }
 closedir( $dir );
@@ -136,6 +139,423 @@ DBI error: table report has no column named domin
 DBI error: Unknown column \'domin\' in \'field list\'
 ', $msg;
     }
+}
+
+sub test_aggregates {
+    my $org   = 'Aggregate Test Co';
+    my $begin = 1700000000 - ( 1700000000 % 86400 );
+    my $end   = $begin + 86399;
+
+    my $report = Mail::DMARC::Report->new();
+    $report->aggregate->metadata->org_name($org);
+    $report->aggregate->metadata->email('dmarc@aggregate.example');
+    $report->aggregate->metadata->begin($begin);
+    $report->aggregate->metadata->end($end);
+    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject');
+    $pol->apply_defaults;
+    $pol->domain('agg.example.com');
+    $pol->rua('mailto:dmarc@aggregate.example');
+    $report->aggregate->policy_published($pol);
+
+    my $agg_rid = $sql->get_report_id( $report->aggregate );
+    ok( $agg_rid, "test_aggregates, report created, $agg_rid" );
+
+    # ip, count, disposition, dkim, spf, reasons, auth rows?
+    my @records = (
+        [ '10.0.0.1', 100, 'none',       'pass', 'pass', [],               1 ],
+        [ '10.0.0.2',  40, 'none',       'pass', 'fail', ['forwarded'],    1 ],
+        [ '10.0.0.3',  25, 'quarantine', 'fail', 'fail', [],               1 ],
+        [ '10.0.0.3',   5, 'reject',     'fail', 'fail', [],               1 ],
+        [ '10.0.0.4',  12, 'none',       'fail', 'fail', ['mailing_list'], 0 ],
+        [ '10.0.0.5', 995, 'none',       'pass', 'pass', [],               1 ],
+        [ '10.0.0.5',   5, 'reject',     'fail', 'fail', [],               1 ],
+        [ '10.0.0.6', 890, 'none',       'pass', 'pass', [],               1 ],
+        [ '10.0.0.6', 100, 'reject',     'fail', 'fail', [],               1 ],
+        [ '10.0.0.7',  10, 'none',       'fail', 'fail', ['forwarded'],    1 ],
+        [ '10.0.0.7',   8, 'reject',     'fail', 'fail', [],               1 ],
+    );
+
+    foreach my $r (@records) {
+        my ( $ip, $count, $disp, $dkim, $spf, $reasons, $with_auth ) = @$r;
+        my $rec = Mail::DMARC::Report::Aggregate::Record->new;
+        $rec->identifiers(
+            header_from   => 'agg.example.com',
+            envelope_to   => 'rcpt.example.com',
+            envelope_from => 'agg.example.com',
+        );
+        $rec->row(
+            source_ip        => $ip,
+            count            => $count,
+            policy_evaluated =>
+                { disposition => $disp, dkim => $dkim, spf => $spf },
+        );
+        my $rr_id = $sql->insert_rr( $agg_rid, $rec );
+        $sql->insert_rr_reason( $rr_id, $_, 'test' ) foreach @$reasons;
+        next if !$with_auth;
+        $sql->insert_rr_dkim( $rr_id,
+            { domain => 'agg.example.com', selector => 'sel1', result => $dkim } );
+        $sql->insert_rr_spf( $rr_id,
+            { domain => 'agg.example.com', scope => 'mfrom', result => $spf } );
+    }
+
+    # org_name scopes every assertion to this report alone
+    my %window = ( author => $org, since => $begin - 1, until => $begin + 1 );
+
+    test_get_timeseries( \%window, $begin );
+    test_get_summary( \%window );
+    test_get_sources( \%window );
+    test_get_source_detail( \%window );
+    test_get_report_domains();
+    test_get_report_window( \%window, $begin );
+    test_report_summaries( $begin );
+    test_arc_override();
+    test_origin_filter();
+}
+
+# Reports this host authored are its outgoing queue, about other people's
+# domains. They are a different population from reports others sent us, so the
+# aggregate views leave them out unless asked. Also covers a NULL count, which
+# the local path writes for a single not yet aggregated message.
+sub test_origin_filter {
+    my $org   = $sql->config->{organization}{org_name};
+    my $begin = 1680000000 - ( 1680000000 % 86400 );
+
+    my $report = Mail::DMARC::Report->new();
+    $report->aggregate->metadata->org_name($org);
+    $report->aggregate->metadata->email('dmarc@outgoing.example');
+    $report->aggregate->metadata->begin($begin);
+    $report->aggregate->metadata->end( $begin + 86399 );
+    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject');
+    $pol->apply_defaults;
+    $pol->domain('outgoing.example.com');
+    $pol->rua('mailto:dmarc@outgoing.example');
+    $report->aggregate->policy_published($pol);
+
+    my $rid = $sql->get_report_id( $report->aggregate );
+    ok( $rid, "test_origin_filter, outgoing report created" );
+
+    foreach my $count ( 7, undef ) {
+        my $rec = Mail::DMARC::Report::Aggregate::Record->new;
+        $rec->identifiers(
+            header_from   => 'outgoing.example.com',
+            envelope_to   => 'rcpt.example.com',
+            envelope_from => 'outgoing.example.com',
+        );
+        $rec->row(
+            source_ip        => '10.2.0.1',
+            count            => $count,
+            policy_evaluated =>
+                { disposition => 'none', dkim => 'pass', spf => 'pass' },
+        );
+        ok( $sql->insert_rr( $rid, $rec ), 'test_origin_filter, record stored' );
+    }
+
+    my %window = ( since => $begin, until => $begin );
+
+    cmp_ok( $sql->get_summary(%window)->{current}{messages}, '==', 0,
+        'get_summary, outgoing reports excluded by default' );
+
+    # 7 from the counted record, 1 from the NULL one: the local path writes a
+    # row per message and fills the count in when the report is aggregated
+    cmp_ok( $sql->get_summary( %window, reports => 'outgoing' )->{current}{messages},
+        '==', 8, 'get_summary, outgoing counts a NULL count as one message' );
+    cmp_ok( $sql->get_summary( %window, reports => 'all' )->{current}{messages},
+        '==', 8, 'get_summary, reports=all includes outgoing' );
+
+    my $sources = $sql->get_sources( %window, reports => 'outgoing' );
+    cmp_ok( $sources->{recordsTotal}, '==', 1, 'get_sources, outgoing source' );
+    cmp_ok( $sources->{data}[0]{messages}, '==', 8,
+        'get_sources, NULL count included' );
+
+    cmp_ok( scalar @{ $sql->get_sources(%window)->{data} }, '==', 0,
+        'get_sources, outgoing excluded by default' );
+
+    my %domains = map { $_->{domain} => $_ }
+        @{ $sql->get_report_domains->{data} };
+    ok( !$domains{'outgoing.example.com'},
+        'get_report_domains, outgoing domain not offered by default' );
+
+    my %all = map { $_->{domain} => $_ }
+        @{ $sql->get_report_domains( reports => 'all' )->{data} };
+    ok( $all{'outgoing.example.com'},
+        'get_report_domains, reports=all offers it' );
+
+    # the report list is an audit trail, so it shows both unless asked
+    my $listed = $sql->get_report( search_domain => 'outgoing.example.com' );
+    cmp_ok( $listed->{recordsFiltered}, '==', 1,
+        'get_report, lists outgoing by default' );
+    cmp_ok(
+        $sql->get_report( search_domain => 'outgoing.example.com',
+            reports => 'received' )->{recordsFiltered},
+        '==', 0, 'get_report, reports=received hides outgoing' );
+}
+
+# ARC carries authentication across a forwarding hop. A receiver that overrode
+# its policy on a passing chain reports local_policy with the result in free
+# text, so those failures are explained and not the operator's to chase.
+sub test_arc_override {
+    my $org   = 'ARC Test Co';
+    my $begin = 1690000000 - ( 1690000000 % 86400 );
+
+    my $report = Mail::DMARC::Report->new();
+    $report->aggregate->metadata->org_name($org);
+    $report->aggregate->metadata->email('dmarc@arc.example');
+    $report->aggregate->metadata->begin($begin);
+    $report->aggregate->metadata->end( $begin + 86399 );
+    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject');
+    $pol->apply_defaults;
+    $pol->domain('arc.example.com');
+    $pol->rua('mailto:dmarc@arc.example');
+    $report->aggregate->policy_published($pol);
+
+    my $rid = $sql->get_report_id( $report->aggregate );
+    ok( $rid, "test_arc_override, report created" );
+
+    my @records = (
+        [ '10.1.0.1', 20, 'arc=pass' ],
+        [ '10.1.0.2', 20, 'arc=fail' ],
+        [ '10.1.0.3', 20, undef ],
+        [ '10.1.0.4', 20, 'arc=pass as[1].d=example.org as[1].s=sel' ],
+    );
+
+    foreach my $r (@records) {
+        my ( $ip, $count, $comment ) = @$r;
+        my $rec = Mail::DMARC::Report::Aggregate::Record->new;
+        $rec->identifiers(
+            header_from   => 'arc.example.com',
+            envelope_to   => 'rcpt.example.com',
+            envelope_from => 'arc.example.com',
+        );
+        $rec->row(
+            source_ip        => $ip,
+            count            => $count,
+            policy_evaluated =>
+                { disposition => 'none', dkim => 'fail', spf => 'fail' },
+        );
+        my $rr_id = $sql->insert_rr( $rid, $rec );
+        $sql->insert_rr_reason( $rr_id, 'local_policy', $comment );
+    }
+
+    my $sources = $sql->get_sources( author => $org,
+        since => $begin, until => $begin );
+    my %by_ip = map { $_->{source_ip} => $_ } @{ $sources->{data} };
+
+    is( $by_ip{'10.1.0.1'}{bucket}, 'forwarded',
+        'arc=pass explains the failures' );
+    is( $by_ip{'10.1.0.4'}{bucket}, 'forwarded',
+        'arc=pass with chain detail explains the failures' );
+    is( $by_ip{'10.1.0.2'}{bucket}, 'failing',
+        'arc=fail does not explain the failures' );
+    is( $by_ip{'10.1.0.3'}{bucket}, 'failing',
+        'local_policy with no comment does not explain the failures' );
+
+    is( $by_ip{'10.1.0.1'}{reasons}[0]{comment}, 'arc=pass',
+        'reason comment is carried through' );
+}
+
+sub test_report_summaries {
+    my ($begin) = @_;
+
+    my $plain = $sql->get_report( search_author => 'Aggregate Test Co',
+        since => $begin, until => $begin );
+    ok( !exists $plain->{data}[0]{summary},
+        'get_report, no summary unless asked' );
+
+    my $r = $sql->get_report( search_author => 'Aggregate Test Co',
+        since => $begin, until => $begin, summary => 1 );
+    my $summary = $r->{data}[0]{summary};
+
+    ok( $summary, 'get_report, summary attached' ) or return;
+    cmp_ok( $summary->{messages}, '==', 2190, 'report summary, messages' );
+    cmp_ok( $summary->{aligned_both}, '==', 1985, 'report summary, aligned_both' );
+    cmp_ok( $summary->{aligned_none}, '==', 165,  'report summary, aligned_none' );
+    cmp_ok(
+        $summary->{aligned_both} + $summary->{aligned_dkim}
+            + $summary->{aligned_spf} + $summary->{aligned_none},
+        '==', $summary->{messages},
+        'report summary, buckets partition the report'
+    );
+
+    # the domain sets are assembled in Perl, because the three engines spell
+    # string aggregation differently
+    is_deeply( $summary->{header_from}, ['agg.example.com'],
+        'report summary, From domains' );
+    is_deeply( $summary->{envelope_to}, ['rcpt.example.com'],
+        'report summary, To domains' );
+}
+
+sub test_get_report_window {
+    my ( $window, $begin ) = @_;
+
+    my $inside = $sql->get_report( search_author => 'Aggregate Test Co',
+        since => $begin, until => $begin );
+    cmp_ok( $inside->{recordsFiltered}, '==', 1,
+        'get_report, window includes a report beginning in it' );
+
+    my $before = $sql->get_report( search_author => 'Aggregate Test Co',
+        since => $begin + 1, until => $begin + 86400 );
+    cmp_ok( $before->{recordsFiltered}, '==', 0,
+        'get_report, window excludes a report beginning before it' );
+
+    # A junk bound is dropped rather than silently matching nothing, so a
+    # hand-edited query string cannot make the list look empty.
+    my $junk = $sql->get_report( search_author => 'Aggregate Test Co',
+        since => 'yesterday' );
+    cmp_ok( $junk->{recordsFiltered}, '==', 1,
+        'get_report, non-numeric window bound ignored' );
+}
+
+sub test_get_timeseries {
+    my ( $window, $begin ) = @_;
+    my $days = $sql->get_timeseries(%$window)->{data};
+
+    cmp_ok( scalar @$days, '==', 1, 'get_timeseries, one day bucket' );
+    cmp_ok( $days->[0]{day}, '==', $begin, "get_timeseries, day is $begin" );
+    cmp_ok( $days->[0]{messages}, '==', 2190, 'get_timeseries, 2190 messages' );
+}
+
+sub test_get_summary {
+    my ($window) = @_;
+    my $summary = $sql->get_summary(%$window);
+    my $now     = $summary->{current};
+
+    my %expect = (
+        messages        => 2190,
+        aligned_both    => 1985,
+        aligned_dkim    => 40,
+        aligned_spf     => 0,
+        aligned_none    => 165,
+        disp_none       => 2047,
+        disp_quarantine => 25,
+        disp_reject     => 118,
+        dmarc_pass      => 2025,
+        days            => 1,
+    );
+    foreach my $field ( sort keys %expect ) {
+        cmp_ok( $now->{$field}, '==', $expect{$field},
+            "get_summary, $field is $expect{$field}" );
+    }
+
+    # the buckets partition the volume; a NULL slipping into a comparison
+    # would silently drop messages from all four
+    cmp_ok(
+        $now->{aligned_both} + $now->{aligned_dkim}
+            + $now->{aligned_spf} + $now->{aligned_none},
+        '==', $now->{messages}, 'get_summary, alignment buckets partition volume'
+    );
+    cmp_ok(
+        $now->{disp_none} + $now->{disp_quarantine} + $now->{disp_reject},
+        '==', $now->{messages}, 'get_summary, dispositions partition volume'
+    );
+
+    ok( $summary->{previous}, 'get_summary, previous window present' );
+    cmp_ok( $summary->{previous}{messages}, '==', 0,
+        'get_summary, previous window is empty' );
+
+    my $unbounded = $sql->get_summary( author => 'Aggregate Test Co' );
+    ok( !$unbounded->{previous},
+        'get_summary, no previous window without both bounds' );
+}
+
+sub test_get_sources {
+    my ($window) = @_;
+    my $sources = $sql->get_sources(%$window);
+
+    cmp_ok( $sources->{recordsTotal}, '==', 7, 'get_sources, 7 sources' );
+    cmp_ok( $sources->{messagesTotal}, '==', 2190,
+        'get_sources, messagesTotal covers the window' );
+
+    my @ips = map { $_->{source_ip} } @{ $sources->{data} };
+    is_deeply( \@ips, [ '10.0.0.6', '10.0.0.3', '10.0.0.7', '10.0.0.4',
+            '10.0.0.5', '10.0.0.1', '10.0.0.2' ],
+        'get_sources, ranked by failing volume' )
+        or diag "got: @ips";
+
+    my %by_ip = map { $_->{source_ip} => $_ } @{ $sources->{data} };
+
+    cmp_ok( $by_ip{'10.0.0.3'}{messages}, '==', 30,
+        'get_sources, two records for one IP are summed' );
+    cmp_ok( $by_ip{'10.0.0.3'}{reporters}, '==', 1, 'get_sources, reporters' );
+
+    is( $by_ip{'10.0.0.1'}{bucket}, 'aligned',   'get_sources, bucket aligned' );
+    is( $by_ip{'10.0.0.2'}{bucket}, 'aligned',
+        'get_sources, DKIM-only pass is aligned' );
+    is( $by_ip{'10.0.0.3'}{bucket}, 'failing',   'get_sources, bucket failing' );
+    is( $by_ip{'10.0.0.4'}{bucket}, 'forwarded',
+        'get_sources, failures explained by forwarding' );
+
+    # 5 of 1000 fail: under the tolerance, so not worth an operator's attention
+    is( $by_ip{'10.0.0.5'}{bucket}, 'aligned',
+        'get_sources, failures under tolerance stay aligned' );
+    cmp_ok( $by_ip{'10.0.0.5'}{aligned_none}, '==', 5,
+        'get_sources, tolerated failures are still counted' );
+
+    # 100 of 1000 fail: over the tolerance
+    is( $by_ip{'10.0.0.6'}{bucket}, 'failing',
+        'get_sources, failures over tolerance are failing' );
+
+    # forwarding explains 10 of 18 failures, the bulk but not all of them
+    is( $by_ip{'10.0.0.7'}{bucket}, 'forwarded',
+        'get_sources, forwarding need only explain the bulk' );
+
+    is_deeply( $by_ip{'10.0.0.4'}{reasons},
+        [ { type => 'mailing_list', comment => 'test', messages => 12 } ],
+        'get_sources, reasons attached' );
+
+    my $by_volume = $sql->get_sources( %$window, sort_col => 'messages' );
+    my @ranked = map { $_->{source_ip} } @{ $by_volume->{data} };
+    is_deeply( \@ranked, [ '10.0.0.5', '10.0.0.6', '10.0.0.1', '10.0.0.2',
+            '10.0.0.3', '10.0.0.7', '10.0.0.4' ],
+        'get_sources, sort_col messages' )
+        or diag "got: @ranked";
+
+    my $page = $sql->get_sources( %$window, start => 1, length => 2 );
+    cmp_ok( $page->{recordsTotal}, '==', 7,
+        'get_sources, recordsTotal ignores paging' );
+    cmp_ok( $page->{messagesTotal}, '==', 2190,
+        'get_sources, messagesTotal ignores paging' );
+    cmp_ok( scalar @{ $page->{data} }, '==', 2, 'get_sources, page of 2' );
+    is( $page->{data}[0]{source_ip}, '10.0.0.3', 'get_sources, paging offset' );
+}
+
+sub test_get_source_detail {
+    my ($window) = @_;
+
+    my $broken = $sql->get_source_detail( %$window, source_ip => '10.0.0.3' );
+    is( $broken->{bucket}, 'broken',
+        'get_source_detail, presented auth that failed is broken' );
+    cmp_ok( scalar @{ $broken->{records} }, '==', 2,
+        'get_source_detail, one row per disposition' );
+    cmp_ok( $broken->{records}[0]{messages}, '==', 25,
+        'get_source_detail, records ranked by volume' );
+    is( $broken->{dkim}[0]{selector}, 'sel1',
+        'get_source_detail, DKIM selector' );
+    cmp_ok( $broken->{dkim}[0]{messages}, '==', 30,
+        'get_source_detail, DKIM volume summed' );
+    is( $broken->{spf}[0]{scope}, 'mfrom', 'get_source_detail, SPF scope' );
+
+    my $spoof = $sql->get_source_detail( %$window, source_ip => '10.0.0.4' );
+    is( $spoof->{bucket}, 'unauthenticated',
+        'get_source_detail, no auth presented is unauthenticated' );
+    cmp_ok( scalar @{ $spoof->{dkim} }, '==', 0, 'get_source_detail, no DKIM' );
+
+    my $clean = $sql->get_source_detail( %$window, source_ip => '10.0.0.1' );
+    is( $clean->{bucket}, 'aligned', 'get_source_detail, bucket aligned' );
+
+    throws_ok { $sql->get_source_detail(%$window) } qr/missing source_ip/,
+        'get_source_detail, source_ip required';
+    throws_ok { $sql->get_timeseries( 'odd' ) } qr/invalid parameters/,
+        'get_timeseries, odd parameter list';
+}
+
+sub test_get_report_domains {
+    my $domains = $sql->get_report_domains->{data};
+
+    ok( @$domains, 'get_report_domains, ' . scalar(@$domains) . ' domains' );
+    my ($agg) = grep { 'agg.example.com' eq $_->{domain} } @$domains;
+    ok( $agg, 'get_report_domains, includes agg.example.com' );
+    cmp_ok( $agg->{reports}, '>=', 1, 'get_report_domains, report count' );
+    cmp_ok( $agg->{first_seen}, '>', 0, 'get_report_domains, first_seen' );
 }
 
 sub test_cleanup {

@@ -173,3 +173,19 @@ CREATE TABLE `report_record_spf` (
   `scope` TEXT DEFAULT NULL REFERENCES "fk_spf_scope"("scope") ON UPDATE CASCADE ON DELETE RESTRICT,
   `result` TEXT NOT NULL REFERENCES "fk_spf_result"("result") ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+
+-- Indexes
+-- Keep in sync with share/mail_dmarc_indexes.sqlite, which upgrades
+-- databases created before these indexes existed.
+
+CREATE INDEX IF NOT EXISTS report_begin_idx ON report(`begin`);
+CREATE INDEX IF NOT EXISTS report_author_id_idx ON report(author_id);
+CREATE INDEX IF NOT EXISTS report_from_domain_id_idx ON report(from_domain_id);
+CREATE INDEX IF NOT EXISTS report_error_report_id_idx ON report_error(report_id);
+CREATE INDEX IF NOT EXISTS report_policy_published_report_id_idx ON report_policy_published(report_id);
+CREATE INDEX IF NOT EXISTS report_record_report_id_idx ON report_record(report_id);
+CREATE INDEX IF NOT EXISTS report_record_source_ip_idx ON report_record(source_ip);
+CREATE INDEX IF NOT EXISTS report_record_reason_report_record_id_idx ON report_record_reason(report_record_id);
+CREATE INDEX IF NOT EXISTS report_record_dkim_report_record_id_idx ON report_record_dkim(report_record_id);
+CREATE INDEX IF NOT EXISTS report_record_spf_report_record_id_idx ON report_record_spf(report_record_id);

@@ -279,6 +279,178 @@ sub delete_from( $self, $table ) {
     return "DELETE FROM $table WHERE 1=1";
 }
 
+# Aggregate queries for the report views. Every one of these is scoped by a
+# WHERE fragment the store builds from placeholders, so $where never carries
+# caller-supplied text.
+
+# The DMARC-evaluated (aligned) results live in report_record.dkim/spf, which
+# are nullable; COALESCE keeps a NULL out of the comparison so that no message
+# escapes all four alignment buckets.
+sub outcome_buckets {
+    return <<'EO_BUCKETS'
+    SUM(CASE WHEN COALESCE(rr.dkim,'')='pass'  AND COALESCE(rr.spf,'')='pass'
+             THEN COALESCE(rr.count,1) ELSE 0 END) AS aligned_both,
+    SUM(CASE WHEN COALESCE(rr.dkim,'')='pass'  AND COALESCE(rr.spf,'')<>'pass'
+             THEN COALESCE(rr.count,1) ELSE 0 END) AS aligned_dkim,
+    SUM(CASE WHEN COALESCE(rr.dkim,'')<>'pass' AND COALESCE(rr.spf,'')='pass'
+             THEN COALESCE(rr.count,1) ELSE 0 END) AS aligned_spf,
+    SUM(CASE WHEN COALESCE(rr.dkim,'')<>'pass' AND COALESCE(rr.spf,'')<>'pass'
+             THEN COALESCE(rr.count,1) ELSE 0 END) AS aligned_none,
+    SUM(CASE WHEN rr.disposition='none'       THEN COALESCE(rr.count,1) ELSE 0 END) AS disp_none,
+    SUM(CASE WHEN rr.disposition='quarantine' THEN COALESCE(rr.count,1) ELSE 0 END) AS disp_quarantine,
+    SUM(CASE WHEN rr.disposition='reject'     THEN COALESCE(rr.count,1) ELSE 0 END) AS disp_reject
+EO_BUCKETS
+        ;
+}
+
+sub agg_from_clause {
+    return <<'EO_FROM'
+FROM report r
+JOIN report_record rr ON r.id=rr.report_id
+LEFT JOIN author a  ON r.author_id=a.id
+LEFT JOIN domain fd ON r.from_domain_id=fd.id
+EO_FROM
+        ;
+}
+
+# Reporting windows are epoch seconds, so a UTC day needs no dialect date
+# functions. A window spanning a day boundary is attributed to its begin day;
+# reporters almost always send daily windows, so the skew is negligible.
+sub select_timeseries_query( $self, $where ) {
+    my $buckets = $self->outcome_buckets;
+    my $from    = $self->agg_from_clause;
+    return <<"EO_TIMESERIES"
+SELECT (r.begin - (r.begin % 86400)) AS day,
+    SUM(COALESCE(rr.count,1)) AS messages,
+$buckets
+$from WHERE 1=1$where
+GROUP BY day
+ORDER BY day ASC
+EO_TIMESERIES
+        ;
+}
+
+sub select_sources_query( $self, $where ) {
+    my $buckets = $self->outcome_buckets;
+    my $from    = $self->agg_from_clause;
+    return <<"EO_SOURCES"
+SELECT rr.source_ip AS source_ip,
+    SUM(COALESCE(rr.count,1)) AS messages,
+$buckets,
+    COUNT(DISTINCT r.author_id) AS reporters,
+    MIN(r.begin) AS first_seen,
+    MAX(r.end)   AS last_seen
+$from WHERE 1=1$where
+GROUP BY rr.source_ip
+ORDER BY messages DESC
+EO_SOURCES
+        ;
+}
+
+# Kept out of the sources query on purpose: a record with two reasons would
+# join twice and double every SUM in that row.
+sub select_source_reasons_query( $self, $where ) {
+    my $from = $self->agg_from_clause;
+    return <<"EO_REASONS"
+SELECT rr.source_ip AS source_ip,
+    rrr.type AS type,
+    rrr.comment AS comment,
+    SUM(COALESCE(rr.count,1)) AS messages
+$from JOIN report_record_reason rrr ON rrr.report_record_id=rr.id
+WHERE 1=1$where
+GROUP BY rr.source_ip, rrr.type, rrr.comment
+EO_REASONS
+        ;
+}
+
+sub select_source_detail_query( $self, $where ) {
+    my $from = $self->agg_from_clause;
+    return <<"EO_DETAIL"
+SELECT hfd.domain AS header_from,
+    rr.disposition AS disposition,
+    rr.dkim AS dkim,
+    rr.spf  AS spf,
+    SUM(COALESCE(rr.count,1)) AS messages
+$from LEFT JOIN domain hfd ON hfd.id=rr.header_from_did
+WHERE 1=1$where
+GROUP BY hfd.domain, rr.disposition, rr.dkim, rr.spf
+ORDER BY messages DESC
+EO_DETAIL
+        ;
+}
+
+# The d= domain and selector a source presented are what distinguish a
+# misconfigured ESP from an unauthenticated spoof.
+sub select_source_dkim_query( $self, $where ) {
+    my $from = $self->agg_from_clause;
+    return <<"EO_SRC_DKIM"
+SELECT d.domain AS domain,
+    k.selector AS selector,
+    k.result   AS result,
+    SUM(COALESCE(rr.count,1)) AS messages
+$from JOIN report_record_dkim k ON k.report_record_id=rr.id
+LEFT JOIN domain d ON d.id=k.domain_id
+WHERE 1=1$where
+GROUP BY d.domain, k.selector, k.result
+ORDER BY messages DESC
+EO_SRC_DKIM
+        ;
+}
+
+sub select_source_spf_query( $self, $where ) {
+    my $from = $self->agg_from_clause;
+    return <<"EO_SRC_SPF"
+SELECT d.domain AS domain,
+    s.scope  AS scope,
+    s.result AS result,
+    SUM(COALESCE(rr.count,1)) AS messages
+$from JOIN report_record_spf s ON s.report_record_id=rr.id
+LEFT JOIN domain d ON d.id=s.domain_id
+WHERE 1=1$where
+GROUP BY d.domain, s.scope, s.result
+ORDER BY messages DESC
+EO_SRC_SPF
+        ;
+}
+
+# Per report totals for the report list, so a row can show what it contains
+# without being expanded. Returned one row per (report, From, To) rather than
+# aggregated into a string, because GROUP_CONCAT, group_concat and string_agg
+# are spelled differently in all three engines; the caller assembles the sets.
+sub select_report_summary_query {
+    my ($self) = @_;
+    my $buckets = $self->outcome_buckets;
+    return <<"EO_SUMMARY"
+SELECT rr.report_id AS rid,
+    hfd.domain AS header_from,
+    etd.domain AS envelope_to,
+    SUM(COALESCE(rr.count,1)) AS messages,
+$buckets
+FROM report_record rr
+LEFT JOIN domain hfd ON hfd.id=rr.header_from_did
+LEFT JOIN domain etd ON etd.id=rr.envelope_to_did
+WHERE rr.report_id IN (??)
+GROUP BY rr.report_id, hfd.domain, etd.domain
+EO_SUMMARY
+        ;
+}
+
+sub select_report_domains_query( $self, $where ) {
+    return <<"EO_DOMAINS"
+SELECT fd.domain AS domain,
+    COUNT(*) AS reports,
+    MIN(r.begin) AS first_seen,
+    MAX(r.end)   AS last_seen
+FROM report r
+JOIN domain fd ON fd.id=r.from_domain_id
+LEFT JOIN author a ON a.id=r.author_id
+WHERE 1=1$where
+GROUP BY fd.domain
+ORDER BY fd.domain ASC
+EO_DOMAINS
+        ;
+}
+
 1;
 
 __END__

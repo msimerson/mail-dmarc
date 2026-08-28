@@ -125,3 +125,8 @@ CREATE INDEX report_record_dkim_report_record_id_idx ON report_record_dkim(repor
 CREATE INDEX report_record_report_id_idx ON report_record(report_id);
 CREATE INDEX report_record_reason_report_record_id_idx ON report_record_reason(report_record_id);
 CREATE INDEX report_policy_published_report_id_idx ON report_policy_published(report_id);
+CREATE INDEX IF NOT EXISTS report_begin_idx ON report("begin");
+CREATE INDEX IF NOT EXISTS report_author_id_idx ON report(author_id);
+CREATE INDEX IF NOT EXISTS report_from_domain_id_idx ON report(from_domain_id);
+CREATE INDEX IF NOT EXISTS report_error_report_id_idx ON report_error(report_id);
+CREATE INDEX IF NOT EXISTS report_record_source_ip_idx ON report_record(source_ip);

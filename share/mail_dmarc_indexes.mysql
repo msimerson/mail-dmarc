@@ -1,0 +1,13 @@
+-- Indexes required by the aggregate report views in dmarc_httpd.
+--
+-- Databases created before Mail::DMARC 2.2 lack indexes on report.begin and
+-- report_record.source_ip, which every windowed aggregation needs.
+--
+--   mysql dmarc_report < mail_dmarc_indexes.mysql
+--
+-- MySQL has no CREATE INDEX ... IF NOT EXISTS, so re-running this file
+-- reports ERROR 1061 (Duplicate key name) for indexes already present.
+-- That error is harmless and means the index is already there.
+
+CREATE INDEX `report_begin_idx` ON `report` (`begin`);
+CREATE INDEX `report_record_source_ip_idx` ON `report_record` (`source_ip`);
