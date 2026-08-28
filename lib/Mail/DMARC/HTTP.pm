@@ -95,8 +95,16 @@ sub return_json_error($err) {
 }
 
 sub read_post_body() {
-    my $len = $ENV{CONTENT_LENGTH} or return '';
-    read STDIN, my $body, $len or return '';
+    my ($len) = ( $ENV{CONTENT_LENGTH} // '' ) =~ /^([0-9]+)$/ or return '';
+
+    # a short read would truncate the JSON and leave the rest of the body to be
+    # parsed as the next request on a keep-alive connection
+    my $body = '';
+    while ( length $body < $len ) {
+        my $got = read STDIN, my $chunk, $len - length $body;
+        last if !$got;
+        $body .= $chunk;
+    }
     return $body;
 }
 
