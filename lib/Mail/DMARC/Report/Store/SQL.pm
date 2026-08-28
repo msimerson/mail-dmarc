@@ -15,6 +15,8 @@ use Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL;
 
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate;
+use Mail::DMARC::Report::Aggregate::Record;
+use Mail::DMARC::Policy;
 
 my @AGG_FIELDS = qw/ messages aligned_both aligned_dkim aligned_spf aligned_none
     disp_none disp_quarantine disp_reject /;

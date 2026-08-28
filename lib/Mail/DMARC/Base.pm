@@ -284,7 +284,7 @@ sub is_valid_ip( $self, $ip ) {
     return defined Socket::inet_pton( $family, $ip ) ? 1 : 0;
 }
 
-# RFC 1101 host name: dot-joined LDH labels that do not spell a dotted quad
+# RFC 1101
 my $dotted_quad = qr/(?:25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})/;
 my $not_an_ip   = qr/(?!(?:$dotted_quad[.]$dotted_quad[.]$dotted_quad[.]$dotted_quad)(?:[.]|$))/;
 my $host_label  = qr/$not_an_ip[A-Za-z0-9](?:[-A-Za-z0-9]{0,61}[A-Za-z0-9])?/;
