@@ -63,8 +63,10 @@ sub smarthost_transports( $self, $report ) {
     );
 
     my %auth;
-    $auth{sasl_username} = $smtp->{smartuser} if $smtp->{smartuser};
-    $auth{sasl_password} = $smtp->{smartpass} if $smtp->{smartpass};
+    if ( $smtp->{smartuser} ) {
+        $auth{sasl_username} = $smtp->{smartuser};
+        $auth{sasl_password} = $smtp->{smartpass} if $smtp->{smartpass};
+    }
 
     my $configured = $self->smarthost_ssl_configured($report);
 
@@ -76,7 +78,7 @@ sub smarthost_transports( $self, $report ) {
             $PORT_TLS{$port} )
             if $PORT_TLS{$port};
         return $self->smarthost_route( \%common, \%auth, $port,
-            'maybestarttls' );
+            %auth ? 'starttls' : 'maybestarttls' );
     }
 
     if ($configured) {
@@ -88,15 +90,15 @@ sub smarthost_transports( $self, $report ) {
     return (
         $self->smarthost_route( \%common, \%auth, 465, 'ssl' ),
         $self->smarthost_route( \%common, \%auth, 587, 'starttls' ),
-        $self->smarthost_route( \%common, \%auth, 25, 'maybestarttls' ),
+        $self->smarthost_route( \%common, \%auth, 25, 'starttls' ),
     ) if %auth;
 
     # maybestarttls fails closed when STARTTLS is advertised but the handshake
     # does not complete, which a relay with a self signed certificate does
     # every time. Cleartext last is what opportunistic delivery means
     # (RFC 7435): the alternative is not TLS, it is the report being dropped.
-    # Credentials get no such rung, since that would put a password on the
-    # wire.
+    # Credentials never reach here, and never get maybestarttls either, which
+    # authenticates over plaintext when STARTTLS is not advertised.
     return (
         $self->smarthost_route( \%common, {}, 25, 'maybestarttls' ),
         $self->smarthost_route( \%common, {}, 587, 'starttls' ),
@@ -492,7 +494,15 @@ sub email( $self, $args ) {
     );
     my $success;
     my $permanent = 0;
+    my $answered  = 0;
     while ( my $transport = shift @transports ) {
+
+        # A cleartext retry is for a handshake that never completed. Once a
+        # host has answered in SMTP it has seen the session, and repeating it
+        # unencrypted would put the report on the wire for a greylisting or a
+        # content rejection.
+        next if $answered && $transport->can('ssl') && !$transport->ssl;
+
         my $done = 0;
         try {
             $success = sendmail(
@@ -526,9 +536,23 @@ sub email( $self, $args ) {
             $code    //= 'error';
             $message //= 'unknown send failure';
 
-            # A rejection on one rung is not the answer from the next: the
-            # ladder's ports are different services on the same host.
+            # Connect and STARTTLS failures carry no code; anything else means
+            # the host answered.
+            $answered ||= $code ne 'error';
+
+            # Any rung answering 5xx settles the report: the host has refused
+            # it, and the rungs are ports on that same host.
             $permanent ||= $code =~ /^5/x;
+
+            # The alarm in send_report bounds the report, not each rung, and
+            # is not rearmed; carrying on would leave the ladder unbounded and
+            # could resend a message the server already took.
+            if ( 'timeout' eq $message ) {
+                $log_data->{send_error}      = $message;
+                $log_data->{send_error_code} = $code;
+                $report->store->error( $rid, $message );
+                last;
+            }
 
             $code = join( ', ', $log_data->{send_error_code}, $code )
                 if exists $log_data->{send_error_code};

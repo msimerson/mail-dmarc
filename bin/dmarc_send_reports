@@ -58,16 +58,19 @@ per report.
 
 =item * smtp.smartuser and smtp.smartpass
 
-Port 465 with smtps, then 587 with STARTTLS, then port 25. Credentials are
-offered on each. Setting C<smartport> or C<smartssl> alongside them pins one
-route instead, including an unencrypted one: a relay on a private network is
-the operator's to configure.
+Port 465 with smtps, then 587 with STARTTLS, then port 25 with STARTTLS.
+Credentials are offered on each, and never over opportunistic TLS, which
+authenticates in the clear against a host that does not advertise STARTTLS.
+Setting C<smartport> or C<smartssl> alongside them pins one route instead,
+including an unencrypted one: a relay on a private network is the operator's
+to configure.
 
 =back
 
-Where more than one route is offered, the first that delivers is the only one
-tried for the rest of the run, so a relay with broken TLS costs one failed
-handshake per run rather than one per report. A rejection on one route does not stand for the
+Where a smart host offers more than one route, the first that delivers is the
+only one tried for the rest of the run, so a relay with broken TLS costs one
+failed handshake per run rather than one per report. MX routes are worked out
+per recipient domain and are not remembered. A rejection on one route does not stand for the
 others, since the ports are different services, so the ladder continues; a
 report is retired once every route has been tried.
 

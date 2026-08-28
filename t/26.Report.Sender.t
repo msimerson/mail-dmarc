@@ -16,6 +16,7 @@ use Test::File::ShareDir
 use Mail::DMARC::Test::Transport;
 use Email::Sender::Transport::Failable;
 use Email::Sender::Transport::Test;
+use Email::Sender::Success;
 
 my $resolver = new Net::DNS::Resolver::Mock();
 $resolver->zonefile_parse(join("\n",
@@ -262,6 +263,70 @@ subtest 'a send failure that is not a Failure object still retires the report'
 
     cmp_ok( scalar @{ $store->backend->get_report->{data} }, '==', 0,
         'the failed report is retired rather than left to fail forever' );
+};
+
+{
+    package Mail::DMARC::Test::Transport::Answered;
+    use Moo;
+    with 'Email::Sender::Transport';
+    has ssl => ( is => 'ro' );
+    sub send_email {
+        Email::Sender::Failure->throw(
+            { message => 'greylisted, try again', code => 451 } );
+    }
+}
+
+{
+    package Mail::DMARC::Test::Transport::Clear;
+    use Moo;
+    with 'Email::Sender::Transport';
+    has ssl  => ( is => 'ro', default => 0 );
+    has sent => ( is => 'rw', default => 0 );
+    sub send_email {
+        my ($self) = @_;
+        $self->sent( $self->sent + 1 );
+        return Email::Sender::Success->new;
+    }
+}
+
+{
+    package Mail::DMARC::Test::Transport::Timeout;
+    use Moo;
+    with 'Email::Sender::Transport';
+    has ssl => ( is => 'ro' );
+    sub send_email { die "timeout\n" }
+}
+
+subtest 'a host that answered is not retried without encryption' => sub {
+    queue_one_report();
+
+    my $answered = Mail::DMARC::Test::Transport::Answered->new(
+        ssl => 'maybestarttls' );
+    my $cleartext = Mail::DMARC::Test::Transport::Clear->new;
+
+    my $sender = Mail::DMARC::Report::Sender->new;
+    $sender->set_transports_method( sub { return ( $answered, $cleartext ) } );
+    $sender->run;
+
+    # 451 came from a completed session, so repeating it in the clear would
+    # put the report on the wire for a greylisting.
+    cmp_ok( $cleartext->sent, '==', 0, 'the cleartext rung is skipped' );
+};
+
+subtest 'the report alarm stops the ladder rather than advancing it' => sub {
+    queue_one_report();
+
+    my $timed_out = Mail::DMARC::Test::Transport::Timeout->new(
+        ssl => 'maybestarttls' );
+    my $next = Email::Sender::Transport::Test->new;
+
+    my $sender = Mail::DMARC::Report::Sender->new;
+    $sender->set_transports_method( sub { return ( $timed_out, $next ) } );
+    $sender->run;
+
+    # the alarm bounds the report, is not rearmed, and the message may already
+    # have been accepted
+    is( scalar $next->deliveries, 0, 'no further rung is tried' );
 };
 
 # Direct to MX has the same exposure as a smart host: a receiver whose

@@ -51,13 +51,36 @@ subtest 'a smart host alone tries relay, submission, then cleartext' => sub {
         'empty settings are not settings' );
 };
 
-subtest 'credentials are never offered over cleartext' => sub {
-    my @t = transports_for( smartuser => 'u', smartpass => 'p' );
-    is( scalar( grep { !$_->ssl } @t ), 0, 'no unencrypted rung' );
+subtest 'credentials never reach a mode that can authenticate in clear' => sub {
+
+    # maybestarttls skips STARTTLS when the host does not advertise it and
+    # authenticates anyway, so reading the attribute is not enough: the mode
+    # itself has to guarantee encryption.
+    my %encrypts = map { $_ => 1 } qw/ starttls ssl /;
+
+    foreach my $case (
+        [ 'ladder',    {} ],
+        [ 'port 25',   { smartport => 25 } ],
+        [ 'port 2525', { smartport => 2525 } ],
+        [ 'port 587',  { smartport => 587 } ],
+        )
+    {
+        my ( $name, $extra ) = @$case;
+        my @t = transports_for(
+            smartuser => 'u', smartpass => 'p', %$extra );
+        is( scalar( grep { !$encrypts{ $_->ssl // q{} } } @t ), 0,
+            "$name offers only modes that always encrypt" );
+    }
 
     # the operator can still ask for one
     is( routes( smartuser => 'u', smartpass => 'p', smartssl => 'none' ),
         '25/none', 'unless they say so' );
+};
+
+subtest 'a password without a username is not credentials' => sub {
+    is( routes( smartpass => 'p' ),
+        '25/maybestarttls -> 587/starttls -> 25/none',
+        'the unauthenticated ladder is used' );
 };
 
 subtest 'a port is taken as given' => sub {
@@ -85,7 +108,7 @@ subtest 'smartssl governs TLS' => sub {
 
 subtest 'credentials try smtps, then submission, then the relay port' => sub {
     is( routes( smartuser => 'u', smartpass => 'p' ),
-        '465/ssl -> 587/starttls -> 25/maybestarttls', 'all three routes' );
+        '465/ssl -> 587/starttls -> 25/starttls', 'all three routes' );
 
     my @t = transports_for( smartuser => 'u', smartpass => 'p' );
     is( scalar( grep { $_->sasl_username eq 'u' } @t ), 3,

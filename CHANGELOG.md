@@ -2,7 +2,8 @@
 
 - fix(sender): try a smart host on 25, 587, then cleartext
 - fix(sender): try every MX encrypted, then in the clear
-- fix(sender): try 465, 587, 25 for authed smart hosts
+- fix(sender): never offer credentials over opportunistic TLS
+- fix(sender): stop the ladder when the report alarm fires
 - fix(sender): retire reports failing with non-Failure errors
 - fix(sender): keep only the smart host route that worked
 - fix(sender): record send errors from every route tried
