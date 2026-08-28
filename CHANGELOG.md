@@ -1,6 +1,7 @@
 ### Unreleased
 
 - feat(dmarc_httpd): post_max setting, defaults to 10MB
+- fix(dmarc_httpd): drain oversized POST so the error is seen
 - perf: lazy load the reporting stack, 40% faster startup
 - chore(deps): drop Regexp::Common, CGI
 - chore(deps): drop Socket6, Net::IP, LWP, Net::SSLeay, Net::SMTPS, CPAN

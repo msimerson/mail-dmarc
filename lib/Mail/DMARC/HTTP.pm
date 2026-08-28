@@ -35,6 +35,8 @@ sub dmarc_httpd( $self, $http_report ) {
     my $sslkey = $report->config->{https}{ssl_key};
     my $sslcrt = $report->config->{https}{ssl_crt};
 
+    warn_unusable_post_max();
+
     Net::Server::HTTP->run(
         app  => sub {&dmarc_dispatch},
         port => [ $port, ( ( $ports && $sslkey && $sslcrt ) ? "$ports/ssl" : () ) ],
@@ -96,15 +98,44 @@ sub return_json_error($err) {
 
 my $POST_MAX_DEFAULT = 10 * 1024 * 1024;
 
+# 0 is not a way to lift the cap; say so rather than quietly using the default
+sub warn_unusable_post_max() {
+    my $max = $report->config->{http}{post_max};
+    return if !defined $max || $max eq '' || $max =~ /^[1-9][0-9]*$/;
+    warn "post_max '$max' is not a byte count; using " . post_max() . "\n";
+    return;
+}
+
 sub post_max() {
     my $max = $report ? $report->config->{http}{post_max} : undef;
     return $max && $max =~ /^([0-9]+)$/ ? $1 : $POST_MAX_DEFAULT;
 }
 
+# The client is still sending when we refuse an oversized body. Closing with
+# its bytes unread makes the kernel answer RST, which discards the error we
+# just queued, so read them off the wire and drop them. Only up to post_max
+# again: past that the caller is not worth the bandwidth and gets the reset.
+sub discard_post_body($len) {
+    my $max = post_max();
+    return if $len > 2 * $max;
+
+    my $seen = 0;
+    while ( $seen < $len ) {
+        my $want = $len - $seen;
+        my $got = read STDIN, my $chunk, $want < 65536 ? $want : 65536;
+        last if !$got;
+        $seen += $got;
+    }
+    return;
+}
+
 # '' when there is no body, undef when it is larger than post_max
 sub read_post_body() {
     my ($len) = ( $ENV{CONTENT_LENGTH} // '' ) =~ /^([0-9]+)$/ or return '';
-    return if $len > post_max();
+    if ( $len > post_max() ) {
+        discard_post_body($len);
+        return;
+    }
 
     # a short read would truncate the JSON and leave the rest of the body to be
     # parsed as the next request on a keep-alive connection
