@@ -24,7 +24,6 @@ Tool-specific instruction files should defer to this file.
 
 - Do not run history/remote-mutating commands (`git commit`, `git push`, `git tag`, PR creation) unless explicitly asked.
 - Keep diffs focused and minimal; avoid broad refactors when solving targeted bugs.
-- add concise single-line Conventional Commit messages in imperative mood when making changes.
 
 ## Perl coding standards
 
@@ -71,7 +70,9 @@ Tool-specific instruction files should defer to this file.
   - `### Unreleased`
   - `### <version>`
   - bullet list entries starting with `- `
-- Prefer terse changelog bullets with optional Conventional Commit prefixes (`feat:`, `fix:`, `doc:`, `test:`, `chore:`) and PR references when known.
+- keep entries concise, < 70 chars
+- optional Conventional Commit prefixes (`feat:`, `fix:`, `doc:`, `test:`, `chore:`)
+- imperative mood
 - `README.md` is generated from `lib/Mail/DMARC.pm` POD (see `.release/update-readme.sh` and `.release/version_increment.sh`).
   - For durable README content changes, edit POD in `lib/Mail/DMARC.pm` first, then regenerate README.
 - Keep standalone docs (`INSTALL.md`, `DEVELOP.md`, `FAQ.md`, `TODO.md`) concise, heading-driven, and command/example oriented.

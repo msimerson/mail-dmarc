@@ -1,8 +1,11 @@
 ### Unreleased
 
-- fix(sender): fall back to the relay port when a smart host has no submission
-- fix(sender): retire a report whose send failed with a non-Failure exception
-- feat(sender): smtp.smartport and smtp.smartssl pin the smart host route
+- fix(sender): default a smart host to port 25
+- fix(sender): try 465, 587, 25 for authed smart hosts
+- fix(sender): retire reports failing with non-Failure errors
+- fix(sender): keep only the smart host route that worked
+- fix(sender): stop retrying a route after a 5xx rejection
+- feat(sender): add smtp.smartport and smtp.smartssl
 - feat(dmarc_httpd): opt-in reverse DNS hostnames beneath source IPs #309
 
 ### 2.20260724

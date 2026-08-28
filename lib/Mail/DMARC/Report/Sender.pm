@@ -17,7 +17,7 @@ use Email::Sender::Simple qw{ sendmail };
 use Email::Sender::Transport::SMTP;
 use Email::Sender::Transport::SMTP::Persistent;
 use Module::Load;
-use Scalar::Util qw(blessed);
+use Scalar::Util qw(blessed refaddr);
 
 sub new( $class, $args = undef ) {
     $args ||= {};
@@ -50,10 +50,9 @@ sub set_transports_method( $self, $transports_method ) {
 
 my %SMART_SSL = map { $_ => 1 } qw/ starttls maybestarttls ssl /;
 
-# Submission on 587 is the right first guess for a smart host, but plenty of
-# relays only listen on 25, and one that offers submission may demand AUTH the
-# operator has no credentials for. Where nothing is configured, try submission
-# and fall back to the relay port rather than failing outright.
+# The submission ports each imply how TLS is negotiated on them.
+my %PORT_TLS = ( 465 => 'ssl', 587 => 'starttls' );
+
 sub smarthost_transports( $self, $report ) {
     my $smtp = $report->config->{smtp};
 
@@ -67,33 +66,33 @@ sub smarthost_transports( $self, $report ) {
     $auth{sasl_username} = $smtp->{smartuser} if $smtp->{smartuser};
     $auth{sasl_password} = $smtp->{smartpass} if $smtp->{smartpass};
 
-    # An explicit port or TLS mode is an instruction, and credentials mean the
-    # operator wants an authenticated session. Either way there is one way in,
-    # and quietly retrying elsewhere would ignore what they asked for.
-    if ( $smtp->{smartport} || $self->smarthost_ssl_configured($report) || %auth )
-    {
-        return Email::Sender::Transport::SMTP::Persistent->new(
-            {   %common, %auth,
-                port => $smtp->{smartport} || 587,
-                ssl  => $self->smarthost_ssl($report),
-            }
-        );
+    if ( $smtp->{smartport} ) {
+        return $self->smarthost_route( \%common, \%auth, $smtp->{smartport},
+            $self->smarthost_ssl( $report, $smtp->{smartport} ) );
     }
 
-    my @transports = Email::Sender::Transport::SMTP::Persistent->new(
-        { %common, port => 587, ssl => 'starttls' } );
-
-    if ( $Email::Sender::VERSION > 2.0 ) {
-        push @transports, Email::Sender::Transport::SMTP::Persistent->new(
-            { %common, port => 25, ssl => 'maybestarttls' } );
-        return @transports;
+    if ( $self->smarthost_ssl_configured($report) ) {
+        my $ssl = $self->smarthost_ssl($report);
+        return $self->smarthost_route( \%common, \%auth,
+            ( 'ssl' eq ( $ssl || q{} ) ? 465 : 25 ), $ssl );
     }
 
-    push @transports, Email::Sender::Transport::SMTP::Persistent->new(
-        { %common, port => 25, ssl => 'starttls' } );
-    push @transports, Email::Sender::Transport::SMTP::Persistent->new(
-        { %common, port => 25, ssl => 0 } );
-    return @transports;
+    return (
+        $self->smarthost_route( \%common, \%auth, 465, 'ssl' ),
+        $self->smarthost_route( \%common, \%auth, 587, 'starttls' ),
+        $self->smarthost_route( \%common, \%auth, 25, $self->opportunistic_tls ),
+    ) if %auth;
+
+    return $self->smarthost_route( \%common, {}, 25, $self->opportunistic_tls );
+}
+
+sub smarthost_route( $self, $common, $auth, $port, $ssl ) {
+    return Email::Sender::Transport::SMTP::Persistent->new(
+        { %$common, %$auth, port => $port, ssl => $ssl } );
+}
+
+sub opportunistic_tls($self) {
+    return $Email::Sender::VERSION > 2.0 ? 'maybestarttls' : 'starttls';
 }
 
 sub smarthost_ssl_configured( $self, $report ) {
@@ -101,22 +100,32 @@ sub smarthost_ssl_configured( $self, $report ) {
     return defined $ssl && $ssl =~ /\S/x ? 1 : 0;
 }
 
-sub smarthost_ssl( $self, $report ) {
-    my $ssl = lc( $report->config->{smtp}{smartssl} // 'starttls' );
-    $ssl =~ s/\A\s+|\s+\z//gx;
+sub smarthost_ssl( $self, $report, $port = undef ) {
+    if ( !$self->smarthost_ssl_configured($report) ) {
+        return $PORT_TLS{ $port // 0 } // $self->opportunistic_tls;
+    }
 
-    return 0 if $ssl eq '' || $ssl eq 'none';
+    my $ssl = lc $report->config->{smtp}{smartssl};
+    $ssl =~ s/\A\s+|\s+\z//gx;
 
     croak "unknown smtp.smartssl '$ssl', expected one of: none, "
         . join( ', ', sort keys %SMART_SSL )
-        if !$SMART_SSL{$ssl};
+        if 'none' ne $ssl && !$SMART_SSL{$ssl};
 
-    # Falling back to starttls keeps the session encrypted; sending in the
-    # clear because the installed Email::Sender is old would not.
+    return 0 if 'none' eq $ssl;
+
     return 'starttls'
         if 'maybestarttls' eq $ssl && !( $Email::Sender::VERSION > 2.0 );
 
     return $ssl;
+}
+
+# A route that never answers costs a connect timeout on every message.
+sub keep_smarthost_route( $self, $transport ) {
+    return if 'ARRAY' ne ref $self->{smarthost};
+    return if !grep { refaddr($_) == refaddr($transport) } @{ $self->{smarthost} };
+    $self->{smarthost} = [$transport];
+    return;
 }
 
 # Return a list of transports to try in order.
@@ -136,7 +145,6 @@ sub get_transports_for( $self, $args ) {
 
     my $transport_can_maybetls = $Email::Sender::VERSION > 2.0;
 
-    # Do we have a smart host?
     if ( $report->config->{smtp}{smarthost} ) {
         return @{ $self->{smarthost} } if 'ARRAY' eq ref $self->{smarthost};
         return ( $self->{smarthost} )   if $self->{smarthost};
@@ -280,6 +288,8 @@ sub run($self) {
         my $transports_object = $package->new();
         $self->set_transports_object($transports_object);
     }
+
+    $self->smarthost_ssl($report) if $report->config->{smtp}{smarthost};
 
     local $SIG{'ALRM'} = sub { die "timeout\n" };
 
@@ -534,18 +544,15 @@ sub email( $self, $args ) {
             if ($success) {
                 $log_data->{success} = $success->{message};
                 $done = 1;
+                $self->keep_smarthost_route($transport);
             }
         }
         catch ($error) {
-            next if @transports;
             my $code;
             my $message;
 
-            # Email::Sender throws subclasses of Failure, never Failure
-            # itself, and a connect, TLS or AUTH problem beneath it arrives as
-            # a plain string. Asking either for ->code without checking threw
-            # from inside this handler, which aborted the whole run and left
-            # every remaining report queued.
+            # A connect, TLS or AUTH failure arrives as a plain string, and
+            # ->code on that threw past the code that retires the report.
             if ( blessed($error) && $error->isa('Email::Sender::Failure') ) {
                 $code    = $error->code;
                 $message = $error->message;
@@ -558,6 +565,12 @@ sub email( $self, $args ) {
             $code    //= 'error';
             $message //= 'unknown send failure';
 
+            # Connect and STARTTLS failures carry no code, so a route that
+            # answered with 5xx is the host itself refusing; the remaining
+            # routes reach the same host and answer the same way.
+            my $permanent = $code =~ /^5/x;
+            next if @transports && !$permanent;
+
             $code = join( ', ', $log_data->{send_error_code}, $code )
                 if exists $log_data->{send_error_code};
             $message = join( ', ', $log_data->{send_error}, $message )
@@ -565,7 +578,7 @@ sub email( $self, $args ) {
             $log_data->{send_error}      = $message;
             $log_data->{send_error_code} = $code;
 
-            if ( $code =~ /^5/x ) {
+            if ($permanent) {
 
                 # Perma error
                 $log_data->{deleted} = 1;

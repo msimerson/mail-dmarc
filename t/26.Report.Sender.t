@@ -129,11 +129,7 @@ foreach my $callback_type ( qw{ method object fail fallback } ) {
 
 }
 
-# A connect, TLS or AUTH problem beneath Email::Sender arrives as a plain
-# string, not a Failure object; Email::Sender::Simple passes it through
-# untouched. Asking that string for ->code threw from inside the handler meant
-# to record the failure, and the exception unwound past the code that retires
-# the report, so it stayed queued and failed the same way on every later run.
+# ->code on a plain string exception threw past the code that retires reports.
 {
     package Mail::DMARC::Test::Transport::PlainDie;
     use Moo;
@@ -142,6 +138,51 @@ foreach my $callback_type ( qw{ method object fail fallback } ) {
         die "SMTP connect failed: 530 5.7.0 Authentication required\n";
     }
 }
+
+{
+    package Mail::DMARC::Test::Transport::Permanent;
+    use Moo;
+    with 'Email::Sender::Transport';
+    sub send_email {
+        Email::Sender::Failure->throw(
+            { message => 'no such mailbox', code => 550 } );
+    }
+}
+
+subtest 'a permanent rejection is not retried on the next route' => sub {
+    unlink 't/reports-test.sqlite' if -e 't/reports-test.sqlite';
+
+    my $dmarc = Mail::DMARC::PurePerl->new;
+    $dmarc->set_resolver($resolver);
+    $dmarc->set_fake_time( time - 86400 );
+    $dmarc->init();
+    $dmarc->source_ip('66.128.51.165');
+    $dmarc->envelope_to('fastmaildmarc.com');
+    $dmarc->envelope_from('fastmaildmarc.com');
+    $dmarc->header_from('fastmaildmarc.com');
+    $dmarc->dkim( [ { domain => 'tnpi.net', selector => 'jan2015',
+                result => 'fail', human_result => 'fail (body has been altered)' } ] );
+    $dmarc->spf( [ { domain => 'tnpi.net', scope => 'mfrom', result => 'pass' } ] );
+
+    my $policy = $dmarc->discover_policy;
+    $dmarc->validate($policy);
+    $dmarc->save_aggregate;
+    $dmarc->set_fake_time( time + 86400 );
+
+    my $rejected = Mail::DMARC::Test::Transport::Permanent->new;
+    my $working  = Email::Sender::Transport::Test->new;
+
+    my $sender = Mail::DMARC::Report::Sender->new;
+    $sender->set_transports_method( sub { return ( $rejected, $working ) } );
+    $sender->run;
+
+    is( scalar $working->deliveries, 0,
+        'the later route is not tried after a 5xx' );
+
+    my $store = Mail::DMARC::Report->new->store;
+    cmp_ok( scalar @{ $store->backend->get_report->{data} }, '==', 0,
+        'and the report is retired straight away' );
+};
 
 subtest 'a send failure that is not a Failure object still retires the report'
     => sub {

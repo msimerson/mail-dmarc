@@ -3,6 +3,7 @@ use warnings;
 
 use Test::More;
 use Test::Exception;
+use File::Temp qw(tempfile);
 use Net::DNS::Resolver::Mock;
 
 # Pin the config: an installation with a discoverable mail-dmarc.ini would
@@ -21,107 +22,98 @@ $resolver->zonefile_parse(join("\n",
 '_dmarc.fastmaildmarc.com. 600 TXT "v=DMARC1; p=reject; rua=mailto:rua@fastmaildmarc.com"',
 ''));
 
-# A transport whose route we can inspect without connecting anywhere.
-sub transports_for {
+sub sender_for {
     my (%smtp) = @_;
     my $dmarc = Mail::DMARC::PurePerl->new;
     $dmarc->set_resolver($resolver);
     my $report = $dmarc->report;
+    $report->config->{smtp}{smarthost} = 'relay.example.com';
     $report->config->{smtp}{$_} = $smtp{$_} foreach keys %smtp;
-    my $sender = Mail::DMARC::Report::Sender->new;
+    return ( Mail::DMARC::Report::Sender->new, $report );
+}
+
+sub transports_for {
+    my ( $sender, $report ) = sender_for(@_);
     return $sender->get_transports_for( { report => $report } );
 }
 
-sub route {
-    my ($transport) = @_;
-    return sprintf '%s:%s/%s', $transport->host, $transport->port,
-        ( $transport->ssl || 'none' );
+sub routes {
+    return join ' -> ', map { sprintf '%s/%s', $_->port, ( $_->ssl || 'none' ) }
+        transports_for(@_);
 }
 
-subtest 'unconfigured smart host tries submission then the relay port' => sub {
-    my @t = transports_for( smarthost => 'relay.example.com' );
-
-    cmp_ok( scalar @t, '>=', 2, 'more than one route offered' );
-    is( route( $t[0] ), 'relay.example.com:587/starttls',
-        'submission with STARTTLS first' );
-    cmp_ok( $t[1]->port, '==', 25, 'falls back to the relay port' );
-
-    # A smart host that only listens on 25, or demands AUTH on 587, used to
-    # leave every report queued rather than being retried here.
-    ok( ( grep { $_->port == 25 } @t ), 'the relay port is among the routes' );
+subtest 'a smart host alone is the relay port' => sub {
+    is( routes(), '25/maybestarttls', 'just the relay port' );
+    is( routes( smartport => '', smartssl => '', smartuser => '',
+            smartpass => '' ),
+        '25/maybestarttls', 'empty settings are not settings' );
 };
 
-subtest 'an explicit port pins a single route' => sub {
-    my @t = transports_for(
-        smarthost => 'relay.example.com',
-        smartport => 25,
-    );
-    cmp_ok( scalar @t, '==', 1, 'one route only' );
-    is( route( $t[0] ), 'relay.example.com:25/starttls', 'the port asked for' );
+subtest 'a port is taken as given' => sub {
+    is( routes( smartport => 25 ),   '25/maybestarttls',  'relay' );
+    is( routes( smartport => 2525 ), '2525/maybestarttls', 'anything else' );
 };
 
-subtest 'smartssl selects the TLS mode' => sub {
-    my %expect = (
-        'starttls'      => 'starttls',
-        'maybestarttls' => 'maybestarttls',
-        'ssl'           => 'ssl',
-        'none'          => 'none',
-        'NONE'          => 'none',
-        '  starttls  '  => 'starttls',
-    );
-    foreach my $value ( sort keys %expect ) {
-        my @t = transports_for(
-            smarthost => 'relay.example.com',
-            smartssl  => $value,
-        );
-        cmp_ok( scalar @t, '==', 1, "smartssl '$value' pins one route" );
-        is( ( $t[0]->ssl || 'none' ), $expect{$value},
-            "smartssl '$value' gives $expect{$value}" );
-    }
+subtest 'the submission ports imply their TLS' => sub {
+    is( routes( smartport => 465 ), '465/ssl',      'smtps' );
+    is( routes( smartport => 587 ), '587/starttls', 'submission' );
+};
+
+subtest 'smartssl governs TLS' => sub {
+    is( routes( smartssl => 'ssl' ),           '465/ssl',           'smtps' );
+    is( routes( smartssl => 'starttls' ),      '25/starttls',       'starttls' );
+    is( routes( smartssl => 'maybestarttls' ), '25/maybestarttls',  'opportunistic' );
+    is( routes( smartssl => 'none' ),          '25/none',           'plaintext' );
+    is( routes( smartssl => '  SSL  ' ),       '465/ssl',           'case and space' );
+
+    is( routes( smartssl => 'none', smartport => 587 ), '587/none',
+        'and overrides what the port would imply' );
+    is( routes( smartssl => 'ssl', smartport => 10465 ), '10465/ssl',
+        'while the port is still taken as given' );
+};
+
+subtest 'credentials try smtps, then submission, then the relay port' => sub {
+    is( routes( smartuser => 'u', smartpass => 'p' ),
+        '465/ssl -> 587/starttls -> 25/maybestarttls', 'all three routes' );
+
+    my @t = transports_for( smartuser => 'u', smartpass => 'p' );
+    is( scalar( grep { $_->sasl_username eq 'u' } @t ), 3,
+        'credentials on every route' );
+
+    is( routes( smartuser => 'u', smartpass => 'p', smartport => 587 ),
+        '587/starttls', 'a port still pins one route' );
+    is( routes( smartuser => 'u', smartpass => 'p', smartssl => 'none' ),
+        '25/none', 'so does smartssl, private networks included' );
 };
 
 subtest 'an unusable smartssl is refused, not guessed at' => sub {
     foreach my $value (qw/ tls yes secure starttls! 1 /) {
-        throws_ok {
-            transports_for(
-                smarthost => 'relay.example.com',
-                smartssl  => $value,
-            );
-        }
-        qr/unknown smtp.smartssl/, "smartssl '$value' croaks";
+        throws_ok { routes( smartssl => $value ) }
+            qr/unknown smtp.smartssl/, "smartssl '$value' croaks";
     }
 };
 
-subtest 'credentials pin the route rather than being retried in the clear' => sub {
-    my @t = transports_for(
-        smarthost => 'relay.example.com',
-        smartuser => 'reporter',
-        smartpass => 'secret',
-    );
-    cmp_ok( scalar @t, '==', 1, 'one route only' );
-    cmp_ok( $t[0]->port, '==', 587, 'submission' );
-    is( $t[0]->ssl, 'starttls', 'still encrypted' );
-    is( $t[0]->sasl_username, 'reporter', 'username passed through' );
-};
+subtest 'the route that worked is the only one tried next time' => sub {
+    my ( $sender, $report ) = sender_for( smartuser => 'u', smartpass => 'p' );
 
-subtest 'an empty setting is not a setting' => sub {
-    my @t = transports_for(
-        smarthost => 'relay.example.com',
-        smartport => '',
-        smartssl  => '',
-        smartuser => '',
-        smartpass => '',
-    );
-    cmp_ok( scalar @t, '>=', 2, 'still falls back' );
-    is( route( $t[0] ), 'relay.example.com:587/starttls', 'submission first' );
+    my @first = $sender->get_transports_for( { report => $report } );
+    cmp_ok( scalar @first, '==', 3, 'three routes to begin with' );
+
+    $sender->keep_smarthost_route( $first[2] );
+
+    my @next = $sender->get_transports_for( { report => $report } );
+    cmp_ok( scalar @next, '==', 1, 'the dead route is not offered again' );
+    cmp_ok( $next[0]->port, '==', 25, 'and the working one is kept' );
+
+    $sender->keep_smarthost_route(
+        Email::Sender::Transport::SMTP::Persistent->new(
+            { host => 'elsewhere.example.com', port => 25 } ) );
+    cmp_ok( scalar @{ $sender->{smarthost} }, '==', 1,
+        'a transport from elsewhere does not replace the list' );
 };
 
 subtest 'a transport supplied to the constructor still wins' => sub {
-    my $dmarc = Mail::DMARC::PurePerl->new;
-    $dmarc->set_resolver($resolver);
-    my $report = $dmarc->report;
-    $report->config->{smtp}{smarthost} = 'relay.example.com';
-
+    my ( undef, $report ) = sender_for();
     my $canned = Email::Sender::Transport::SMTP::Persistent->new(
         { host => 'given.example.com', port => 2525 } );
     my $sender = Mail::DMARC::Report::Sender->new( { smarthost => $canned } );
@@ -129,6 +121,32 @@ subtest 'a transport supplied to the constructor still wins' => sub {
     my @t = $sender->get_transports_for( { report => $report } );
     cmp_ok( scalar @t, '==', 1, 'the given transport is used' );
     is( $t[0]->host, 'given.example.com', 'and nothing else is built' );
+};
+
+subtest 'an unusable smartssl stops the run before any report is touched' => sub {
+    my ( $fh, $ini ) = tempfile( SUFFIX => '.ini' );
+    print {$fh} <<"EO_INI";
+[organization]
+domain   = example.com
+org_name = Test
+email    = dmarc\@example.com
+
+[report_store]
+backend = SQL
+dsn     = dbi:SQLite:dbname=t/reports-test.sqlite
+
+[smtp]
+hostname  = mail.example.com
+smarthost = relay.example.com
+smartssl  = tls
+EO_INI
+    close $fh;
+
+    local $ENV{MAIL_DMARC_CONFIG_FILE} = $ini;
+    throws_ok { Mail::DMARC::Report::Sender->new->run }
+        qr/unknown smtp.smartssl/,
+        'a typo is refused at startup, not once per report';
+    unlink $ini;
 };
 
 done_testing();
