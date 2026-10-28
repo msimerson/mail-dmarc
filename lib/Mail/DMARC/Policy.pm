@@ -207,21 +207,16 @@ sub is_valid( $self, $obj = undef ) {
     croak "invalid version"           if 'DMARC1' ne uc $obj->{v};
 
     # psd=y domains (PSDs) are not required to have a p= tag
-    my $is_psd = defined $obj->{psd} && lc $obj->{psd} eq 'y';
+    my $is_psd  = defined $obj->{psd} && lc $obj->{psd} eq 'y';
+    my @invalid = grep { defined $obj->{$_} && !$self->is_valid_p( $obj->{$_} ) }
+        qw/ p sp np /;
 
-    if ( !$obj->{p} && !$is_psd ) {
-        if ( $obj->{rua} && $self->is_valid_uri_list( $obj->{rua} ) ) {
-            $obj->{p} = 'none';
-        }
-        else {
-            croak "missing policy action (p=)";
-        }
-    }
-    if ( $obj->{p} ) {
-        croak "invalid policy action" if !$self->is_valid_p( $obj->{p} );
-    }
-    if ( defined $obj->{np} ) {
-        croak "invalid np" if !$self->is_valid_p( $obj->{np} );
+    # RFC 9989 4.10.1: a valid rua rescues the record as if it published p=none
+    if ( @invalid || ( !$obj->{p} && !$is_psd ) ) {
+        croak "missing or invalid policy action"
+            if !( $obj->{rua} && $self->is_valid_uri_list( $obj->{rua} ) );
+        delete @$obj{@invalid};
+        $obj->{p} = 'none';
     }
 
     # everything else is optional

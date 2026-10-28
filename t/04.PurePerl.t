@@ -47,8 +47,26 @@ $resolver->zonefile_parse(join("\n",
 # intermediate record below the PSD
 '_dmarc.x.sub.psd.dmarctest.net.                600 TXT "v=DMARC1; p=none"',
 
-# 7-label PSD reached by the >=8-label shortcut
+# 7-label PSD reached by the >=8-label shortcut, its Organizational Domain
+# stepped over by the shortcut
 '_dmarc.deeppsd.e.d.c.b.dmarctest.net.          600 TXT "v=DMARC1; psd=y"',
+'_dmarc.y.deeppsd.e.d.c.b.dmarctest.net.        600 TXT "v=DMARC1; p=reject"',
+
+# np on a PSD applies to non-existent domains registered under it
+'_dmarc.nppsd.dmarctest.net.                    600 TXT "v=DMARC1; psd=y; p=none; np=reject"',
+
+# invalid p rescued by a valid rua
+'_dmarc.badp.dmarctest.net.                     600 TXT "v=DMARC1; p=bogus; rua=mailto:dmarc@badp.dmarctest.net"',
+'badp.dmarctest.net.                            600 MX  10 mail.badp.dmarctest.net.',
+
+# multiple RFC5322.From domains
+'_dmarc.mfbank.dmarctest.net.                   600 TXT "v=DMARC1; p=reject"',
+'mfbank.dmarctest.net.                          600 MX  10 mail.mfbank.dmarctest.net.',
+'mfother.dmarctest.net.                         600 MX  10 mail.mfother.dmarctest.net.',
+
+# external reporting override that points at another host
+'_dmarc.extov.dmarctest.net.                    600 TXT "v=DMARC1; p=none; rua=mailto:r@reports.example.org"',
+'extov.dmarctest.net._report._dmarc.reports.example.org. 600 TXT "v=DMARC1; rua=mailto:x@elsewhere.example.net"',
 
 # GHSA-265h-g3hh-fcwq
 # tw1: weaker intermediate record
@@ -136,6 +154,7 @@ test_validate_t_tag();
 test_validate_invalid_sp();
 test_validate_psd_y();
 test_validate_np_tag();
+test_validate_rfc9989();
 test_has_valid_reporting_uri();
 test_external_report();
 test_verify_external_reporting( 'tnpi.net',            'theartfarm.com', 1 );
@@ -319,8 +338,7 @@ sub get_test_headers {
         'user@example.com'                              => 'example.com',
         '<user@example.com>'                            => 'example.com',
         ' <user@example.com > '                         => 'example.com',
-        # RFC 7489 §5.6.1: multiple From domains require Sender header;
-        # without $dmarc->sender set, get_from_dom returns undef (outside scope)
+        # multiple From domains: validate() evaluates each one
         'Sample User <user@example.com>,Sample2<user@example2.com>' => '',
         'From: "Test 1.1.5"'                            => '',
     );
@@ -519,6 +537,12 @@ sub test_tree_walk {
     ($rec, $org, $at) = $dmarc->tree_walk('x.y.deeppsd.e.d.c.b.dmarctest.net');
     is( $org, 'y.deeppsd.e.d.c.b.dmarctest.net',
         "tree_walk, psd=y after shortcut: org is PSD child" );
+    is( $at, 'y.deeppsd.e.d.c.b.dmarctest.net',
+        "tree_walk, psd=y after shortcut: org record queried" );
+
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('MAIL.TW1.dmarctest.net.');
+    is( $at, 'mail.tw1.dmarctest.net', "tree_walk, trailing dot: author record" );
 
     my %policy_domain = (
         'a.mail.tw1.dmarctest.net' => 'tw1.dmarctest.net',
@@ -608,6 +632,55 @@ sub test_validate_psd_y {
         'psd=y: published policy has p=none after discover_policy' );
     ok( !@warns, 'psd=y: no uninitialized-value warnings' )
         or diag "warnings: @warns";
+}
+
+sub test_validate_rfc9989 {
+    {
+        no warnings 'redefine';
+        local *Mail::DMARC::PurePerl::_author_domain_exists = sub { 0 };
+        _run_np_subtests(
+            [ 'ghost.nppsd.dmarctest.net', 'reject', 'np on PSD: non-existent registered domain' ],
+        );
+    }
+
+    $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc( header_from => 'badp.dmarctest.net' ) );
+    $dmarc->set_resolver($resolver);
+    $dmarc->validate();
+    is( $dmarc->result->result, 'fail', 'invalid p with rua: DMARC still applies' );
+    is( eval { $dmarc->result->published->p }, 'none', 'invalid p with rua: treated as p=none' );
+
+    # Sender is forgeable; every From domain is evaluated and the strictest wins
+    $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
+        header_from_raw => 'ceo@mfbank.dmarctest.net, x@mfother.dmarctest.net',
+        sender          => 'mfother.dmarctest.net',
+        spf => [ { domain => 'mfother.dmarctest.net', scope => 'mfrom', result => 'pass' } ],
+    ) );
+    $dmarc->set_resolver($resolver);
+    $dmarc->validate();
+    is( $dmarc->header_from,         'mfbank.dmarctest.net', 'multiple From: strictest domain kept' );
+    is( $dmarc->result->disposition, 'reject',               'multiple From: reject applied' );
+
+    $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc( header_from => 'tnpi.net' ) );
+    $dmarc->set_resolver($resolver);
+    {
+        no warnings 'redefine';
+        my $send = \&Net::DNS::Resolver::Mock::send;
+        local *Net::DNS::Resolver::Mock::send = sub {
+            return if $_[1] eq '_dmarc.tnpi.net';
+            return $send->(@_);
+        };
+        $dmarc->validate();
+    }
+    is( $dmarc->result->result,      'temperror', 'DNS failure: temperror' );
+    is( $dmarc->result->disposition, 'none',      'DNS failure: no policy applied' );
+
+    # RFC 9990 4: an override to another host voids both destinations
+    $dmarc->init;
+    my $policy = $dmarc->policy->parse('v=DMARC1; p=none; rua=mailto:r@reports.example.org');
+    $policy->{domain} = 'extov.dmarctest.net';
+    $dmarc->result->published($policy);
+    ok( !$dmarc->verify_external_reporting( { uri => URI->new('mailto:r@reports.example.org') } ),
+        'external override to another host: not authorized' );
 }
 
 sub _run_np_subtests {

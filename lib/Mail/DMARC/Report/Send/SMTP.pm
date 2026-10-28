@@ -53,14 +53,14 @@ sub get_smtp_hosts( $self, $email = undef ) {
 
 sub get_subject( $self, $agg_ref ) {
 
+    # RFC 9990 3.1.4: the Report-ID must match the report's report_id
     my $rid = $$agg_ref->metadata->report_id || $self->time;
-    my $id  = POSIX::strftime( "%Y.%m.%d.", localtime $self->time ) . $rid;
     my $us  = $self->config->{organization}{domain};
     if ( $us eq 'example.com' ) {
         die "Please update mail-dmarc.ini";
     }
     my $pol_dom = $$agg_ref->policy_published->domain;
-    return "Report Domain: $pol_dom Submitter: $us Report-ID:$id";
+    return "Report Domain: $pol_dom Submitter: $us Report-ID: $rid";
 }
 
 sub human_summary( $self, $agg_ref ) {

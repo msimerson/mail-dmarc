@@ -40,6 +40,7 @@ test_as_xml();
 test_rfc9990_xml_namespace();
 test_rfc9990_policy_published_fields();
 test_rfc9990_dkim_selector_required();
+test_rfc9990_reason_types();
 
 done_testing();
 exit;
@@ -105,8 +106,8 @@ sub test_rfc9990_policy_published_fields {
 
     my $xml = $agg->get_policy_published_as_xml();
     like( $xml, qr/<np>quarantine<\/np>/, 'RFC 9990: np tag emitted in policy_published' );
-    like( $xml, qr/<t>y<\/t>/,            'RFC 9990: t tag emitted in policy_published' );
-    like( $xml, qr/<psd>n<\/psd>/,        'RFC 9990: psd tag emitted in policy_published' );
+    like( $xml, qr/<testing>y<\/testing>/, 'RFC 9990: t tag emitted as testing' );
+    unlike( $xml, qr/<psd>/,               'RFC 9990: psd not in policy_published' );
     unlike( $xml, qr/<pct>/,              'RFC 9990: pct tag absent from policy_published (deprecated)' );
 }
 
@@ -131,4 +132,16 @@ sub test_rfc9990_dkim_selector_required {
     my $xml = $agg2->get_record_as_xml();
     like( $xml, qr/<selector><\/selector>|<selector\/>|<selector>[^<]*<\/selector>/,
         'RFC 9990: selector element always present in DKIM auth result' );
+}
+
+sub test_rfc9990_reason_types {
+    my $xml = $agg->get_policy_evaluated_as_xml( {
+        row => { policy_evaluated => {
+            disposition => 'none', dkim => 'fail', spf => 'fail',
+            reason => [ { type => 'forwarded' }, { type => 'local_policy', comment => 'ok' } ],
+        } } } );
+    like( $xml, qr{<type>other</type>\s*<comment>forwarded</comment>},
+        'RFC 9990: forwarded reported as other' );
+    like( $xml, qr{<type>local_policy</type>\s*<comment>ok</comment>},
+        'RFC 9990: local_policy kept' );
 }

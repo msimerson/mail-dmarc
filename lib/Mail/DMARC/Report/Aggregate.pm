@@ -137,8 +137,8 @@ sub get_auth_results_as_xml( $self, $rec ) {
 sub get_policy_published_as_xml($self) {
     my $pp  = $self->policy_published or return '';
     my $xml = "\t<policy_published>\n\t\t<domain>$pp->{domain}</domain>\n";
-    foreach my $f (qw/ adkim aspf p sp np t psd fo discovery_method /) {
-        my $v = $pp->{$f};
+    foreach my $f (qw/ adkim aspf p sp np testing fo discovery_method /) {
+        my $v = $f eq 'testing' ? $pp->{t} : $pp->{$f};
 
         # Set some default values for missing optional fields if necessary
         if ( $f eq 'sp' && !defined $v ) {
@@ -155,6 +155,9 @@ sub get_policy_published_as_xml($self) {
     return $xml;
 }
 
+my %override_type
+    = map { $_ => 1 } qw/ local_policy mailing_list other policy_test_mode trusted_forwarder /;
+
 sub get_policy_evaluated_as_xml( $self, $rec ) {
     my $pe = "\t\t\t<policy_evaluated>\n";
 
@@ -167,14 +170,19 @@ sub get_policy_evaluated_as_xml( $self, $rec ) {
     my $reasons = $rec->{row}{policy_evaluated}{reason};
     if ( $reasons && scalar @$reasons ) {
         foreach my $reason (@$reasons) {
-            my $typeval = XML::LibXML::Text->new( $reason->{type} )->toString();
+            my ( $type, $comment ) = @$reason{qw/ type comment /};
+
+            # RFC 9990 3.1.6 dropped the RFC 7489 types forwarded and sampled_out
+            if ( !$override_type{ lc $type } ) {
+                $comment = $type if !defined $comment || $comment !~ /\S/;
+                $type    = 'other';
+            }
+            my $typeval = XML::LibXML::Text->new($type)->toString();
             $pe .= "\t\t\t\t<reason>\n";
             $pe .= "\t\t\t\t\t<type>$typeval</type>\n";
 
-            # comment is minOccurs=0 in the RFC 7489 schema; only emit when present
-            if ( defined $reason->{comment} && $reason->{comment} =~ /\S/ ) {
-                my $commentval
-                    = XML::LibXML::Text->new( $reason->{comment} )->toString();
+            if ( defined $comment && $comment =~ /\S/ ) {
+                my $commentval = XML::LibXML::Text->new($comment)->toString();
                 $pe .= "\t\t\t\t\t<comment>$commentval</comment>\n";
             }
             $pe .= "\t\t\t\t</reason>\n";

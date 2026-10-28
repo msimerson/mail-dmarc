@@ -58,8 +58,10 @@ sub envelope_from( $self, $val = undef ) {
 
 sub header_from( $self, $val = undef ) {
     return $self->{header_from} if @_ == 1;
-    croak "invalid header_from" if !$self->is_valid_domain( lc $val );
-    return $self->{header_from} = lc $val;
+    $val = lc $val;
+    $val =~ s/\.$//;
+    croak "invalid header_from" if !$self->is_valid_domain($val);
+    return $self->{header_from} = $val;
 }
 
 sub header_from_raw( $self, $val = undef ) {
@@ -270,7 +272,9 @@ sub save_aggregate($self) {
     );
 
     $rec->auth_results->dkim( $self->dkim );
-    $rec->auth_results->spf( $self->spf );
+    # RFC 9990 3.1.1.13: only the MAIL FROM identity is reported
+    $rec->auth_results->spf(
+        [ grep { lc( $_->{scope} // 'mfrom' ) ne 'helo' } @{ $self->spf // [] } ] );
 
     $rec->row->policy_evaluated(
         disposition => $self->result->disposition,

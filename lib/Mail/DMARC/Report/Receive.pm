@@ -360,10 +360,12 @@ sub do_node_policy_published( $self, $node ) {
 
     my $pol = Mail::DMARC::Policy->new();
 
-    foreach my $n (qw/ domain adkim aspf p sp np t psd fo discovery_method /) {
+    my %tag_for = ( testing => 't' );
+    foreach my $n (qw/ domain adkim aspf p sp np t testing psd fo discovery_method /) {
         my $val = $node->findnodes("./$n")->string_value or next;
         $val =~ s/\s*//g;           # remove whitespace
-        try { $pol->$n($val) } catch ($e) { };    # ignore unknown/invalid tag values
+        my $tag = $tag_for{$n} // $n;
+        try { $pol->$tag($val) } catch ($e) { };    # ignore unknown/invalid tag values
     }
 
     $self->report->aggregate->policy_published($pol);

@@ -447,11 +447,8 @@ sub populate_agg_metadata( $self, $agg_ref, $report_ref ) {
         $$agg_ref->metadata->$f( $$report_ref->{$f} );
     }
 
-    my $errors = $self->query( $self->grammar->select_report_error,
-        [ $$report_ref->{rid} ] );
-    foreach (@$errors) {
-        $$agg_ref->metadata->error( $_->{error} );
-    }
+    # report_error holds our own delivery failures; RFC 9990 3.1.5 reserves
+    # the report's error element for DMARC Policy Record errors
     return 1;
 }
 

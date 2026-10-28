@@ -75,12 +75,11 @@ sub as_xml($self) {
         . $end
         . "</end>\n\t\t</date_range>\n";
 
+    # RFC 9990 schema allows a single error element
     my $errors = $self->error;
     if ( $errors && @$errors ) {
-        foreach my $err (@$errors) {
-            $err = XML::LibXML::Text->new($err)->toString();
-            $meta .= "\t\t<error>$err</error>\n";
-        }
+        my $err = XML::LibXML::Text->new( join '; ', @$errors )->toString();
+        $meta .= "\t\t<error>$err</error>\n";
     }
     $meta .= "\t</report_metadata>";
     return $meta;

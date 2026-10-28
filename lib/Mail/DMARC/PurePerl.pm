@@ -24,6 +24,8 @@ sub init($self) {
     $self->{spf}             = undef;
     $self->{dkim}            = undef;
     $self->{_tw_cache}       = {};
+    $self->{_tw_error}       = {};
+    $self->{_author_domains} = undef;
     return;
 }
 
@@ -32,12 +34,14 @@ sub validate( $self, $policy = undef ) {
     $self->result->disposition('none');    # defaults
 
     # 11.2.1 Extract RFC5322.From domain
-    my $from_dom = $self->get_from_dom() or return $self->result;
-
-    # 9.6. reject email if the domain appears to not exist
-    $self->exists_in_dns() or return $self->result;
+    my $from_dom = $self->get_from_dom();
+    if ( !$from_dom ) {
+        my $authors = delete $self->{_author_domains} or return $self->result;
+        return $self->_validate_each_author(@$authors);
+    }
 
     $policy ||= $self->discover_policy();    # 11.2.2 Query DNS for DMARC policy
+    return $self->_dns_temperror($from_dom) if $self->{_tw_error}{$from_dom};
     if ( !$policy ) {
 
         # RFC7489 section 4.3 step 8:
@@ -63,29 +67,7 @@ sub validate( $self, $policy = undef ) {
 
     return $self->result if $aligned;
 
-    # Determine if the from domain is a non-existent subdomain (for np tag)
-    my $is_sub = $self->is_subdomain;
-    my $sub_exists
-        = !$is_sub
-        || !defined $policy->np
-        || $self->_author_domain_exists($from_dom);
-
-    my $effective_p;
-    if ( $is_sub && !$sub_exists && defined $policy->np ) {
-
-        # RFC 9989 §4.7 np tag: policy for non-existent subdomains
-        $effective_p = $policy->np;
-    }
-    elsif ( defined $policy->sp
-        && $self->result->published
-        && $self->result->published->domain ne $from_dom )
-    {
-        $effective_p = $policy->sp;
-    }
-    else {
-        $effective_p = $policy->p;
-    }
-    $effective_p //= 'none';
+    my $effective_p = $self->_assessment_policy( $policy, $from_dom ) // 'none';
 
     # RFC 9989 4.7 t tag: testing mode, apply one severity level lower
     if ( defined $policy->t && lc( $policy->t ) eq 'y' ) {
@@ -114,6 +96,59 @@ sub validate( $self, $policy = undef ) {
 
     $self->result->disposition($effective_p);
     return $self->result;
+}
+
+# RFC 9989 4.10.1: sp and np apply only to a record above the Author Domain
+sub _assessment_policy( $self, $policy, $from_dom ) {
+    my $policy_dom = $policy->domain // $from_dom;
+    return $policy->p if $policy_dom eq $from_dom;
+    return $policy->np
+        if defined $policy->np && !$self->_author_domain_exists($from_dom);
+    return $policy->sp // $policy->p;
+}
+
+# RFC 9989 5.3.6
+sub _dns_temperror( $self, $from_dom ) {
+    $self->result->result('temperror');
+    $self->result->disposition('none');
+    $self->result->reason(
+        type    => 'other',
+        comment => "DNS error: $self->{_tw_error}{$from_dom}"
+    );
+    return $self->result;
+}
+
+my $max_author_domains = 5;
+my %disposition_rank   = ( none => 0, quarantine => 1, reject => 2 );
+my %result_rank        = ( pass => 0, none => 1, temperror => 2, fail => 3 );
+
+# RFC 9989 11.5: evaluate each Author Domain and keep the strictest result,
+# capped so a crafted From cannot fan out unbounded DNS work
+sub _validate_each_author( $self, @authors ) {
+    my $strictest;
+    for my $author ( splice @authors, 0, $max_author_domains ) {
+        my $one = bless { %$self, map { $_ => undef } qw/ policy result report / },
+            ref $self;
+        $one->header_from($author);
+        $one->validate;
+        $strictest = $one
+            if !$strictest || _is_stricter( $one->result, $strictest->result );
+    }
+    %$self = %$strictest;
+    if (@authors) {
+        $self->result->reason(
+            type    => 'other',
+            comment => scalar(@authors) . ' RFC5322.From domains not evaluated'
+        );
+    }
+    return $self->result;
+}
+
+sub _is_stricter( $candidate, $current ) {
+    my @rank = map {
+        [ $disposition_rank{ lc $_->disposition }, $result_rank{ lc $_->result } ]
+    } $candidate, $current;
+    return ( $rank[0][0] <=> $rank[1][0] || $rank[0][1] <=> $rank[1][1] ) > 0;
 }
 
 sub save_aggregate($self) {
@@ -173,26 +208,6 @@ sub discover_policy( $self, $from_dom = undef ) {
     }
     return unless $policy;
     $self->result->published($policy);
-
-    # If a retrieved policy record does not contain a valid "p" tag, or
-    # contains an "sp"/"np" tag that is not valid, then:
-    my $p_invalid  = $policy->p          && !$policy->is_valid_p( $policy->p );
-    my $sp_invalid = defined $policy->sp && !$policy->is_valid_p( $policy->sp );
-    my $np_invalid = defined $policy->np && !$policy->is_valid_p( $policy->np );
-
-    # psd=y records are not required to have p=
-    my $is_psd = defined $policy->psd && lc( $policy->psd ) eq 'y';
-
-    if ( ( !$policy->p && !$is_psd ) || $p_invalid || $sp_invalid || $np_invalid ) {
-        if (   !$policy->rua
-            || !$self->has_valid_reporting_uri( $policy->rua ) )
-        {
-            $self->result->reason( type => 'other', comment => "no valid rua" );
-            return;
-        }
-        $policy->v('DMARC1');
-        $policy->p('none');
-    }
 
     # psd=y records reach here without p= value, default to 'none' so all
     # downstream consumers see a concrete value.
@@ -382,6 +397,7 @@ sub get_dkim_pass_sigs($self) {
 
 sub tree_walk( $self, $from_dom ) {
     $from_dom = lc $from_dom;
+    $from_dom =~ s/\.$//;
 
     $self->{_tw_cache}{$from_dom} //= [
         $self->_select_from_tree_walk(
@@ -399,17 +415,25 @@ sub _tree_walk_records( $self, $from_dom ) {
     for ( 1 .. 8 ) {
         last if !@labels;
         my $target = join '.', @labels;
-        if ( my $found = $self->_tree_walk_query($target) ) {
-            push @found, $found;
-            last if $found->{psd} ne 'u';
-        }
         splice @labels, 0, ( @labels >= 8 ? @labels - 7 : 1 );
+
+        my $found = $self->_tree_walk_query($target) or next;
+        if ( $found->{error} ) {
+            $self->{_tw_error}{$from_dom} = $found->{error};
+            return;
+        }
+        push @found, $found;
+        last if $found->{psd} ne 'u';
     }
     return @found;
 }
 
 sub _tree_walk_query( $self, $target ) {
-    my $query = $self->get_resolver->send( "_dmarc.$target", 'TXT' ) or return;
+    my $resolver = $self->get_resolver;
+    my $query    = $resolver->send( "_dmarc.$target", 'TXT' );
+    my $rcode    = $query ? $query->header->rcode : $resolver->errorstring;
+    return { error => "_dmarc.$target: $rcode" }
+        if !$query || $rcode !~ /^(?:NOERROR|NXDOMAIN)$/;
 
     my @matches;
     for my $rr ( $query->answer ) {
@@ -450,15 +474,35 @@ sub _select_from_tree_walk( $self, $from_dom, @found ) {
     }
     print "Tree Walk Organizational Domain: $org_dom\n" if $self->verbose;
 
-    # RFC 9989 4.10.1: Author Domain, then Organizational Domain, then PSD
     my %by_domain = map { $_->{domain} => $_ } @found;
-    my $policy    = $by_domain{$from_dom} // $by_domain{$org_dom} // $last;
+
+    # the >=8-label shortcut steps over names longer than 7 labels, which can
+    # include the Organizational Domain below a PSD
+    if (   !$by_domain{$org_dom}
+        && $org_dom ne $from_dom
+        && _label_count($org_dom) > 7 )
+    {
+        my $found = $self->_tree_walk_query($org_dom);
+        if ( $found && $found->{error} ) {
+            $self->{_tw_error}{$from_dom} = $found->{error};
+        }
+        elsif ($found) {
+            $by_domain{$org_dom} = $found;
+        }
+    }
+
+    # RFC 9989 4.10.1: Author Domain, then Organizational Domain, then PSD
+    my $policy = $by_domain{$from_dom} // $by_domain{$org_dom} // $last;
 
     return ( $policy->{record}, $org_dom, $policy->{domain} );
 }
 
+sub _label_count($dom) {
+    return 1 + ( $dom =~ tr/.// );
+}
+
 sub _one_label_below( $from_dom, $ancestor ) {
-    my $depth  = 2 + ( $ancestor =~ tr/.// );
+    my $depth  = 1 + _label_count($ancestor);
     my @labels = split /\./, $from_dom;
     return join '.', @labels[ -$depth .. -1 ];
 }
@@ -589,26 +633,19 @@ sub get_from_dom($self) {
         return;
     };
 
-    # RFC 7489 §5.6.1: if From contains multiple addresses with different
-    # domains, use the Sender header domain. Caller should set $dmarc->sender.
     my @domains;
     while ( $header =~ /\@([\w][\w.-]*)/g ) {
         my $dom = lc $1;
         $dom =~ s/[>;\s,].*$//;
+        $dom =~ s/\.$//;
         push @domains, $dom if $dom;
     }
     my %unique_doms = map { $_ => 1 } @domains;
+
+    # RFC 9989 A.3: the Sender header is forgeable, so never substitute it
     if ( keys %unique_doms > 1 ) {
-        if ( $self->sender ) {
-            my $sender_dom = $self->to_ascii_domain( $self->sender );
-            return $self->header_from($sender_dom);
-        }
-        $self->result->result('none');
-        $self->result->reason(
-            type    => 'other',
-            comment =>
-                'multiple RFC5322.From domains; provide Sender header via $dmarc->sender',
-        );
+        $self->{_author_domains}
+            = [ map { $self->to_ascii_domain($_) } sort keys %unique_doms ];
         return;
     }
 
@@ -731,9 +768,14 @@ sub verify_external_reporting( $self, $uri_ref = undef ) {
     foreach my $or (@overrides) {
         my $recips_ref = $self->report->uri->parse( $or->{rua} ) or next;
 
-        # the overriding URI MUST use the same destination host from step 1.
-        my $override_host = _uri_authority_host( $recips_ref->[0]{uri} );
-        next unless defined $override_host && $override_host eq $dest_host;
+        # the overriding URI MUST use the same destination host from step 1,
+        # else neither the original nor the override may receive reports
+        if ( grep { lc( _uri_authority_host( $_->{uri} ) // '' ) ne lc $dest_host }
+            @$recips_ref )
+        {
+            print "\toverride RUA $or->{rua} leaves $dest_host\n" if $self->verbose;
+            return;
+        }
         print "found override RUA: $or->{rua}\n" if $self->verbose;
         $self->result->published->rua( $or->{rua} );
     }
@@ -767,9 +809,9 @@ This method does the following:
 
 =over 4
 
-* check if the RFC5322.From domain exists (exists_in_dns)
+* query DNS for a DMARC policy (discover_policy); a DNS failure yields I<temperror>
 
-* query DNS for a DMARC policy (discover_policy)
+* when the RFC5322.From header holds several domains, validate each one (up to 5) and keep the strictest result; the Sender header is never used
 
 * check DKIM alignment (is_dkim_aligned)
 

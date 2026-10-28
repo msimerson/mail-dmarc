@@ -54,7 +54,7 @@ exit;
 
 sub test_get_subject {
     my $subject = $smtp->get_subject( \$agg );
-    ok( $subject, "get_subject, $subject" );
+    like( $subject, qr/ Report-ID: 2013\.06\.01\.6789$/, "get_subject, $subject" );
 };
 
 sub test_get_helo_hostname {

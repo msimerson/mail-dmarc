@@ -2,6 +2,14 @@
 
 - fix(tree_walk): policy from author, org, or PSD domain only
 - fix(tree_walk): skip duplicate records, keep walking
+- fix(tree_walk): query an org domain the 8-label shortcut skips
+- fix(validate): check every From domain, ignore Sender
+- fix(validate): apply np to missing domains under a PSD
+- fix(validate): temperror when the policy lookup fails
+- fix(policy): invalid p, sp or np with a valid rua means p=none
+- fix(report): drop external rua when its override leaves the host
+- fix(report): RFC 9990 schema: testing, one error, mfrom only
+- fix(report): Subject Report-ID matches report_id
 
 ### 2.20260827
 
