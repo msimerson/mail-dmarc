@@ -254,7 +254,7 @@ sub save_aggregate($self) {
         $agg->metadata->$f( $self->config->{organization}{$f} );
     }
 
-    # RFC 9989 lists ri as historic, so the window comes from config alone
+    # ri is historic (RFC 9989 9.3)
     my ( $begin, $end ) = $self->get_report_window( undef, $self->time );
 
     $agg->metadata->begin($begin);
@@ -272,7 +272,7 @@ sub save_aggregate($self) {
     );
 
     $rec->auth_results->dkim( $self->dkim_for_report );
-    # RFC 9990 3.1.1.13: only the MAIL FROM identity is reported
+    # RFC 9990 3.1.1.13: MAIL FROM only
     $rec->auth_results->spf(
         [ grep { lc( $_->{scope} // 'mfrom' ) ne 'helo' } @{ $self->spf // [] } ] );
 
@@ -287,8 +287,7 @@ sub save_aggregate($self) {
     return $self->report->save_aggregate;
 }
 
-# RFC 9990 3.1.3: strictly aligned passes, relaxed passes, other passes, then
-# failures, at most 100
+# RFC 9990 3.1.3
 sub dkim_for_report($self) {
     my $from     = $self->header_from;
     my $from_org = $self->get_organizational_domain($from);

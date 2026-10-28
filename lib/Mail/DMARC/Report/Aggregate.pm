@@ -107,9 +107,7 @@ sub get_identifiers_as_xml( $self, $rec ) {
 sub get_auth_results_as_xml( $self, $rec ) {
     my $ar = "\t\t<auth_results>\n";
 
-    # RFC 9990 3.1.1.12-13: results are lowercase, and only one MAIL FROM
-    # result is reported. Stores written by earlier versions hold helo rows
-    # with MTA-cased results (Pass, SoftFail).
+    # RFC 9990 3.1.1.12-13; older stores hold helo rows and MTA-cased results
     foreach my $dkim_sig ( @{ $rec->{auth_results}{dkim} } ) {
         $ar .= "\t\t\t<dkim>\n";
         foreach my $g (qw/ domain selector result human_result /) {
@@ -177,7 +175,7 @@ sub get_policy_evaluated_as_xml( $self, $rec ) {
         foreach my $reason (@$reasons) {
             my ( $type, $comment ) = @$reason{qw/ type comment /};
 
-            # RFC 9990 3.1.6 dropped the RFC 7489 types forwarded and sampled_out
+            # RFC 9990 3.1.6 dropped forwarded and sampled_out
             if ( !$override_type{ lc $type } ) {
                 $comment = $type if !defined $comment || $comment !~ /\S/;
                 $type    = 'other';

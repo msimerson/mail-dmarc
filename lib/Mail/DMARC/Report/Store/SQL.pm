@@ -451,8 +451,7 @@ sub populate_agg_metadata( $self, $agg_ref, $report_ref ) {
         $$agg_ref->metadata->$f( $$report_ref->{$f} );
     }
 
-    # report_error holds our own delivery failures; RFC 9990 3.1.5 reserves
-    # the report's error element for DMARC Policy Record errors
+    # report_error logs our delivery failures, not report content (RFC 9990 3.1.5)
     return 1;
 }
 
@@ -569,8 +568,8 @@ sub insert_error( $self, $rid, $error ) {
 
 sub insert_rr_reason( $self, $row_id, $type, $comment ) {
 
-    # MySQL enforces reason types against fk_disposition_reason, which other
-    # reporters, and databases not yet upgraded, don't always agree with
+    # MySQL enforces fk_disposition_reason, which other reporters and
+    # un-upgraded databases don't always match
     my $known = $self->known_reason_types;
     if ( $known && !$known->{ lc $type } ) {
         $comment = $type if !defined $comment || $comment !~ /\S/;
@@ -646,7 +645,7 @@ sub insert_rr( $self, $report_id, $rec ) {
 sub insert_policy_published( $self, $id, $pub ) {
     my %value = ( %$pub, testing => $pub->{t} );
 
-    # databases not yet upgraded by share/mail_dmarc_rfc9990.* lack some columns
+    # un-upgraded databases lack the RFC 9990 columns
     my %has = map { $_ => 1 } $self->table_columns('report_policy_published');
     my @fields = grep { $has{$_} }
         qw/ adkim aspf p sp pct rua np fo testing discovery_method /;
@@ -721,8 +720,7 @@ my @rfc9990_columns = qw/ np fo testing discovery_method /;
 my %engine_suffix   = ( sqlite => 'sqlite', mysql => 'mysql', postgresql => 'pgsql' );
 my %engine_client   = ( sqlite => 'sqlite3', mysql => 'mysql', postgresql => 'psql' );
 
-# Upgrades ship as share/ files the operator runs, and nothing fails without
-# them, so say so once per database or nobody finds out
+# nothing fails without the share/ upgrades, so say so once per database
 sub warn_if_schema_outdated( $self, $dsn ) {
     return if $schema_checked{$dsn}++;
 

@@ -95,7 +95,7 @@ sub validate( $self, $policy = undef ) {
     return $self->result;
 }
 
-# RFC 9989 4.10.1: sp and np apply only to a record above the Author Domain
+# RFC 9989 4.10.1
 sub _assessment_policy( $self, $policy, $from_dom ) {
     my $policy_dom = $policy->domain // $from_dom;
     return $policy->p if $policy_dom eq $from_dom;
@@ -119,8 +119,7 @@ my $max_author_domains = 5;
 my %disposition_rank   = ( none => 0, quarantine => 1, reject => 2 );
 my %result_rank        = ( pass => 0, none => 1, temperror => 2, fail => 3 );
 
-# RFC 9989 11.5: evaluate each Author Domain and keep the strictest result,
-# capped so a crafted From cannot fan out unbounded DNS work
+# RFC 9989 11.5; the cap bounds the DNS work a crafted From can cause
 sub _validate_each_author( $self, @authors ) {
     my $strictest;
     for my $author ( splice @authors, 0, $max_author_domains ) {
@@ -468,8 +467,7 @@ sub _select_from_tree_walk( $self, $from_dom, @found ) {
 
     my %by_domain = map { $_->{domain} => $_ } @found;
 
-    # the >=8-label shortcut steps over names longer than 7 labels, which can
-    # include the Organizational Domain below a PSD
+    # the >=8-label shortcut can skip the Organizational Domain
     if (   !$by_domain{$org_dom}
         && $org_dom ne $from_dom
         && _label_count($org_dom) > 7 )
@@ -483,14 +481,13 @@ sub _select_from_tree_walk( $self, $from_dom, @found ) {
         }
     }
 
-    # RFC 9989 4.10.1: Author Domain, then Organizational Domain, then PSD
+    # RFC 9989 4.10.1
     my $policy = $by_domain{$from_dom} // $by_domain{$org_dom} // $last;
 
     return ( $policy->{record}, $org_dom, $policy->{domain} );
 }
 
-# RFC 9989 4.7 makes the version case sensitive and first; #39 shows
-# v=dmarc1, quoted records, and stray whitespace in the wild, so accept them
+# laxer than RFC 9989 4.7 about case, quotes, and whitespace (#39)
 sub _is_dmarc_record($txt) {
     return $txt =~ /^\s*"?\s*v\s*=\s*DMARC1\s*(?:[;,"]|$)/i;
 }
@@ -601,7 +598,7 @@ sub fetch_dmarc_record( $self, $zone, $org_dom = undef ) {
 
         #   2.  Records that do not start with a "v=" tag that identifies the
         #       current version of DMARC are discarded.
-        my $txt = join '', $rr->txtdata;    # join long records
+        my $txt = join '', $rr->txtdata;
         next if !_is_dmarc_record($txt);
         print "\n$txt\n\n" if $self->verbose;
         push @matches, $txt;
@@ -769,8 +766,7 @@ sub verify_external_reporting( $self, $uri_ref = undef ) {
     foreach my $or (@overrides) {
         my $recips_ref = $self->report->uri->parse( $or->{rua} ) or next;
 
-        # the overriding URI MUST use the same destination host from step 1,
-        # else neither the original nor the override may receive reports
+        # an override to another host voids both destinations
         if ( grep { lc( _uri_authority_host( $_->{uri} ) // '' ) ne lc $dest_host }
             @$recips_ref )
         {

@@ -75,7 +75,7 @@ sub as_xml($self) {
         . $end
         . "</end>\n\t\t</date_range>\n";
 
-    # RFC 9990 schema allows a single error element
+    # the RFC 9990 schema allows one error element
     my $errors = $self->error;
     if ( $errors && @$errors ) {
         my $err = XML::LibXML::Text->new( join '; ', @$errors )->toString();

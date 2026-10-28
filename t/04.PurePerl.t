@@ -47,8 +47,7 @@ $resolver->zonefile_parse(join("\n",
 # intermediate record below the PSD
 '_dmarc.x.sub.psd.dmarctest.net.                600 TXT "v=DMARC1; p=none"',
 
-# 7-label PSD reached by the >=8-label shortcut, its Organizational Domain
-# stepped over by the shortcut
+# 7-label PSD; the >=8-label shortcut skips its Organizational Domain
 '_dmarc.deeppsd.e.d.c.b.dmarctest.net.          600 TXT "v=DMARC1; psd=y"',
 '_dmarc.y.deeppsd.e.d.c.b.dmarctest.net.        600 TXT "v=DMARC1; p=reject"',
 
@@ -343,7 +342,7 @@ sub get_test_headers {
         'user@example.com'                              => 'example.com',
         '<user@example.com>'                            => 'example.com',
         ' <user@example.com > '                         => 'example.com',
-        # multiple From domains: validate() evaluates each one
+        # multiple From domains: validate() checks each
         'Sample User <user@example.com>,Sample2<user@example2.com>' => '',
         'From: "Test 1.1.5"'                            => '',
     );
@@ -537,7 +536,6 @@ sub test_tree_walk {
     is( $org, 'sub.psd.dmarctest.net', "tree_walk, psd=y: org is PSD child" );
     is( $at,  'psd.dmarctest.net',     "tree_walk, psd=y: policy from PSD" );
 
-    # the >=8-label shortcut lands on the PSD
     $dmarc->init;
     ($rec, $org, $at) = $dmarc->tree_walk('x.y.deeppsd.e.d.c.b.dmarctest.net');
     is( $org, 'y.deeppsd.e.d.c.b.dmarctest.net',
@@ -655,7 +653,7 @@ sub test_validate_rfc9989 {
     is( $dmarc->result->result, 'fail', 'invalid p with rua: DMARC still applies' );
     is( eval { $dmarc->result->published->p }, 'none', 'invalid p with rua: treated as p=none' );
 
-    # Sender is forgeable; every From domain is evaluated and the strictest wins
+    # Sender is forgeable (RFC 9989 A.3)
     $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
         header_from_raw => 'ceo@mfbank.dmarctest.net, x@mfother.dmarctest.net',
         sender          => 'mfother.dmarctest.net',
@@ -704,7 +702,6 @@ sub test_validate_rfc9989 {
         [ 'tnpi.net pass', 'www.tnpi.net pass', 'other.example.com pass', 'tnpi.net fail' ],
         'dkim_for_report: RFC 9990 3.1.3 order' );
 
-    # RFC 9990 4: an override to another host voids both destinations
     $dmarc->init;
     my $policy = $dmarc->policy->parse('v=DMARC1; p=none; rua=mailto:r@reports.example.org');
     $policy->{domain} = 'extov.dmarctest.net';

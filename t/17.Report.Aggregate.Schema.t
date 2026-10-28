@@ -17,17 +17,7 @@ if ($@) {
     exit;
 }
 
-eval "use XML::SAX::ParserFactory;";
-if ($@) {
-    plan( skip_all => 'XML::SAX::ParserFactory not available' );
-    exit;
-}
-
-eval "use XML::Validator::Schema;";
-if ($@) {
-    plan( skip_all => 'XML::Validator::Schema not available' );
-    exit;
-}
+use XML::LibXML;
 
 my $resolver = new Net::DNS::Resolver::Mock();
 $resolver->zonefile_parse(join("\n",
@@ -79,7 +69,6 @@ my $report_id = $dmarc->save_aggregate();
 ok( $report_id, "saved report $report_id");
 
 my $a = $store->backend->query("UPDATE report SET begin=begin-86400, end=end-86400 WHERE id=$report_id");
-   $a = $store->backend->query("INSERT INTO report_error(report_id,error,time) VALUES($report_id,\"<ERROR> Test error & encoding\",100)");
 
 my $agg = $store->retrieve_todo()->[0];
 
@@ -91,13 +80,9 @@ exit;
 sub test_against_schema {
 
     $agg->metadata->report_id($report_id);
+    $agg->metadata->error('<ERROR> Test error & encoding');
 
-    my $xml = $agg->as_xml();
-    $xml =~ s/\s+xmlns="[^"]*"//g;
-    lives_ok( sub{
-        my $validator = XML::Validator::Schema->new(file => 'share/rua-schema.xsd');
-        my $parser = XML::SAX::ParserFactory->parser(Handler => $validator);
-        $parser->parse_string( $xml );
-    }, 'Check schema' );
-    # print $xml;
+    my $schema = XML::LibXML::Schema->new( location => 'share/rua-schema.xsd' );
+    lives_ok( sub { $schema->validate( XML::LibXML->load_xml( string => $agg->as_xml ) ) },
+        'Check schema' );
 }

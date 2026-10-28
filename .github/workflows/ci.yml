@@ -48,7 +48,6 @@ jobs:
             Test::File::ShareDir
             Test::Output
             Test::Exception
-            XML::Validator::Schema
             Net::DNS::Resolver::Mock
           sudo: false
 

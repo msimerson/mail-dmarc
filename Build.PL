@@ -141,12 +141,6 @@ my $module_build_args = {
   },
   "meta_merge" => {
     "prereqs" => {
-      "test" => {
-        "recommends" => {
-          "XML::SAX::ParserFactory" => "0",
-          "XML::Validator::Schema" => "0"
-        },
-      },
       "develop" => {
         "requires" => {
           "Test::Pod" => "1.41"

@@ -53,7 +53,7 @@ sub get_smtp_hosts( $self, $email = undef ) {
 
 sub get_subject( $self, $agg_ref ) {
 
-    # RFC 9990 3.1.4: the Report-ID must match the report's report_id
+    # RFC 9990 3.1.4
     my $rid = $$agg_ref->metadata->report_id || $self->time;
     my $us  = $self->config->{organization}{domain};
     if ( $us eq 'example.com' ) {

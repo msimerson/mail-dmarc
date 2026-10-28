@@ -34,16 +34,14 @@ sub parse( $self, $str, @junk ) {
     $cleaned =~ s/\s//g;                               # remove whitespace
     $cleaned =~ s/\\;/;/g;                             # replace \;  with ;
 
-    # Robustness for records seen in the wild (#39): quotes pasted into the
-    # TXT data, and a comma in place of the semicolon after the version
+    # tolerate records seen in the wild (#39)
     $cleaned =~ s/(?:^|;)\K"+|"+(?=;|$)//g;
     $cleaned =~ s/(?:^|;)\Kv=DMARC1,/v=DMARC1;/i;
 
     my %policy;
     foreach my $tv ( split /;/, $cleaned ) {
 
-        # #39 again: fo:0 and sp-none are common typos for =. RFC 9989 4.8
-        # discards the rest (empty values, stray words) in favor of defaults.
+        # fo:0 and sp-none are common typos (#39); RFC 9989 4.8 discards the rest
         my ( $tag, $value ) = split /=|:|-/, $tv, 2;
         next if !defined $value || $value eq '' || $tag !~ /^[a-z]+$/i;
         $policy{ lc $tag } = $value;
@@ -210,7 +208,7 @@ sub is_valid( $self, $obj = undef ) {
     my @invalid = grep { defined $obj->{$_} && !$self->is_valid_p( $obj->{$_} ) }
         qw/ p sp np /;
 
-    # RFC 9989 4.10.1: a valid rua rescues the record as if it published p=none
+    # RFC 9989 4.10.1
     if ( @invalid || ( !$obj->{p} && !$is_psd ) ) {
         croak "missing or invalid policy action"
             if !( $obj->{rua} && $self->is_valid_uri_list( $obj->{rua} ) );

@@ -17,7 +17,7 @@
 - fix(policy): accept quoted records, a comma after v=DMARC1, bare rua addresses (#39)
 - fix(policy): drop malformed tags quietly instead of warning
 - fix(report): lowercase results, one MAIL FROM spf, for rows already stored
-- chore: ship the RFC 9990 XSD
+- chore: ship the RFC 9990 XSD, test reports against it with XML::LibXML
 
 ### 2.20260827
 
