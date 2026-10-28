@@ -107,6 +107,7 @@ VALUES
 	('local_policy'),
 	('mailing_list'),
 	('other'),
+	('policy_test_mode'),
 	('sampled_out'),
 	('trusted_forwarder');
 
@@ -196,6 +197,11 @@ CREATE TABLE `report_policy_published` (
   `sp` varchar(10) DEFAULT NULL,
   `pct` tinyint(1) unsigned DEFAULT NULL,
   `rua` varchar(255) DEFAULT NULL,
+  -- Keep in sync with share/mail_dmarc_rfc9990.mysql
+  `np` varchar(10) DEFAULT NULL,
+  `fo` varchar(32) DEFAULT NULL,
+  `testing` char(1) DEFAULT NULL,
+  `discovery_method` varchar(8) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `report_id` (`report_id`),
   CONSTRAINT `report_policy_published_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `report` (`id`) ON DELETE CASCADE ON UPDATE CASCADE

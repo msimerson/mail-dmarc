@@ -1,0 +1,36 @@
+-- RFC 9990 report fields. Databases created by Mail::DMARC 2.20260827 or
+-- earlier lack them, so stored reports drop np, fo, testing and
+-- discovery_method, and reports using the policy_test_mode reason fail to
+-- import. MySQL has no ADD COLUMN IF NOT EXISTS, so each column is added
+-- through a procedure that checks first. Safe to re-run.
+--
+--   mysql dmarc_report < mail_dmarc_rfc9990.mysql
+
+DROP PROCEDURE IF EXISTS mail_dmarc_add_column;
+
+DELIMITER //
+CREATE PROCEDURE mail_dmarc_add_column(
+    IN tbl VARCHAR(64), IN col VARCHAR(64), IN def VARCHAR(255))
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = tbl
+          AND COLUMN_NAME = col
+    ) THEN
+        SET @ddl = CONCAT('ALTER TABLE `', tbl, '` ADD COLUMN `', col, '` ', def);
+        PREPARE stmt FROM @ddl;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END//
+DELIMITER ;
+
+CALL mail_dmarc_add_column('report_policy_published', 'np', 'varchar(10) DEFAULT NULL');
+CALL mail_dmarc_add_column('report_policy_published', 'fo', 'varchar(32) DEFAULT NULL');
+CALL mail_dmarc_add_column('report_policy_published', 'testing', 'char(1) DEFAULT NULL');
+CALL mail_dmarc_add_column('report_policy_published', 'discovery_method', 'varchar(8) DEFAULT NULL');
+
+DROP PROCEDURE mail_dmarc_add_column;
+
+INSERT IGNORE INTO `fk_disposition_reason` (`type`) VALUES ('policy_test_mode');

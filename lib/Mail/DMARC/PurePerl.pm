@@ -77,10 +77,7 @@ sub validate( $self, $policy = undef ) {
             :                                        $effective_p;
         if ( $tested ne $effective_p ) {
             $effective_p = $tested;
-            $self->result->reason(
-                type    => 'other',
-                comment => 'policy testing mode (t=y)'
-            );
+            $self->result->reason( type => 'policy_test_mode' );
         }
     }
 
@@ -207,6 +204,7 @@ sub discover_policy( $self, $from_dom = undef ) {
         return;
     }
     return unless $policy;
+    $policy->discovery_method('treewalk');
     $self->result->published($policy);
 
     # psd=y records reach here without p= value, default to 'none' so all
@@ -438,8 +436,8 @@ sub _tree_walk_query( $self, $target ) {
     my @matches;
     for my $rr ( $query->answer ) {
         next if $rr->type ne 'TXT';
-        next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
-        push @matches, join( '', $rr->txtdata );
+        my $txt = join '', $rr->txtdata;
+        push @matches, $txt if _is_dmarc_record($txt);
     }
 
     # RFC 9989 4.10 step 2
@@ -449,13 +447,7 @@ sub _tree_walk_query( $self, $target ) {
     }
     return if !@matches;
 
-    my $pol;
-    try {
-        $pol = $self->policy->parse("domain=$target;$matches[0]");
-    }
-    catch ($e) { };
-    return if !$pol;
-
+    my $pol = $self->policy->parse("domain=$target;$matches[0]");
     return {
         domain => $target,
         record => $matches[0],
@@ -495,6 +487,12 @@ sub _select_from_tree_walk( $self, $from_dom, @found ) {
     my $policy = $by_domain{$from_dom} // $by_domain{$org_dom} // $last;
 
     return ( $policy->{record}, $org_dom, $policy->{domain} );
+}
+
+# RFC 9989 4.7 makes the version case sensitive and first; #39 shows
+# v=dmarc1, quoted records, and stray whitespace in the wild, so accept them
+sub _is_dmarc_record($txt) {
+    return $txt =~ /^\s*"?\s*v\s*=\s*DMARC1\s*(?:[;,"]|$)/i;
 }
 
 sub _label_count($dom) {
@@ -603,9 +601,10 @@ sub fetch_dmarc_record( $self, $zone, $org_dom = undef ) {
 
         #   2.  Records that do not start with a "v=" tag that identifies the
         #       current version of DMARC are discarded.
-        next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
-        print "\n" . $rr->txtdata . "\n\n" if $self->verbose;
-        push @matches, join( '', $rr->txtdata );    # join long records
+        my $txt = join '', $rr->txtdata;    # join long records
+        next if !_is_dmarc_record($txt);
+        print "\n$txt\n\n" if $self->verbose;
+        push @matches, $txt;
     }
     if (@matches) {
         return \@matches, $zone;                    # found one! (at least)
@@ -736,33 +735,35 @@ sub verify_external_reporting( $self, $uri_ref = undef ) {
     #      after conversion to an A-label if needed.
     my $dest = join '.', $dmarc_dom, '_report._dmarc', $dest_host;
 
-    #  4.  Query the DNS for a TXT record at the constructed name.
+    #  4.  If the length of the constructed name exceeds DNS limits, stop.
+    if ( length $dest > 253 ) {
+        print "\t$dest exceeds DNS name limits\n" if $self->verbose;
+        return;
+    }
+
+    #  5.  Query the DNS for a TXT record at the constructed name.
     my $query = $self->get_resolver->send( $dest, 'TXT' ) or do {
         print "\tquery for $dest failed\n" if $self->verbose;
         return;
     };
 
-    #  5.  For each record, parse the result...same overall format:
+    #  6.  For each record, parse the result...same overall format:
     #      "v=DMARC1" tag is mandatory and MUST appear first in the list.
     my @matches;
     for my $rr ( $query->answer ) {
         next if $rr->type ne 'TXT';
-
-        next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
-        my $policy    = undef;
-        my $dmarc_str = join( '', $rr->txtdata );               # join parts
-        try { $policy = $self->policy->parse($dmarc_str) } catch ($e) { };
-        push @matches, $policy ? $policy : $dmarc_str;
+        my $txt = join '', $rr->txtdata;
+        push @matches, $self->policy->parse($txt) if _is_dmarc_record($txt);
     }
 
-    #  6.  If the result includes no TXT resource records...stop
+    #  7.  If the result includes no TXT resource records...stop
     if ( !@matches ) {
         print "\tno TXT match for $dest\n" if $self->verbose;
         return;
     }
 
-    #  7.  If > 1 TXT resource record remains, external reporting authorized
-    #  8.  If a "rua" or "ruf" tag is discovered, replace the
+    #  8.  If a TXT resource record remains, external reporting is authorized
+    #  9.  If a "rua" or "ruf" tag is discovered, replace the
     #      corresponding value with the one found in this record.
     my @overrides = grep { ref $_ && $_->{rua} } @matches;
     foreach my $or (@overrides) {
@@ -811,7 +812,7 @@ This method does the following:
 
 * query DNS for a DMARC policy (discover_policy); a DNS failure yields I<temperror>
 
-* when the RFC5322.From header holds several domains, validate each one (up to 5) and keep the strictest result; the Sender header is never used
+* when the RFC5322.From header holds several domains, validate each one (up to 5) and keep the strictest result
 
 * check DKIM alignment (is_dkim_aligned)
 

@@ -58,6 +58,9 @@ sub test_parse {
     );
     is( @$mixed, 2, 'parse filters unsupported schemes (ftp)' );
 
+    my $bare = $uri->parse('dmarc@example.com');
+    is( $bare->[0]{uri}, 'mailto:dmarc@example.com', 'parse, bare address as mailto (#39)' );
+
     throws_ok { $uri->parse() } qr/URI string is required/i,
         'parse croaks without URI string';
 }

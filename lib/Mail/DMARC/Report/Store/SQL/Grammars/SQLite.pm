@@ -18,6 +18,10 @@ sub dsn {
     return 'SQLite';
 }
 
+sub select_index_names {
+    return "SELECT name FROM sqlite_master WHERE type = 'index'";
+}
+
 sub and_arg( $self, $column, $operator = undef ) {
     $operator //= '=';
     return " AND $column $operator ?";
@@ -246,13 +250,9 @@ EO_ROW_INSERT
         ;
 }
 
-sub insert_policy_published {
-    return <<"EO_RPP"
-INSERT INTO report_policy_published
-  (report_id, adkim, aspf, p, sp, pct, rua)
-VALUES (??)
-EO_RPP
-        ;
+sub insert_policy_published( $self, $fields ) {
+    my $fields_str = join ', ', @$fields;
+    return "INSERT INTO report_policy_published (report_id, $fields_str) VALUES (??)";
 }
 
 sub select_from( $self, $columns, $table ) {

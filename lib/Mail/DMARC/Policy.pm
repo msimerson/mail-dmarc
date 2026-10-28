@@ -33,26 +33,19 @@ sub parse( $self, $str, @junk ) {
     my $cleaned = $str;
     $cleaned =~ s/\s//g;                               # remove whitespace
     $cleaned =~ s/\\;/;/g;                             # replace \;  with ;
-    $cleaned =~ s/;;/;/g;                              # replace ;;  with ;
-    $cleaned =~ s/;0;/;/g;                             # replace ;0; with ;
-    chop $cleaned if ';' eq substr $cleaned, -1, 1;    # remove a trailing ;
-    my @tag_vals = split /;/, $cleaned;
+
+    # Robustness for records seen in the wild (#39): quotes pasted into the
+    # TXT data, and a comma in place of the semicolon after the version
+    $cleaned =~ s/(?:^|;)\K"+|"+(?=;|$)//g;
+    $cleaned =~ s/(?:^|;)\Kv=DMARC1,/v=DMARC1;/i;
+
     my %policy;
-    my $warned = 0;
+    foreach my $tv ( split /;/, $cleaned ) {
 
-    foreach my $tv (@tag_vals) {
+        # #39 again: fo:0 and sp-none are common typos for =. RFC 9989 4.8
+        # discards the rest (empty values, stray words) in favor of defaults.
         my ( $tag, $value ) = split /=|:|-/, $tv, 2;
-        if ( !defined $tag || !defined $value || $value eq '' ) {
-            if ( !$warned ) {
-
-                #warn "tv: $tv\n";
-                warn "invalid DMARC record, please post this message to\n"
-                    . "\thttps://github.com/msimerson/mail-dmarc/issues/39\n"
-                    . "\t$str\n";
-            }
-            $warned++;
-            next;
-        }
+        next if !defined $value || $value eq '' || $tag !~ /^[a-z]+$/i;
         $policy{ lc $tag } = $value;
     }
 
@@ -73,7 +66,7 @@ sub parse( $self, $str, @junk ) {
 
 sub stringify($self) {
     my %dmarc_record = %{$self};
-    delete $dmarc_record{domain};
+    delete @dmarc_record{qw/ domain discovery_method /};
 
     my $dmarc_txt = 'v=' . ( delete $dmarc_record{v} );    # "v" tag must be first
     foreach my $key ( keys %dmarc_record ) {
@@ -179,6 +172,12 @@ sub pct( $self, $val = undef ) {
     croak "not an integer!"     if $val != int $val;
     croak "out of range"        if $val < 0 || $val > 100;
     return $self->{pct} = $val;
+}
+
+sub discovery_method( $self, $val = undef ) {
+    return $self->{discovery_method} if @_ == 1;
+    croak "invalid discovery_method ($val)" if $val !~ /^(?:psl|treewalk)$/i;
+    return $self->{discovery_method} = lc $val;
 }
 
 sub domain( $self, $val = undef ) {

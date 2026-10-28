@@ -10,6 +10,14 @@
 - fix(report): drop external rua when its override leaves the host
 - fix(report): RFC 9990 schema: testing, one error, mfrom only
 - fix(report): Subject Report-ID matches report_id
+- feat(store): save np, fo, testing, discovery_method; run share/mail_dmarc_rfc9990.*
+- feat(store): warn once when the DB lacks an upgrade, with the command
+- feat(report): policy_test_mode reason, DKIM ordered and capped at 100
+- fix(report): ignore historic ri, check external name length
+- fix(policy): accept quoted records, a comma after v=DMARC1, bare rua addresses (#39)
+- fix(policy): drop malformed tags quietly instead of warning
+- fix(report): lowercase results, one MAIL FROM spf, for rows already stored
+- chore: ship the RFC 9990 XSD
 
 ### 2.20260827
 

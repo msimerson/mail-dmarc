@@ -107,24 +107,29 @@ sub get_identifiers_as_xml( $self, $rec ) {
 sub get_auth_results_as_xml( $self, $rec ) {
     my $ar = "\t\t<auth_results>\n";
 
+    # RFC 9990 3.1.1.12-13: results are lowercase, and only one MAIL FROM
+    # result is reported. Stores written by earlier versions hold helo rows
+    # with MTA-cased results (Pass, SoftFail).
     foreach my $dkim_sig ( @{ $rec->{auth_results}{dkim} } ) {
         $ar .= "\t\t\t<dkim>\n";
         foreach my $g (qw/ domain selector result human_result /) {
             next if !defined $dkim_sig->{$g} && $g ne 'selector';
-            my $val
-                = defined $dkim_sig->{$g}
-                ? XML::LibXML::Text->new( $dkim_sig->{$g} )->toString()
-                : '';
+            my $val = $dkim_sig->{$g} // '';
+            $val = lc $val if $g eq 'result';
+            $val = XML::LibXML::Text->new($val)->toString();
             $ar .= "\t\t\t\t<$g>$val</$g>\n";
         }
         $ar .= "\t\t\t</dkim>\n";
     }
 
-    foreach my $spf ( @{ $rec->{auth_results}{spf} } ) {
+    my ($spf) = grep { lc( $_->{scope} // 'mfrom' ) ne 'helo' }
+        @{ $rec->{auth_results}{spf} || [] };
+    if ($spf) {
         $ar .= "\t\t\t<spf>\n";
         foreach my $g (qw/ domain scope result /) {
             next if !defined $spf->{$g};
-            my $val = XML::LibXML::Text->new( $spf->{$g} )->toString();
+            my $val = $g eq 'domain' ? $spf->{$g} : lc $spf->{$g};
+            $val = XML::LibXML::Text->new($val)->toString();
             $ar .= "\t\t\t\t<$g>$val</$g>\n";
         }
         $ar .= "\t\t\t</spf>\n";

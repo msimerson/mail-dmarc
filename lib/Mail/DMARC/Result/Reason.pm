@@ -21,9 +21,9 @@ sub type( $self, $val = undef ) {
     return $self->{type} if @_ == 1;
     croak "invalid type"
         if !defined $val
-        || 0 == grep {/^$val$/ix}
+        || 0 == grep {/^\Q$val\E$/ix}
         qw/ forwarded sampled_out trusted_forwarder
-        mailing_list local_policy other /;
+        mailing_list local_policy other policy_test_mode /;
     return $self->{type} = $val;
 }
 

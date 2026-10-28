@@ -59,6 +59,10 @@ $resolver->zonefile_parse(join("\n",
 '_dmarc.badp.dmarctest.net.                     600 TXT "v=DMARC1; p=bogus; rua=mailto:dmarc@badp.dmarctest.net"',
 'badp.dmarctest.net.                            600 MX  10 mail.badp.dmarctest.net.',
 
+# quoted TXT data (#39)
+'_dmarc.quoted.dmarctest.net.                   600 TXT "\"v=DMARC1; p=reject\""',
+'quoted.dmarctest.net.                          600 MX  10 mail.quoted.dmarctest.net.',
+
 # multiple RFC5322.From domains
 '_dmarc.mfbank.dmarctest.net.                   600 TXT "v=DMARC1; p=reject"',
 'mfbank.dmarctest.net.                          600 MX  10 mail.mfbank.dmarctest.net.',
@@ -318,6 +322,7 @@ sub test_discover_policy {
         adkim => 'r',
         fo    => 0,
         domain => 'mail-dmarc.tnpi.net',
+        discovery_method => 'treewalk',
     };
     is_deeply( $policy, $expected, 'discover_policy, deeply' );
     is( $dmarc->is_subdomain(), 1, "discover_policy, is_subdomain" );
@@ -597,6 +602,7 @@ sub test_validate_t_tag {
     ok( $result, "validate t=y, result exists" );
     is( $result->disposition, 'quarantine',
         "validate t=y, disposition downgraded from reject to quarantine" );
+    is( $result->reason->[0]->type, 'policy_test_mode', "validate t=y, reason policy_test_mode" );
 }
 
 sub test_validate_invalid_sp {
@@ -674,6 +680,30 @@ sub test_validate_rfc9989 {
     is( $dmarc->result->result,      'temperror', 'DNS failure: temperror' );
     is( $dmarc->result->disposition, 'none',      'DNS failure: no policy applied' );
 
+    for my $txt ( 'v=DMARC1; p=none', 'v=dmarc1;p=none', '"v=DMARC1; p=none"',
+        ' v = DMARC1 ;p=none', 'v=DMARC1, p=none', 'v=DMARC1' ) {
+        ok( Mail::DMARC::PurePerl::_is_dmarc_record($txt), "DMARC record: $txt" );
+    }
+    for my $txt ( 'v=DMARC10; p=none', 'v=spf1 -all', 'p=none; v=DMARC1' ) {
+        ok( !Mail::DMARC::PurePerl::_is_dmarc_record($txt), "not a DMARC record: $txt" );
+    }
+
+    _run_np_subtests( [ 'quoted.dmarctest.net', 'reject', 'quoted TXT record (#39)' ] );
+
+    $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
+        header_from => 'tnpi.net',
+        dkim        => [
+            { domain => 'other.example.com', selector => 's', result => 'pass' },
+            { domain => 'tnpi.net',          selector => 's', result => 'fail' },
+            { domain => 'www.tnpi.net',      selector => 's', result => 'pass' },
+            { domain => 'tnpi.net',          selector => 's', result => 'pass' },
+        ],
+    ) );
+    $dmarc->set_resolver($resolver);
+    is_deeply( [ map { "$_->{domain} $_->{result}" } @{ $dmarc->dkim_for_report } ],
+        [ 'tnpi.net pass', 'www.tnpi.net pass', 'other.example.com pass', 'tnpi.net fail' ],
+        'dkim_for_report: RFC 9990 3.1.3 order' );
+
     # RFC 9990 4: an override to another host voids both destinations
     $dmarc->init;
     my $policy = $dmarc->policy->parse('v=DMARC1; p=none; rua=mailto:r@reports.example.org');
@@ -681,6 +711,10 @@ sub test_validate_rfc9989 {
     $dmarc->result->published($policy);
     ok( !$dmarc->verify_external_reporting( { uri => URI->new('mailto:r@reports.example.org') } ),
         'external override to another host: not authorized' );
+
+    $policy->{domain} = join( '.', ('a' x 60) x 4 ) . '.example.com';
+    ok( !$dmarc->verify_external_reporting( { uri => URI->new('mailto:r@reports.example.org') } ),
+        'external verification name over 253 octets: not authorized' );
 }
 
 sub _run_np_subtests {

@@ -3,6 +3,8 @@ our $VERSION = '2.20260827';
 use strict;
 use warnings;
 use feature 'signatures';
+use feature 'try';
+no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
 use Carp;
 use Data::Dumper;
@@ -415,6 +417,8 @@ sub get_report_policy_published( $self, $rid ) {
     my $pp = $self->query( $self->grammar->select_report_policy_published, [$rid] )
         ->[0];
     $pp->{p} ||= 'none';
+    $pp->{t} = delete $pp->{testing};
+    delete @$pp{ grep { !defined $pp->{$_} } keys %$pp };
     $pp = Mail::DMARC::Policy->new( v => 'DMARC1', %$pp );
     return $pp;
 }
@@ -564,8 +568,27 @@ sub insert_error( $self, $rid, $error ) {
 }
 
 sub insert_rr_reason( $self, $row_id, $type, $comment ) {
+
+    # MySQL enforces reason types against fk_disposition_reason, which other
+    # reporters, and databases not yet upgraded, don't always agree with
+    my $known = $self->known_reason_types;
+    if ( $known && !$known->{ lc $type } ) {
+        $comment = $type if !defined $comment || $comment !~ /\S/;
+        $type    = 'other';
+    }
     return $self->query( $self->grammar->insert_rr_reason,
         [ $row_id, $type, ( $comment || '' ) ] );
+}
+
+sub known_reason_types($self) {
+    return $self->{_reason_types} if exists $self->{_reason_types};
+    my %known;
+    try {
+        %known = map { $_->{type} => 1 }
+            $self->db_connect->query('SELECT type FROM fk_disposition_reason')->hashes;
+    }
+    catch ($e) { };    # PostgreSQL has no fk_disposition_reason
+    return $self->{_reason_types} = %known ? \%known : undef;
 }
 
 sub insert_rr_dkim( $self, $row_id, $dkim ) {
@@ -621,9 +644,22 @@ sub insert_rr( $self, $report_id, $rec ) {
 }
 
 sub insert_policy_published( $self, $id, $pub ) {
-    my $query = $self->grammar->insert_policy_published;
-    $self->query( $query, [ $id, @$pub{qw/ adkim aspf p sp pct rua /} ] );
+    my %value = ( %$pub, testing => $pub->{t} );
+
+    # databases not yet upgraded by share/mail_dmarc_rfc9990.* lack some columns
+    my %has = map { $_ => 1 } $self->table_columns('report_policy_published');
+    my @fields = grep { $has{$_} }
+        qw/ adkim aspf p sp pct rua np fo testing discovery_method /;
+
+    my $query = $self->grammar->insert_policy_published( \@fields );
+    $self->query( $query, [ $id, @value{@fields} ] );
     return 1;
+}
+
+sub table_columns( $self, $table ) {
+    $self->{_columns}{$table} //=
+        [ $self->db_connect->query("SELECT * FROM $table WHERE 1=0")->columns ];
+    return @{ $self->{_columns}{$table} };
 }
 
 sub db_connect($self) {
@@ -673,8 +709,57 @@ sub db_connect($self) {
     if ($needs_tables) {
         $self->apply_db_schema($needs_tables);
     }
+    else {
+        $self->warn_if_schema_outdated($dsn);
+    }
 
     return $self->{dbix};
+}
+
+my %schema_checked;
+my @rfc9990_columns = qw/ np fo testing discovery_method /;
+my %engine_suffix   = ( sqlite => 'sqlite', mysql => 'mysql', postgresql => 'pgsql' );
+my %engine_client   = ( sqlite => 'sqlite3', mysql => 'mysql', postgresql => 'psql' );
+
+# Upgrades ship as share/ files the operator runs, and nothing fails without
+# them, so say so once per database or nobody finds out
+sub warn_if_schema_outdated( $self, $dsn ) {
+    return if $schema_checked{$dsn}++;
+
+    my $language = $self->grammar->language;
+    my $suffix   = $engine_suffix{$language};
+    my @outdated;
+
+    try {
+        my %has = map { $_ => 1 } $self->table_columns('report_policy_published');
+        my @missing = grep { !$has{$_} } @rfc9990_columns;
+        push @outdated, [ "mail_dmarc_rfc9990.$suffix",
+            "report_policy_published lacks the RFC 9990 columns @missing" ]
+            if @missing;
+    }
+    catch ($e) { };
+
+    try {
+        my $file = $self->get_db_schema("mail_dmarc_indexes.$suffix");
+        my @want = $self->slurp($file)
+            =~ /(?:CREATE INDEX IF NOT EXISTS |mail_dmarc_add_index\('\w+', ')(\w+)/g;
+        my %have = map { $_->{name} => 1 }
+            $self->{dbix}->query( $self->grammar->select_index_names )->hashes;
+        my $missing = grep { !$have{$_} } @want;
+        push @outdated, [ "mail_dmarc_indexes.$suffix",
+            "$missing of the indexes dmarc_httpd needs are missing" ]
+            if $missing;
+    }
+    catch ($e) { };
+
+    my ($db) = $dsn =~ /(?:dbname|database|db)=([^;]+)/i;
+    foreach (@outdated) {
+        my ( $file, $why ) = @$_;
+        my $path = $self->get_db_schema($file);
+        warn "Mail::DMARC: $why. Upgrade with:\n"
+            . "\t$engine_client{$language} " . ( $db // '<database>' ) . " < $path\n";
+    }
+    return scalar @outdated;
 }
 
 sub db_check_err( $self, $err ) {
@@ -1062,6 +1147,20 @@ DB engine specific features are to be avoided.
 Store and retrieve DMARC reports from SQL data store.
 
 Tested with SQLite, MySQL and PostgreSQL.
+
+=head1 UPGRADING
+
+Databases created by Mail::DMARC 2.20260827 or earlier lack the RFC 9990
+report fields (np, fo, testing, discovery_method) and the policy_test_mode
+reason. F<share/mail_dmarc_rfc9990.*> adds them, one file per engine. Until
+then, reports are stored without those fields and unknown reasons are stored
+as I<other>.
+
+Databases created before Mail::DMARC 2.2 also lack the indexes dmarc_httpd
+needs, which F<share/mail_dmarc_indexes.*> adds.
+
+On first connecting to an existing database, the store checks for both and
+warns once per process with the command that applies each missing upgrade.
 
 =head1 AUTHORS
 

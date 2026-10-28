@@ -254,8 +254,8 @@ sub save_aggregate($self) {
         $agg->metadata->$f( $self->config->{organization}{$f} );
     }
 
-    my ( $begin, $end )
-        = $self->get_report_window( $self->result->published->ri, $self->time );
+    # RFC 9989 lists ri as historic, so the window comes from config alone
+    my ( $begin, $end ) = $self->get_report_window( undef, $self->time );
 
     $agg->metadata->begin($begin);
     $agg->metadata->end($end);
@@ -271,7 +271,7 @@ sub save_aggregate($self) {
         header_from   => $self->header_from,
     );
 
-    $rec->auth_results->dkim( $self->dkim );
+    $rec->auth_results->dkim( $self->dkim_for_report );
     # RFC 9990 3.1.1.13: only the MAIL FROM identity is reported
     $rec->auth_results->spf(
         [ grep { lc( $_->{scope} // 'mfrom' ) ne 'helo' } @{ $self->spf // [] } ] );
@@ -285,6 +285,27 @@ sub save_aggregate($self) {
 
     $agg->record($rec);
     return $self->report->save_aggregate;
+}
+
+# RFC 9990 3.1.3: strictly aligned passes, relaxed passes, other passes, then
+# failures, at most 100
+sub dkim_for_report($self) {
+    my $from     = $self->header_from;
+    my $from_org = $self->get_organizational_domain($from);
+
+    my %rank;
+    my @sigs = @{ $self->dkim // [] };
+    foreach my $sig (@sigs) {
+        my $dom = lc( $sig->{domain} // '' );
+        $rank{$sig}
+            = ( 'pass' ne lc( $sig->{result} // '' ) || $dom eq '' ) ? 3
+            : $dom eq $from                                         ? 0
+            : $self->get_organizational_domain($dom) eq $from_org   ? 1
+            :                                                         2;
+    }
+    my @ordered = sort { $rank{$a} <=> $rank{$b} } @sigs;
+    $#ordered = 99 if @ordered > 100;
+    return \@ordered;
 }
 
 sub init($self) {

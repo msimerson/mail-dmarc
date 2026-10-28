@@ -41,6 +41,7 @@ test_rfc9990_xml_namespace();
 test_rfc9990_policy_published_fields();
 test_rfc9990_dkim_selector_required();
 test_rfc9990_reason_types();
+test_rfc9990_auth_results_from_legacy_store();
 
 done_testing();
 exit;
@@ -144,4 +145,18 @@ sub test_rfc9990_reason_types {
         'RFC 9990: forwarded reported as other' );
     like( $xml, qr{<type>local_policy</type>\s*<comment>ok</comment>},
         'RFC 9990: local_policy kept' );
+}
+
+sub test_rfc9990_auth_results_from_legacy_store {
+    my $xml = $agg->get_auth_results_as_xml( {
+        auth_results => {
+            dkim => [ { domain => 'example.com', selector => 's', result => 'Pass' } ],
+            spf  => [
+                { domain => 'mx.example.com', scope => 'helo',  result => 'None' },
+                { domain => 'example.com',    scope => 'mfrom', result => 'SoftFail' },
+            ],
+        } } );
+    is( () = $xml =~ /<spf>/g, 1, 'RFC 9990: one spf element, helo dropped' );
+    like( $xml, qr{<result>softfail</result>}, 'RFC 9990: spf result lowercased' );
+    like( $xml, qr{<result>pass</result>},     'RFC 9990: dkim result lowercased' );
 }
