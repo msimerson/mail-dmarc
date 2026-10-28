@@ -44,6 +44,35 @@ $resolver->zonefile_parse(join("\n",
 # deep author under the same PSD: org domain is the child of the PSD, not the author
 'deep.sub.psd.dmarctest.net.                    600 MX  10 mail.sub.psd.dmarctest.net.',
 
+# intermediate record below the PSD
+'_dmarc.x.sub.psd.dmarctest.net.                600 TXT "v=DMARC1; p=none"',
+
+# 7-label PSD reached by the >=8-label shortcut
+'_dmarc.deeppsd.e.d.c.b.dmarctest.net.          600 TXT "v=DMARC1; psd=y"',
+
+# GHSA-265h-g3hh-fcwq
+# tw1: weaker intermediate record
+'_dmarc.tw1.dmarctest.net.                      600 TXT "v=DMARC1; p=reject"',
+'_dmarc.mail.tw1.dmarctest.net.                 600 TXT "v=DMARC1; p=none"',
+'tw1.dmarctest.net.                             600 MX  10 mail.tw1.dmarctest.net.',
+
+# tw2: duplicate intermediate records
+'_dmarc.tw2.dmarctest.net.                      600 TXT "v=DMARC1; p=reject"',
+'_dmarc.mail.tw2.dmarctest.net.                 600 TXT "v=DMARC1; p=none"',
+'_dmarc.mail.tw2.dmarctest.net.                 600 TXT "v=DMARC1; p=quarantine"',
+'tw2.dmarctest.net.                             600 MX  10 mail.tw2.dmarctest.net.',
+
+# tw3: duplicate records above the author
+'_dmarc.a.tw3.dmarctest.net.                    600 TXT "v=DMARC1; p=reject"',
+'_dmarc.tw3.dmarctest.net.                      600 TXT "v=DMARC1; p=reject"',
+'_dmarc.tw3.dmarctest.net.                      600 TXT "v=DMARC1; p=none"',
+'a.tw3.dmarctest.net.                           600 MX  10 mail.tw3.dmarctest.net.',
+
+# tw4: psd=n anchor above a weaker intermediate record
+'_dmarc.tw4.dmarctest.net.                      600 TXT "v=DMARC1; p=reject; psd=n"',
+'_dmarc.mail.tw4.dmarctest.net.                 600 TXT "v=DMARC1; p=none"',
+'tw4.dmarctest.net.                             600 MX  10 mail.tw4.dmarctest.net.',
+
 # t=y testing mode: reject policy should be downgraded to quarantine
 '_dmarc.ttest.dmarctest.net.                    600 TXT "v=DMARC1; p=reject; t=y; rua=mailto:dmarc@ttest.dmarctest.net"',
 'ttest.dmarctest.net.                           600 MX  10 mail.ttest.dmarctest.net.',
@@ -478,6 +507,37 @@ sub test_tree_walk {
     ($rec, $org, $at) = $dmarc->tree_walk('deep.sub.psd.dmarctest.net');
     is( $org, 'sub.psd.dmarctest.net',
         "tree_walk, psd=y: deep author resolves org to PSD child" );
+
+    # neither Author nor Organizational Domain has a record
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('a.x.sub.psd.dmarctest.net');
+    is( $org, 'sub.psd.dmarctest.net', "tree_walk, psd=y: org is PSD child" );
+    is( $at,  'psd.dmarctest.net',     "tree_walk, psd=y: policy from PSD" );
+
+    # the >=8-label shortcut lands on the PSD
+    $dmarc->init;
+    ($rec, $org, $at) = $dmarc->tree_walk('x.y.deeppsd.e.d.c.b.dmarctest.net');
+    is( $org, 'y.deeppsd.e.d.c.b.dmarctest.net',
+        "tree_walk, psd=y after shortcut: org is PSD child" );
+
+    my %policy_domain = (
+        'a.mail.tw1.dmarctest.net' => 'tw1.dmarctest.net',
+        'a.mail.tw2.dmarctest.net' => 'tw2.dmarctest.net',
+        'a.tw3.dmarctest.net'      => 'a.tw3.dmarctest.net',
+        'a.mail.tw4.dmarctest.net' => 'tw4.dmarctest.net',
+    );
+    for my $from ( sort keys %policy_domain ) {
+        $dmarc->init;
+        ($rec, $org, $at) = $dmarc->tree_walk($from);
+        is( $org, $policy_domain{$from}, "tree_walk, $from: org" );
+        is( $at,  $policy_domain{$from}, "tree_walk, $from: policy domain" );
+
+        my $v = Mail::DMARC::PurePerl->new( sample_dmarc( header_from => $from ) );
+        $v->set_resolver($resolver);
+        $v->validate();
+        is( $v->result->disposition, 'reject', "validate $from: reject" )
+            or diag Dumper( $v->result );
+    }
 
     # No DMARC records at all, tree_walk returns undef (get_organizational_domain
     # falls back to PSL for the org domain)

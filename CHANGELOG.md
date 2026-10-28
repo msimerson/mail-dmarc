@@ -1,5 +1,8 @@
 ### Unreleased
 
+- fix(tree_walk): policy from author, org, or PSD domain only
+- fix(tree_walk): skip duplicate records, keep walking
+
 ### 2.20260827
 
 - feat(dmarc_httpd): post_max setting, defaults to 10MB

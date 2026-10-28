@@ -383,103 +383,84 @@ sub get_dkim_pass_sigs($self) {
 sub tree_walk( $self, $from_dom ) {
     $from_dom = lc $from_dom;
 
-    return @{ $self->{_tw_cache}{$from_dom} }
-        if $self->{_tw_cache}{$from_dom};
+    $self->{_tw_cache}{$from_dom} //= [
+        $self->_select_from_tree_walk(
+            $from_dom, $self->_tree_walk_records($from_dom)
+        )
+    ];
+    return @{ $self->{_tw_cache}{$from_dom} };
+}
 
-    # RFC 9989 4.10 DNS Tree Walk: walk up the DNS hierarchy from
-    # the author domain, querying _dmarc.<target> at each level.
-    # Stop when a record with psd=n (org domain anchor) or psd=y (PSD)
-    # is found, or after 8 queries, or when no labels remain.
+# RFC 9989 4.10, longest name first
+sub _tree_walk_records( $self, $from_dom ) {
+    my @labels = split /\./, $from_dom;
+    my @found;
 
-    my @labels      = split /\./, $from_dom;
-    my $target      = $from_dom;
-    my $query_count = 0;
-
-    # policy_record / at_dom: FIRST record found (most specific, author domain wins)
-    # org_dom: domain of the last record found, or the psd=n anchor
-    # prev_target: target queried one step before the current one (one label
-    #   longer); when a psd=y PSD is found, that child is the Organizational Domain
-    my ( $policy_record, $at_dom, $org_dom, $prev_target );
-
-    while ( $query_count < 8 && @labels > 0 ) {
-        $query_count++;
-        my $query = $self->get_resolver->send( "_dmarc.$target", 'TXT' );
-        if ($query) {
-            my @matches;
-            for my $rr ( $query->answer ) {
-                next if $rr->type ne 'TXT';
-                next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
-                push @matches, join( '', $rr->txtdata );
-            }
-            if ( @matches == 1 ) {
-                my $rec = $matches[0];
-                my $pol;
-                try {
-                    $pol = $self->policy->parse("domain=$target;$rec");
-                }
-                catch ($e) { };
-                if ($pol) {
-
-                  # Author domain takes precedence: save only the first record found
-                    if ( !defined $policy_record ) {
-                        $policy_record = $rec;
-                        $at_dom        = $target;
-                    }
-                    my $psd_val = defined $pol->psd ? lc $pol->psd : 'u';
-                    if ( $psd_val eq 'n' ) {
-
-                        # Lucky anchor: this domain is the Organizational Domain
-                        print "Tree Walk anchor (psd=n): $target\n"
-                            if $self->verbose;
-                        my @result = ( $policy_record, $target, $at_dom );
-                        $self->{_tw_cache}{$from_dom} = \@result;
-                        return @result;
-                    }
-                    if ( $psd_val eq 'y' ) {
-
-                        # PSD found; org domain is the child one label below it
-                        my $below = $prev_target // $from_dom;
-                        print "Tree Walk PSD (psd=y): $target, org=$below\n"
-                            if $self->verbose;
-                        my @result = ( $policy_record, $below, $at_dom );
-                        $self->{_tw_cache}{$from_dom} = \@result;
-                        return @result;
-                    }
-
-                    # psd=u (default): update org_dom candidate, keep walking
-                    $org_dom = $target;
-                }
-            }
-            elsif ( @matches > 1 ) {
-
-                # 9.5. If the remaining set contains multiple records, processing
-                #      terminates and the Mail Receiver takes no action.
-                $self->result->reason(
-                    type    => 'other',
-                    comment => "too many policies"
-                );
-                print "Too many DMARC records\n" if $self->verbose;
-                return;
-            }
+    for ( 1 .. 8 ) {
+        last if !@labels;
+        my $target = join '.', @labels;
+        if ( my $found = $self->_tree_walk_query($target) ) {
+            push @found, $found;
+            last if $found->{psd} ne 'u';
         }
+        splice @labels, 0, ( @labels >= 8 ? @labels - 7 : 1 );
+    }
+    return @found;
+}
 
-        # Remove leftmost label; apply >=8-label reduction rule (RFC 9989 4.10)
-        $prev_target = $target;
-        my $n = @labels;
-        if ( $n >= 8 ) {
-            my $trim = $n - 7;
-            splice @labels, 0, $trim;
-        }
-        else {
-            shift @labels;
-        }
-        $target = join( '.', @labels );
+sub _tree_walk_query( $self, $target ) {
+    my $query = $self->get_resolver->send( "_dmarc.$target", 'TXT' ) or return;
+
+    my @matches;
+    for my $rr ( $query->answer ) {
+        next if $rr->type ne 'TXT';
+        next if 'v=dmarc1' ne lc substr( $rr->txtdata, 0, 8 );
+        push @matches, join( '', $rr->txtdata );
     }
 
-    # Walked to top without a psd=n/y anchor; use last record found as org domain
-    my @result = ( $policy_record, $org_dom, $at_dom );
-    $self->{_tw_cache}{$from_dom} = \@result;
-    return @result;
+    # RFC 9989 4.10 step 2
+    if ( @matches > 1 ) {
+        print "Ignoring multiple DMARC records at $target\n" if $self->verbose;
+        return;
+    }
+    return if !@matches;
+
+    my $pol;
+    try {
+        $pol = $self->policy->parse("domain=$target;$matches[0]");
+    }
+    catch ($e) { };
+    return if !$pol;
+
+    return {
+        domain => $target,
+        record => $matches[0],
+        psd    => defined $pol->psd ? lc $pol->psd : 'u',
+    };
+}
+
+sub _select_from_tree_walk( $self, $from_dom, @found ) {
+    return ( undef, undef, undef ) if !@found;
+
+    # RFC 9989 4.10.2: the walk stops at psd=n/y, so only $last can carry one
+    my $last    = $found[-1];
+    my $org_dom = $last->{domain};
+    if ( $last->{psd} eq 'y' && $last->{domain} ne $from_dom ) {
+        $org_dom = _one_label_below( $from_dom, $last->{domain} );
+    }
+    print "Tree Walk Organizational Domain: $org_dom\n" if $self->verbose;
+
+    # RFC 9989 4.10.1: Author Domain, then Organizational Domain, then PSD
+    my %by_domain = map { $_->{domain} => $_ } @found;
+    my $policy    = $by_domain{$from_dom} // $by_domain{$org_dom} // $last;
+
+    return ( $policy->{record}, $org_dom, $policy->{domain} );
+}
+
+sub _one_label_below( $from_dom, $ancestor ) {
+    my $depth  = 2 + ( $ancestor =~ tr/.// );
+    my @labels = split /\./, $from_dom;
+    return join '.', @labels[ -$depth .. -1 ];
 }
 
 sub get_organizational_domain( $self, $from_dom = undef ) {
