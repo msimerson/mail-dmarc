@@ -29,6 +29,7 @@ test_apply_defaults();
 test_is_valid();
 test_stringify();
 handles_common_record_errors();
+test_rfc9989_values();
 
 done_testing();
 exit;
@@ -279,6 +280,19 @@ sub handles_common_record_errors {
 #domain=edm.groceryrun.com.au;v=dmarc1;p=none;rua=mailto:dmarc_feedback@inxmail.de&amp;amp;amp;amp;lt;dmarc_feedback@inxmail.de&amp;amp;amp;amp;gt
 #domain=reply.myphotobook.de;v=DMARC1;p=reject;adkim=s;aspf=r;rf�rf;pct0
 #domain=email.ex.kbhmaui.com;v=DMARC1;p=none;rua=mailto:dmarc-reports@email.ex.kbhmaui.com;pct=100;”
+
+sub test_rfc9989_values {
+    my $p = Mail::DMARC::Policy->new->parse(
+        'v=DMARC1; p=Reject; t=Y; adkim=relaxed; aspf=S; fo=0:1:d:s:0:1:d:s:0:1:d:s:0:1:d:s:0');
+    is_deeply( [ @$p{qw/ p t aspf /} ], [qw/ reject y s /], 'parse, lowercases values' );
+    ok( !exists $p->{adkim}, 'parse, drops invalid adkim' );
+    ok( !exists $p->{fo},    'parse, drops invalid fo' );
+    is( Mail::DMARC::Policy->new->parse('v=DMARC1; fo=1:d')->{fo}, '1:d', 'parse, keeps valid fo' );
+
+    $p = Mail::DMARC::Policy->new('v=DMARC1; p=bogus; sp=reject; np=reject; rua=mailto:r@example.com');
+    is( $p->p, 'none', 'invalid p with rua: p=none' );
+    ok( !defined $p->sp && !defined $p->np, 'invalid p with rua: sp and np dropped' );
+}
 
 __DATA__
 domain=accuquote.com;v=DMARC1;p=none;fo:0;adkim=r;aspf=r;sp=none;rua=mailto:accu_postmaster@accuquote.com

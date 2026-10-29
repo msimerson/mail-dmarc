@@ -37,7 +37,7 @@ sub validate( $self, $policy = undef ) {
     my $from_dom = $self->get_from_dom();
     if ( !$from_dom ) {
         my $authors = delete $self->{_author_domains} or return $self->result;
-        return $self->_validate_each_author(@$authors);
+        return $self->_validate_each_author( $policy, @$authors );
     }
 
     $policy ||= $self->discover_policy();    # 11.2.2 Query DNS for DMARC policy
@@ -120,23 +120,30 @@ my %disposition_rank   = ( none => 0, quarantine => 1, reject => 2 );
 my %result_rank        = ( pass => 0, none => 1, temperror => 2, fail => 3 );
 
 # RFC 9989 11.5; the cap bounds the DNS work a crafted From can cause
-sub _validate_each_author( $self, @authors ) {
+sub _validate_each_author( $self, $policy, @authors ) {
+
+    # skipping some would let a sender bury the protected domain among others
+    if ( @authors > $max_author_domains ) {
+        $self->result->result('permerror');
+        $self->result->disposition('none');
+        $self->result->reason(
+            type    => 'other',
+            comment => scalar(@authors)
+                . " RFC5322.From domains, over the limit of $max_author_domains"
+        );
+        return $self->result;
+    }
+
     my $strictest;
-    for my $author ( splice @authors, 0, $max_author_domains ) {
+    for my $author (@authors) {
         my $one = bless { %$self, map { $_ => undef } qw/ policy result report / },
             ref $self;
         $one->header_from($author);
-        $one->validate;
+        $one->validate($policy);
         $strictest = $one
             if !$strictest || _is_stricter( $one->result, $strictest->result );
     }
     %$self = %$strictest;
-    if (@authors) {
-        $self->result->reason(
-            type    => 'other',
-            comment => scalar(@authors) . ' RFC5322.From domains not evaluated'
-        );
-    }
     return $self->result;
 }
 
@@ -629,26 +636,11 @@ sub get_from_dom($self) {
         return;
     };
 
-    my @domains;
-    while ( $header =~ /\@([\w][\w.-]*)/g ) {
-        my $dom = lc $1;
-        $dom =~ s/[>;\s,].*$//;
-        $dom =~ s/\.$//;
-        push @domains, $dom if $dom;
-    }
-    my %unique_doms = map { $_ => 1 } @domains;
+    # RFC 8616 §6: convert U-labels to A-labels before DNS lookups
+    my @domains = grep { $self->is_valid_domain($_) }
+        map { $self->to_ascii_domain($_) } _mailbox_domains($header);
 
-    # RFC 9989 A.3: the Sender header is forgeable, so never substitute it
-    if ( keys %unique_doms > 1 ) {
-        $self->{_author_domains}
-            = [ map { $self->to_ascii_domain($_) } sort keys %unique_doms ];
-        return;
-    }
-
-    # Caller can pass in pre-parsed from_dom if this doesn't suit them.
-    my ($from_dom) = ( split /@/, $header )[-1];    # grab everything after the @
-    ($from_dom) = split /(\s+|>)/, lc $from_dom;    # remove trailing cruft
-    if ( !$from_dom ) {
+    if ( !@domains ) {
         $self->result->reason(
             type    => 'other',
             comment => "invalid header_from: ($header)"
@@ -656,10 +648,31 @@ sub get_from_dom($self) {
         return;
     }
 
-    # RFC 8616 §6: convert U-labels to A-labels before DNS lookups
-    $from_dom = $self->to_ascii_domain($from_dom);
+    # RFC 9989 A.3: the Sender header is forgeable, so never substitute it
+    if ( @domains > 1 ) {
+        $self->{_author_domains} = \@domains;
+        return;
+    }
+    return $self->header_from( $domains[0] );
+}
 
-    return $self->header_from($from_dom);
+# RFC 5322 3.4: a mailbox's domain is in its addr-spec, never in a display
+# name or comment, where list rewrites put the original author
+sub _mailbox_domains($header) {
+    ( my $mailboxes = $header ) =~ s/^\s*from\s*:\s*//i;
+    $mailboxes =~ s/"(?:[^"\\]|\\.)*"//g;
+    1 while $mailboxes =~ s/\([^()]*\)//g;
+
+    my %domains;
+    foreach my $mailbox ( split /,/, $mailboxes ) {
+        my ($addr) = $mailbox =~ /<([^>]*)>/;
+        $addr //= $mailbox;
+        my ($dom) = $addr =~ /\@\s*([^\s@<>;,]+)\s*$/ or next;
+        $dom = lc $dom;
+        $dom =~ s/\.$//;
+        $domains{$dom} = 1;
+    }
+    return sort keys %domains;
 }
 
 sub external_report( $self, $uri ) {

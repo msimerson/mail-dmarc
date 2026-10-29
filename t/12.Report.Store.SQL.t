@@ -118,7 +118,7 @@ while ( my $file = readdir( $dir ) ) {
 
     test_aggregates();
     test_policy_published_rfc9990();
-    test_warn_if_schema_outdated();
+    test_warn_if_schema_outdated($provider);
 
     test_cleanup( $provider );
 }
@@ -1173,16 +1173,17 @@ sub test_policy_published_rfc9990 {
 }
 
 sub test_warn_if_schema_outdated {
+    my ($provider) = @_;
     my $table = 'report_policy_published';
     my @all   = $sql->table_columns($table);
     {
         local $sql->{_columns}{$table} = [ grep { !/^(?:np|fo|testing|discovery_method)$/ } @all ];
-        stderr_like { $sql->warn_if_schema_outdated('legacy-test') }
+        stderr_like { $sql->warn_if_schema_outdated("legacy-$provider") }
             qr/lacks the RFC 9990 columns np fo testing discovery_method\. Upgrade with:\n\t\S+ .*mail_dmarc_rfc9990\./,
             'warn_if_schema_outdated, names the upgrade file';
-        stderr_is { $sql->warn_if_schema_outdated('legacy-test') } '',
+        stderr_is { $sql->warn_if_schema_outdated("legacy-$provider") } '',
             'warn_if_schema_outdated, once per database';
     }
-    stderr_unlike { $sql->warn_if_schema_outdated('current-test') } qr/RFC 9990/,
+    stderr_unlike { $sql->warn_if_schema_outdated("current-$provider") } qr/RFC 9990/,
         'warn_if_schema_outdated, silent once upgraded';
 }

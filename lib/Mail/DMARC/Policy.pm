@@ -47,19 +47,31 @@ sub parse( $self, $str, @junk ) {
         $policy{ lc $tag } = $value;
     }
 
-    # RFC 9989: an unrecognized value for an optional tag is ignored (the tag
-    # reverts to its default); it MUST NOT invalidate the whole record. The
-    # setters croak, so normalize here on the parse-from-DNS path instead.
-    if ( defined $policy{psd} && $policy{psd} !~ /^[ynu]$/i ) {
-        warn "ignoring invalid psd ($policy{psd})\n";
-        delete $policy{psd};
+    # RFC 9989 4.8: these values are case-insensitive, and an invalid one
+    # reverts to the default rather than invalidating the record (p, sp and
+    # np are left to is_valid, which applies the rua rule)
+    foreach my $tag ( grep { defined $policy{$_} } qw/ p sp np adkim aspf t psd fo / ) {
+        $policy{$tag} = lc $policy{$tag};
     }
-    if ( defined $policy{t} && $policy{t} !~ /^[yn]$/i ) {
-        warn "ignoring invalid t ($policy{t})\n";
-        delete $policy{t};
+    my %valid = (
+        adkim => qr/^[rs]$/,
+        aspf  => qr/^[rs]$/,
+        t     => qr/^[yn]$/,
+        psd   => qr/^[ynu]$/,
+    );
+    foreach my $tag ( grep { defined $policy{$_} } keys %valid ) {
+        delete $policy{$tag} if $policy{$tag} !~ $valid{$tag};
     }
+    delete $policy{fo} if defined $policy{fo} && !_is_valid_fo( $policy{fo} );
 
     return bless \%policy, ref $self;    # inherited defaults + overrides
+}
+
+# RFC 9989 4.8 dmarc-fo: each of 0, 1, d, s at most once, 0 and 1 exclusive
+sub _is_valid_fo($fo) {
+    my %seen;
+    return 0 if grep { !/^[01ds]$/ || $seen{$_}++ } split /:/, $fo, -1;
+    return !( $seen{0} && $seen{1} );
 }
 
 sub stringify($self) {
@@ -208,11 +220,11 @@ sub is_valid( $self, $obj = undef ) {
     my @invalid = grep { defined $obj->{$_} && !$self->is_valid_p( $obj->{$_} ) }
         qw/ p sp np /;
 
-    # RFC 9989 4.10.1
+    # RFC 9989 4.10.1: act as if the record were just p=none, so sp and np go
     if ( @invalid || ( !$obj->{p} && !$is_psd ) ) {
         croak "missing or invalid policy action"
             if !( $obj->{rua} && $self->is_valid_uri_list( $obj->{rua} ) );
-        delete @$obj{@invalid};
+        delete @$obj{qw/ sp np /};
         $obj->{p} = 'none';
     }
 

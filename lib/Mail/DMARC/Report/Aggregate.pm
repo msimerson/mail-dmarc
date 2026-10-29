@@ -151,7 +151,9 @@ sub get_policy_published_as_xml($self) {
             $v = '0';
         }
         next if !defined $v;
-        $v = XML::LibXML::Text->new($v)->toString();
+
+        # the schema enumerations are lowercase; older stores kept DNS case
+        $v = XML::LibXML::Text->new( lc $v )->toString();
         $xml .= "\t\t<$f>$v</$f>\n";
     }
     $xml .= "\t</policy_published>";

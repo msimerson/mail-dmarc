@@ -582,11 +582,13 @@ sub insert_rr_reason( $self, $row_id, $type, $comment ) {
 sub known_reason_types($self) {
     return $self->{_reason_types} if exists $self->{_reason_types};
     my %known;
-    try {
-        %known = map { $_->{type} => 1 }
-            $self->db_connect->query('SELECT type FROM fk_disposition_reason')->hashes;
+    if ( $self->grammar->language ne 'postgresql' ) {    # it has no fk_disposition_reason
+        try {
+            %known = map { $_->{type} => 1 }
+                $self->db_connect->query('SELECT type FROM fk_disposition_reason')->hashes;
+        }
+        catch ($e) { };
     }
-    catch ($e) { };    # PostgreSQL has no fk_disposition_reason
     return $self->{_reason_types} = %known ? \%known : undef;
 }
 
@@ -678,6 +680,7 @@ sub db_connect($self) {
     my $needs_tables;
 
     $self->{grammar} = undef;
+    delete @$self{qw/ _columns _reason_types /};
     my %opts;
 
     if ( $dsn =~ /sqlite/i ) {

@@ -3,7 +3,7 @@
 - fix(tree_walk): policy from author, org, or PSD domain only
 - fix(tree_walk): skip duplicate records, keep walking
 - fix(tree_walk): query an org domain the 8-label shortcut skips
-- fix(validate): check every From domain, ignore Sender
+- fix(validate): check every From mailbox domain, ignore Sender, permerror past 5
 - fix(validate): apply np to missing domains under a PSD
 - fix(validate): temperror when the policy lookup fails
 - fix(policy): invalid p, sp or np with a valid rua means p=none
@@ -16,6 +16,7 @@
 - fix(report): ignore historic ri, check external name length
 - fix(policy): accept quoted records, a comma after v=DMARC1, bare rua addresses (#39)
 - fix(policy): drop malformed tags quietly instead of warning
+- fix(policy): lowercase tag values, drop invalid adkim, aspf and fo
 - fix(report): lowercase results, one MAIL FROM spf, for rows already stored
 - chore: ship the RFC 9990 XSD, test reports against it with XML::LibXML
 

@@ -272,9 +272,7 @@ sub save_aggregate($self) {
     );
 
     $rec->auth_results->dkim( $self->dkim_for_report );
-    # RFC 9990 3.1.1.13: MAIL FROM only
-    $rec->auth_results->spf(
-        [ grep { lc( $_->{scope} // 'mfrom' ) ne 'helo' } @{ $self->spf // [] } ] );
+    $rec->auth_results->spf( $self->spf // [] );
 
     $rec->row->policy_evaluated(
         disposition => $self->result->disposition,

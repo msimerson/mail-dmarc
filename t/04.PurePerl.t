@@ -664,6 +664,22 @@ sub test_validate_rfc9989 {
     is( $dmarc->header_from,         'mfbank.dmarctest.net', 'multiple From: strictest domain kept' );
     is( $dmarc->result->disposition, 'reject',               'multiple From: reject applied' );
 
+    # display names and comments hold no author, e.g. a list's From rewrite
+    for my $raw ( '"ceo@mfbank.dmarctest.net via List" <x@mfother.dmarctest.net>',
+        '(ceo@mfbank.dmarctest.net) x@mfother.dmarctest.net',
+        '"Joe@corp" <x@mfother.dmarctest.net>' ) {
+        $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc( header_from_raw => $raw ) );
+        $dmarc->set_resolver($resolver);
+        $dmarc->validate();
+        is( $dmarc->header_from, 'mfother.dmarctest.net', "From mailbox only: $raw" );
+    }
+
+    $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
+        header_from_raw => join ', ', map {"x\@d$_.example.com"} 1 .. 5, 'mfbank.dmarctest.net' ) );
+    $dmarc->set_resolver($resolver);
+    $dmarc->validate();
+    is( $dmarc->result->result, 'permerror', 'From domains over the limit: permerror' );
+
     $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc( header_from => 'tnpi.net' ) );
     $dmarc->set_resolver($resolver);
     {
