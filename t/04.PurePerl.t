@@ -674,6 +674,30 @@ sub test_validate_rfc9989 {
         is( $dmarc->header_from, 'mfother.dmarctest.net', "From mailbox only: $raw" );
     }
 
+    for my $raw ( 'ceo@mfbank.dmarctest.net (note\)text), x@mfother.dmarctest.net',
+        'x@mfother.dmarctest.net ("), ceo@mfbank.dmarctest.net (")',
+        'x@mfother.dmarctest.net (, ceo@mfbank.dmarctest.net' ) {
+        $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
+            header_from_raw => $raw,
+            spf => [ { domain => 'mfother.dmarctest.net', scope => 'mfrom', result => 'pass' } ],
+        ) );
+        $dmarc->set_resolver($resolver);
+        $dmarc->validate();
+        is( $dmarc->result->disposition, 'reject', "From author kept: $raw" );
+    }
+
+    my $strict = Mail::DMARC::Policy->new('v=DMARC1; p=reject; adkim=s');
+    $strict->domain('example.com');
+    $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
+        header_from_raw => 'x@a.example.com, y@b.example.com',
+        dkim => [ { domain => 'example.com', selector => 's', result => 'pass' } ],
+        spf  => [],
+    ) );
+    $dmarc->set_resolver($resolver);
+    $dmarc->validate($strict);
+    is( $dmarc->result->result,      'fail',   'supplied policy, multiple From: adkim=s applied' );
+    is( $dmarc->result->disposition, 'reject', 'supplied policy, multiple From: p=reject applied' );
+
     $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
         header_from_raw => join ', ', map {"x\@d$_.example.com"} 1 .. 5, 'mfbank.dmarctest.net' ) );
     $dmarc->set_resolver($resolver);

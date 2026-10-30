@@ -40,7 +40,13 @@ sub validate( $self, $policy = undef ) {
         return $self->_validate_each_author( $policy, @$authors );
     }
 
-    $policy ||= $self->discover_policy();    # 11.2.2 Query DNS for DMARC policy
+    if ($policy) {
+        $self->{policy} = $policy;
+        $self->result->published($policy) if $policy->domain;
+    }
+    else {
+        $policy = $self->discover_policy();    # 11.2.2 Query DNS for DMARC policy
+    }
     return $self->_dns_temperror($from_dom) if $self->{_tw_error}{$from_dom};
     if ( !$policy ) {
 
@@ -660,8 +666,7 @@ sub get_from_dom($self) {
 # name or comment, where list rewrites put the original author
 sub _mailbox_domains($header) {
     ( my $mailboxes = $header ) =~ s/^\s*from\s*:\s*//i;
-    $mailboxes =~ s/"(?:[^"\\]|\\.)*"//g;
-    1 while $mailboxes =~ s/\([^()]*\)//g;
+    $mailboxes = _strip_comments_and_quotes($mailboxes);
 
     my %domains;
     foreach my $mailbox ( split /,/, $mailboxes ) {
@@ -673,6 +678,29 @@ sub _mailbox_domains($header) {
         $domains{$dom} = 1;
     }
     return sort keys %domains;
+}
+
+# RFC 5322 3.2: one pass, since a quote in a comment and a parenthesis in a
+# quoted string are literal, and a quoted-pair escapes either delimiter
+sub _strip_comments_and_quotes($text) {
+    my ( $kept, $comment_depth, $in_quote ) = ( '', 0, 0 );
+    while ( $text =~ /\G(\\.|.)/gs ) {
+        my $char = $1;
+        if ($in_quote) {
+            $in_quote = 0 if $char eq '"';
+        }
+        elsif ($comment_depth) {
+            $comment_depth++ if $char eq '(';
+            $comment_depth-- if $char eq ')';
+        }
+        elsif ( $char eq '"' ) { $in_quote = 1 }
+        elsif ( $char eq '(' ) { $comment_depth = 1 }
+        else                   { $kept .= $char }
+    }
+
+    # unbalanced, so evaluate every address-like domain rather than lose one
+    return $text if $in_quote || $comment_depth;
+    return $kept;
 }
 
 sub external_report( $self, $uri ) {
