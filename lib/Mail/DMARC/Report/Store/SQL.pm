@@ -14,6 +14,7 @@ use File::ShareDir;
 use Mail::DMARC::Report::Store::SQL::Grammars::MySQL;
 use Mail::DMARC::Report::Store::SQL::Grammars::SQLite;
 use Mail::DMARC::Report::Store::SQL::Grammars::PostgreSQL;
+require Mail::DMARC::Result::Reason;
 
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate;
@@ -571,10 +572,9 @@ sub insert_rr_reason( $self, $row_id, $type, $comment ) {
     # MySQL enforces fk_disposition_reason, which other reporters and
     # un-upgraded databases don't always match
     my $known = $self->known_reason_types;
-    if ( $known && !$known->{ lc $type } ) {
-        $comment = $type if !defined $comment || $comment !~ /\S/;
-        $type    = 'other';
-    }
+    ( $type, $comment )
+        = Mail::DMARC::Result::Reason::as_known_type( $type, $comment, $known )
+        if $known;
     return $self->query( $self->grammar->insert_rr_reason,
         [ $row_id, $type, ( $comment || '' ) ] );
 }
@@ -644,15 +644,18 @@ sub insert_rr( $self, $report_id, $rec ) {
     return $self->{report_row_id} = $rr_id;
 }
 
+my @rfc9990_columns = qw/ np fo testing discovery_method /;
+
 sub insert_policy_published( $self, $id, $pub ) {
     my %value = ( %$pub, testing => $pub->{t} );
 
     # un-upgraded databases lack the RFC 9990 columns
     my %has = map { $_ => 1 } $self->table_columns('report_policy_published');
     my @fields = grep { $has{$_} }
-        qw/ adkim aspf p sp pct rua np fo testing discovery_method /;
+        ( qw/ adkim aspf p sp pct rua /, @rfc9990_columns );
 
-    my $query = $self->grammar->insert_policy_published( \@fields );
+    my $query = $self->grammar->insert_into( 'report_policy_published',
+        [ 'report_id', @fields ] );
     $self->query( $query, [ $id, @value{@fields} ] );
     return 1;
 }
@@ -719,7 +722,6 @@ sub db_connect($self) {
 }
 
 my %schema_checked;
-my @rfc9990_columns = qw/ np fo testing discovery_method /;
 my %engine_suffix   = ( sqlite => 'sqlite', mysql => 'mysql', postgresql => 'pgsql' );
 my %engine_client   = ( sqlite => 'sqlite3', mysql => 'mysql', postgresql => 'psql' );
 

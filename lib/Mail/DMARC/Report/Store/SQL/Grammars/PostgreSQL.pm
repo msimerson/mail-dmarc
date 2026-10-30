@@ -107,10 +107,6 @@ sub select_report_reason {
         'SELECT "type","comment" FROM "report_record_reason" WHERE "report_record_id"=?';
 }
 
-sub select_report_error {
-    return 'SELECT "error" FROM "report_error" WHERE "report_id"=?';
-}
-
 sub select_report_record {
     return
         'SELECT "id" FROM "report_record" WHERE "report_id"=? AND "source_ip"=? AND "count"=?';
@@ -253,11 +249,6 @@ INSERT INTO report_record
    VALUES (??)
 EO_ROW_INSERT
         ;
-}
-
-sub insert_policy_published( $self, $fields ) {
-    my $fields_str = join ', ', @$fields;
-    return "INSERT INTO report_policy_published (report_id, $fields_str) VALUES (??)";
 }
 
 sub select_from( $self, $columns, $table ) {

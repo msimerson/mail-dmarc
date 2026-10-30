@@ -34,6 +34,13 @@ sub comment( $self, $val = undef ) {
     return $self->{comment} = $val;
 }
 
+# keeps an unrecognized type as the comment, rather than losing it
+sub as_known_type( $type, $comment, $known ) {
+    return ( $type, $comment ) if $known->{ lc $type };
+    $comment = $type if !defined $comment || $comment !~ /\S/;
+    return ( 'other', $comment );
+}
+
 1;
 
 __END__
@@ -57,6 +64,12 @@ Type is the type of override used, and is one of a number of fixed strings.
 =head2 comment
 
 Comment may or may not be present, and may be anything.
+
+=head2 as_known_type
+
+    my ($type, $comment) = Mail::DMARC::Result::Reason::as_known_type($type, $comment, \%known);
+
+Returns the type and comment unchanged when the type is a key of %known. Otherwise returns type I<other>, with the original type as the comment when the comment is empty.
 
 =head1 AUTHORS
 

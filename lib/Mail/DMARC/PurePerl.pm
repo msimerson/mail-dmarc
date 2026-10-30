@@ -140,6 +140,8 @@ sub _validate_each_author( $self, $policy, @authors ) {
         return $self->result;
     }
 
+    $self->get_resolver;    # built lazily, so build it once for every clone to share
+
     my $strictest;
     for my $author (@authors) {
         my $one = bless { %$self, map { $_ => undef } qw/ policy result report / },
@@ -406,8 +408,7 @@ sub get_dkim_pass_sigs($self) {
 }
 
 sub tree_walk( $self, $from_dom ) {
-    $from_dom = lc $from_dom;
-    $from_dom =~ s/\.$//;
+    $from_dom = $self->normalize_domain($from_dom);
 
     $self->{_tw_cache}{$from_dom} //= [
         $self->_select_from_tree_walk(
@@ -427,23 +428,23 @@ sub _tree_walk_records( $self, $from_dom ) {
         my $target = join '.', @labels;
         splice @labels, 0, ( @labels >= 8 ? @labels - 7 : 1 );
 
-        my $found = $self->_tree_walk_query($target) or next;
-        if ( $found->{error} ) {
-            $self->{_tw_error}{$from_dom} = $found->{error};
-            return;
-        }
+        my $found = $self->_tree_walk_query( $target, $from_dom );
+        return if $self->{_tw_error}{$from_dom};
+        next   if !$found;
         push @found, $found;
         last if $found->{psd} ne 'u';
     }
     return @found;
 }
 
-sub _tree_walk_query( $self, $target ) {
+sub _tree_walk_query( $self, $target, $from_dom ) {
     my $resolver = $self->get_resolver;
     my $query    = $resolver->send( "_dmarc.$target", 'TXT' );
     my $rcode    = $query ? $query->header->rcode : $resolver->errorstring;
-    return { error => "_dmarc.$target: $rcode" }
-        if !$query || $rcode !~ /^(?:NOERROR|NXDOMAIN)$/;
+    if ( !$query || $rcode !~ /^(?:NOERROR|NXDOMAIN)$/ ) {
+        $self->{_tw_error}{$from_dom} = "_dmarc.$target: $rcode";
+        return;
+    }
 
     my @matches;
     for my $rr ( $query->answer ) {
@@ -485,13 +486,8 @@ sub _select_from_tree_walk( $self, $from_dom, @found ) {
         && $org_dom ne $from_dom
         && _label_count($org_dom) > 7 )
     {
-        my $found = $self->_tree_walk_query($org_dom);
-        if ( $found && $found->{error} ) {
-            $self->{_tw_error}{$from_dom} = $found->{error};
-        }
-        elsif ($found) {
-            $by_domain{$org_dom} = $found;
-        }
+        my $found = $self->_tree_walk_query( $org_dom, $from_dom );
+        $by_domain{$org_dom} = $found if $found;
     }
 
     # RFC 9989 4.10.1
@@ -643,8 +639,10 @@ sub get_from_dom($self) {
     };
 
     # RFC 8616 §6: convert U-labels to A-labels before DNS lookups
-    my @domains = grep { $self->is_valid_domain($_) }
-        map { $self->to_ascii_domain($_) } _mailbox_domains($header);
+    my %seen;
+    my @domains = sort grep { !$seen{$_}++ && $self->is_valid_domain($_) }
+        map { $self->to_ascii_domain( $self->normalize_domain($_) ) }
+        _mailbox_domains($header);
 
     if ( !@domains ) {
         $self->result->reason(
@@ -668,17 +666,13 @@ sub _mailbox_domains($header) {
     ( my $mailboxes = $header ) =~ s/^\s*from\s*:\s*//i;
     $mailboxes = _strip_comments_and_quotes($mailboxes);
 
-    my %domains;
+    my @domains;
     foreach my $mailbox ( split /,/, $mailboxes ) {
         my ($addr) = $mailbox =~ /<([^>]*)>/;
         $addr //= $mailbox;
-        my ($dom) = $addr =~ /\@\s*([^\s@<>;,]+)\s*$/ or next;
-        $dom = lc $dom;
-        $dom =~ s/\.$//;
-        $domains{$dom} = 1;
+        push @domains, $addr =~ /\@\s*([^\s@<>;,]+)\s*$/;
     }
-    my @sorted = sort keys %domains;
-    return @sorted;
+    return @domains;
 }
 
 # RFC 5322 3.2: one pass, since a quote in a comment and a parenthesis in a
@@ -804,7 +798,7 @@ sub verify_external_reporting( $self, $uri_ref = undef ) {
     #  8.  If a TXT resource record remains, external reporting is authorized
     #  9.  If a "rua" or "ruf" tag is discovered, replace the
     #      corresponding value with the one found in this record.
-    my @overrides = grep { ref $_ && $_->{rua} } @matches;
+    my @overrides = grep { $_->{rua} } @matches;
     foreach my $or (@overrides) {
         my $recips_ref = $self->report->uri->parse( $or->{rua} ) or next;
 

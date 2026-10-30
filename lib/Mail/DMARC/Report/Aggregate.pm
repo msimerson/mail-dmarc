@@ -11,6 +11,7 @@ use XML::LibXML;
 
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate::Metadata;
+require Mail::DMARC::Result::Reason;
 
 sub metadata($self) {
     return $self->{metadata} if ref $self->{metadata};
@@ -160,6 +161,7 @@ sub get_policy_published_as_xml($self) {
     return $xml;
 }
 
+# RFC 9990 3.1.6 dropped forwarded and sampled_out
 my %override_type
     = map { $_ => 1 } qw/ local_policy mailing_list other policy_test_mode trusted_forwarder /;
 
@@ -175,13 +177,8 @@ sub get_policy_evaluated_as_xml( $self, $rec ) {
     my $reasons = $rec->{row}{policy_evaluated}{reason};
     if ( $reasons && scalar @$reasons ) {
         foreach my $reason (@$reasons) {
-            my ( $type, $comment ) = @$reason{qw/ type comment /};
-
-            # RFC 9990 3.1.6 dropped forwarded and sampled_out
-            if ( !$override_type{ lc $type } ) {
-                $comment = $type if !defined $comment || $comment !~ /\S/;
-                $type    = 'other';
-            }
+            my ( $type, $comment ) = Mail::DMARC::Result::Reason::as_known_type(
+                @$reason{qw/ type comment /}, \%override_type );
             my $typeval = XML::LibXML::Text->new($type)->toString();
             $pe .= "\t\t\t\t<reason>\n";
             $pe .= "\t\t\t\t\t<type>$typeval</type>\n";

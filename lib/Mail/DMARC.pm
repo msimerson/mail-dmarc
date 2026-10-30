@@ -58,8 +58,7 @@ sub envelope_from( $self, $val = undef ) {
 
 sub header_from( $self, $val = undef ) {
     return $self->{header_from} if @_ == 1;
-    $val = lc $val;
-    $val =~ s/\.$//;
+    $val = $self->normalize_domain($val);
     croak "invalid header_from" if !$self->is_valid_domain($val);
     return $self->{header_from} = $val;
 }
