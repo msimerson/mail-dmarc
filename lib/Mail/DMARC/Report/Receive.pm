@@ -5,7 +5,7 @@ use feature 'signatures';
 use feature 'try';
 no warnings 'experimental::try';    ## no critic (ProhibitNoWarnings)
 
-our $VERSION = '2.20260827';
+our $VERSION = '2.20261030';
 
 use Carp;
 use Data::Dumper;
@@ -484,7 +484,7 @@ Mail::DMARC::Report::Receive - process incoming DMARC reports
 
 =head1 VERSION
 
-version 2.20260827
+version 2.20261030
 
 =head1 DESCRIPTION
 
