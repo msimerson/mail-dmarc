@@ -1,5 +1,7 @@
 ### Unreleased
 
+### 2.20261030
+
 - fix(tree_walk): policy from author, org, or PSD domain only
 - fix(tree_walk): skip duplicate records, keep walking
 - fix(tree_walk): query an org domain the 8-label shortcut skips
