@@ -677,7 +677,8 @@ sub _mailbox_domains($header) {
         $dom =~ s/\.$//;
         $domains{$dom} = 1;
     }
-    return sort keys %domains;
+    my @sorted = sort keys %domains;
+    return @sorted;
 }
 
 # RFC 5322 3.2: one pass, since a quote in a comment and a parenthesis in a
