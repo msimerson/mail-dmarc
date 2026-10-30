@@ -20,6 +20,9 @@ sub parse( $self, $str = undef ) {
 
         #       warn "raw: $raw\n";
         my ( $u, $size_f ) = split /!/, $raw;
+
+        # #39: a bare address is a common slip for a mailto: URI
+        $u = "mailto:$u" if $u =~ m{^[^:/@]+@[^:/@]+$};
         my $bytes = $self->get_size_limit($size_f);
         my $uri   = URI->new($u) or do {
             carp "can't parse URI from $u";

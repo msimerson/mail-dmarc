@@ -73,7 +73,7 @@ subtest 'Basic Pass' => sub {
     is($result->disposition, 'none', 'Disposition is none');
 };
 
-subtest 'Non-existent domain short circuits validation' => sub {
+subtest 'Non-existent domain without a policy' => sub {
     $dmarc->init;
     $dmarc->header_from('no-such-domain.com');
     $dmarc->dkim({ domain => 'no-such-domain.com', result => 'pass', selector => 's1' });
@@ -86,7 +86,7 @@ subtest 'Non-existent domain short circuits validation' => sub {
     my $result = $dmarc->validate;
     is($result->result, 'none', 'Result is none');
     is($result->disposition, 'none', 'Disposition is none');
-    like($result->reason->[0]->comment, qr/not in DNS/, 'Reason is not in DNS');
+    like($result->reason->[0]->comment, qr/no policy/, 'Reason is no policy');
 };
 
 subtest 'SPF helo scope should not satisfy DMARC alignment' => sub {

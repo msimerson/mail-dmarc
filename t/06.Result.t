@@ -288,7 +288,7 @@ sub test_reason {
 
     # positive tests
     foreach (
-        qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /
+        qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other policy_test_mode /
         )
     {
         ok( $result->reason( type => $_, comment => "test comment" ), "reason type: $_" );

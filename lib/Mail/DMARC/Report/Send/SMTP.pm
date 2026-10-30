@@ -53,14 +53,14 @@ sub get_smtp_hosts( $self, $email = undef ) {
 
 sub get_subject( $self, $agg_ref ) {
 
+    # RFC 9990 3.1.4
     my $rid = $$agg_ref->metadata->report_id || $self->time;
-    my $id  = POSIX::strftime( "%Y.%m.%d.", localtime $self->time ) . $rid;
     my $us  = $self->config->{organization}{domain};
     if ( $us eq 'example.com' ) {
         die "Please update mail-dmarc.ini";
     }
     my $pol_dom = $$agg_ref->policy_published->domain;
-    return "Report Domain: $pol_dom Submitter: $us Report-ID:$id";
+    return "Report Domain: $pol_dom Submitter: $us Report-ID: $rid";
 }
 
 sub human_summary( $self, $agg_ref ) {
@@ -221,15 +221,16 @@ version 2.20260827
 
 =head2 SUBJECT FIELD
 
-The RFC5322.Subject field for individual report submissions SHOULD conform to the following ABNF:
+The RFC5322.Subject field for individual report submissions MUST conform to the following ABNF (RFC 9990 3.5.2):
 
-   dmarc-subject = %x52.65.70.6f.72.74 1*FWS    ; "Report"
-                   %x44.6f.6d.61.69.6e.3a 1*FWS ; "Domain:"
-                   domain-name 1*FWS            ; from RFC6376
-                   %x53.75.62.6d.69.74.74.65.72.3a ; "Submitter:"
-                   1*FWS domain-name 1*FWS
-                   %x52.65.70.6f.72.74.2d.49.44.3a ; "Report-ID:"
-                   msg-id                       ; from RFC5322
+   dmarc-subject = %s"Report" 1*FWS %s"Domain:"
+                   1*FWS domain-name 1*FWS         ; policy domain
+                   %s"Submitter:" 1*FWS
+                   domain-name 1*FWS               ; report generator
+                   [ %s"Report-ID:" 1*FWS ridtxt ]
+
+   ridfmt = (dot-atom-text ["@" dot-atom-text])  ; from RFC 5322
+   ridtxt = ("<" ridfmt ">") / ridfmt
 
 The first domain-name indicates the DNS domain name about which the
 report was generated.  The second domain-name indicates the DNS

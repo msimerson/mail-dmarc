@@ -20,31 +20,19 @@ ok( !$pol->v, "policy, version, neg" );
 ok( $pol->v('DMARC1'), "policy, set" );
 cmp_ok( $pol->v, 'eq', 'DMARC1', "policy, version, pos" );
 
-my $expected_parse_warning = __expected_parse_warning();
 test_new();
 test_is_valid_p();
 test_is_valid_rf();
-stderr_is { test_parse() } $expected_parse_warning, 'STDERR yields parse warnings';
+stderr_is { test_parse() } '', 'parse discards malformed tags quietly';
 test_setter_values();
 test_apply_defaults();
 test_is_valid();
 test_stringify();
 handles_common_record_errors();
+test_rfc9989_values();
 
 done_testing();
 exit;
-
-sub __expected_parse_warning {
-    return <<'EO_PARSE_WARN'
-invalid DMARC record, please post this message to
-	https://github.com/msimerson/mail-dmarc/issues/39
-	v=DMARC1;p=reject;rua=mailto:dmarc-feedback@theartfarm.com;pct=;ruf=mailto:dmarc-feedback@theartfarm.com
-invalid DMARC record, please post this message to
-	https://github.com/msimerson/mail-dmarc/issues/39
-	domain=tnpi.net;v=DMARC1;p=reject;rua=mailto:dmarc-feedback@theartfarm.com;pct=;ruf=mailto:dmarc-feedback@theartfarm.com
-EO_PARSE_WARN
-;
-}
 
 sub test_apply_defaults {
 
@@ -170,7 +158,7 @@ sub test_parse {
             rua => 'mailto:dmarc-feedback@theartfarm.com',
             ruf => 'mailto:dmarc-feedback@theartfarm.com',
         },
-        "parse, warns of invalid DMARC record format"
+        "parse, drops empty values"
     );
 
     is_deeply(
@@ -182,7 +170,7 @@ sub test_parse {
             rua => 'mailto:dmarc-feedback@theartfarm.com',
             ruf => 'mailto:dmarc-feedback@theartfarm.com',
         },
-        "parse, warns of invalid DMARC record format, with location"
+        "parse, drops empty values, with location"
     );
 
     $pol = $pol->parse('v=DMARC1');
@@ -281,12 +269,9 @@ sub handles_common_record_errors {
 
     foreach my $d (<DATA>) {
         chomp $d;
-        my $pol = Mail::DMARC::Policy->new($d);
-
-        try {
-            ok( $pol->is_valid(), "policy is valid: $d");
-        }
-        catch ($e) { }
+        next if $d !~ /\S/;
+        my $pol = eval { Mail::DMARC::Policy->new($d) };
+        ok( $pol && $pol->p, "accepts: $d" );
     }
 }
 
@@ -295,6 +280,19 @@ sub handles_common_record_errors {
 #domain=edm.groceryrun.com.au;v=dmarc1;p=none;rua=mailto:dmarc_feedback@inxmail.de&amp;amp;amp;amp;lt;dmarc_feedback@inxmail.de&amp;amp;amp;amp;gt
 #domain=reply.myphotobook.de;v=DMARC1;p=reject;adkim=s;aspf=r;rf�rf;pct0
 #domain=email.ex.kbhmaui.com;v=DMARC1;p=none;rua=mailto:dmarc-reports@email.ex.kbhmaui.com;pct=100;”
+
+sub test_rfc9989_values {
+    my $p = Mail::DMARC::Policy->new->parse(
+        'v=DMARC1; p=Reject; t=Y; adkim=relaxed; aspf=S; fo=0:1:d:s:0:1:d:s:0:1:d:s:0:1:d:s:0');
+    is_deeply( [ @$p{qw/ p t aspf /} ], [qw/ reject y s /], 'parse, lowercases values' );
+    ok( !exists $p->{adkim}, 'parse, drops invalid adkim' );
+    ok( !exists $p->{fo},    'parse, drops invalid fo' );
+    is( Mail::DMARC::Policy->new->parse('v=DMARC1; fo=1:d')->{fo}, '1:d', 'parse, keeps valid fo' );
+
+    $p = Mail::DMARC::Policy->new('v=DMARC1; p=bogus; sp=reject; np=reject; rua=mailto:r@example.com');
+    is( $p->p, 'none', 'invalid p with rua: p=none' );
+    ok( !defined $p->sp && !defined $p->np, 'invalid p with rua: sp and np dropped' );
+}
 
 __DATA__
 domain=accuquote.com;v=DMARC1;p=none;fo:0;adkim=r;aspf=r;sp=none;rua=mailto:accu_postmaster@accuquote.com
@@ -331,3 +329,21 @@ domain=newsletter.ironpony.net;v=DMARC1;p=none;rua=mailto:postmaster@newsletter.
 domain=cmnet.org;v=DMARC1;p=none;sp=none;rua=mailto:postmaster@cmnet.org!10m;;pct=100;ri=86400
 domain=coachingcompass.com;v=DMARC1;p=quarantine;rua=mailto:dan@darau.com;ruf=mailto:dan@darau.com;1:d:s;adkim=r;aspf=r;rf=afrf;sp=quarantine
 domain=genetex.com;v=DMARC1;p=none;sp-none;rua=mailto:postmaster@genetex.com!1m;ruf=mailto:postmaster@genetex.com!1m;rf=afrf;pct=100;ri=86400
+domain=viaggiailmondo.store;v=DMARC1; p=none; rua=mailto:dmarc@be-mail.it; ruf=mailto:dmarc@be-mail.it; sp=none; aspf
+domain=instant-iptv.net;v=DMARC1; p=none; pct=100; rua=mailto:postmaster@instant-iptv.net;  checkmark
+domain=ospedalerc.it;v=DMARC1; p=none; sp=none; fo=; ri=3600; rua=mailto:dmarca@ospedalerc.it; ruf=mailto:dmarcf@ospedalerc.it
+domain=seta.net;v=DMARC1;p=none;pct100;rua=mailto:dmarc_rua@emrl.com;ruf=mailto:dmarc_ruf@emrl.com
+domain=mutualart.com;v=DMARC1; p=none; rua=; ruf=; fo=1
+domain=meetup.com;v=DMARC1; p=reject; pct=100; rua=mailto:dmarc-reports@bendingspoons.com; sp=reject;.
+domain=yeehaa.fr;v=DMARC1; p=reject; rua=mailto:dmarc@yeehaa.fr; ruf=mailto:dmarc@yeehaa.fr; 1; adkim=r; aspf=r; rf=afrf; sp=reject; fo=0
+domain=kh-karlsruhe.de;v=DMARC1; p=none;.
+domain=antonioabate.info;v=DMARC1;p=none;p
+domain=tornasport.hu;v=DMARC1;p=reject;sp=reject;pct=90;adkim=r;aspf=
+domain=thedieline.com;v=DMARC1; p=none; pct=100; fo=1; ri=3600; rua=mailto:26e1082@dmarc.mailgun.org,mailto:4719c318@inbox.ondmarc.com; ruf=mailto:26e1082@dmarc.mailgun.org;_dmarc.thedieline.com
+domain=thechicastore.com;v=dmarc1;p=none;sp=none;pct=100;rua=postmaster@nono.thechicastore.com;ruf=postmaster;ri=86400;aspf=r;adkim=r;fo=1;
+domain=nexamena.com;v=DMARC1, p=none; rua=mailto;dmarc@nexamena.com
+domain=jumaalcapitalsllc.com;v=DMARC1; p=none; sp;=none ri=86400
+domain=reply.garten-und-freizeit.de;v=DMARC1;p=reject;adkim=s;aspf=r;rf=afrf;pct=100;ldquo
+domain=nlmx.hervis-sportsclub.cz;v=DMARC1;p=reject;adkim=s;aspf=r;rf=afrf;pct=100;"
+domain=elpaseolimo.com;v=DMARC1;p=;rua=mailto:alerts@ccitech.com;ruf=mailto:alerts@ccitech.com;rf=afrf;pct=
+domain=quoted.example.com;"v=DMARC1; p=quarantine"

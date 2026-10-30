@@ -58,8 +58,9 @@ sub envelope_from( $self, $val = undef ) {
 
 sub header_from( $self, $val = undef ) {
     return $self->{header_from} if @_ == 1;
-    croak "invalid header_from" if !$self->is_valid_domain( lc $val );
-    return $self->{header_from} = lc $val;
+    $val = $self->normalize_domain($val);
+    croak "invalid header_from" if !$self->is_valid_domain($val);
+    return $self->{header_from} = $val;
 }
 
 sub header_from_raw( $self, $val = undef ) {
@@ -252,8 +253,8 @@ sub save_aggregate($self) {
         $agg->metadata->$f( $self->config->{organization}{$f} );
     }
 
-    my ( $begin, $end )
-        = $self->get_report_window( $self->result->published->ri, $self->time );
+    # ri is historic (RFC 9989 9.3)
+    my ( $begin, $end ) = $self->get_report_window( undef, $self->time );
 
     $agg->metadata->begin($begin);
     $agg->metadata->end($end);
@@ -269,8 +270,8 @@ sub save_aggregate($self) {
         header_from   => $self->header_from,
     );
 
-    $rec->auth_results->dkim( $self->dkim );
-    $rec->auth_results->spf( $self->spf );
+    $rec->auth_results->dkim( $self->dkim_for_report );
+    $rec->auth_results->spf( $self->spf // [] );
 
     $rec->row->policy_evaluated(
         disposition => $self->result->disposition,
@@ -281,6 +282,26 @@ sub save_aggregate($self) {
 
     $agg->record($rec);
     return $self->report->save_aggregate;
+}
+
+# RFC 9990 3.1.3
+sub dkim_for_report($self) {
+    my $from     = $self->header_from;
+    my $from_org = $self->get_organizational_domain($from);
+
+    my %rank;
+    my @sigs = @{ $self->dkim // [] };
+    foreach my $sig (@sigs) {
+        my $dom = lc( $sig->{domain} // '' );
+        $rank{$sig}
+            = ( 'pass' ne lc( $sig->{result} // '' ) || $dom eq '' ) ? 3
+            : $dom eq $from                                         ? 0
+            : $self->get_organizational_domain($dom) eq $from_org   ? 1
+            :                                                         2;
+    }
+    my @ordered = sort { $rank{$a} <=> $rank{$b} } @sigs;
+    $#ordered = 99 if @ordered > 100;
+    return \@ordered;
 }
 
 sub init($self) {

@@ -59,7 +59,12 @@ CREATE TABLE report_policy_published (
   p varchar(10) DEFAULT NULL,
   sp varchar(10) DEFAULT NULL,
   pct int DEFAULT NULL,
-  rua varchar(255) DEFAULT NULL
+  rua varchar(255) DEFAULT NULL,
+  -- Keep in sync with share/mail_dmarc_rfc9990.pgsql
+  np varchar(10) DEFAULT NULL,
+  fo varchar(32) DEFAULT NULL,
+  testing char(1) DEFAULT NULL,
+  discovery_method varchar(8) DEFAULT NULL
 );
 
 

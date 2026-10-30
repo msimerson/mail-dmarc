@@ -1,0 +1,14 @@
+-- RFC 9990 report fields. Databases created by Mail::DMARC 2.20260827 or
+-- earlier lack them, so stored reports drop np, fo, testing and
+-- discovery_method. SQLite cannot add a column only when it is missing, so a
+-- second run reports "duplicate column name" for each ALTER; those are
+-- harmless.
+--
+--   sqlite3 /path/to/reports.sqlite < mail_dmarc_rfc9990.sqlite
+
+ALTER TABLE report_policy_published ADD COLUMN np TEXT DEFAULT NULL;
+ALTER TABLE report_policy_published ADD COLUMN fo TEXT DEFAULT NULL;
+ALTER TABLE report_policy_published ADD COLUMN testing TEXT DEFAULT NULL;
+ALTER TABLE report_policy_published ADD COLUMN discovery_method TEXT DEFAULT NULL;
+
+INSERT OR IGNORE INTO fk_disposition_reason VALUES ('policy_test_mode');

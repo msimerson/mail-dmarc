@@ -11,6 +11,7 @@ use XML::LibXML;
 
 use parent 'Mail::DMARC::Base';
 use Mail::DMARC::Report::Aggregate::Metadata;
+require Mail::DMARC::Result::Reason;
 
 sub metadata($self) {
     return $self->{metadata} if ref $self->{metadata};
@@ -107,24 +108,27 @@ sub get_identifiers_as_xml( $self, $rec ) {
 sub get_auth_results_as_xml( $self, $rec ) {
     my $ar = "\t\t<auth_results>\n";
 
+    # RFC 9990 3.1.1.12-13; older stores hold helo rows and MTA-cased results
     foreach my $dkim_sig ( @{ $rec->{auth_results}{dkim} } ) {
         $ar .= "\t\t\t<dkim>\n";
         foreach my $g (qw/ domain selector result human_result /) {
             next if !defined $dkim_sig->{$g} && $g ne 'selector';
-            my $val
-                = defined $dkim_sig->{$g}
-                ? XML::LibXML::Text->new( $dkim_sig->{$g} )->toString()
-                : '';
+            my $val = $dkim_sig->{$g} // '';
+            $val = lc $val if $g eq 'result';
+            $val = XML::LibXML::Text->new($val)->toString();
             $ar .= "\t\t\t\t<$g>$val</$g>\n";
         }
         $ar .= "\t\t\t</dkim>\n";
     }
 
-    foreach my $spf ( @{ $rec->{auth_results}{spf} } ) {
+    my ($spf) = grep { lc( $_->{scope} // 'mfrom' ) ne 'helo' }
+        @{ $rec->{auth_results}{spf} || [] };
+    if ($spf) {
         $ar .= "\t\t\t<spf>\n";
         foreach my $g (qw/ domain scope result /) {
             next if !defined $spf->{$g};
-            my $val = XML::LibXML::Text->new( $spf->{$g} )->toString();
+            my $val = $g eq 'domain' ? $spf->{$g} : lc $spf->{$g};
+            $val = XML::LibXML::Text->new($val)->toString();
             $ar .= "\t\t\t\t<$g>$val</$g>\n";
         }
         $ar .= "\t\t\t</spf>\n";
@@ -137,8 +141,8 @@ sub get_auth_results_as_xml( $self, $rec ) {
 sub get_policy_published_as_xml($self) {
     my $pp  = $self->policy_published or return '';
     my $xml = "\t<policy_published>\n\t\t<domain>$pp->{domain}</domain>\n";
-    foreach my $f (qw/ adkim aspf p sp np t psd fo discovery_method /) {
-        my $v = $pp->{$f};
+    foreach my $f (qw/ adkim aspf p sp np testing fo discovery_method /) {
+        my $v = $f eq 'testing' ? $pp->{t} : $pp->{$f};
 
         # Set some default values for missing optional fields if necessary
         if ( $f eq 'sp' && !defined $v ) {
@@ -148,12 +152,18 @@ sub get_policy_published_as_xml($self) {
             $v = '0';
         }
         next if !defined $v;
-        $v = XML::LibXML::Text->new($v)->toString();
+
+        # the schema enumerations are lowercase; older stores kept DNS case
+        $v = XML::LibXML::Text->new( lc $v )->toString();
         $xml .= "\t\t<$f>$v</$f>\n";
     }
     $xml .= "\t</policy_published>";
     return $xml;
 }
+
+# RFC 9990 3.1.6 dropped forwarded and sampled_out
+my %override_type
+    = map { $_ => 1 } qw/ local_policy mailing_list other policy_test_mode trusted_forwarder /;
 
 sub get_policy_evaluated_as_xml( $self, $rec ) {
     my $pe = "\t\t\t<policy_evaluated>\n";
@@ -167,14 +177,14 @@ sub get_policy_evaluated_as_xml( $self, $rec ) {
     my $reasons = $rec->{row}{policy_evaluated}{reason};
     if ( $reasons && scalar @$reasons ) {
         foreach my $reason (@$reasons) {
-            my $typeval = XML::LibXML::Text->new( $reason->{type} )->toString();
+            my ( $type, $comment ) = Mail::DMARC::Result::Reason::as_known_type(
+                @$reason{qw/ type comment /}, \%override_type );
+            my $typeval = XML::LibXML::Text->new($type)->toString();
             $pe .= "\t\t\t\t<reason>\n";
             $pe .= "\t\t\t\t\t<type>$typeval</type>\n";
 
-            # comment is minOccurs=0 in the RFC 7489 schema; only emit when present
-            if ( defined $reason->{comment} && $reason->{comment} =~ /\S/ ) {
-                my $commentval
-                    = XML::LibXML::Text->new( $reason->{comment} )->toString();
+            if ( defined $comment && $comment =~ /\S/ ) {
+                my $commentval = XML::LibXML::Text->new($comment)->toString();
                 $pe .= "\t\t\t\t\t<comment>$commentval</comment>\n";
             }
             $pe .= "\t\t\t\t</reason>\n";

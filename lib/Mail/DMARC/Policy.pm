@@ -33,47 +33,50 @@ sub parse( $self, $str, @junk ) {
     my $cleaned = $str;
     $cleaned =~ s/\s//g;                               # remove whitespace
     $cleaned =~ s/\\;/;/g;                             # replace \;  with ;
-    $cleaned =~ s/;;/;/g;                              # replace ;;  with ;
-    $cleaned =~ s/;0;/;/g;                             # replace ;0; with ;
-    chop $cleaned if ';' eq substr $cleaned, -1, 1;    # remove a trailing ;
-    my @tag_vals = split /;/, $cleaned;
+
+    # tolerate records seen in the wild (#39)
+    $cleaned =~ s/(?:^|;)\K"+|"+(?=;|$)//g;
+    $cleaned =~ s/(?:^|;)\Kv=DMARC1,/v=DMARC1;/i;
+
     my %policy;
-    my $warned = 0;
+    foreach my $tv ( split /;/, $cleaned ) {
 
-    foreach my $tv (@tag_vals) {
+        # fo:0 and sp-none are common typos (#39); RFC 9989 4.8 discards the rest
         my ( $tag, $value ) = split /=|:|-/, $tv, 2;
-        if ( !defined $tag || !defined $value || $value eq '' ) {
-            if ( !$warned ) {
-
-                #warn "tv: $tv\n";
-                warn "invalid DMARC record, please post this message to\n"
-                    . "\thttps://github.com/msimerson/mail-dmarc/issues/39\n"
-                    . "\t$str\n";
-            }
-            $warned++;
-            next;
-        }
+        next if !defined $value || $value eq '' || $tag !~ /^[a-z]+$/i;
         $policy{ lc $tag } = $value;
     }
 
-    # RFC 9989: an unrecognized value for an optional tag is ignored (the tag
-    # reverts to its default); it MUST NOT invalidate the whole record. The
-    # setters croak, so normalize here on the parse-from-DNS path instead.
-    if ( defined $policy{psd} && $policy{psd} !~ /^[ynu]$/i ) {
-        warn "ignoring invalid psd ($policy{psd})\n";
-        delete $policy{psd};
+    # RFC 9989 4.8: these values are case-insensitive, and an invalid one
+    # reverts to the default rather than invalidating the record (p, sp and
+    # np are left to is_valid, which applies the rua rule)
+    foreach my $tag ( grep { defined $policy{$_} } qw/ p sp np adkim aspf t psd fo / ) {
+        $policy{$tag} = lc $policy{$tag};
     }
-    if ( defined $policy{t} && $policy{t} !~ /^[yn]$/i ) {
-        warn "ignoring invalid t ($policy{t})\n";
-        delete $policy{t};
+    my %valid = (
+        adkim => qr/^[rs]$/,
+        aspf  => qr/^[rs]$/,
+        t     => qr/^[yn]$/,
+        psd   => qr/^[ynu]$/,
+    );
+    foreach my $tag ( grep { defined $policy{$_} } keys %valid ) {
+        delete $policy{$tag} if $policy{$tag} !~ $valid{$tag};
     }
+    delete $policy{fo} if defined $policy{fo} && !_is_valid_fo( $policy{fo} );
 
     return bless \%policy, ref $self;    # inherited defaults + overrides
 }
 
+# RFC 9989 4.8 dmarc-fo: each of 0, 1, d, s at most once, 0 and 1 exclusive
+sub _is_valid_fo($fo) {
+    my %seen;
+    return 0 if grep { !/^[01ds]$/ || $seen{$_}++ } split /:/, $fo, -1;
+    return !( $seen{0} && $seen{1} );
+}
+
 sub stringify($self) {
     my %dmarc_record = %{$self};
-    delete $dmarc_record{domain};
+    delete @dmarc_record{qw/ domain discovery_method /};
 
     my $dmarc_txt = 'v=' . ( delete $dmarc_record{v} );    # "v" tag must be first
     foreach my $key ( keys %dmarc_record ) {
@@ -181,6 +184,12 @@ sub pct( $self, $val = undef ) {
     return $self->{pct} = $val;
 }
 
+sub discovery_method( $self, $val = undef ) {
+    return $self->{discovery_method} if @_ == 1;
+    croak "invalid discovery_method ($val)" if $val !~ /^(?:psl|treewalk)$/i;
+    return $self->{discovery_method} = lc $val;
+}
+
 sub domain( $self, $val = undef ) {
     return $self->{domain} if @_ == 1;
     return $self->{domain} = $val;
@@ -207,21 +216,16 @@ sub is_valid( $self, $obj = undef ) {
     croak "invalid version"           if 'DMARC1' ne uc $obj->{v};
 
     # psd=y domains (PSDs) are not required to have a p= tag
-    my $is_psd = defined $obj->{psd} && lc $obj->{psd} eq 'y';
+    my $is_psd  = defined $obj->{psd} && lc $obj->{psd} eq 'y';
+    my @invalid = grep { defined $obj->{$_} && !$self->is_valid_p( $obj->{$_} ) }
+        qw/ p sp np /;
 
-    if ( !$obj->{p} && !$is_psd ) {
-        if ( $obj->{rua} && $self->is_valid_uri_list( $obj->{rua} ) ) {
-            $obj->{p} = 'none';
-        }
-        else {
-            croak "missing policy action (p=)";
-        }
-    }
-    if ( $obj->{p} ) {
-        croak "invalid policy action" if !$self->is_valid_p( $obj->{p} );
-    }
-    if ( defined $obj->{np} ) {
-        croak "invalid np" if !$self->is_valid_p( $obj->{np} );
+    # RFC 9989 4.10.1: act as if the record were just p=none, so sp and np go
+    if ( @invalid || ( !$obj->{p} && !$is_psd ) ) {
+        croak "missing or invalid policy action"
+            if !( $obj->{rua} && $self->is_valid_uri_list( $obj->{rua} ) );
+        delete @$obj{qw/ sp np /};
+        $obj->{p} = 'none';
     }
 
     # everything else is optional

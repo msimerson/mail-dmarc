@@ -117,6 +117,8 @@ while ( my $file = readdir( $dir ) ) {
     test_populate_agg_records();
 
     test_aggregates();
+    test_policy_published_rfc9990();
+    test_warn_if_schema_outdated($provider);
 
     test_cleanup( $provider );
 }
@@ -1144,4 +1146,44 @@ sub compare_any_inet_round_trip {
             "any_inet_ntop, round_trip, zero-pad, $ip" )
             or diag "presentation: $zero_filled\nresult: $pres";
     }
+}
+
+sub test_policy_published_rfc9990 {
+    my $table = 'report_policy_published';
+    $sql->query( "DELETE FROM $table WHERE report_id=?", [$report_id] );
+    my $pol = Mail::DMARC::Policy->new('v=DMARC1; p=reject; np=quarantine; t=y; fo=1');
+    $pol->discovery_method('treewalk');
+    ok( $sql->insert_policy_published( $report_id, $pol ), 'insert_policy_published, RFC 9990 fields' );
+    my $pp = $sql->get_report_policy_published($report_id);
+    is( $pp->{$_->[0]}, $_->[1], "get_report_policy_published, $_->[0]" )
+        for [ np => 'quarantine' ], [ t => 'y' ], [ fo => '1' ], [ discovery_method => 'treewalk' ];
+
+    # a database not yet upgraded by share/mail_dmarc_rfc9990.*
+    my @all = $sql->table_columns($table);
+    local $sql->{_columns}{$table} = [ grep { !/^(?:np|fo|testing|discovery_method)$/ } @all ];
+    ok( $sql->insert_policy_published( $report_id, $pol ), 'insert_policy_published, legacy columns' );
+
+    my %known = %{ $sql->known_reason_types || {} };
+    delete $known{policy_test_mode};
+    local $sql->{_reason_types} = \%known;
+    ok( $sql->insert_rr_reason( $rr_id, 'policy_test_mode', undef ), 'insert_rr_reason, unknown type' );
+    my $stored = $sql->query( $sql->grammar->select_report_reason, [$rr_id] );
+    ok( ( grep { $_->{type} eq 'other' && $_->{comment} eq 'policy_test_mode' } @$stored ),
+        'insert_rr_reason, unknown type stored as other' );
+}
+
+sub test_warn_if_schema_outdated {
+    my ($provider) = @_;
+    my $table = 'report_policy_published';
+    my @all   = $sql->table_columns($table);
+    {
+        local $sql->{_columns}{$table} = [ grep { !/^(?:np|fo|testing|discovery_method)$/ } @all ];
+        stderr_like { $sql->warn_if_schema_outdated("legacy-$provider") }
+            qr/lacks the RFC 9990 columns np fo testing discovery_method\. Upgrade with:\n\t\S+ .*mail_dmarc_rfc9990\./,
+            'warn_if_schema_outdated, names the upgrade file';
+        stderr_is { $sql->warn_if_schema_outdated("legacy-$provider") } '',
+            'warn_if_schema_outdated, once per database';
+    }
+    stderr_unlike { $sql->warn_if_schema_outdated("current-$provider") } qr/RFC 9990/,
+        'warn_if_schema_outdated, silent once upgraded';
 }

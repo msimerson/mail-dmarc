@@ -80,8 +80,7 @@ sub test_as_xml  {
 \t\t\t<begin>$start</begin>
 \t\t\t<end>$end</end>
 \t\t</date_range>
-\t\t<error>error #1 for test</error>
-\t\t<error>error #2 for testing</error>
+\t\t<error>error #1 for test; error #2 for testing</error>
 \t</report_metadata>
 EO_XML
 ;

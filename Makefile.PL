@@ -22,10 +22,6 @@ my %META = (
       }
     },
     "test" => {
-      "recommends" => {
-        "XML::SAX::ParserFactory" => "0",
-        "XML::Validator::Schema" => "0"
-      },
       "requires" => {
         "Test::Exception" => 0,
         "Test::File::ShareDir" => 0,

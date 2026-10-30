@@ -44,6 +44,7 @@ INSERT INTO "fk_disposition_reason" VALUES ('forwarded');
 INSERT INTO "fk_disposition_reason" VALUES ('local_policy');
 INSERT INTO "fk_disposition_reason" VALUES ('mailing_list');
 INSERT INTO "fk_disposition_reason" VALUES ('other');
+INSERT INTO "fk_disposition_reason" VALUES ('policy_test_mode');
 INSERT INTO "fk_disposition_reason" VALUES ('sampled_out');
 INSERT INTO "fk_disposition_reason" VALUES ('trusted_forwarder');
 
@@ -125,7 +126,12 @@ CREATE TABLE `report_policy_published` (
   `p` TEXT DEFAULT NULL,
   `sp` TEXT DEFAULT NULL,
   `pct` INTEGER DEFAULT NULL,
-  `rua` TEXT DEFAULT NULL
+  `rua` TEXT DEFAULT NULL,
+  -- Keep in sync with share/mail_dmarc_rfc9990.sqlite
+  `np` TEXT DEFAULT NULL,
+  `fo` TEXT DEFAULT NULL,
+  `testing` TEXT DEFAULT NULL,
+  `discovery_method` TEXT DEFAULT NULL
 );
 
 

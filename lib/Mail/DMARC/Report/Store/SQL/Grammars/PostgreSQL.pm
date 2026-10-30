@@ -18,6 +18,10 @@ sub dsn {
     return 'Pg';
 }
 
+sub select_index_names {
+    return "SELECT indexname AS name FROM pg_indexes WHERE schemaname = current_schema()";
+}
+
 sub and_arg( $self, $column, $operator = undef ) {
     $operator //= '=';
     $column =~ s/(\w+)\.(\w+)/"$1"."$2"/ if $column =~ /\./;
@@ -101,10 +105,6 @@ sub select_report_policy_published {
 sub select_report_reason {
     return
         'SELECT "type","comment" FROM "report_record_reason" WHERE "report_record_id"=?';
-}
-
-sub select_report_error {
-    return 'SELECT "error" FROM "report_error" WHERE "report_id"=?';
 }
 
 sub select_report_record {
@@ -248,15 +248,6 @@ INSERT INTO report_record
     disposition, dkim, spf)
    VALUES (??)
 EO_ROW_INSERT
-        ;
-}
-
-sub insert_policy_published {
-    return <<"EO_RPP"
-INSERT INTO report_policy_published
-  (report_id, adkim, aspf, p, sp, pct, rua)
-VALUES (??)
-EO_RPP
         ;
 }
 
