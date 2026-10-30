@@ -4,7 +4,7 @@ use warnings;
 use feature 'signatures';
 no warnings 'experimental::args_array_with_signatures';    ## no critic (ProhibitNoWarnings)
 
-our $VERSION = '2.20260827';
+our $VERSION = '2.20261030';
 
 use Carp;
 our $psl_loads = 0;
@@ -329,7 +329,7 @@ Mail::DMARC - Perl implementation of DMARC
 
 =head1 VERSION
 
-version 2.20260827
+version 2.20261030
 
 =head1 SYNOPSIS
 

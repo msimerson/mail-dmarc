@@ -1,5 +1,5 @@
 package Mail::DMARC::Result::Reason;
-our $VERSION = '2.20260827';
+our $VERSION = '2.20261030';
 use strict;
 use warnings;
 use feature 'signatures';
@@ -53,7 +53,7 @@ Mail::DMARC::Result::Reason - policy override reason
 
 =head1 VERSION
 
-version 2.20260827
+version 2.20261030
 
 =head1 METHODS
 
