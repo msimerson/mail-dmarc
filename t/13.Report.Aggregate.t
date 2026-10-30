@@ -139,12 +139,14 @@ sub test_rfc9990_reason_types {
     my $xml = $agg->get_policy_evaluated_as_xml( {
         row => { policy_evaluated => {
             disposition => 'none', dkim => 'fail', spf => 'fail',
-            reason => [ { type => 'forwarded' }, { type => 'local_policy', comment => 'ok' } ],
+            reason => [ { type => 'forwarded' }, { type => 'local_policy', comment => 'ok' },
+                { type => 'Trusted_Forwarder' } ],
         } } } );
     like( $xml, qr{<type>other</type>\s*<comment>forwarded</comment>},
         'RFC 9990: forwarded reported as other' );
     like( $xml, qr{<type>local_policy</type>\s*<comment>ok</comment>},
         'RFC 9990: local_policy kept' );
+    like( $xml, qr{<type>trusted_forwarder</type>}, 'RFC 9990: reason type lowercased' );
 }
 
 sub test_rfc9990_auth_results_from_legacy_store {

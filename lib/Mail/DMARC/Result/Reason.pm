@@ -36,7 +36,7 @@ sub comment( $self, $val = undef ) {
 
 # keeps an unrecognized type as the comment, rather than losing it
 sub as_known_type( $type, $comment, $known ) {
-    return ( $type, $comment ) if $known->{ lc $type };
+    return ( lc $type, $comment ) if $known->{ lc $type };
     $comment = $type if !defined $comment || $comment !~ /\S/;
     return ( 'other', $comment );
 }
@@ -69,7 +69,7 @@ Comment may or may not be present, and may be anything.
 
     my ($type, $comment) = Mail::DMARC::Result::Reason::as_known_type($type, $comment, \%known);
 
-Returns the type and comment unchanged when the type is a key of %known. Otherwise returns type I<other>, with the original type as the comment when the comment is empty.
+Returns the lowercased type and the comment unchanged when the lowercased type is a key of %known. Otherwise returns type I<other>, with the original type as the comment when the comment is empty.
 
 =head1 AUTHORS
 

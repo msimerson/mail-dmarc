@@ -363,7 +363,6 @@ sub is_whitelisted( $self, $s_ip = undef ) {
 
     my ( $type, $comment ) = split /\s+/, $self->{_whitelist}{$s_ip}, 2;
 
-    # Validate type against RFC 7489 PolicyOverrideType enum
     my @valid_reason_types
         = qw/ forwarded sampled_out trusted_forwarder mailing_list local_policy other /;
     if ( !$type || !grep { $_ eq lc $type } @valid_reason_types ) {
