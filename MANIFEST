@@ -107,4 +107,5 @@ t/mail-dmarc.ini
 t/whitelist
 TODO.md
 xt/author-critic.t
+xt/author-min-perl.t
 xt/perlcritic.rc
