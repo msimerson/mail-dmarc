@@ -62,7 +62,7 @@
             "Sys::Syslog" : "0",
             "URI" : "0",
             "XML::LibXML" : "0",
-            "perl" : "v5.34.3"
+            "perl" : "v5.36.0"
          }
       },
       "test" : {

@@ -1,5 +1,7 @@
 ### Unreleased
 
+- fix: declare Perl 5.36 everywhere, the minimum the code needs #319
+
 ### 2.20261030
 
 - fix(tree_walk): policy from author, org, or PSD domain only
