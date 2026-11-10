@@ -39,7 +39,7 @@ my %META = (
         "Net::Server::HTTP" => 0,
       },
       "requires" => {
-        "perl" => "5.40.2",
+        "perl" => "5.36.0",
         "Carp" => 0,
         "Config::Tiny" => 0,
         "DBD::SQLite" => "1.31",
@@ -169,7 +169,7 @@ my %MM_ARGS = (
       "Ricardo Signes <rjbs\@cpan.org>"
     ],
   },
-  "MIN_PERL_VERSION" => "5.008",
+  "MIN_PERL_VERSION" => "5.36.0",
   "test" => {
     "TESTS" => "t/*.t"
   },

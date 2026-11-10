@@ -29,7 +29,7 @@ Tool-specific instruction files should defer to this file.
 
 - We want code that is maintainable, idiomatic, and robust
 - Place a strong emphasis on quality and correctness
-- Maintain compatibility with the distribution’s effective baseline (runtime requires Perl 5.32.0).
+- Maintain compatibility with the distribution’s effective baseline (runtime requires Perl 5.36.0).
 - Use the existing style in touched files:
   - `use strict;` and `use warnings;`
   - 4-space indentation
