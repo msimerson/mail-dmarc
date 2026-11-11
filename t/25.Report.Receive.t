@@ -30,6 +30,8 @@ my %fixture = (
 test_from_email_attachments();
 test_from_email_submitter();
 test_from_email_not_aggregate();
+test_from_email_two_reports();
+test_from_email_disposition_filename();
 test_from_email_file();
 test_from_file_xml();
 test_from_file_gzip();
@@ -176,16 +178,7 @@ sub test_from_email_submitter {
     is( stored_reports($recv)->[0]{rows}[0]{envelope_to}, 'test.example',
         'submitter falls back to the reporter email domain' );
 
-    my $second = Email::MIME->create(
-        attributes => {
-            content_type => 'text/xml',
-            name         => 'rx.example!example.com!1609459200!1609545600.xml',
-            filename     => 'rx.example!example.com!1609459200!1609545600.xml',
-            disposition  => 'attachment',
-            encoding     => 'base64',
-        },
-        body => $fixture{xml},
-    );
+    my $second = xml_attachment( 'rx.example!example.com!1609459200!1609545600.xml', $fixture{xml} );
     $recv  = fresh_receiver();
     $email = report_email(
         subject      => 'DMARC aggregate report',
@@ -198,6 +191,71 @@ sub test_from_email_submitter {
     my %envelope_to = map { $_->{envelope_to} => 1 } map { @{ $_->{rows} } } @{ stored_reports($recv) };
     is_deeply( [ sort keys %envelope_to ], [ 'rx.example', 'test.example' ],
         'the email domain fallback does not carry over to the next attachment' );
+}
+
+sub xml_attachment {
+    my ( $filename, $xml, %name ) = @_;
+    return Email::MIME->create(
+        attributes => {
+            content_type => 'text/xml',
+            filename     => $filename,
+            disposition  => 'attachment',
+            encoding     => 'base64',
+            %name,
+        },
+        body => $xml,
+    );
+}
+
+sub test_from_email_two_reports {
+    ( my $second_xml = $fixture{xml} ) =~ s{<report_id>1234567890</report_id>}{<report_id>second</report_id>}
+        or die 'fixture report_id not found';
+    $second_xml =~ s{<source_ip>1\.2\.3\.4</source_ip>}{<source_ip>5.6.7.8</source_ip>}
+        or die 'fixture source_ip not found';
+
+    my $name  = 'rx.example!example.com!1609459200!1609545600.xml';
+    my $recv  = fresh_receiver();
+    my $email = report_email(
+        parts => [
+            xml_attachment( $name, $fixture{xml}, name => $name ),
+            xml_attachment( $name, $second_xml,   name => $name ),
+        ]
+    );
+    is( $recv->from_email_simple($email), 'aggregate', 'email with two reports' );
+
+    my %by_uuid = map { $_->{uuid} => $_ } @{ stored_reports($recv) };
+    is_deeply( [ sort keys %by_uuid ], [ 'second', 'subject-id' ],
+        'the Subject Report-ID names the first report, the XML names the second' );
+    is_deeply( [ map { $_->{source_ip} } @{ $by_uuid{'subject-id'}{rows} } ], ['1.2.3.4'],
+        'the first report has only its own record' );
+    is_deeply( [ map { $_->{source_ip} } @{ $by_uuid{second}{rows} } ], ['5.6.7.8'],
+        'the second report has only its own record' );
+    is( $by_uuid{second}{rows}[0]{envelope_to}, 'google.example',
+        'the Subject submitter applies to every report' );
+}
+
+sub test_from_email_disposition_filename {
+    my $recv  = fresh_receiver();
+    my $name  = 'rx.example!example.com!1609459200!1609545600.xml.gz';
+    my $email = report_email(
+        subject => 'DMARC aggregate report',
+        parts   => [
+            Email::MIME->create(
+                attributes => {
+                    content_type => 'application/octet-stream',
+                    filename     => $name,
+                    disposition  => 'attachment',
+                    encoding     => 'base64',
+                },
+                body => $fixture{gz},
+            )
+        ],
+    );
+    my ( $type, $warned ) = collect_warnings( sub { $recv->from_email_simple($email) } );
+    is( $type,   'aggregate', 'attachment named only in Content-Disposition is a report' );
+    is( $warned, '',          'without warnings' );
+    is( stored_reports($recv)->[0]{rows}[0]{envelope_to},
+        'rx.example', 'its Content-Disposition filename names the receiver' );
 }
 
 sub test_from_email_not_aggregate {

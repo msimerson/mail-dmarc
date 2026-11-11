@@ -193,6 +193,11 @@ sub from_email_simple( $self, $email ) {
     $self->{_envelope_to} = undef;
     $self->{_header_from} = undef;
     $self->get_submitter_from_subject( $email->header('Subject') );
+    my %from_subject = (
+        uuid         => $self->report->aggregate->metadata->uuid,
+        _envelope_to => $self->{_envelope_to},
+        _header_from => $self->{_header_from},
+    );
 
     my $rep_type;
     foreach my $part ( Email::MIME->new( $email->as_string )->parts ) {
@@ -209,10 +214,15 @@ sub from_email_simple( $self, $email ) {
             next;
         }
 
-        my $filename = $part->{ct}{attributes}{name} || '';
+        my $filename = $part->filename // '';
         if ( my $format = _attachment_format( $c_type, $filename ) ) {
-            $rep_type = 'aggregate'
-                if $self->_receive_attachment( $part, $filename, $format );
+            $self->_start_report( \%from_subject );
+            if ( $self->_receive_attachment( $part, $filename, $format ) ) {
+                $rep_type = 'aggregate';
+
+                # the Subject has one Report-ID; later reports use their XML's
+                delete $from_subject{uuid};
+            }
             next;
         }
 
@@ -225,6 +235,14 @@ sub from_email_simple( $self, $email ) {
         }
     }
     return $rep_type;
+}
+
+sub _start_report( $self, $from_subject ) {
+    $self->report->init();
+    $self->{$_} = $from_subject->{$_} for qw/ _envelope_to _header_from /;
+    $self->report->aggregate->metadata->uuid( $from_subject->{uuid} )
+        if $from_subject->{uuid};
+    return;
 }
 
 sub _attachment_format( $c_type, $filename ) {
@@ -318,10 +336,8 @@ sub handle_body( $self, $body ) {
     my $dom  = XML::LibXML->load_xml( string => $body );
     my $meta = $self->do_node_report_metadata( $dom->findnodes("/feedback/report_metadata") );
 
-    # the reporter's own domain, when neither Subject nor filename named the
-    # receiver; local, so it can't stand in for a later attachment's filename
-    local $self->{_envelope_to} = $self->{_envelope_to}
-        || $self->_email_domain( $meta->email // '' );
+    # the reporter's own domain, when neither Subject nor filename named the receiver
+    $self->{_envelope_to} ||= $self->_email_domain( $meta->email // '' );
     $self->do_node_policy_published(
         $dom->findnodes("/feedback/policy_published") );
 

@@ -5,6 +5,8 @@
 - fix(receive): read mbox files, dmarc_receive --mbox takes a file
 - fix(idn): punycode UTF-8 byte From domains as characters
 - fix(receive): envelope_to from RFC filename, else reporter email
+- fix(receive): store each attachment of an email as its own report
+- fix(receive): read attachment names from Content-Disposition
 - fix(sender): refuse http rua on private addresses, no redirects
 - fix(sender): bound HTTP response bodies
 - fix(sender): http rua ignores proxy environment variables
