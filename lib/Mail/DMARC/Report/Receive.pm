@@ -155,34 +155,36 @@ sub _init_for_file( $self, $file ) {
     return;
 }
 
-sub from_mbox( $self, $file_name ) {
+sub from_mbox( $self, $file_name = undef ) {
     croak "missing mbox file" if !$file_name;
+    open my $fh, '<:raw', $file_name or croak "unable to read $file_name: $!";
+    my $count = $self->_receive_mbox($fh);
+    close $fh;
+    return $count;
+}
 
-    # TODO: replace this module
-    # commented out due to build test failures
-    #   load "Mail::Mbox::MessageParser";
-    #   croak "is Mail::Mbox::MessageParser installed?" if $@;
+sub _receive_mbox( $self, $fh ) {
+    my ( $message, $count ) = ( undef, 0 );
+    my $receive = sub {
+        return if !defined $message;
+        $self->from_email_simple( Email::Simple->new($message) );
+        $count++;
+    };
 
-    #   my $file_handle = FileHandle->new($file_name);
+    while ( my $line = <$fh> ) {
+        if ( 'From ' eq substr( $line, 0, 5 ) ) {
+            $receive->();
+            $message = '';
+            next;
+        }
+        next if !defined $message;    # text before the first separator
 
-    my $folder_reader;    #  = Mail::Mbox::MessageParser->new(
-                          #       {   'file_name'    => $file_name,
-                          #           'file_handle'  => $file_handle,
-                          #           'enable_cache' => 1,
-                          #           'enable_grep'  => 1,
-                          #       }
-                          #   );
-
-    croak $folder_reader unless ref $folder_reader;
-
-    my $prologue = $folder_reader->prologue;
-    print $prologue;
-
-    while ( !$folder_reader->end_of_file() ) {
-        $self->from_email_simple(
-            Email::Simple->new( $folder_reader->read_next_email() ) );
+        # mboxrd stores a body line beginning "From " as ">From "
+        $line =~ s/^>(>*From )/$1/;
+        $message .= $line;
     }
-    return 1;
+    $receive->();
+    return $count;
 }
 
 sub from_email_simple( $self, $email ) {
@@ -191,11 +193,11 @@ sub from_email_simple( $self, $email ) {
     $self->{_envelope_to} = undef;
     $self->{_header_from} = undef;
     $self->get_submitter_from_subject( $email->header('Subject') );
-
-    my $unzipper = {
-        gz  => \&IO::Uncompress::Gunzip::gunzip,    # 2013 draft
-        zip => \&IO::Uncompress::Unzip::unzip,      # legacy format
-    };
+    my %from_subject = (
+        uuid         => $self->report->aggregate->metadata->uuid,
+        _envelope_to => $self->{_envelope_to},
+        _header_from => $self->{_header_from},
+    );
 
     my $rep_type;
     foreach my $part ( Email::MIME->new( $email->as_string )->parts ) {
@@ -212,50 +214,16 @@ sub from_email_simple( $self, $email ) {
             next;
         }
 
-        my $bigger;
-        my $filename = $part->{ct}{attributes}{name} || '';
+        my $filename = $part->filename // '';
+        if ( my $format = _attachment_format( $c_type, $filename ) ) {
+            $self->_start_report( \%from_subject );
+            if ( $self->_receive_attachment( $part, $filename, $format ) ) {
+                $rep_type = 'aggregate';
 
-        if (   $c_type eq 'application/zip'
-            || $c_type eq 'application/x-zip-compressed' )
-        {
-            try {
-                $self->get_submitter_from_filename($filename);
-                $unzipper->{zip}->( \$part->body, \$bigger );
-                $self->handle_body($bigger);
-                $rep_type = 'aggregate';
-            }
-            catch ($error) {
-                warn "failure processing $filename: $error";
+                # the Subject has one Report-ID; later reports use their XML's
+                delete $from_subject{uuid};
             }
             next;
-        }
-        if ( $c_type eq 'application/gzip' ) {
-            try {
-                $self->get_submitter_from_filename($filename);
-                $unzipper->{gz}->( \$part->body, \$bigger );
-                $self->handle_body($bigger);
-                $rep_type = 'aggregate';
-            }
-            catch ($error) {
-                warn "failure processing $filename: $error";
-            }
-            next;
-        }
-        if ( $filename =~ /xml\.gz$/ ) {
-            if (   $c_type eq 'application/octet-stream'
-                || $c_type eq 'multipart/alternative' )
-            {
-                try {
-                    $self->get_submitter_from_filename($filename);
-                    $unzipper->{gz}->( \$part->body, \$bigger );
-                    $self->handle_body($bigger);
-                    $rep_type = 'aggregate';
-                }
-                catch ($error) {
-                    warn "failure processing $filename: $error";
-                }
-                next;
-            }
         }
 
         if ( $c_type eq 'multipart/alternative' ) {
@@ -269,11 +237,64 @@ sub from_email_simple( $self, $email ) {
     return $rep_type;
 }
 
+sub _start_report( $self, $from_subject ) {
+    $self->report->init();
+    $self->{$_} = $from_subject->{$_} for qw/ _envelope_to _header_from /;
+    $self->report->aggregate->metadata->uuid( $from_subject->{uuid} )
+        if $from_subject->{uuid};
+    return;
+}
+
+sub _attachment_format( $c_type, $filename ) {
+    return 'zip'
+        if $c_type eq 'application/zip'
+        || $c_type eq 'application/x-zip-compressed';
+    return 'gz' if $c_type eq 'application/gzip';
+
+    # RFC 7489 7.2.1.1: an uncompressed report is sent as text/xml
+    return 'xml' if $c_type eq 'text/xml' || $c_type eq 'application/xml';
+
+    return 'gz'
+        if $filename =~ /xml\.gz$/
+        && ( $c_type eq 'application/octet-stream'
+        || $c_type eq 'multipart/alternative' );
+    return;
+}
+
+sub _receive_attachment( $self, $part, $filename, $format ) {
+    my %inflate = (
+        gz  => \&IO::Uncompress::Gunzip::gunzip,
+        zip => \&IO::Uncompress::Unzip::unzip,
+    );
+    my $received = 0;
+    try {
+        $self->get_submitter_from_filename($filename);
+        my $xml = $part->body;
+        if ( $inflate{$format} ) {
+            $inflate{$format}->( \$part->body, \$xml ) or croak "unable to decompress";
+        }
+        $self->handle_body($xml);
+        $received = 1;
+    }
+    catch ($error) {
+        warn "failure processing $filename: $error";
+    }
+    return $received;
+}
+
 sub get_submitter_from_filename( $self, $filename ) {
     return if $self->{_envelope_to};    # already parsed from Subject:
-    my ( $submitter_dom, $report_dom, $begin, $end ) = split /!/, $filename;
+
+    # RFC 7489 7.2.1.1: receiver!policy-domain!begin!end[!unique-id].ext
+    my ( $submitter_dom, $report_dom )
+        = $filename =~ /\A([a-z0-9.-]+)!([a-z0-9.-]+)!\d+!\d+(?:[!.]|\z)/i or return;
     $self->{_header_from} ||= $report_dom;
     return $self->{_envelope_to} = $submitter_dom;
+}
+
+sub _email_domain( $self, $email ) {
+    my ($domain) = $email =~ /\@([a-z0-9.-]+)/i or return;
+    return lc $domain;
 }
 
 sub get_submitter_from_subject( $self, $subject ) {
@@ -312,8 +333,11 @@ sub handle_body( $self, $body ) {
         $body =~ s/\s+xmlns="[^"]*"//g;
     }
 
-    my $dom = XML::LibXML->load_xml( string => $body );
-    $self->do_node_report_metadata( $dom->findnodes("/feedback/report_metadata") );
+    my $dom  = XML::LibXML->load_xml( string => $body );
+    my $meta = $self->do_node_report_metadata( $dom->findnodes("/feedback/report_metadata") );
+
+    # the reporter's own domain, when neither Subject nor filename named the receiver
+    $self->{_envelope_to} ||= $self->_email_domain( $meta->email // '' );
     $self->do_node_policy_published(
         $dom->findnodes("/feedback/policy_published") );
 
@@ -510,7 +534,7 @@ C<from_file> accepts a file path and auto-detects the file type:
 
 =back
 
-C<from_imap> and C<from_mbox> accept a message (or list of messages) and create an Email::Simple object from each, passing that object to from_email_simple.
+C<from_imap> and C<from_mbox> create an Email::Simple object from each message and pass it to from_email_simple. C<from_mbox> reads an mboxrd file and returns the number of messages read. In an mboxo file, a body line written as ">From " loses its ">"; report attachments are encoded and have no such lines.
 
 =head2 from_email_simple
 
@@ -521,6 +545,8 @@ When forensic reports are detected, no further processing is done.
 When an aggregate report is detected, the report details are extracted from the message body as well as the Subject field/header and attachment metadata.
 
 Parsing of the Subject and MIME metadata is necessary because the 2013 draft DMARC specification does not REQUIRE the envelope_to domain name to be included in the XML report. For example, the only way to B<know> that the email which generated this particular report was sent to hotmail.com is to extract the envelope_to domain from the message metadata (Org Name=Microsoft, hotmail.com is not in the XML). So far, every messsage I have seen has had the envelope_to domain in one location or the other.
+
+The Subject is tried first, then an attachment or file name of the form C<receiver!policy-domain!begin!end[!unique-id].ext>. A name of any other form is ignored, and the domain of the reporter's C<report_metadata/email> is used instead.
 
 To extract messages from the message body, the MIME attachments are decompressed and passed to L<handle_body>.
 

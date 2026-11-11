@@ -39,6 +39,7 @@ __is_public_suffix();
 __has_dns_rr();
 __is_valid_ip();
 __is_valid_domain();
+__to_ascii_domain();
 __epoch_to_iso();
 __get_prefix();
 __get_config_etc_mail();
@@ -107,6 +108,26 @@ sub __is_valid_domain {
         ok( !$base->is_valid_domain($_), "is_valid_domain, $_" );
     }
 
+}
+
+sub __to_ascii_domain {
+    my %cases = (
+        'example.com'              => 'example.com',
+        'xn--bcher-kva.example'    => 'xn--bcher-kva.example',
+        "b\x{fc}cher.example"      => 'xn--bcher-kva.example',
+        "b\xc3\xbccher.example"    => 'xn--bcher-kva.example',
+        "\x{4f8b}\x{3048}.example" => 'xn--r8jz45g.example',
+        "\xe4\xbe\x8b\xe3\x81\x88.example" => 'xn--r8jz45g.example',
+    );
+    for my $domain ( sort keys %cases ) {
+        ( my $shown = $domain ) =~ s/([^\x20-\x7e])/sprintf '\\x{%x}', ord $1/ge;
+        is( $base->to_ascii_domain($domain), $cases{$domain}, "to_ascii_domain, $shown" );
+
+        my $upgraded = $domain;
+        utf8::upgrade($upgraded);
+        is( $base->to_ascii_domain($upgraded), $cases{$domain},
+            "to_ascii_domain, $shown, stored as UTF-8 internally" );
+    }
 }
 
 sub __has_dns_rr {

@@ -33,6 +33,7 @@ my %META = (
     "runtime" => {
       "recommends" => {
         "GeoIP2" => 0,
+        "IO::Socket::SSL" => "1.56",
         "JSON" => 0,
         "Mail::DKIM" => 0,
         "Net::IMAP::Simple" => 0,

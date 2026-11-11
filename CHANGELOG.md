@@ -1,5 +1,19 @@
 ### Unreleased
 
+- feat(sender): POST reports to http and https rua URIs
+- fix(receive): store uncompressed text/xml report attachments
+- fix(receive): read mbox files, dmarc_receive --mbox takes a file
+- fix(idn): punycode UTF-8 byte From domains as characters
+- fix(receive): envelope_to from RFC filename, else reporter email
+- fix(receive): store each attachment of an email as its own report
+- fix(receive): read attachment names from Content-Disposition
+- fix(sender): refuse http rua on private addresses, no redirects
+- fix(sender): bound HTTP response bodies
+- fix(sender): http rua ignores proxy environment variables
+- doc(receive): from_mbox reads mboxrd
+- chore(deps): recommend IO::Socket::SSL for https rua and IMAP
+- test: receive by email, RFC 9990 namespace, IDN From, httpd routes
+
 ### 2.20261110
 
 - fix: declare Perl 5.36 everywhere, the minimum the code needs #319
