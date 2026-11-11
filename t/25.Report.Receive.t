@@ -164,6 +164,17 @@ sub test_from_email_submitter {
     is( $rep->{rows}[0]{envelope_to}, 'yahoo.example',
         'submitter falls back to the attachment filename' );
     is( $rep->{uuid}, '1234567890', 'Report-ID falls back to the XML report_id' );
+
+    $recv  = fresh_receiver();
+    $email = report_email(
+        subject      => 'DMARC aggregate report',
+        content_type => 'application/gzip',
+        filename     => 'report.xml.gz',
+        body         => $fixture{gz},
+    );
+    is( $recv->from_email_simple($email), 'aggregate', 'report with an unpatterned filename' );
+    is( stored_reports($recv)->[0]{rows}[0]{envelope_to}, 'test.example',
+        'submitter falls back to the reporter email domain' );
 }
 
 sub test_from_email_not_aggregate {
@@ -232,7 +243,19 @@ sub test_from_email_file {
 sub test_from_file_xml {
     my $recv = fresh_receiver();
     is( $recv->from_file('t/fixtures/test_dmarc.xml'), 'aggregate', 'from_file with XML file' );
-    is( stored_reports($recv)->[0]{rows}[0]{source_ip}, '1.2.3.4', 'its row is stored' );
+    my $row = stored_reports($recv)->[0]{rows}[0];
+    is( $row->{source_ip},   '1.2.3.4',      'its row is stored' );
+    is( $row->{envelope_to}, 'test.example', 'unpatterned filename, receiver from the reporter email' );
+
+    $recv = fresh_receiver();
+    my $dir  = File::Temp->newdir;
+    my $file = "$dir/receiver.example!example.com!1609459200!1609545600.xml";
+    open my $fh, '>:raw', $file or die "open $file: $!";
+    print {$fh} $fixture{xml};
+    close $fh;
+    is( $recv->from_file($file), 'aggregate', 'from_file with an RFC named XML file' );
+    is( stored_reports($recv)->[0]{rows}[0]{envelope_to},
+        'receiver.example', 'RFC named file, receiver from the filename' );
 }
 
 sub test_from_file_gzip {
@@ -376,4 +399,16 @@ sub test_get_submitter_from_filename {
     my $should_be_undef = $recv->get_submitter_from_filename('new.submitter!new.header!1!2');
     ok( !defined($should_be_undef), 'filename parser returns early when submitter already set' );
     is( $recv->{_envelope_to}, 'existing.submitter', 'existing submitter is preserved' );
+
+    $recv = fresh_receiver();
+    is( $recv->get_submitter_from_filename('rx.example!example.com!1!2!uniq.xml.gz'),
+        'rx.example', 'filename parser accepts a unique-id' );
+
+    for my $name ( 'test_dmarc.xml', 'dmarc.zip', 'rx.example!example.com.xml',
+        'rx.example!example.com!start!end.xml', 'a b!example.com!1!2.xml' )
+    {
+        $recv = fresh_receiver();
+        is( $recv->get_submitter_from_filename($name), undef, "filename parser ignores $name" );
+        ok( !$recv->{_envelope_to} && !$recv->{_header_from}, "$name sets no identifiers" );
+    }
 }

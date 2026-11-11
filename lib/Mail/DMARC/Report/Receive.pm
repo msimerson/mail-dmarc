@@ -266,9 +266,17 @@ sub _receive_attachment( $self, $part, $filename, $format ) {
 
 sub get_submitter_from_filename( $self, $filename ) {
     return if $self->{_envelope_to};    # already parsed from Subject:
-    my ( $submitter_dom, $report_dom, $begin, $end ) = split /!/, $filename;
+
+    # RFC 7489 7.2.1.1: receiver!policy-domain!begin!end[!unique-id].ext
+    my ( $submitter_dom, $report_dom )
+        = $filename =~ /\A([a-z0-9.-]+)!([a-z0-9.-]+)!\d+!\d+(?:[!.]|\z)/i or return;
     $self->{_header_from} ||= $report_dom;
     return $self->{_envelope_to} = $submitter_dom;
+}
+
+sub _email_domain( $self, $email ) {
+    my ($domain) = $email =~ /\@([a-z0-9.-]+)/i or return;
+    return lc $domain;
 }
 
 sub get_submitter_from_subject( $self, $subject ) {
@@ -307,8 +315,11 @@ sub handle_body( $self, $body ) {
         $body =~ s/\s+xmlns="[^"]*"//g;
     }
 
-    my $dom = XML::LibXML->load_xml( string => $body );
-    $self->do_node_report_metadata( $dom->findnodes("/feedback/report_metadata") );
+    my $dom  = XML::LibXML->load_xml( string => $body );
+    my $meta = $self->do_node_report_metadata( $dom->findnodes("/feedback/report_metadata") );
+
+    # the reporter's own domain, when neither Subject nor filename named the receiver
+    $self->{_envelope_to} ||= $self->_email_domain( $meta->email // '' );
     $self->do_node_policy_published(
         $dom->findnodes("/feedback/policy_published") );
 
@@ -505,7 +516,7 @@ C<from_file> accepts a file path and auto-detects the file type:
 
 =back
 
-C<from_imap> and C<from_mbox> create an Email::Simple object from each message and pass it to from_email_simple. C<from_mbox> reads an mbox file (mboxo or mboxrd) and returns the number of messages read.
+C<from_imap> and C<from_mbox> create an Email::Simple object from each message and pass it to from_email_simple. C<from_mbox> reads an mboxrd file and returns the number of messages read. In an mboxo file, a body line written as ">From " loses its ">"; report attachments are encoded and have no such lines.
 
 =head2 from_email_simple
 
@@ -516,6 +527,8 @@ When forensic reports are detected, no further processing is done.
 When an aggregate report is detected, the report details are extracted from the message body as well as the Subject field/header and attachment metadata.
 
 Parsing of the Subject and MIME metadata is necessary because the 2013 draft DMARC specification does not REQUIRE the envelope_to domain name to be included in the XML report. For example, the only way to B<know> that the email which generated this particular report was sent to hotmail.com is to extract the envelope_to domain from the message metadata (Org Name=Microsoft, hotmail.com is not in the XML). So far, every messsage I have seen has had the envelope_to domain in one location or the other.
+
+The Subject is tried first, then an attachment or file name of the form C<receiver!policy-domain!begin!end[!unique-id].ext>. A name of any other form is ignored, and the domain of the reporter's C<report_metadata/email> is used instead.
 
 To extract messages from the message body, the MIME attachments are decompressed and passed to L<handle_body>.
 

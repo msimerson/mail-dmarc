@@ -4,6 +4,10 @@
 - fix(receive): store uncompressed text/xml report attachments
 - fix(receive): read mbox files, dmarc_receive --mbox takes a file
 - fix(idn): punycode UTF-8 byte From domains as characters
+- fix(receive): envelope_to from RFC filename, else reporter email
+- fix(sender): refuse http rua on private addresses, no redirects
+- fix(sender): bound HTTP response bodies
+- doc(receive): from_mbox reads mboxrd
 - chore(deps): recommend IO::Socket::SSL for https rua and IMAP
 - test: receive by email, RFC 9990 namespace, IDN From, httpd routes
 

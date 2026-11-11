@@ -7,6 +7,7 @@ use IO::Socket::INET;
 use IO::Uncompress::Gunzip qw(gunzip);
 use Net::DNS::Resolver::Mock;
 use POSIX ();
+use Socket ();
 use Storable ();
 use Test::Exception;
 use Test::More;
@@ -26,11 +27,15 @@ throws_ok { $http->post( { report => 'x' } ) } qr/missing uri/, 'post requires a
 throws_ok { $http->post( { uri => 'http://127.0.0.1/' } ) } qr/missing report/,
     'post requires a report';
 
+test_public_address();
+test_refused_destinations();
+
 SKIP: {
     skip 'forked test HTTP server is unreliable on Windows', 1 if $^O eq 'MSWin32';
     test_post();
     test_post_refused();
     test_post_unreachable();
+    test_response_bodies();
     test_sender();
 }
 
@@ -39,7 +44,9 @@ exit;
 
 # Accepts one request, answers it with $status, and hands back what it got.
 sub one_shot_server {
-    my ($status) = @_;
+    my ( $status, %reply ) = @_;
+    my $body    = $reply{body} // '';
+    my $headers = join '', map {"$_\r\n"} @{ $reply{headers} // [] };
     my $listen = IO::Socket::INET->new(
         Listen    => 1,
         LocalAddr => '127.0.0.1',
@@ -67,7 +74,8 @@ sub one_shot_server {
             read( $c, my $chunk, $want - length $req{body} ) or last;
             $req{body} .= $chunk;
         }
-        print {$c} "HTTP/1.1 $status Test\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+        printf {$c} "HTTP/1.1 %s Test\r\n%sContent-Length: %d\r\nConnection: close\r\n\r\n%s",
+            $status, $headers, length $body, $body;
         close $c;
         Storable::nstore( \%req, "$capture" );
         POSIX::_exit(0);    # skip END blocks, which belong to the parent's Test::More
@@ -114,6 +122,74 @@ sub test_post_refused {
     my $res = $http->post( { uri => $url, report => 'gz' } );
     ok( !$res->{success}, 'post, 503 is not success' );
     is( $res->{status}, 503, 'post, returns the status' );
+    $received->();
+}
+
+sub test_public_address {
+    my %public = (
+        '8.8.8.8'               => 1,
+        '172.32.0.1'            => 1,
+        '2001:4860:4860::8888'  => 1,
+        '64:ff9b::808:808'      => 1,
+        '0.0.0.0'               => 0,
+        '10.1.2.3'              => 0,
+        '100.64.0.1'            => 0,
+        '127.0.0.1'             => 0,
+        '169.254.169.254'       => 0,
+        '172.31.255.255'        => 0,
+        '192.168.1.1'           => 0,
+        '198.51.100.7'          => 0,
+        '224.0.0.1'             => 0,
+        '255.255.255.255'       => 0,
+        '::'                    => 0,
+        '::1'                   => 0,
+        '::ffff:10.0.0.1'       => 0,
+        '64:ff9b::a00:1'        => 0,
+        'fd00::1'               => 0,
+        'fe80::1'               => 0,
+        'ff02::1'               => 0,
+        '2001:db8::1'           => 0,
+    );
+    for my $ip ( sort keys %public ) {
+        my $packed = Socket::inet_pton( $ip =~ /:/ ? Socket::AF_INET6() : Socket::AF_INET(), $ip );
+        is( !!$mod->can('is_public_address')->($packed), !!$public{$ip},
+            "is_public_address, $ip" );
+    }
+    is( $http->public_peer('8.8.8.8'), '8.8.8.8', 'public_peer, a public address' );
+}
+
+sub test_refused_destinations {
+    for my $uri ( 'http://10.0.0.1/dmarc', 'https://[::1]/dmarc', 'http://localhost/dmarc' ) {
+        my $res = $http->post( { uri => $uri, report => 'gz' } );
+        ok( !$res->{success}, "post, $uri is refused" );
+        is( $res->{status}, 599, "post, $uri is refused as a 599" );
+        like( $res->{content}, qr/non-public address/, "post, $uri says why" );
+    }
+
+    my $res = $http->post( { uri => 'http://no-such-host.invalid/dmarc', report => 'gz' } );
+    like( $res->{content}, qr/unable to resolve no-such-host\.invalid/,
+        'post, an unresolvable host is refused' );
+
+    ok( $http->is_allowed_host('127.0.0.1'), 'http_allow_hosts permits a listed host' );
+    ok( !$http->is_allowed_host('10.0.0.1'), 'http_allow_hosts permits only listed hosts' );
+}
+
+sub test_response_bodies {
+    my ( $url, $received ) = one_shot_server( 200, body => 'x' x 100_000 );
+    my $res = $http->post( { uri => $url, report => 'gz' } );
+    ok( $res->{success}, 'post, a large success body is still success' );
+    is( $res->{content}, '', 'post, a success body is discarded' );
+    $received->();
+
+    ( $url, $received ) = one_shot_server( 500, body => 'y' x 100_000 );
+    $res = $http->post( { uri => $url, report => 'gz' } );
+    ok( !$res->{success}, 'post, a large error body is not success' );
+    cmp_ok( length $res->{content}, '<', 10_000, 'post, an error body is bounded' );
+    $received->();
+
+    ( $url, $received ) = one_shot_server( 303, headers => ['Location: http://10.0.0.1/'] );
+    $res = $http->post( { uri => $url, report => 'gz' } );
+    is( $res->{status}, 303, 'post, redirects are not followed' );
     $received->();
 }
 

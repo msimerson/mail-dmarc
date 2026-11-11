@@ -72,6 +72,6 @@ Accepts the filename of a file containing a mail message. The message is parsed 
 
 =head2 Mbox
 
-Accepts the filename of a mbox format file containing mail messages. The messages are parsed and stored.
+Accepts the filename of an mboxrd format file containing mail messages. The messages are parsed and stored.
 
 =cut
