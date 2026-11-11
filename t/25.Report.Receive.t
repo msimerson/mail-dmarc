@@ -178,7 +178,8 @@ sub test_from_email_submitter {
     is( stored_reports($recv)->[0]{rows}[0]{envelope_to}, 'test.example',
         'submitter falls back to the reporter email domain' );
 
-    my $second = xml_attachment( 'rx.example!example.com!1609459200!1609545600.xml', $fixture{xml} );
+    my $second = xml_attachment( 'rx.example!example.com!1609459200!1609545600.xml',
+        second_report_xml() );
     $recv  = fresh_receiver();
     $email = report_email(
         subject      => 'DMARC aggregate report',
@@ -188,8 +189,9 @@ sub test_from_email_submitter {
         parts        => [$second],
     );
     $recv->from_email_simple($email);
-    my %envelope_to = map { $_->{envelope_to} => 1 } map { @{ $_->{rows} } } @{ stored_reports($recv) };
-    is_deeply( [ sort keys %envelope_to ], [ 'rx.example', 'test.example' ],
+    my %envelope_to = map { $_->{uuid} => [ map { $_->{envelope_to} } @{ $_->{rows} } ] }
+        @{ stored_reports($recv) };
+    is_deeply( \%envelope_to, { 1234567890 => ['test.example'], second => ['rx.example'] },
         'the email domain fallback does not carry over to the next attachment' );
 }
 
@@ -207,11 +209,16 @@ sub xml_attachment {
     );
 }
 
-sub test_from_email_two_reports {
-    ( my $second_xml = $fixture{xml} ) =~ s{<report_id>1234567890</report_id>}{<report_id>second</report_id>}
+sub second_report_xml {
+    ( my $xml = $fixture{xml} ) =~ s{<report_id>1234567890</report_id>}{<report_id>second</report_id>}
         or die 'fixture report_id not found';
-    $second_xml =~ s{<source_ip>1\.2\.3\.4</source_ip>}{<source_ip>5.6.7.8</source_ip>}
+    $xml =~ s{<source_ip>1\.2\.3\.4</source_ip>}{<source_ip>5.6.7.8</source_ip>}
         or die 'fixture source_ip not found';
+    return $xml;
+}
+
+sub test_from_email_two_reports {
+    my $second_xml = second_report_xml();
 
     my $name  = 'rx.example!example.com!1609459200!1609545600.xml';
     my $recv  = fresh_receiver();
