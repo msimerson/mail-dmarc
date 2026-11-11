@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use File::Temp ();
+use HTTP::Tiny;
 use IO::Compress::Gzip qw(gzip);
 use IO::Socket::INET;
 use IO::Uncompress::Gunzip qw(gunzip);
@@ -36,6 +37,9 @@ SKIP: {
     test_post_refused();
     test_post_unreachable();
     test_response_bodies();
+    test_peer_pinning();
+    test_ignores_proxy_env();
+    test_https();
     test_sender();
 }
 
@@ -60,6 +64,14 @@ sub one_shot_server {
     if ( !$pid ) {
         alarm 20;
         my $c = $listen->accept or POSIX::_exit(1);
+        if ( $reply{tls} ) {
+            IO::Socket::SSL->start_SSL(
+                $c,
+                SSL_server => 1,
+                SSL_cert   => $reply{tls}[0],
+                SSL_key    => $reply{tls}[1],
+            ) or POSIX::_exit(2);
+        }
         my %req = ( headers => {} );
         ( $req{request_line} = <$c> ) =~ s/\r\n\z//;
         while ( my $line = <$c> ) {
@@ -145,6 +157,8 @@ sub test_public_address {
         '::1'                   => 0,
         '::ffff:10.0.0.1'       => 0,
         '64:ff9b::a00:1'        => 0,
+        '64:ff9b:1::a00:1'      => 0,
+        'fec0::1'               => 0,
         'fd00::1'               => 0,
         'fe80::1'               => 0,
         'ff02::1'               => 0,
@@ -191,6 +205,93 @@ sub test_response_bodies {
     $res = $http->post( { uri => $url, report => 'gz' } );
     is( $res->{status}, 303, 'post, redirects are not followed' );
     $received->();
+}
+
+# Stands in for DNS: the rua host is not allowlisted and "resolves" to the
+# local test server, so delivery depends on post connecting to the checked peer.
+sub post_pinned_to_localhost {
+    my ( $url, $host, $client ) = @_;
+    my $uri = URI->new($url);
+    $uri->host($host);
+    $uri->scheme('https') if $client && $client eq 'https';
+    no warnings 'redefine';
+    local *Mail::DMARC::Report::Send::HTTP::public_peer = sub { return '127.0.0.1' };
+    return ( $http->post( { uri => "$uri", report => 'gz' } ), $uri->port );
+}
+
+sub test_peer_pinning {
+    ok( !$http->is_allowed_host('reports.example'), 'pinning, the host is not allowlisted' );
+    my ( $url, $received ) = one_shot_server(200);
+    my ( $res, $port ) = post_pinned_to_localhost( $url, 'reports.example' );
+    ok( $res->{success}, 'pinning, delivered to the checked peer' );
+    my $req = $received->();
+    is( $req->{headers}{host}, "reports.example:$port", 'pinning, Host is the rua host' );
+}
+
+sub test_ignores_proxy_env {
+    my $closed = IO::Socket::INET->new( Listen => 1, LocalAddr => '127.0.0.1', LocalPort => 0 )
+        or die "listen: $!";
+    my $proxy = sprintf 'http://127.0.0.1:%d/', $closed->sockport;
+    close $closed;
+
+    local @ENV{qw( http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY )}
+        = ($proxy) x 6;
+    local $ENV{no_proxy};
+    my ( $url, $received ) = one_shot_server(200);
+    my $res = $mod->new->post( { uri => $url, report => 'gz' } );
+    ok( $res->{success}, 'proxy, environment proxies are not used' );
+    ok( $received->(), 'proxy, the rua received the POST directly' );
+}
+
+sub test_https {
+    SKIP: {
+        skip 'https tests need IO::Socket::SSL 1.56 and Net::SSLeay 1.49', 6
+            if !eval {
+            require IO::Socket::SSL;
+            IO::Socket::SSL->VERSION(1.56);
+            require IO::Socket::SSL::Utils;
+            HTTP::Tiny->can_ssl;
+            };
+
+        my $create = \&IO::Socket::SSL::Utils::CERT_create;
+        my ( $ca_cert, $ca_key )
+            = $create->( CA => 1, subject => { commonName => 'Mail-DMARC test CA' } );
+        my $issued_for = sub {
+            my ( $name, $issuer ) = @_;
+            return [
+                $create->(
+                    subject         => { commonName => $name },
+                    subjectAltNames => [ [ DNS => $name ] ],
+                    purpose         => 'server',
+                    ( $issuer ? ( issuer => $issuer ) : () ),
+                )
+            ];
+        };
+        my $ca_file = File::Temp->new( SUFFIX => '.pem' );
+        print {$ca_file} IO::Socket::SSL::Utils::PEM_cert2string($ca_cert);
+        close $ca_file;
+        local $ENV{SSL_CERT_FILE} = "$ca_file";
+
+        my %case = (
+            trusted  => [ $issued_for->( 'reports.example', [ $ca_cert, $ca_key ] ), 1 ],
+            mismatch => [ $issued_for->( 'other.example',   [ $ca_cert, $ca_key ] ), 0 ],
+            untrusted => [ $issued_for->('reports.example'), 0 ],
+        );
+        for my $name (qw( trusted mismatch untrusted )) {
+            my ( $tls, $delivers ) = @{ $case{$name} };
+            my ( $url, $received ) = one_shot_server( 200, tls => $tls );
+            my ($res) = post_pinned_to_localhost( $url, 'reports.example', 'https' );
+            my $req = $received->();
+            if ($delivers) {
+                ok( $res->{success}, "https, $name certificate delivers to the pinned peer" );
+                like( $req->{headers}{host}, qr/^reports\.example:/, "https, $name, Host is the rua host" );
+            }
+            else {
+                is( $res->{status}, 599, "https, $name certificate is refused" ) or diag $res->{content};
+                ok( !$req, "https, $name, no report is sent" );
+            }
+        }
+    }
 }
 
 sub test_post_unreachable {

@@ -25,7 +25,7 @@ An C<http:> or C<https:> rua receives the gzipped report as the body of a POST
 (C<Content-Type: application/gzip>), with the report filename in
 C<Content-Disposition> and the email Subject in a C<Subject> header. Any 2xx
 response is delivery. HTTPS certificates are verified, which needs
-L<IO::Socket::SSL>, and redirects are not followed.
+L<IO::Socket::SSL>. Redirects are not followed and proxies are not used.
 
 A rua host that resolves to a loopback, private or link-local address is
 refused, unless it is listed in C<http_allow_hosts> in C<[report_sending]>.

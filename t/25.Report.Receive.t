@@ -175,6 +175,29 @@ sub test_from_email_submitter {
     is( $recv->from_email_simple($email), 'aggregate', 'report with an unpatterned filename' );
     is( stored_reports($recv)->[0]{rows}[0]{envelope_to}, 'test.example',
         'submitter falls back to the reporter email domain' );
+
+    my $second = Email::MIME->create(
+        attributes => {
+            content_type => 'text/xml',
+            name         => 'rx.example!example.com!1609459200!1609545600.xml',
+            filename     => 'rx.example!example.com!1609459200!1609545600.xml',
+            disposition  => 'attachment',
+            encoding     => 'base64',
+        },
+        body => $fixture{xml},
+    );
+    $recv  = fresh_receiver();
+    $email = report_email(
+        subject      => 'DMARC aggregate report',
+        content_type => 'application/gzip',
+        filename     => 'report.xml.gz',
+        body         => $fixture{gz},
+        parts        => [$second],
+    );
+    $recv->from_email_simple($email);
+    my %envelope_to = map { $_->{envelope_to} => 1 } map { @{ $_->{rows} } } @{ stored_reports($recv) };
+    is_deeply( [ sort keys %envelope_to ], [ 'rx.example', 'test.example' ],
+        'the email domain fallback does not carry over to the next attachment' );
 }
 
 sub test_from_email_not_aggregate {

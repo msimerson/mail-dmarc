@@ -270,8 +270,14 @@ sub normalize_domain( $self, $domain ) {
 sub to_ascii_domain( $self, $domain ) {
     return $domain unless $domain =~ /[^\x00-\x7F]/;
 
-    # RFC 6532 headers are UTF-8 octets; punycode must encode code points, not bytes
-    utf8::decode($domain) if !utf8::is_utf8($domain);
+    # RFC 6532 headers are UTF-8 octets; punycode must encode code points, not
+    # bytes. Judge by content, not the internal UTF-8 flag, so equal strings
+    # map to the same domain however Perl stores them.
+    if ( $domain !~ /[^\x00-\xFF]/ ) {
+        my $octets = $domain;
+        utf8::downgrade($octets);
+        $domain = $octets if utf8::decode($octets);
+    }
 
     # RFC 8616 §6: U-labels become A-labels
     my @ascii_labels = map {
@@ -383,6 +389,12 @@ Determines if the supplied IP address is a valid IPv4 or IPv6 address.
 =head2 normalize_domain
 
 Lowercases a domain name and removes a trailing root dot.
+
+=head2 to_ascii_domain
+
+Converts each U-label of a domain to its A-label. The domain may be a
+character string or UTF-8 octets; a string that is valid UTF-8 is read as
+UTF-8, whatever Perl's internal representation of it.
 
 =head2 is_valid_domain
 

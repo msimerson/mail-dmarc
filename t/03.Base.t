@@ -122,6 +122,11 @@ sub __to_ascii_domain {
     for my $domain ( sort keys %cases ) {
         ( my $shown = $domain ) =~ s/([^\x20-\x7e])/sprintf '\\x{%x}', ord $1/ge;
         is( $base->to_ascii_domain($domain), $cases{$domain}, "to_ascii_domain, $shown" );
+
+        my $upgraded = $domain;
+        utf8::upgrade($upgraded);
+        is( $base->to_ascii_domain($upgraded), $cases{$domain},
+            "to_ascii_domain, $shown, stored as UTF-8 internally" );
     }
 }
 

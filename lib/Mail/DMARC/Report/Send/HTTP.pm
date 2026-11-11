@@ -21,7 +21,7 @@ my @NON_PUBLIC = map { _network($_) } qw(
     0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12
     192.0.0.0/24 192.0.2.0/24 192.168.0.0/16 198.18.0.0/15 198.51.100.0/24
     203.0.113.0/24 224.0.0.0/3
-    ::/96 100::/64 2001:db8::/32 fc00::/7 fe80::/10 ff00::/8
+    ::/96 64:ff9b:1::/48 100::/64 2001:db8::/32 fc00::/7 fe80::/10 fec0::/10 ff00::/8
 );
 
 # DNS64 synthesizes 64:ff9b:: addresses for public IPv4 hosts, so judge
@@ -93,6 +93,11 @@ sub user_agent($self) {
         verify_SSL   => 1,
         max_redirect => 0,
         max_size     => $MAX_ERROR_BODY,
+
+        # a proxy would resolve the rua host itself, around public_peer
+        proxy       => undef,
+        http_proxy  => undef,
+        https_proxy => undef,
     );
 }
 
@@ -150,7 +155,8 @@ version 2.20261110
 
 POSTs a gzipped aggregate report to an http or https rua URI and returns the
 L<HTTP::Tiny> response. Any 2xx response is success. HTTPS certificates are
-verified and redirects are not followed.
+verified, redirects are not followed, and proxy environment variables are
+ignored.
 
 A rua host that resolves to a loopback, private, link-local, shared,
 documentation or multicast address is refused with a 599 response, and the
