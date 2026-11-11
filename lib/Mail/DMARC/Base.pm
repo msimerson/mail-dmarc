@@ -268,8 +268,12 @@ sub normalize_domain( $self, $domain ) {
 }
 
 sub to_ascii_domain( $self, $domain ) {
-    return $domain unless $domain =~ /[^\x00-\x7F]/;    # fast path: ASCII only
-        # Convert each U-label to its A-label (punycode) equivalent per RFC 8616 §6
+    return $domain unless $domain =~ /[^\x00-\x7F]/;
+
+    # RFC 6532 headers are UTF-8 octets; punycode must encode code points, not bytes
+    utf8::decode($domain) if !utf8::is_utf8($domain);
+
+    # RFC 8616 §6: U-labels become A-labels
     my @ascii_labels = map {
         if (/[^\x00-\x7F]/) {
             my $ascii = eval { URI::_idna::encode($_) };

@@ -907,6 +907,15 @@ sub test_validate_idn {
         $a_label, 'IDN From: policy found at the A-label' );
     is( $dmarc->result->disposition, 'reject', 'IDN From: its p=reject applies' );
 
+    my $utf8_bytes = "b\xc3\xbccher.dmarctest.net";
+    $dmarc = Mail::DMARC::PurePerl->new(
+        sample_dmarc( header_from_raw => "ceo\@$utf8_bytes" ) );
+    $dmarc->set_resolver($resolver);
+    $dmarc->validate();
+    is( eval { $dmarc->result->published->domain },
+        $a_label, 'IDN From as UTF-8 bytes: policy found at the A-label' );
+    is( $dmarc->result->disposition, 'reject', 'IDN From as UTF-8 bytes: its p=reject applies' );
+
     $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
         header_from_raw => "ceo\@$u_label",
         spf => [ { domain => $a_label, scope => 'mfrom', result => 'pass' } ],

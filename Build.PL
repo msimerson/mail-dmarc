@@ -24,6 +24,7 @@ my $module_build_args = {
   "add_to_cleanup" => [ "dmarc_reports.sqlite", "t/reports-test.sqlite"],
   "recommends" => {
     "GeoIP2" => 0,
+    "IO::Socket::SSL" => "1.42",
     "JSON" => 0,
     "Mail::DKIM" => 0,
     "Net::IMAP::Simple" => 0,
