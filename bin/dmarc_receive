@@ -13,7 +13,7 @@ $|++;
 my %command_line_options = (
     'file:s'   => \my $file,
     'imap'     => \my $imap,
-    'mbox'     => \my $mbox,
+    'mbox=s'   => \my $mbox,
     'verbose+' => \my $verbose,
 );
 GetOptions(%command_line_options);
@@ -37,7 +37,7 @@ dmarc_receive: receive aggregate reports via IMAP, mbox, or message file(s)
 
 =head1 USAGE
 
- dmarc_receive [ --imap | --mbox | --file ]
+ dmarc_receive [ --imap | --mbox <file> | --file <file> ]
 
 
 =head1 DESCRIPTION

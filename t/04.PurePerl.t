@@ -62,6 +62,10 @@ $resolver->zonefile_parse(join("\n",
 '_dmarc.quoted.dmarctest.net.                   600 TXT "\"v=DMARC1; p=reject\""',
 'quoted.dmarctest.net.                          600 MX  10 mail.quoted.dmarctest.net.',
 
+# RFC 8616 6: bücher.dmarctest.net, looked up by its A-label
+'_dmarc.xn--bcher-kva.dmarctest.net.            600 TXT "v=DMARC1; p=reject"',
+'xn--bcher-kva.dmarctest.net.                   600 MX  10 mail.xn--bcher-kva.dmarctest.net.',
+
 # multiple RFC5322.From domains
 '_dmarc.mfbank.dmarctest.net.                   600 TXT "v=DMARC1; p=reject"',
 'mfbank.dmarctest.net.                          600 MX  10 mail.mfbank.dmarctest.net.',
@@ -158,6 +162,7 @@ test_validate_invalid_sp();
 test_validate_psd_y();
 test_validate_np_tag();
 test_validate_rfc9989();
+test_validate_idn();
 test_has_valid_reporting_uri();
 test_external_report();
 test_verify_external_reporting( 'tnpi.net',            'theartfarm.com', 1 );
@@ -889,3 +894,24 @@ sub test_get_from_dom {
     }
 }
 
+
+sub test_validate_idn {
+    my $u_label = "b\x{fc}cher.dmarctest.net";
+    my $a_label = 'xn--bcher-kva.dmarctest.net';
+
+    $dmarc = Mail::DMARC::PurePerl->new(
+        sample_dmarc( header_from_raw => "ceo\@$u_label" ) );
+    $dmarc->set_resolver($resolver);
+    $dmarc->validate();
+    is( eval { $dmarc->result->published->domain },
+        $a_label, 'IDN From: policy found at the A-label' );
+    is( $dmarc->result->disposition, 'reject', 'IDN From: its p=reject applies' );
+
+    $dmarc = Mail::DMARC::PurePerl->new( sample_dmarc(
+        header_from_raw => "ceo\@$u_label",
+        spf => [ { domain => $a_label, scope => 'mfrom', result => 'pass' } ],
+    ) );
+    $dmarc->set_resolver($resolver);
+    $dmarc->validate();
+    is( $dmarc->result->result, 'pass', 'IDN From: aligns with an A-label SPF domain' );
+}

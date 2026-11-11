@@ -155,34 +155,36 @@ sub _init_for_file( $self, $file ) {
     return;
 }
 
-sub from_mbox( $self, $file_name ) {
+sub from_mbox( $self, $file_name = undef ) {
     croak "missing mbox file" if !$file_name;
+    open my $fh, '<:raw', $file_name or croak "unable to read $file_name: $!";
+    my $count = $self->_receive_mbox($fh);
+    close $fh;
+    return $count;
+}
 
-    # TODO: replace this module
-    # commented out due to build test failures
-    #   load "Mail::Mbox::MessageParser";
-    #   croak "is Mail::Mbox::MessageParser installed?" if $@;
+sub _receive_mbox( $self, $fh ) {
+    my ( $message, $count ) = ( undef, 0 );
+    my $receive = sub {
+        return if !defined $message;
+        $self->from_email_simple( Email::Simple->new($message) );
+        $count++;
+    };
 
-    #   my $file_handle = FileHandle->new($file_name);
+    while ( my $line = <$fh> ) {
+        if ( 'From ' eq substr( $line, 0, 5 ) ) {
+            $receive->();
+            $message = '';
+            next;
+        }
+        next if !defined $message;    # text before the first separator
 
-    my $folder_reader;    #  = Mail::Mbox::MessageParser->new(
-                          #       {   'file_name'    => $file_name,
-                          #           'file_handle'  => $file_handle,
-                          #           'enable_cache' => 1,
-                          #           'enable_grep'  => 1,
-                          #       }
-                          #   );
-
-    croak $folder_reader unless ref $folder_reader;
-
-    my $prologue = $folder_reader->prologue;
-    print $prologue;
-
-    while ( !$folder_reader->end_of_file() ) {
-        $self->from_email_simple(
-            Email::Simple->new( $folder_reader->read_next_email() ) );
+        # mboxrd stores a body line beginning "From " as ">From "
+        $line =~ s/^>(>*From )/$1/;
+        $message .= $line;
     }
-    return 1;
+    $receive->();
+    return $count;
 }
 
 sub from_email_simple( $self, $email ) {
@@ -191,11 +193,6 @@ sub from_email_simple( $self, $email ) {
     $self->{_envelope_to} = undef;
     $self->{_header_from} = undef;
     $self->get_submitter_from_subject( $email->header('Subject') );
-
-    my $unzipper = {
-        gz  => \&IO::Uncompress::Gunzip::gunzip,    # 2013 draft
-        zip => \&IO::Uncompress::Unzip::unzip,      # legacy format
-    };
 
     my $rep_type;
     foreach my $part ( Email::MIME->new( $email->as_string )->parts ) {
@@ -212,50 +209,11 @@ sub from_email_simple( $self, $email ) {
             next;
         }
 
-        my $bigger;
         my $filename = $part->{ct}{attributes}{name} || '';
-
-        if (   $c_type eq 'application/zip'
-            || $c_type eq 'application/x-zip-compressed' )
-        {
-            try {
-                $self->get_submitter_from_filename($filename);
-                $unzipper->{zip}->( \$part->body, \$bigger );
-                $self->handle_body($bigger);
-                $rep_type = 'aggregate';
-            }
-            catch ($error) {
-                warn "failure processing $filename: $error";
-            }
+        if ( my $format = _attachment_format( $c_type, $filename ) ) {
+            $rep_type = 'aggregate'
+                if $self->_receive_attachment( $part, $filename, $format );
             next;
-        }
-        if ( $c_type eq 'application/gzip' ) {
-            try {
-                $self->get_submitter_from_filename($filename);
-                $unzipper->{gz}->( \$part->body, \$bigger );
-                $self->handle_body($bigger);
-                $rep_type = 'aggregate';
-            }
-            catch ($error) {
-                warn "failure processing $filename: $error";
-            }
-            next;
-        }
-        if ( $filename =~ /xml\.gz$/ ) {
-            if (   $c_type eq 'application/octet-stream'
-                || $c_type eq 'multipart/alternative' )
-            {
-                try {
-                    $self->get_submitter_from_filename($filename);
-                    $unzipper->{gz}->( \$part->body, \$bigger );
-                    $self->handle_body($bigger);
-                    $rep_type = 'aggregate';
-                }
-                catch ($error) {
-                    warn "failure processing $filename: $error";
-                }
-                next;
-            }
         }
 
         if ( $c_type eq 'multipart/alternative' ) {
@@ -267,6 +225,43 @@ sub from_email_simple( $self, $email ) {
         }
     }
     return $rep_type;
+}
+
+sub _attachment_format( $c_type, $filename ) {
+    return 'zip'
+        if $c_type eq 'application/zip'
+        || $c_type eq 'application/x-zip-compressed';
+    return 'gz' if $c_type eq 'application/gzip';
+
+    # RFC 7489 7.2.1.1: an uncompressed report is sent as text/xml
+    return 'xml' if $c_type eq 'text/xml' || $c_type eq 'application/xml';
+
+    return 'gz'
+        if $filename =~ /xml\.gz$/
+        && ( $c_type eq 'application/octet-stream'
+        || $c_type eq 'multipart/alternative' );
+    return;
+}
+
+sub _receive_attachment( $self, $part, $filename, $format ) {
+    my %inflate = (
+        gz  => \&IO::Uncompress::Gunzip::gunzip,
+        zip => \&IO::Uncompress::Unzip::unzip,
+    );
+    my $received = 0;
+    try {
+        $self->get_submitter_from_filename($filename);
+        my $xml = $part->body;
+        if ( $inflate{$format} ) {
+            $inflate{$format}->( \$part->body, \$xml ) or croak "unable to decompress";
+        }
+        $self->handle_body($xml);
+        $received = 1;
+    }
+    catch ($error) {
+        warn "failure processing $filename: $error";
+    }
+    return $received;
 }
 
 sub get_submitter_from_filename( $self, $filename ) {
@@ -510,7 +505,7 @@ C<from_file> accepts a file path and auto-detects the file type:
 
 =back
 
-C<from_imap> and C<from_mbox> accept a message (or list of messages) and create an Email::Simple object from each, passing that object to from_email_simple.
+C<from_imap> and C<from_mbox> create an Email::Simple object from each message and pass it to from_email_simple. C<from_mbox> reads an mbox file (mboxo or mboxrd) and returns the number of messages read.
 
 =head2 from_email_simple
 

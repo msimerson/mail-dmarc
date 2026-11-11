@@ -243,7 +243,78 @@ my $unknown = '';
 like( $unknown, qr/not recognized/,
     'serve_file, rejects an extension with no mime type' );
 
-# this starts up the httpd daemon
-#$http->dmarc_httpd();
+test_dispatch();
 
 done_testing();
+
+sub dispatch {
+    my ( $path, $query, $post ) = @_;
+    local $ENV{QUERY_STRING}   = $query // '';
+    local $ENV{CONTENT_LENGTH} = length( $post // '' );
+    local $SIG{__WARN__} = sub { warn @_ if $_[0] !~ /^path: / };
+    my $out = '';
+    with_stdin(
+        $post // '',
+        sub {
+            local *STDOUT;
+            open STDOUT, '>', \$out or die "cannot capture STDOUT: $!";
+            Mail::DMARC::HTTP::dmarc_dispatch( { request_info => { request_path => $path } } );
+        }
+    );
+    my ( $head, $body ) = split /\n\n/, $out, 2;
+    my ($type) = $head =~ /^Content-Type: (\S+)/m;
+    my $json = $type && $type eq 'application/json' ? eval { decode_json($body) } : undef;
+    return ( $type, $json, $body );
+}
+
+sub test_dispatch {
+    local $ENV{MAIL_DMARC_CONFIG_FILE} = 't/mail-dmarc.ini';
+    unlink 't/reports-test.sqlite';
+    require Mail::DMARC::Report::Receive;
+    Mail::DMARC::Report::Receive->new->from_file('t/fixtures/test_dmarc.xml');
+    local $Mail::DMARC::HTTP::report = Mail::DMARC::Report->new;
+
+    my $window = 'since=1609000000&until=1610000000';
+
+    my ( $type, $json ) = dispatch('/dmarc/json/report');
+    is( $type, 'application/json', 'dispatch, report list is JSON' );
+    is( $json->{data}[0]{uuid}, '1234567890', 'dispatch, report list has the stored report' );
+    my $rid = $json->{data}[0]{rid};
+
+    ( undef, $json ) = dispatch( '/dmarc/json/row', "rid=$rid" );
+    is( $json->{data}[0]{source_ip}, '1.2.3.4', 'dispatch, row has the record' );
+
+    ( undef, $json ) = dispatch('/dmarc/json/domains');
+    is( $json->{data}[0]{domain}, 'example.com', 'dispatch, domains lists the policy domain' );
+
+    ( undef, $json ) = dispatch( '/dmarc/json/summary', $window );
+    is( $json->{current}{messages}, 1, 'dispatch, summary counts the message' );
+
+    ( undef, $json ) = dispatch( '/dmarc/json/timeseries', $window );
+    is( $json->{data}[0]{messages}, 1, 'dispatch, timeseries has the day' );
+
+    ( undef, $json ) = dispatch( '/dmarc/json/sources', $window );
+    is( $json->{data}[0]{messages}, 1, 'dispatch, sources has the source' );
+
+    ( undef, $json ) = dispatch( '/dmarc/json/source', "$window&source_ip=1.2.3.4" );
+    is( $json->{source_ip}, '1.2.3.4', 'dispatch, source detail' );
+
+    ( undef, $json ) = dispatch( '/dmarc/json/source', $window );
+    like( $json->{err}, qr/missing source_ip/, 'dispatch, store errors are returned as JSON' );
+
+    ( $type, $json ) = dispatch( '/dmarc/json/validate', '',
+        '{"header_from":"tnpi.net","spf":[{"domain":"tnpi.net","scope":"mfrom","result":"pass"}]}' );
+    is( $type, 'application/json', 'dispatch, validate reads the POST body' );
+
+    my $body;
+    ( $type, undef, $body ) = dispatch('/dmarc/dmarc.css');
+    is( $type, 'text/css', 'dispatch, serves a stylesheet' );
+
+    foreach my $path ( '', '/dmarc/', '/not/a/route' ) {
+        ( $type, undef, $body ) = dispatch($path);
+        like( $body, qr/<title>DMARC reports<\/title>/,
+            "dispatch, '$path' serves the viewer" );
+    }
+
+    unlink 't/reports-test.sqlite';
+}

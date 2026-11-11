@@ -371,18 +371,13 @@ URI:
                 }
             ) and $sent++;
         }
-
-        # http(s) sending not yet enabled in module, skip this send and
-        # increment sent to avoid looping
-        elsif ( 'http:' eq substr( $method, 0, 5 ) ) {
-
-            #$report->sendit->http->post( $method, \$aggregate, $shrunk );
-            $sent++;
-        }
-        elsif ( 'https:' eq substr( $method, 0, 6 ) ) {
-
-            #$report->sendit->http->post( $method, \$aggregate, $shrunk );
-            $sent++;
+        elsif ( $method =~ /^https?:/i ) {
+            $self->http_post(
+                {   uri        => $method,
+                    compressed => $xml_compressed,
+                    aggregate  => \$aggregate,
+                }
+            ) and $sent++;
         }
     }
 
@@ -398,6 +393,42 @@ URI:
 
     alarm(0);
     return;
+}
+
+sub http_post( $self, $args ) {
+    my $report  = $self->{report};
+    my $agg_ref = $args->{aggregate};
+    my $rid     = $$agg_ref->metadata->report_id;
+    my $smtp    = $report->sendit->smtp;
+
+    my $res = $report->sendit->http->post(
+        {   uri      => $args->{uri},
+            report   => $args->{compressed},
+            subject  => $smtp->get_subject($agg_ref),
+            filename => $smtp->get_filename($agg_ref) . '.gz',
+        }
+    );
+
+    my $log_data = {
+        id         => $rid,
+        deliver_to => "$args->{uri}",
+        to_domain  => $$agg_ref->policy_published->domain,
+    };
+    if ( $res->{success} ) {
+        $log_data->{success} = "$res->{status} $res->{reason}";
+        $self->log_output($log_data);
+        return 1;
+    }
+
+    # HTTP::Tiny reports a connection or TLS failure as status 599, with the
+    # cause in the content
+    my $message = $res->{status} == 599 ? $res->{content} : $res->{reason};
+    chomp $message;
+    $log_data->{send_error}      = $message;
+    $log_data->{send_error_code} = $res->{status};
+    $self->log_output($log_data);
+    $report->store->error( $rid, "HTTP $res->{status}: $message" );
+    return 0;
 }
 
 sub send_too_big_email( $self, $too_big, $bytes, $aggregate ) {

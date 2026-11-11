@@ -19,6 +19,14 @@ Sends each stored aggregate report to the addresses in the C<rua> tag of the
 policy it was collected under, then removes it from the store. A report that
 cannot be delivered is removed too, so a failing recipient does not accumulate.
 
+=head1 HTTP
+
+An C<http:> or C<https:> rua receives the gzipped report as the body of a POST
+(C<Content-Type: application/gzip>), with the report filename in
+C<Content-Disposition> and the email Subject in a C<Subject> header. Any 2xx
+response is delivery. HTTPS certificates are verified, which needs
+L<IO::Socket::SSL>.
+
 =head1 SMART HOST
 
 Without C<smtp.smarthost>, reports go to the recipient domain's MX on port 25:

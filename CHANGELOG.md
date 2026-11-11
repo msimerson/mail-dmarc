@@ -1,5 +1,10 @@
 ### Unreleased
 
+- feat(sender): POST reports to http and https rua URIs
+- fix(receive): store uncompressed text/xml report attachments
+- fix(receive): read mbox files, dmarc_receive --mbox takes a file
+- test: receive by email, RFC 9990 namespace, IDN From, httpd routes
+
 ### 2.20261110
 
 - fix: declare Perl 5.36 everywhere, the minimum the code needs #319

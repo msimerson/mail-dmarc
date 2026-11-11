@@ -6,39 +6,31 @@ use feature 'signatures';
 our $VERSION = '2.20261110';
 
 use Carp;
-
-#use Data::Dumper;
-#use HTTP::Tiny;     # a possibility
-#use Net::HTTP;      # lazy loaded in 'post'
+use HTTP::Tiny;
 
 use parent 'Mail::DMARC::Base';
 
-sub post( $self, $uri, $report, $gz ) {
+sub post( $self, $args ) {
+    my $uri = $args->{uri} or croak "missing uri";
+    defined $args->{report} or croak "missing report";
 
-    carp "http send feature not complete!";
-    return;
+    my %headers = ( 'Content-Type' => 'application/gzip' );
+    $headers{'Content-Disposition'} = qq{attachment; filename="$args->{filename}"}
+        if $args->{filename};
 
-    ## no critic (Unreachable,Eval)
-    # TODO: test against real HTTP server, validate HTTP response
-    eval "require Net::HTTP" or return;
+    # 2013 draft 12.2.2: the request SHOULD carry the email Subject
+    $headers{Subject} = $args->{subject} if $args->{subject};
 
-    my $ver = $Mail::DMARC::Base::VERSION;
-    my $s   = Net::HTTP->new( Host => $uri->host ) or croak $@;
-    $s->write_request(
-        POST         => $uri->path,
-        'User-Agent' => "Mail::DMARC/$ver"
+    return $self->user_agent->post( "$uri",
+        { headers => \%headers, content => $args->{report} } );
+}
+
+sub user_agent($self) {
+    return $self->{user_agent} //= HTTP::Tiny->new(
+        agent      => "Mail-DMARC/$VERSION ",
+        timeout    => 60,
+        verify_SSL => 1,
     );
-    my ( $code, $mess, %h ) = $s->read_response_headers;
-
-    while (1) {
-        my $buf;
-        my $n = $s->read_entity_body( $buf, 1024 );
-        croak "read failed: $!" unless defined $n;
-        last                    unless $n;
-        print $buf;
-        return 1;
-    }
-    return 0;
 }
 
 1;
@@ -54,6 +46,25 @@ Mail::DMARC::Report::Send::HTTP - utility methods to send reports by HTTP
 =head1 VERSION
 
 version 2.20261110
+
+=head1 SYNOPSIS
+
+  my $res = Mail::DMARC::Report::Send::HTTP->new->post(
+      {   uri      => 'https://reports.example.com/dmarc',
+          report   => $gzipped_xml,
+          subject  => 'Report Domain: example.com Submitter: ...',
+          filename => 'submitter!example.com!1609459200!1609545600!id.xml.gz',
+      }
+  );
+  print "sent\n" if $res->{success};
+
+=head1 METHODS
+
+=head2 post
+
+POSTs a gzipped aggregate report to an http or https rua URI and returns the
+L<HTTP::Tiny> response. Any 2xx response is success. HTTPS certificates are
+verified.
 
 =head1 12.2.2. HTTP
 
